@@ -14,3 +14,8 @@ ipykernel>=6.25.0
 jupyter>=1.0.0
 notebook>=7.0.0
 
+# Serial communication (for Arduino)
+pyserial>=3.5
+
+# 3D visualization
+vpython>=7.6.0
