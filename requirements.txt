@@ -19,3 +19,8 @@ pyserial>=3.5
 
 # 3D visualization
 vpython>=7.6.0
+
+# TMSi biosignal acquisition (Porti7)
+# Note: TMSi Python Interface may need manual installation from TMSi/Artinis website
+# If not available via pip, install manually or use ctypes wrapper for TMSiSDK.dll
+# tmsi>=5.0.0  # Uncomment if package becomes available on PyPI
