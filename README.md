@@ -54,7 +54,53 @@ pip install -e .
 python -m ipykernel install --user --name thesis --display-name "Python (thesis)"
 ```
 
-#### Option 2: Using venv
+#### Option 2: Using venv (Cross-platform PowerShell script)
+
+**Prerequisites for PowerShell script:**
+- **PowerShell Core** (pwsh) - Cross-platform PowerShell
+  - **Windows**: Usually pre-installed, or install from [Microsoft Store](https://aka.ms/powershell)
+  - **macOS**: `brew install --cask powershell` (requires Homebrew)
+  - **Linux**: Install via package manager (e.g., `sudo apt install powershell`)
+
+1. Clone the repository:
+```bash
+git clone https://github.com/baswingen/Thesis.git
+cd Thesis
+```
+
+2. Run the PowerShell setup script (works on Windows, macOS, and Linux):
+```powershell
+# On Windows PowerShell or PowerShell Core
+pwsh setup_venv.ps1
+# Or on Windows: .\setup_venv.ps1
+```
+
+The script will:
+- Detect your OS automatically
+- Find compatible Python (3.8-3.12)
+- Create a virtual environment
+- Install all dependencies from `requirements.txt`
+- Provide activation instructions
+
+3. Activate the virtual environment:
+```bash
+# Windows PowerShell
+.\venv\Scripts\Activate.ps1
+
+# macOS/Linux (bash/zsh)
+source venv/bin/activate
+
+# macOS/Linux (PowerShell Core)
+. venv/bin/Activate.ps1
+```
+
+4. Install ipykernel for Jupyter (if not already installed):
+```bash
+pip install ipykernel
+python -m ipykernel install --user --name thesis --display-name "Python (thesis)"
+```
+
+#### Option 3: Using venv (Manual)
 
 1. Clone the repository:
 ```bash
