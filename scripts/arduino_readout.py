@@ -10,6 +10,7 @@ PORT = "/dev/cu.usbmodem9888E00A0CC02"
 BAUD = 115200
 
 # Madgwick tuning
+
 BETA = 0.08
 GYRO_IS_DEG_PER_S = True
 
