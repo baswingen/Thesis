@@ -304,12 +304,15 @@ def make_die(pos, size=0.9, body_col=color.white):
       +Y: 2  opposite -Y: 5
       +Z: 3  opposite -Z: 4
     """
+    # IMPORTANT: Build parts in LOCAL coordinates (around origin),
+    # then move the compound to `pos`. Otherwise positions get applied twice.
     half = size / 2.0
     pip_r = size * 0.085
     pip_spread = size * 0.22
     pip_inset = size * 0.03  # sink slightly into face
 
-    parts = [box(pos=pos, length=size, height=size, width=size, color=body_col, opacity=1.0)]
+    origin = vector(0, 0, 0)
+    parts = [box(pos=origin, length=size, height=size, width=size, color=body_col, opacity=1.0)]
 
     faces = [
         # (normal, u_axis, v_axis, number)
@@ -322,7 +325,7 @@ def make_die(pos, size=0.9, body_col=color.white):
     ]
 
     for nrm, u_axis, v_axis, num in faces:
-        face_center = pos + nrm * (half - pip_inset)
+        face_center = origin + nrm * (half - pip_inset)
         for u, v in _pip_uv(num, pip_spread):
             parts.append(
                 sphere(
@@ -333,7 +336,8 @@ def make_die(pos, size=0.9, body_col=color.white):
                 )
             )
 
-    die = compound(parts, pos=pos)
+    die = compound(parts)
+    die.pos = pos
     return die
 
 # Dice 1 / Dice 2
