@@ -305,7 +305,7 @@ def make_die(pos, size=0.9, body_col=color.white):
       +Z: 3  opposite -Z: 4
     """
     # IMPORTANT: Build parts in LOCAL coordinates (around origin),
-    # then move the compound to `pos`. Otherwise positions get applied twice.
+    # then pass `pos` directly to compound(). Parts positions are relative to compound's pos.
     half = size / 2.0
     pip_r = size * 0.085
     pip_spread = size * 0.22
@@ -336,8 +336,8 @@ def make_die(pos, size=0.9, body_col=color.white):
                 )
             )
 
-    die = compound(parts)
-    die.pos = pos
+    # Create compound with pos parameter directly - parts are already in local coordinates
+    die = compound(parts, pos=pos)
     return die
 
 # Dice 1 / Dice 2
