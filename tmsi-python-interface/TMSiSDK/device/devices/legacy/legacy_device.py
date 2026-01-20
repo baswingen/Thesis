@@ -202,6 +202,26 @@ class LegacyDevice(TMSiDevice):
     def _retrieve_channel_info(self):
         """Retrieve channel information"""
         global _sdk_interface
+
+        def _decode_utf16le_u16(u16_arr):
+            """
+            Decode a UTF-16LE string stored as an array of uint16 code units.
+
+            The TMSi SDK exposes fields like SIGNAL_FORMAT.Name / PortName as
+            uint16 arrays (UTF-16LE). We must convert each uint16 into 2 bytes
+            (little-endian) before decoding. Treating the uint16 values as bytes
+            corrupts the string (e.g. 'BIP17' becomes non-ASCII glyphs).
+            """
+            try:
+                # Build little-endian byte stream from uint16 code units
+                b = b"".join(int(v).to_bytes(2, byteorder="little", signed=False) for v in u16_arr)
+                # Trim at first UTF-16 NUL terminator (0x0000) if present
+                nul = b.find(b"\x00\x00")
+                if nul != -1:
+                    b = b[:nul]
+                return b.decode("utf-16le", errors="ignore").strip("\x00").strip()
+            except Exception:
+                return ""
         
         # Get signal format
         signal_format_ptr = _sdk_interface.get_signal_format(self._sdk_handle)
@@ -215,10 +235,9 @@ class LegacyDevice(TMSiDevice):
         for i in range(num_channels):
             channel_ptr = signal_format_ptr[i]
             
-            # Extract channel name (convert from uint16 array)
-            name_array = channel_ptr.Name
-            name_bytes = bytes([b for b in name_array if b != 0])
-            channel_name = name_bytes.decode('utf-16le', errors='ignore').strip()
+            # Extract channel + port names (UTF-16LE stored as uint16 array)
+            channel_name = _decode_utf16le_u16(channel_ptr.Name)
+            port_name = _decode_utf16le_u16(channel_ptr.PortName)
             
             # Get unit name
             unit_name = get_unit_name(channel_ptr.UnitId, channel_ptr.UnitExponent)
@@ -247,12 +266,21 @@ class LegacyDevice(TMSiDevice):
             channel._unit_offset = float(channel_ptr.UnitOffSet)
             
             # Add getter methods for unit gain and offset
-            channel.get_channel_unit_gain = lambda: channel._unit_gain
-            channel.get_channel_unit_offset = lambda: channel._unit_offset
+            # IMPORTANT: bind defaults to avoid late-binding closure bugs.
+            channel.get_channel_unit_gain = (lambda ch=channel: ch._unit_gain)
+            channel.get_channel_unit_offset = (lambda ch=channel: ch._unit_offset)
+
+            # Store port mapping info (useful for matching physical input ports)
+            channel.port = int(channel_ptr.Port)
+            channel.port_name = port_name
+            channel.get_channel_port = (lambda ch=channel: getattr(ch, "port", -1))
+            channel.get_channel_port_name = (lambda ch=channel: getattr(ch, "port_name", ""))
             
             # Store additional info for reference
             channel.unit_id = channel_ptr.UnitId
             channel.unit_exponent = channel_ptr.UnitExponent
+            channel.legacy_type_id = int(channel_ptr.Type)
+            channel.can_overflow = bool(channel.legacy_type_id in [1, 2, 3])
             
             self._channels.append(channel)
         

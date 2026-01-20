@@ -8,6 +8,7 @@ keras>=3.0.0
 numpy>=1.24.0,<2.0.0  # TensorFlow requires numpy < 2.0
 pandas>=2.0.0
 matplotlib>=3.7.0
+scipy>=1.11.0
 
 # Jupyter and notebook support
 ipykernel>=6.25.0

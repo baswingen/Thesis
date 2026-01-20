@@ -82,8 +82,12 @@ class SignalMeasurement:
         # Determine which channels can overflow (EXG, BIP, AUX types)
         self._channels_overflow_types = []
         for channel in self._channels:
-            # Channel types 1, 2, 3 can overflow
-            can_overflow = hasattr(channel, 'unit_id') and channel.unit_id in [1, 2, 3]
+            # Legacy EXG/BIP-like channels use OVERFLOW_VALUE (2^31) to indicate invalid data.
+            # Prefer the explicit legacy type flag if available; fall back conservatively.
+            if hasattr(channel, "can_overflow"):
+                can_overflow = bool(channel.can_overflow)
+            else:
+                can_overflow = True
             self._channels_overflow_types.append(can_overflow)
         
         # Sample buffer
@@ -230,8 +234,17 @@ class SignalMeasurement:
                 # Signed format
                 converted = channel_data.astype(np.int32).astype(np.float64)
             
-            # Apply unit gain
-            converted = converted * channel.get_channel_unit_gain()
+            # Apply unit offset + gain (if available)
+            try:
+                offset = channel.get_channel_unit_offset()
+            except Exception:
+                offset = 0.0
+            try:
+                gain = channel.get_channel_unit_gain()
+            except Exception:
+                gain = 1.0
+
+            converted = (converted + offset) * gain
             
             # Set overflow values to NaN
             converted[overflow_mask] = np.nan

@@ -185,7 +185,7 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "  (or in PowerShell: . venv/bin/Activate.ps1)" -ForegroundColor Gray
     }
     Write-Host "`nInstalled packages:" -ForegroundColor Cyan
-    pip list | Select-String -Pattern "torch|tensorflow|keras|numpy|pandas|matplotlib|pyserial|vpython"
+    pip list | Select-String -Pattern "torch|tensorflow|keras|numpy|pandas|matplotlib|scipy|pyserial|vpython"
 } else {
     Write-Host "`nError: Some packages failed to install. Check the output above." -ForegroundColor Red
     Write-Host "Note: If TensorFlow installation failed, ensure you're using Python 3.8-3.12" -ForegroundColor Yellow
