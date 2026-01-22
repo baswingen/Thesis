@@ -1,34 +1,49 @@
 """
-IMU Signal Acquisition Module
-==============================
+Dual BMI160 IMU Acquisition Module (ASCII Protocol)
+===================================================
 
 High-performance module for acquiring data from dual BMI160 IMU sensors
 via Arduino with ASCII serial protocol.
 
-This module provides:
-- Robust ASCII protocol with XOR checksum validation
-- Dual BMI160 IMU support (I2C addresses 0x68 and 0x69)
-- Mahony AHRS filter for orientation estimation
-- Automatic gyroscope bias calibration
-- Auto-reconnection and error handling
+Features:
+- ASCII protocol with XOR checksum validation
+- Automatic port detection and reconnection
+- Mahony filter for orientation estimation
+- Gyro bias calibration
 - Context manager support
+- Easy-to-use interface
 
 Hardware Requirements:
-- Arduino with dual BMI160 IMUs
+- Arduino with dual BMI160 IMUs (I2C addresses 0x68 and 0x69)
 - ASCII protocol sketch (230400 baud)
-- USB connection
 
 Example Usage:
     ```python
-    from src.imu_acquisition import IMUDevice, IMUConfig
+    from src.bmi160_dual import DualIMU, IMUConfig
     
     # Basic usage
-    with IMUDevice() as imu:
+    with DualIMU() as imu:
         imu.calibrate(samples=200)
         
         for reading in imu.read_stream(duration=10.0):
-            print(f"IMU1: {reading.euler1}")
-            print(f"IMU2: {reading.euler2}")
+            print(f"IMU1 orientation: {reading.euler1}")
+            print(f"IMU2 orientation: {reading.euler2}")
+    
+    # Advanced configuration
+    config = IMUConfig(
+        port='/dev/ttyUSB0',
+        baud=230400,
+        accel_scale=1.0/16384.0,
+        gyro_scale=1.0/131.2
+    )
+    
+    with DualIMU(config) as imu:
+        imu.calibrate()
+        while True:
+            reading = imu.read()
+            if reading:
+                # Process data
+                pass
     ```
 
 Author: Generated from IMU_testing.py
@@ -39,8 +54,8 @@ import time
 import numpy as np
 import serial
 from serial.tools import list_ports
-from typing import Optional, Tuple, Generator, Callable, List
-from dataclasses import dataclass
+from typing import Optional, Tuple, Generator, Callable
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -144,7 +159,7 @@ class IMUReading:
 
 
 @dataclass
-class IMUCalibration:
+class CalibrationData:
     """Gyroscope bias calibration data."""
     bias1: np.ndarray  # IMU1 bias in rad/s
     bias2: np.ndarray  # IMU2 bias in rad/s
@@ -187,17 +202,6 @@ def quat_norm(q: np.ndarray) -> np.ndarray:
     return q / n
 
 
-def quat_inv(q: np.ndarray) -> np.ndarray:
-    """Quaternion inverse (for unit quaternions)."""
-    return quat_conj(q)
-
-
-def rotate_vec_by_quat(v: np.ndarray, q: np.ndarray) -> np.ndarray:
-    """Rotate 3D vector by quaternion."""
-    vq = np.array([0.0, v[0], v[1], v[2]], dtype=float)
-    return quat_mul(quat_mul(q, vq), quat_conj(q))[1:]
-
-
 def quat_to_euler(q: np.ndarray) -> Tuple[float, float, float]:
     """Convert quaternion to Euler angles (roll, pitch, yaw) in degrees."""
     w, x, y, z = q
@@ -226,26 +230,10 @@ def quat_to_euler(q: np.ndarray) -> Tuple[float, float, float]:
 # MAHONY FILTER
 # =============================================================================
 
-class MahonyIMU:
-    """
-    Mahony AHRS filter for IMU orientation estimation.
-    
-    Superior to Madgwick for this application:
-    - Separate proportional/integral gains
-    - Faster computation
-    - Better gravity constraint handling
-    - Adaptive gain scheduling
-    """
+class MahonyFilter:
+    """Mahony AHRS filter for IMU orientation estimation."""
     
     def __init__(self, kp: float = 2.0, ki: float = 0.01, adaptive: bool = True):
-        """
-        Initialize Mahony filter.
-        
-        Args:
-            kp: Proportional gain (accel correction strength)
-            ki: Integral gain (gyro bias learning)
-            adaptive: Enable adaptive gain scheduling
-        """
         self.kp = kp
         self.ki = ki
         self.adaptive = adaptive
@@ -324,14 +312,6 @@ class MahonyIMU:
         
         self.q = quat_norm(np.array([q0, q1, q2, q3], dtype=float))
         return self.q
-    
-    def get_quaternion(self) -> np.ndarray:
-        """Get current orientation as quaternion [w, x, y, z]."""
-        return self.q.copy()
-    
-    def get_euler(self) -> Tuple[float, float, float]:
-        """Get current orientation as Euler angles (roll, pitch, yaw) in degrees."""
-        return quat_to_euler(self.q)
     
     def reset(self):
         """Reset to identity orientation."""
@@ -438,10 +418,10 @@ def guess_port(hint: Optional[str] = None) -> Optional[str]:
 
 
 # =============================================================================
-# MAIN IMU DEVICE CLASS
+# MAIN DUAL IMU CLASS
 # =============================================================================
 
-class IMUDevice:
+class DualIMU:
     """
     Main interface for dual BMI160 IMU acquisition.
     
@@ -450,36 +430,37 @@ class IMUDevice:
     
     Example:
         ```python
-        with IMUDevice() as imu:
+        with DualIMU() as imu:
             imu.calibrate(samples=200)
             
-            for reading in imu.read_stream(max_samples=1000):
-                print(f"Euler1: {reading.euler1}")
-                print(f"Euler2: {reading.euler2}")
+            for i in range(1000):
+                reading = imu.read()
+                if reading:
+                    print(f"Euler1: {reading.euler1}")
         ```
     """
     
     def __init__(self, config: Optional[IMUConfig] = None):
         """
-        Initialize IMU device interface.
+        Initialize dual IMU interface.
         
         Args:
             config: IMUConfig object (uses defaults if None)
         """
         self.config = config or IMUConfig()
         self.ser: Optional[serial.Serial] = None
-        self.calibration: Optional[IMUCalibration] = None
+        self.calibration: Optional[CalibrationData] = None
         self.last_rx_time = 0.0
         self.t_prev = None
         
         # Filters
         if self.config.use_mahony:
-            self.filter1 = MahonyIMU(
+            self.filter1 = MahonyFilter(
                 kp=self.config.kp,
                 ki=self.config.ki,
                 adaptive=self.config.adaptive_gains
             )
-            self.filter2 = MahonyIMU(
+            self.filter2 = MahonyFilter(
                 kp=self.config.kp,
                 ki=self.config.ki,
                 adaptive=self.config.adaptive_gains
@@ -506,7 +487,7 @@ class IMUDevice:
         """
         port = self.config.port or guess_port("usbmodem")
         if not port:
-            raise RuntimeError("No serial port found. Please specify port in config.")
+            raise RuntimeError("No serial port found")
         
         print(f"Connecting to {port} @ {self.config.baud} baud...")
         
@@ -563,9 +544,9 @@ class IMUDevice:
         return self.connect()
     
     def calibrate(self, samples: int = 200, timeout: float = 30.0,
-                  callback: Optional[Callable[[int, int], None]] = None) -> IMUCalibration:
+                  callback: Optional[Callable[[int, int], None]] = None) -> CalibrationData:
         """
-        Calibrate gyroscope biases (IMUs must be stationary and flat).
+        Calibrate gyroscope biases (IMUs must be stationary).
         
         Args:
             samples: Number of samples to collect
@@ -573,7 +554,7 @@ class IMUDevice:
             callback: Optional callback(current, total) for progress
         
         Returns:
-            IMUCalibration object
+            CalibrationData object
         """
         print(f"\nCalibrating ({samples} samples)...")
         print("Keep IMUs FLAT and STILL!")
@@ -614,7 +595,7 @@ class IMUDevice:
         bias1 = np.mean(g1_samples, axis=0)
         bias2 = np.mean(g2_samples, axis=0)
         
-        self.calibration = IMUCalibration(
+        self.calibration = CalibrationData(
             bias1=bias1,
             bias2=bias2,
             samples=len(g1_samples)
@@ -777,10 +758,10 @@ class IMUDevice:
 # CONVENIENCE FUNCTIONS
 # =============================================================================
 
-def acquire_imu_data(port: Optional[str] = None, samples: int = 100,
-                     calibrate: bool = True, calib_samples: int = 200) -> List[IMUReading]:
+def quick_read(port: Optional[str] = None, samples: int = 100,
+               calibrate: bool = True, calib_samples: int = 200) -> list[IMUReading]:
     """
-    Quick utility to acquire IMU data.
+    Quick utility to read IMU data.
     
     Args:
         port: Serial port (None = auto-detect)
@@ -793,7 +774,7 @@ def acquire_imu_data(port: Optional[str] = None, samples: int = 100,
     """
     config = IMUConfig(port=port)
     
-    with IMUDevice(config) as imu:
+    with DualIMU(config) as imu:
         if calibrate:
             imu.calibrate(samples=calib_samples)
         
@@ -806,12 +787,12 @@ def acquire_imu_data(port: Optional[str] = None, samples: int = 100,
 
 if __name__ == "__main__":
     # Demo
-    print("Dual BMI160 IMU Acquisition Module Demo")
+    print("Dual BMI160 IMU Module Demo")
     print("="*60)
     
     config = IMUConfig()
     
-    with IMUDevice(config) as imu:
+    with DualIMU(config) as imu:
         print("\nPlace IMUs flat and still for calibration...")
         time.sleep(3)
         
