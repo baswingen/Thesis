@@ -56,17 +56,20 @@ class TrialGUI:
     
     def __init__(self, 
                  config: Optional[Dict] = None,
-                 on_key_press: Optional[Callable[[str], None]] = None):
+                 on_key_press: Optional[Callable[[str], None]] = None,
+                 on_test_hardware: Optional[Callable[[], None]] = None):
         """
         Initialize GUI.
         
         Args:
             config: GUI configuration dictionary
             on_key_press: Callback for keyboard events, signature: callback(key: str)
+            on_test_hardware: Callback for test hardware button, signature: callback()
         """
         # Configuration
         self.config = config or self._default_config()
         self.on_key_press = on_key_press
+        self.on_test_hardware = on_test_hardware
         
         # State
         self.state = TrialState.IDLE
@@ -270,10 +273,32 @@ class TrialGUI:
         )
         self.status_label.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
         
+        # Button frame for hardware test
+        button_frame = ttk.Frame(panel)
+        button_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+        
+        # Test Hardware button
+        self.test_hardware_button = ttk.Button(
+            button_frame,
+            text="🔍 Test Hardware (T)",
+            command=self._on_test_hardware_clicked,
+            width=20
+        )
+        self.test_hardware_button.pack(side=tk.LEFT, padx=5)
+        
+        # Button state label
+        self.hardware_test_label = tk.Label(
+            button_frame,
+            text="Launch visualization to verify EMG and IMU signals",
+            font=('Arial', 9),
+            fg='gray'
+        )
+        self.hardware_test_label.pack(side=tk.LEFT, padx=10)
+        
         # Keyboard shortcuts
         shortcuts_text = (
             "Keyboard: [SPACE] Start/Stop | [N] Next Trial | [R] Repeat | "
-            "[C] Calibrate IMU | [Q] Quit"
+            "[C] Calibrate IMU | [T] Test Hardware | [Q] Quit"
         )
         shortcuts_label = tk.Label(
             panel,
@@ -303,6 +328,11 @@ class TrialGUI:
                                       font=('Arial', 9, 'bold'), fg='green')
         self.emg_rms_label.pack(side=tk.LEFT, padx=5)
     
+    def _on_test_hardware_clicked(self):
+        """Handle test hardware button click."""
+        if self.on_test_hardware:
+            self.on_test_hardware()
+    
     def _handle_keypress(self, event):
         """Handle keyboard events."""
         key = event.char.lower()
@@ -313,6 +343,11 @@ class TrialGUI:
             key = 'space'
         elif keysym == 'escape':
             key = 'escape'
+        
+        # Handle 'T' key for test hardware
+        if key == 't':
+            self._on_test_hardware_clicked()
+            return
         
         # Call callback
         if self.on_key_press:

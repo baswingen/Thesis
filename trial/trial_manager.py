@@ -175,7 +175,8 @@ class TrialManager:
         print("\n✓ Creating GUI...")
         self.gui = TrialGUI(
             config=self.config.GUI_CONFIG,
-            on_key_press=self._handle_key_press
+            on_key_press=self._handle_key_press,
+            on_test_hardware=self._handle_test_hardware
         )
         
         # Set initial GUI state
@@ -205,28 +206,68 @@ class TrialManager:
                 else:
                     # Use real hardware acquisition
                     print("  Using REAL hardware signals")
+                    print("  Connecting to devices (this may take up to 30 seconds)...")
+                    
+                    # Reduce timeout for faster failure if hardware not connected
                     sync_config = self.config.get_sync_config()
+                    # Override timeout if too long
+                    if sync_config.imu.imu_config.timeout > 2.0:
+                        sync_config.imu.imu_config.timeout = 2.0
+                    
                     self.acquisition = SynchronizedAcquisition(
                         config=sync_config,
                         on_emg=self._on_emg_chunk,
                         on_imu=self._on_imu_sample
                     )
                 
-                print("  Starting acquisition...")
-                self.acquisition.start()
+                print("  Starting acquisition threads...")
+                self.acquisition.start(ready_timeout_s=30.0)  # Reduced timeout
                 
                 # Check for errors
                 if hasattr(self.acquisition, 'errors') and self.acquisition.errors:
-                    raise RuntimeError(f"Acquisition errors: {self.acquisition.errors}")
+                    error_msgs = [str(e) for e in self.acquisition.errors]
+                    raise RuntimeError(f"Acquisition errors: {'; '.join(error_msgs)}")
                 
                 print("  ✓ Acquisition started successfully")
+                
+            except TimeoutError as e:
+                print(f"  ✗ Hardware connection timeout: {e}")
+                print("  ✗ Make sure EMG and IMU devices are connected and powered on")
+                print("  Falling back to DUMMY mode")
+                self.mock_mode = True
+                # Initialize with dummy instead
+                print("  Initializing dummy acquisition...")
+                self.acquisition = DummyAcquisition(
+                    emg_sample_rate=self.config.EMG_CONFIG.get('sample_rate', 2048),
+                    imu_sample_rate=200,
+                    emg_channels=len(self.config.EMG_CONFIG.get('raw_channels', [0, 1, 2, 3])),
+                    emg_amplitude=self.config.SYNC_CONFIG.get('dummy_emg_amplitude', 50.0),
+                    emg_noise_level=self.config.SYNC_CONFIG.get('dummy_emg_noise_level', 5.0),
+                    imu_motion=self.config.SYNC_CONFIG.get('dummy_imu_motion', True),
+                    on_emg=self._on_emg_chunk,
+                    on_imu=self._on_imu_sample
+                )
+                self.acquisition.start()
                 
             except Exception as e:
                 print(f"  ✗ Failed to initialize acquisition: {e}")
                 import traceback
                 traceback.print_exc()
                 self.mock_mode = True
-                print("  Falling back to mock mode")
+                print("  Falling back to DUMMY mode")
+                # Initialize with dummy instead
+                print("  Initializing dummy acquisition...")
+                self.acquisition = DummyAcquisition(
+                    emg_sample_rate=self.config.EMG_CONFIG.get('sample_rate', 2048),
+                    imu_sample_rate=200,
+                    emg_channels=len(self.config.EMG_CONFIG.get('raw_channels', [0, 1, 2, 3])),
+                    emg_amplitude=self.config.SYNC_CONFIG.get('dummy_emg_amplitude', 50.0),
+                    emg_noise_level=self.config.SYNC_CONFIG.get('dummy_emg_noise_level', 5.0),
+                    imu_motion=self.config.SYNC_CONFIG.get('dummy_imu_motion', True),
+                    on_emg=self._on_emg_chunk,
+                    on_imu=self._on_imu_sample
+                )
+                self.acquisition.start()
         
         # Initialize preprocessor
         if self.config.PREPROCESSING:
@@ -248,6 +289,7 @@ class TrialManager:
         print("SYSTEM READY")
         print("="*70)
         print("\nPress SPACE to start first trial")
+        print("Press T to test hardware (launch visualization)")
         print("Press C to calibrate IMU")
         print("Press Q to quit")
         print("="*70 + "\n")
@@ -309,6 +351,52 @@ class TrialManager:
 
         if not self.mock_mode:
             self._calibrate_imu()
+    
+    def _handle_test_hardware(self):
+        """Handle T key / Test Hardware button (launch visualization tool)."""
+        # Only allow when in READY or IDLE state
+        if self.state not in [TrialState.READY, TrialState.IDLE]:
+            self.gui.show_message("Hardware Test", 
+                                 "Cannot test hardware during a trial.\n"
+                                 "Please wait for the current trial to complete.")
+            return
+        
+        # Check if using dummy signals
+        use_dummy = self.config.SYNC_CONFIG.get('use_dummy_signals', False)
+        
+        # Launch visualization in a separate thread/process
+        import subprocess
+        import sys
+        
+        try:
+            self.gui.set_status("Launching hardware test visualization...")
+            
+            # Build command
+            cmd = [sys.executable, '-m', 'src.synchronized_visualization']
+            if use_dummy:
+                cmd.append('--dummy')
+            
+            # Launch in separate process (non-blocking)
+            subprocess.Popen(
+                cmd,
+                cwd=str(Path(__file__).parent.parent),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            
+            self.gui.show_message("Hardware Test Launched", 
+                                 "A separate window will open showing real-time signals.\n\n"
+                                 "This allows you to:\n"
+                                 "• Verify EMG electrode connections\n"
+                                 "• Check IMU sensor readings\n"
+                                 "• Ensure proper signal quality\n\n"
+                                 "Close that window when done to return here.")
+            
+        except Exception as e:
+            self.gui.show_error("Launch Error", 
+                               f"Failed to launch hardware test:\n{e}\n\n"
+                               f"Try running manually:\n"
+                               f"python -m src.synchronized_visualization")
     
     def _handle_quit(self):
         """Handle Q key (quit)."""

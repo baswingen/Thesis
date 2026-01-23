@@ -79,6 +79,7 @@ IMU_CONFIG = {
     # Connection
     'port': None,  # Serial port, None = auto-detect
     'baud': 230400,  # Baud rate
+    'timeout': 2.0,  # Serial timeout in seconds
     
     # Calibration
     'calibration_samples': 200,  # Number of samples for gyro bias calibration
@@ -252,7 +253,7 @@ SYNC_CONFIG = {
     'enable_imu': True,
     
     # Dummy signal mode (for testing without hardware)
-    'use_dummy_signals': True,  # Set to True to use simulated signals
+    'use_dummy_signals': False,  # Set to True to use simulated signals
     'dummy_emg_amplitude': 50.0,  # Microvolts, peak amplitude
     'dummy_emg_noise_level': 5.0,  # Microvolts, noise amplitude
     'dummy_imu_motion': True,  # Add simulated motion to IMU
@@ -262,7 +263,7 @@ SYNC_CONFIG = {
     'imu_buffer_max_samples': 200000,
     
     # Timing
-    'ready_timeout_s': 120.0,  # Timeout for device initialization
+    'ready_timeout_s': 30.0,  # Timeout for device initialization
     'poll_interval_s': 0.01,   # EMG polling interval
 }
 
@@ -419,6 +420,7 @@ def get_imu_config():
     return IMUConfig(
         port=IMU_CONFIG['port'],
         baud=IMU_CONFIG['baud'],
+        timeout=IMU_CONFIG.get('timeout', 2.0),
         accel_scale=IMU_CONFIG['accel_scale'],
         gyro_scale=IMU_CONFIG['gyro_scale'],
         use_mahony=IMU_CONFIG['use_mahony'],

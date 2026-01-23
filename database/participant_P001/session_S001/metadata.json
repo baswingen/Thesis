@@ -31,6 +31,7 @@
   "imu_config": {
     "port": null,
     "baud": 230400,
+    "timeout": 2.0,
     "calibration_samples": 200,
     "auto_calibrate_on_start": true,
     "use_mahony": true,
@@ -51,6 +52,6 @@
     "mvc_normalization": false,
     "mvc_value": null
   },
-  "timestamp_created": "2026-01-23T15:17:48.449551",
+  "timestamp_created": "2026-01-23T15:33:30.262236",
   "session_dir": "database\\participant_P001\\session_S001"
 }
