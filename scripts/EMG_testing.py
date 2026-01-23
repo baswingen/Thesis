@@ -33,9 +33,17 @@ except ImportError:
 try:
     from scipy import signal
     SCIPY_AVAILABLE = True
-except ImportError:
+except Exception as e:
     SCIPY_AVAILABLE = False
+    error_type = type(e).__name__
     print("Warning: scipy not available - filtering disabled")
+    print(f"         Error type: {error_type}")
+    print(f"         Error message: {e}")
+    if "DLL" in str(e) or "dll" in str(e) or "beleid" in str(e) or "policy" in str(e).lower():
+        print("         Note: This appears to be a Windows security policy issue blocking DLL loading.")
+        print("         You may need to adjust Windows Application Control policies or run as administrator.")
+    elif isinstance(e, ImportError):
+        print("         Install with: pip install scipy>=1.11.0")
 
 # Add TMSi Python Interface to path
 tmsi_interface_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tmsi-python-interface')
@@ -60,7 +68,7 @@ except ImportError as e:
 # -----------------------
 # User Settings
 # -----------------------
-TEST_DURATION = 10  # seconds
+TEST_DURATION = 5  # seconds
 INTERFACE_TYPE = DeviceInterfaceType.usb  # or DeviceInterfaceType.bluetooth
 SAMPLE_RATE = None  # Use device default (None) or set specific rate (e.g., 2048)
 REFERENCE_CALCULATION = False  # For EMG differential pairs, this is usually best kept OFF
@@ -79,8 +87,17 @@ REFERENCE_CALCULATION = False  # For EMG differential pairs, this is usually bes
 # and even if the device does not expose physical port numbers.
 
 USE_EMG_DIFFERENTIAL_PAIR = True
-EMG_PAIR_POS_CHANNEL_INDEX = 0   # channel 1
-EMG_PAIR_NEG_CHANNEL_INDEX = 1   # channel 2
+# IMPORTANT: Channel numbering can be confusing:
+# - In the numpy `samples` array, channels are 0-based (first channel is index 0).
+# - Humans often refer to channels as 1-based ("channel 1", "channel 2", ...).
+#
+# If you say "electrodes on channel 3 and 4", that usually means:
+#   channel numbers 3 & 4  -> numpy indices 2 & 3
+#
+# Set EMG_PAIR_CHANNELS_ARE_1_BASED=True and then use *channel numbers* below.
+EMG_PAIR_CHANNELS_ARE_1_BASED = True
+EMG_PAIR_POS_CHANNEL = 13   # channel number (if 1-based) OR index (if 0-based)
+EMG_PAIR_NEG_CHANNEL = 14   # channel number (if 1-based) OR index (if 0-based)
 
 # Fallback selection options (used only if USE_EMG_DIFFERENTIAL_PAIR=False)
 EMG_INPUT_PORT = None            # e.g. 17 for "Input 17" (set to None to disable)
@@ -453,11 +470,12 @@ def main():
     emg_data_buffer = None
     emg_filtered_buffer = None
     time_buffer = None
+    time_filtered_buffer = None
     bandpass_filter = None
 
     def _init_realtime_plot(measurement, selected_desc):
         """Initialize the plot after we know which channel to display."""
-        nonlocal plot_enabled, fig, axes, lines, emg_data_buffer, emg_filtered_buffer, time_buffer, bandpass_filter
+        nonlocal plot_enabled, fig, axes, lines, emg_data_buffer, emg_filtered_buffer, time_buffer, time_filtered_buffer, bandpass_filter
 
         if plot_enabled:
             return
@@ -480,6 +498,7 @@ def main():
 
             if APPLY_BANDPASS_FILTER and SCIPY_AVAILABLE:
                 emg_filtered_buffer = deque(maxlen=buffer_size)
+                time_filtered_buffer = deque(maxlen=buffer_size)
                 bandpass_filter = BandpassFilter(
                     BANDPASS_LOW_CUTOFF,
                     BANDPASS_HIGH_CUTOFF,
@@ -538,7 +557,7 @@ def main():
     if ENABLE_REALTIME_PLOT and not MATPLOTLIB_AVAILABLE:
         print("\n[!] Real-time plot disabled: matplotlib not available")
     elif ENABLE_REALTIME_PLOT and selected_channel_index is not None:
-        _init_realtime_plot(measurement, selected_channel_index, selected_channel_name)
+        _init_realtime_plot(measurement, f"idx{selected_channel_index} '{selected_channel_name}'")
     
     # Start acquisition
     print(f"\n5. Starting data acquisition for {TEST_DURATION} seconds...")
@@ -566,12 +585,37 @@ def main():
         emg_autoselected = False
         selected_desc = ""
 
+        def _resolve_emg_pair_indices(n_channels=None):
+            """
+            Resolve configured EMG pair into 0-based numpy indices.
+
+            If EMG_PAIR_CHANNELS_ARE_1_BASED=True, treat EMG_PAIR_POS_CHANNEL/NEG_CHANNEL
+            as human channel numbers (1..N) and convert to indices (0..N-1).
+            """
+            try:
+                pos_raw = int(EMG_PAIR_POS_CHANNEL)
+                neg_raw = int(EMG_PAIR_NEG_CHANNEL)
+            except Exception as e:
+                raise ValueError(f"Invalid EMG_PAIR_POS/NEG settings: {e}")
+
+            if EMG_PAIR_CHANNELS_ARE_1_BASED:
+                pos_i = pos_raw - 1
+                neg_i = neg_raw - 1
+            else:
+                pos_i = pos_raw
+                neg_i = neg_raw
+
+            if n_channels is not None:
+                if not (0 <= pos_i < n_channels) or not (0 <= neg_i < n_channels):
+                    raise ValueError(f"EMG pair indices out of range: pos={pos_i}, neg={neg_i}, n_channels={n_channels}")
+
+            return pos_i, neg_i
+
         # If configured, lock to the differential pair immediately (consistent behavior)
         if USE_EMG_DIFFERENTIAL_PAIR:
             try:
-                pos_i = int(EMG_PAIR_POS_CHANNEL_INDEX)
-                neg_i = int(EMG_PAIR_NEG_CHANNEL_INDEX)
-                selected_desc = f"Diff idx{pos_i} - idx{neg_i}"
+                pos_i, neg_i = _resolve_emg_pair_indices()
+                selected_desc = f"Diff idx{pos_i} - idx{neg_i} (ch{EMG_PAIR_POS_CHANNEL}-ch{EMG_PAIR_NEG_CHANNEL})"
                 _init_realtime_plot(measurement, selected_desc)
                 print(f"[OK] Using EMG differential pair: {selected_desc}")
             except Exception as e:
@@ -647,8 +691,7 @@ def main():
                     emg_chunk = None
                     if USE_EMG_DIFFERENTIAL_PAIR:
                         try:
-                            pos_i = int(EMG_PAIR_POS_CHANNEL_INDEX)
-                            neg_i = int(EMG_PAIR_NEG_CHANNEL_INDEX)
+                            pos_i, neg_i = _resolve_emg_pair_indices(samples.shape[1])
                             if pos_i < samples.shape[1] and neg_i < samples.shape[1]:
                                 emg_chunk = samples[:, pos_i] - samples[:, neg_i]
                                 emg_value = emg_chunk[0]
@@ -671,77 +714,77 @@ def main():
                             print(f"            EMG stats (chunk): mean={ch_mean:.3f}, std={ch_std:.3f}")
                         except Exception:
                             pass
-                            
+
                         # Update plot data if visualization is enabled
                         if plot_enabled:
-                                try:
-                                    # EMG data for plotting (single or differential)
-                                    emg_channel_data = emg_chunk
-                                    
-                                    # Create time values for this chunk
-                                    sample_rate = measurement.get_device_sample_rate()
-                                    dt = 1.0 / sample_rate
-                                    chunk_times = plot_time_offset + np.arange(n_samples) * dt
-                                    plot_time_offset = chunk_times[-1] + dt
-                                    
-                                    # Add to buffers
-                                    for t, val in zip(chunk_times, emg_channel_data):
-                                        if not np.isnan(val):
-                                            time_buffer.append(t)
-                                            emg_data_buffer.append(val)
-                                    
-                                    # Apply filtering if enabled
-                                    if bandpass_filter is not None and len(emg_channel_data) > 0:
-                                        # Filter only valid samples
-                                        valid_mask = ~np.isnan(emg_channel_data)
-                                        if np.any(valid_mask):
-                                            filtered_chunk = bandpass_filter.filter(
-                                                emg_channel_data[valid_mask]
-                                            )
-                                            # Add filtered data to buffer
-                                            for t, val in zip(chunk_times[valid_mask], filtered_chunk):
-                                                emg_filtered_buffer.append(val)
-                                    
-                                    # Update plot
-                                    if len(time_buffer) > 1:
-                                        time_array = np.array(time_buffer)
-                                        
-                                        # Update raw signal
-                                        if 'raw' in lines:
-                                            raw_array = np.array(emg_data_buffer)
-                                            lines['raw'].set_data(time_array, raw_array)
-                                            axes[0].relim()
-                                            axes[0].autoscale_view()
-                                            
-                                            # Set x-axis to show rolling window
-                                            if time_array[-1] > PLOT_WINDOW_SECONDS:
-                                                axes[0].set_xlim(
-                                                    time_array[-1] - PLOT_WINDOW_SECONDS,
-                                                    time_array[-1]
-                                                )
-                                        
-                                        # Update filtered signal
-                                        if 'filtered' in lines and len(emg_filtered_buffer) > 1:
-                                            filtered_array = np.array(emg_filtered_buffer)
-                                            lines['filtered'].set_data(time_array, filtered_array)
-                                            axes[1].relim()
-                                            axes[1].autoscale_view()
-                                            
-                                            # Set x-axis to show rolling window
-                                            if time_array[-1] > PLOT_WINDOW_SECONDS:
-                                                axes[1].set_xlim(
-                                                    time_array[-1] - PLOT_WINDOW_SECONDS,
-                                                    time_array[-1]
-                                                )
-                                        
-                                        # Redraw
-                                        fig.canvas.draw()
-                                        fig.canvas.flush_events()
-                                        
-                                except Exception as plot_error:
-                                    # Don't crash on plot errors
-                                    if read_count == 1:  # Only print once
-                                        print(f"            [!] Plot update error: {plot_error}")
+                            try:
+                                # EMG data for plotting (single or differential)
+                                emg_channel_data = emg_chunk
+
+                                # Create time values for this chunk
+                                sample_rate = measurement.get_device_sample_rate()
+                                dt = 1.0 / sample_rate
+                                chunk_times = plot_time_offset + np.arange(n_samples) * dt
+                                plot_time_offset = chunk_times[-1] + dt
+
+                                # Add to raw buffers (skip NaNs)
+                                for t, val in zip(chunk_times, emg_channel_data):
+                                    if not np.isnan(val):
+                                        time_buffer.append(t)
+                                        emg_data_buffer.append(val)
+
+                                # Apply filtering if enabled
+                                if bandpass_filter is not None and len(emg_channel_data) > 0:
+                                    valid_mask = ~np.isnan(emg_channel_data)
+                                    if np.any(valid_mask):
+                                        filtered_chunk = bandpass_filter.filter(emg_channel_data[valid_mask])
+                                        for t, val in zip(chunk_times[valid_mask], filtered_chunk):
+                                            emg_filtered_buffer.append(val)
+                                            time_filtered_buffer.append(t)
+
+                                # Update plot
+                                if len(time_buffer) > 1:
+                                    time_array = np.array(time_buffer)
+                                    raw_array = np.array(emg_data_buffer)
+
+                                    if 'raw' in lines:
+                                        lines['raw'].set_data(time_array, raw_array)
+                                        axes[0].relim()
+                                        axes[0].autoscale_view()
+                                        if time_array[-1] > PLOT_WINDOW_SECONDS:
+                                            axes[0].set_xlim(time_array[-1] - PLOT_WINDOW_SECONDS, time_array[-1])
+
+                                if 'filtered' in lines and emg_filtered_buffer is not None and len(emg_filtered_buffer) > 1:
+                                    tf = np.array(time_filtered_buffer)
+                                    yf = np.array(emg_filtered_buffer)
+                                    if len(tf) == len(yf) and len(tf) > 1:
+                                        lines['filtered'].set_data(tf, yf)
+                                        axes[1].relim()
+                                        axes[1].autoscale_view()
+                                        if tf[-1] > PLOT_WINDOW_SECONDS:
+                                            axes[1].set_xlim(tf[-1] - PLOT_WINDOW_SECONDS, tf[-1])
+
+                                # Redraw (plt.pause tends to work more reliably than flush_events)
+                                fig.canvas.draw_idle()
+                                plt.pause(0.001)
+
+                            except Exception as plot_error:
+                                # Don't crash on plot errors; show periodically
+                                if read_count <= 3 or (read_count % 25 == 0):
+                                    print(f"            [!] Plot update error: {plot_error}")
+                    elif USE_EMG_DIFFERENTIAL_PAIR:
+                        # Most common cause: one of the selected channels is all-NaN (not connected / wrong index)
+                        try:
+                            pos_i, neg_i = _resolve_emg_pair_indices(samples.shape[1])
+                            pos_valid = int(np.sum(~np.isnan(samples[:, pos_i])))
+                            neg_valid = int(np.sum(~np.isnan(samples[:, neg_i])))
+                            print(f"            [!] EMG diff unavailable: valid samples pos_idx={pos_i} -> {pos_valid}/{n_samples}, "
+                                  f"neg_idx={neg_i} -> {neg_valid}/{n_samples}")
+                            if EMG_PAIR_CHANNELS_ARE_1_BASED:
+                                print("            [!] Tip: If you intended numpy indices, set EMG_PAIR_CHANNELS_ARE_1_BASED = False.")
+                                print("            [!] Tip: If you intended channel numbers (1-based), keep it True and set EMG_PAIR_POS/NEG to 3 & 4 etc.")
+                        except Exception:
+                            pass
                     
                     # Calculate basic stats
                     sample_mean = np.nanmean(samples)
