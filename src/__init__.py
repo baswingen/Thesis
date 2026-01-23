@@ -26,14 +26,25 @@ from .emg_visualization import (
     quick_plot_emg
 )
 
-# Import main IMU acquisition interface
+# Import main IMU acquisition interface (dual BMI160 with ASCII protocol)
 from .imu_acquisition import (
     IMUDevice, 
     acquire_imu_data,
     IMUReading,
     IMUCalibration,
-    MadgwickIMU
+    IMUConfig,
+    MahonyIMU,
+    RawSample,
+    quat_mul,
+    quat_conj,
+    quat_norm,
+    quat_inv,
+    quat_to_euler,
+    rotate_vec_by_quat
 )
+
+# Legacy alias: DualIMU is the same as IMUDevice
+DualIMU = IMUDevice
 
 __all__ = [
     # EMG Acquisition
@@ -56,8 +67,18 @@ __all__ = [
     
     # IMU
     'IMUDevice',
+    'DualIMU',  # Alias for compatibility
     'acquire_imu_data',
     'IMUReading',
     'IMUCalibration',
-    'MadgwickIMU'
+    'IMUConfig',
+    'MahonyIMU',
+    'RawSample',
+    # Quaternion math
+    'quat_mul',
+    'quat_conj',
+    'quat_norm',
+    'quat_inv',
+    'quat_to_euler',
+    'rotate_vec_by_quat'
 ]
