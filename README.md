@@ -231,21 +231,18 @@ High-performance dual BMI160 IMU orientation tracking system with binary protoco
 pip install pyserial numpy vpython
 ```
 
-#### 3. Configure Serial Port
-
-Edit `scripts/IMU_testing.py`:
-```python
-PORT = "/dev/cu.usbmodem*"  # Update for your system
-# macOS: /dev/cu.usbmodem*
-# Linux: /dev/ttyACM* or /dev/ttyUSB*
-# Windows: COM*
-```
-
-#### 4. Run Tracking
+#### 3. Run Tracking (Auto-detection)
 
 ```bash
+# Auto-detect Arduino port (works on Windows, macOS, Linux)
 python scripts/IMU_testing.py
+
+# Or specify port manually
+python scripts/IMU_testing.py --port COM3        # Windows
+python scripts/IMU_testing.py --port /dev/cu.usbmodem123  # macOS
 ```
+
+The script now automatically detects Arduino ports across all platforms! No manual configuration needed.
 
 **Calibration Steps**:
 1. Place both IMUs flat on ground (component side UP)
@@ -392,11 +389,80 @@ GYRO_STILL_THRESHOLD = 0.3 # More sensitive stillness detection
   - Adaptive gains minimize this effect
   - Recovery time typically <2 seconds
 
+### Arduino Connection Module
+
+The project includes a reusable Arduino connection utility (`src/arduino_connection.py`) that provides cross-platform serial port detection and connection management.
+
+**Key Features**:
+- 🔍 **Auto-detection**: Automatically finds Arduino boards on Windows, macOS, and Linux
+- 🎯 **Smart matching**: Recognizes Arduino by vendor ID, description, and common USB-Serial chips
+- 🌐 **Cross-platform**: Single API works on all operating systems
+- 📋 **Port listing**: List and inspect all available serial ports
+- 🔌 **Easy connection**: One-line connection with auto-detection
+
+**Usage Examples**:
+
+```python
+from src.arduino_connection import find_arduino_port, open_arduino_serial
+
+# Find Arduino port
+port = find_arduino_port()
+print(f"Arduino found on: {port}")
+
+# Connect automatically
+ser = open_arduino_serial(baud=230400)
+
+# Or connect to specific port
+ser = open_arduino_serial(port="COM3", baud=115200)
+```
+
+**Test the module**:
+```bash
+# Run test suite
+python tests/test_arduino_connection.py
+
+# Or use as standalone script
+python src/arduino_connection.py
+```
+
+**Available Functions**:
+- `find_arduino_port()` - Auto-detect Arduino serial port
+- `open_arduino_serial()` - Connect to Arduino with auto-detection
+- `list_all_ports()` - List all available serial ports
+- `is_port_available()` - Check if specific port exists
+
+See `src/arduino_connection.py` for complete API documentation.
+
+## Synchronized IMU-EMG Acquisition
+
+For combined IMU and EMG data acquisition with real-time visualization, see:
+
+**Script**: `scripts/signal_acquisition_testing.py`  
+**Documentation**: [README/README_SIGNAL_ACQUISITION.md](README/README_SIGNAL_ACQUISITION.md)
+
+Features:
+- ✅ Synchronized dual IMU (~200Hz) and multi-channel EMG (~2000Hz) acquisition
+- ✅ Cross-platform Arduino auto-detection
+- ✅ Real-time matplotlib visualization
+- ✅ Thread-safe data buffering
+- ✅ Configurable for IMU-only, EMG-only, or combined use
+
+Quick start:
+```bash
+# IMU only (works on all platforms)
+python scripts/signal_acquisition_testing.py
+```
+
 ### Files
 
-- `arduino/IMU_sketch.ino` - Optimized Arduino firmware
-- `scripts/IMU_testing.py` - Python tracking script
-- `TESTING_IMU.md` - Comprehensive testing guide
+- `arduino/IMU_sketch_I2C/IMU_sketch_I2C.ino` - Optimized Arduino firmware
+- `scripts/IMU_testing.py` - IMU-only tracking with VPython visualization
+- `scripts/signal_acquisition_testing.py` - Synchronized IMU+EMG acquisition
+- `src/arduino_connection.py` - Arduino connection utilities (cross-platform)
+- `src/imu_acquisition.py` - IMU acquisition module
+- `tests/test_arduino_connection.py` - Arduino connection test suite
+- `README/README_SIGNAL_ACQUISITION.md` - Signal acquisition guide
+- `TESTING_IMU.md` - Comprehensive IMU testing guide
 
 ### References
 

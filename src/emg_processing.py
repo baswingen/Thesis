@@ -11,7 +11,7 @@ Features:
 """
 
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import warnings
 
 # Optional scipy for filtering

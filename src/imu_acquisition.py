@@ -38,10 +38,12 @@ Date: January 2026
 import time
 import numpy as np
 import serial
-from serial.tools import list_ports
 from typing import Optional, Tuple, Generator, Callable, List
 from dataclasses import dataclass
 from enum import Enum
+
+# Import Arduino connection utilities
+from .arduino_connection import find_arduino_port
 
 
 # =============================================================================
@@ -416,27 +418,6 @@ def remap_vec(v: np.ndarray, mapping: Tuple[int, int, int]) -> np.ndarray:
 # SERIAL CONNECTION
 # =============================================================================
 
-def guess_port(hint: Optional[str] = None) -> Optional[str]:
-    """Auto-detect Arduino serial port."""
-    ports = list(list_ports.comports())
-    if not ports:
-        return None
-    
-    if hint:
-        hint = hint.lower()
-        for p in ports:
-            if hint in (p.device or "").lower() or hint in (p.description or "").lower():
-                return p.device
-    
-    # Heuristic: Arduino-like ports
-    for p in ports:
-        desc = (p.description or "").lower()
-        if "arduino" in desc or "usb" in desc or "serial" in desc:
-            return p.device
-    
-    return ports[0].device
-
-
 # =============================================================================
 # MAIN IMU DEVICE CLASS
 # =============================================================================
@@ -499,14 +480,17 @@ class IMUDevice:
     
     def connect(self) -> bool:
         """
-        Connect to Arduino serial port.
+        Connect to Arduino serial port using arduino_connection module.
         
         Returns:
             True if connection successful
         """
-        port = self.config.port or guess_port("usbmodem")
+        port = self.config.port or find_arduino_port(preferred_substr="usbmodem", verbose=True)
         if not port:
             raise RuntimeError("No serial port found. Please specify port in config.")
+        
+        if self.config.port is None:
+            print(f"Auto-detected port: {port}")
         
         print(f"Connecting to {port} @ {self.config.baud} baud...")
         
@@ -677,8 +661,19 @@ class IMUDevice:
         if self.config.auto_reconnect:
             if time.time() - self.last_rx_time > self.config.stall_timeout:
                 print("\n⚠ Connection stalled, reconnecting...")
-                if not self.reconnect():
+                try:
+                    ok = self.reconnect()
+                except Exception as e:
+                    # IMPORTANT: transient USB/COM disconnects can make reconnect fail briefly.
+                    # Do not crash the acquisition loop; back off and try again on next call.
+                    print(f"⚠ Reconnect attempt failed: {e}")
+                    time.sleep(self.config.reconnect_backoff)
                     return None
+
+                if not ok:
+                    time.sleep(self.config.reconnect_backoff)
+                    return None
+
                 self.t_prev = None
         
         raw_result = self._read_raw()
@@ -771,6 +766,9 @@ class IMUDevice:
             if reading:
                 yield reading
                 count += 1
+            else:
+                # Avoid tight busy-loop when no data is available (e.g., during reconnects)
+                time.sleep(0.001)
 
 
 # =============================================================================

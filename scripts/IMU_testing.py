@@ -35,7 +35,6 @@ When IMU is flat on table (component side up):
 import time
 import numpy as np
 import serial
-from serial.tools import list_ports
 import sys
 import csv
 import argparse
@@ -46,6 +45,9 @@ from dataclasses import dataclass
 from typing import Optional
 from vpython import canvas, box, vector, color, rate, arrow, label, sphere, compound
 
+# Import Arduino connection utilities
+from src.arduino_connection import find_arduino_port, open_arduino_serial, list_all_ports
+
 # ============================================================================
 # COMMAND LINE ARGUMENTS
 # ============================================================================
@@ -54,8 +56,8 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Dual BMI160 IMU Tracker with real-time visualization and data logging'
     )
-    parser.add_argument('--port', type=str, default="/dev/cu.usbmodem9888E00A0CC02",
-                        help='Serial port (or "auto" for auto-detect)')
+    parser.add_argument('--port', type=str, default="auto",
+                        help='Serial port (or "auto" for auto-detect, default: auto)')
     parser.add_argument('--baud', type=int, default=230400,
                         help='Serial baud rate (default: 230400)')
     parser.add_argument('--csv', type=str, default=None,
@@ -798,74 +800,29 @@ else:
 # ============================================================================
 # SERIAL CONNECTION
 # ============================================================================
-def guess_port(preferred_substr: Optional[str] = None) -> Optional[str]:
-    """Auto-detect Arduino serial port"""
-    ports = list(list_ports.comports())
-    if not ports:
-        return None
-
-    if preferred_substr:
-        preferred_substr = preferred_substr.lower()
-        for p in ports:
-            if preferred_substr in (p.device or "").lower() or preferred_substr in (p.description or "").lower():
-                return p.device
-
-    # Heuristic: pick first Arduino-ish port
-    for p in ports:
-        desc = (p.description or "").lower()
-        if "arduino" in desc or "usb" in desc or "serial" in desc:
-            return p.device
-
-    return ports[0].device if ports else None
-
 def open_serial():
-    """Open serial connection with robust initialization"""
-    # Auto-detect port if not specified
-    port = PORT
-    if port is None:
-        port = guess_port("usbmodem")
-        if not port:
-            raise RuntimeError("No serial ports found. Please specify PORT manually.")
-        print(f"Auto-detected port: {port}")
-    
-    print(f"\nOpening serial port {port} @ {BAUD} baud...")
-    s = serial.Serial(port, BAUD, timeout=0.25)
-    
-    # Opening the port resets many Arduinos; wait for boot
-    time.sleep(1.5)
-    s.reset_input_buffer()
-    
-    print("Waiting for Arduino data stream...")
-    t0 = time.time()
-    lines_seen = 0
-    
-    while time.time() - t0 < 5.0:
-        try:
-            raw = s.readline()
-            if raw:
-                try:
-                    line = raw.decode("ascii", errors="ignore").strip()
-                    if line.startswith("#"):
-                        # Status message from Arduino
-                        print(f"  Arduino: {line}")
-                        lines_seen += 1
-                    elif line.startswith("$"):
-                        # Data line - we're receiving properly
-                        print("✓ Arduino data stream detected")
-                        return s
-                except Exception:
-                    pass
-        except serial.SerialException:
-            break
-        
-        if lines_seen > 0:
-            # We've seen some output, good sign
-            break
-    
-    if lines_seen > 0:
-        print("✓ Arduino connected")
+    """Open serial connection with robust initialization (using arduino_connection module)"""
+    # Use the new arduino_connection module for auto-detection and connection
+    if PORT is None:
+        # Auto-detect mode
+        s = open_arduino_serial(
+            port=None,
+            baud=BAUD,
+            timeout=0.25,
+            wait_for_ready=True,
+            ready_timeout=5.0,
+            verbose=True
+        )
     else:
-        print("⚠ No Arduino output detected (might work anyway)")
+        # Manual port specified
+        s = open_arduino_serial(
+            port=PORT,
+            baud=BAUD,
+            timeout=0.25,
+            wait_for_ready=True,
+            ready_timeout=5.0,
+            verbose=True
+        )
     
     return s
 
@@ -1106,117 +1063,117 @@ try:
             perf_mon.error_count += 1
             continue
 
-    # Use the latest packet for processing
-    t_ms, g1_deg, a1, g2_deg, a2 = latest
-    
-    # Axis map + optional accel invert
-    g1_deg = remap_vec(g1_deg, IMU1_AXIS_MAP)
-    g2_deg = remap_vec(g2_deg, IMU2_AXIS_MAP)
-    a1 = remap_vec(a1, IMU1_AXIS_MAP)
-    a2 = remap_vec(a2, IMU2_AXIS_MAP)
-    if INVERT_ACCEL:
-        a1 = -a1
-        a2 = -a2
-    
-    # Calculate latency
-    python_time_ms = (time.time() - python_start_time) * 1000
-    latency_ms = python_time_ms - t_ms
-    
-    # Convert gyro to rad/s and subtract bias (bias is in sensor frame; mapping already applied)
-    g1_rad = np.deg2rad(g1_deg) - remap_vec(bias1_rad, IMU1_AXIS_MAP)
-    g2_rad = np.deg2rad(g2_deg) - remap_vec(bias2_rad, IMU2_AXIS_MAP)
-    
-    # Time step
-    t_s = t_ms / 1000.0
-    if t_prev is None:
+        # Use the latest packet for processing
+        t_ms, g1_deg, a1, g2_deg, a2 = latest
+        
+        # Axis map + optional accel invert
+        g1_deg = remap_vec(g1_deg, IMU1_AXIS_MAP)
+        g2_deg = remap_vec(g2_deg, IMU2_AXIS_MAP)
+        a1 = remap_vec(a1, IMU1_AXIS_MAP)
+        a2 = remap_vec(a2, IMU2_AXIS_MAP)
+        if INVERT_ACCEL:
+            a1 = -a1
+            a2 = -a2
+        
+        # Calculate latency
+        python_time_ms = (time.time() - python_start_time) * 1000
+        latency_ms = python_time_ms - t_ms
+        
+        # Convert gyro to rad/s and subtract bias (bias is in sensor frame; mapping already applied)
+        g1_rad = np.deg2rad(g1_deg) - remap_vec(bias1_rad, IMU1_AXIS_MAP)
+        g2_rad = np.deg2rad(g2_deg) - remap_vec(bias2_rad, IMU2_AXIS_MAP)
+        
+        # Time step
+        t_s = t_ms / 1000.0
+        if t_prev is None:
+            t_prev = t_s
+            continue
+        
+        dt = t_s - t_prev
+        if dt <= 0 or dt > 0.2:
+            t_prev = t_s
+            continue
         t_prev = t_s
-        continue
-    
-    dt = t_s - t_prev
-    if dt <= 0 or dt > 0.2:
-        t_prev = t_s
-        continue
-    t_prev = t_s
-    
-    # Update filters (note: we only integrate once per frame using latest packet timestamp)
-    q1 = f1.update(g1_rad[0], g1_rad[1], g1_rad[2], a1[0], a1[1], a1[2], dt)
-    q2 = f2.update(g2_rad[0], g2_rad[1], g2_rad[2], a2[0], a2[1], a2[2], dt)
-    
-    # Calculate Euler angles
-    roll1, pitch1, yaw1 = quat_to_euler(q1)
-    roll2, pitch2, yaw2 = quat_to_euler(q2)
-    
-    # Accel magnitudes
-    a1_mag = np.linalg.norm(a1)
-    a2_mag = np.linalg.norm(a2)
-    
-    # Log processed data if CSV enabled and not in raw mode
-    if csv_logger and not LOG_RAW_VALUES and latest_sample:
-        csv_logger.log_processed(
-            timestamp=time.time(),
-            sample=latest_sample,
-            g1_dps=g1_deg, a1_g=a1,
-            g2_dps=g2_deg, a2_g=a2,
-            q1=q1, q2=q2,
-            euler1=(roll1, pitch1, yaw1),
-            euler2=(roll2, pitch2, yaw2)
-        )
-    
-    # Update performance monitor
-    frame_time = time.time() - frame_start
-    perf_mon.update(frame_time, latency_ms)
-    frame_start = time.time()
-    
-    # Visualization updates (only if enabled)
-    if ENABLE_VISUALIZATION:
-        # Relative visualization option
-        if SHOW_RELATIVE_IMU2_TO_IMU1:
-            q1_vis = np.array([1.0, 0.0, 0.0, 0.0])
-            q2_vis = quat_mul(quat_inv(q1), q2)
+        
+        # Update filters (note: we only integrate once per frame using latest packet timestamp)
+        q1 = f1.update(g1_rad[0], g1_rad[1], g1_rad[2], a1[0], a1[1], a1[2], dt)
+        q2 = f2.update(g2_rad[0], g2_rad[1], g2_rad[2], a2[0], a2[1], a2[2], dt)
+        
+        # Calculate Euler angles
+        roll1, pitch1, yaw1 = quat_to_euler(q1)
+        roll2, pitch2, yaw2 = quat_to_euler(q2)
+        
+        # Accel magnitudes
+        a1_mag = np.linalg.norm(a1)
+        a2_mag = np.linalg.norm(a2)
+        
+        # Log processed data if CSV enabled and not in raw mode
+        if csv_logger and not LOG_RAW_VALUES and latest_sample:
+            csv_logger.log_processed(
+                timestamp=time.time(),
+                sample=latest_sample,
+                g1_dps=g1_deg, a1_g=a1,
+                g2_dps=g2_deg, a2_g=a2,
+                q1=q1, q2=q2,
+                euler1=(roll1, pitch1, yaw1),
+                euler2=(roll2, pitch2, yaw2)
+            )
+        
+        # Update performance monitor
+        frame_time = time.time() - frame_start
+        perf_mon.update(frame_time, latency_ms)
+        frame_start = time.time()
+        
+        # Visualization updates (only if enabled)
+        if ENABLE_VISUALIZATION:
+            # Relative visualization option
+            if SHOW_RELATIVE_IMU2_TO_IMU1:
+                q1_vis = np.array([1.0, 0.0, 0.0, 0.0])
+                q2_vis = quat_mul(quat_inv(q1), q2)
+            else:
+                q1_vis = q1
+                q2_vis = q2
+            
+            # Rotate basis vectors
+            r1x = rotate_vec_by_quat(ex, q1_vis)
+            r1y = rotate_vec_by_quat(ey, q1_vis)
+            r1z = rotate_vec_by_quat(ez, q1_vis)
+            
+            r2x = rotate_vec_by_quat(ex, q2_vis)
+            r2y = rotate_vec_by_quat(ey, q2_vis)
+            r2z = rotate_vec_by_quat(ez, q2_vis)
+            
+            # Update visualization
+            body1.axis = imu_to_scene(r1x)
+            body1.up = imu_to_scene(r1z)
+            body2.axis = imu_to_scene(r2x)
+            body2.up = imu_to_scene(r2z)
+            
+            if SHOW_AXES:
+                a1x.pos = body1.pos; a1x.axis = imu_to_scene(r1x)
+                a1y.pos = body1.pos; a1y.axis = imu_to_scene(r1y)
+                a1z.pos = body1.pos; a1z.axis = imu_to_scene(r1z)
+                a2x.pos = body2.pos; a2x.axis = imu_to_scene(r2x)
+                a2y.pos = body2.pos; a2y.axis = imu_to_scene(r2y)
+                a2z.pos = body2.pos; a2z.axis = imu_to_scene(r2z)
+            
+            # Status display
+            status_lab.text = f"IMU1: R={roll1:+6.1f}° P={pitch1:+6.1f}° Y={yaw1:+6.1f}°  |a|={a1_mag:.2f}g\n" + \
+                              f"IMU2: R={roll2:+6.1f}° P={pitch2:+6.1f}° Y={yaw2:+6.1f}°  |a|={a2_mag:.2f}g\n" + \
+                              f"Raw accel IMU1: [{a1[0]:+.2f}, {a1[1]:+.2f}, {a1[2]:+.2f}]g"
+            
+            # Performance stats
+            if SHOW_PERFORMANCE_STATS and perf_lab:
+                fps = perf_mon.get_fps()
+                avg_lat = perf_mon.get_avg_latency()
+                loss = perf_mon.get_packet_loss_rate()
+                perf_lab.text = f"FPS: {fps:.1f} | Latency: {avg_lat:.1f}ms | Loss: {loss:.2f}% | dt: {dt*1000:.1f}ms"
         else:
-            q1_vis = q1
-            q2_vis = q2
-        
-        # Rotate basis vectors
-        r1x = rotate_vec_by_quat(ex, q1_vis)
-        r1y = rotate_vec_by_quat(ey, q1_vis)
-        r1z = rotate_vec_by_quat(ez, q1_vis)
-        
-        r2x = rotate_vec_by_quat(ex, q2_vis)
-        r2y = rotate_vec_by_quat(ey, q2_vis)
-        r2z = rotate_vec_by_quat(ez, q2_vis)
-        
-        # Update visualization
-        body1.axis = imu_to_scene(r1x)
-        body1.up = imu_to_scene(r1z)
-        body2.axis = imu_to_scene(r2x)
-        body2.up = imu_to_scene(r2z)
-        
-        if SHOW_AXES:
-            a1x.pos = body1.pos; a1x.axis = imu_to_scene(r1x)
-            a1y.pos = body1.pos; a1y.axis = imu_to_scene(r1y)
-            a1z.pos = body1.pos; a1z.axis = imu_to_scene(r1z)
-            a2x.pos = body2.pos; a2x.axis = imu_to_scene(r2x)
-            a2y.pos = body2.pos; a2y.axis = imu_to_scene(r2y)
-            a2z.pos = body2.pos; a2z.axis = imu_to_scene(r2z)
-        
-        # Status display
-        status_lab.text = f"IMU1: R={roll1:+6.1f}° P={pitch1:+6.1f}° Y={yaw1:+6.1f}°  |a|={a1_mag:.2f}g\n" + \
-                          f"IMU2: R={roll2:+6.1f}° P={pitch2:+6.1f}° Y={yaw2:+6.1f}°  |a|={a2_mag:.2f}g\n" + \
-                          f"Raw accel IMU1: [{a1[0]:+.2f}, {a1[1]:+.2f}, {a1[2]:+.2f}]g"
-        
-        # Performance stats
-        if SHOW_PERFORMANCE_STATS and perf_lab:
-            fps = perf_mon.get_fps()
-            avg_lat = perf_mon.get_avg_latency()
-            loss = perf_mon.get_packet_loss_rate()
-            perf_lab.text = f"FPS: {fps:.1f} | Latency: {avg_lat:.1f}ms | Loss: {loss:.2f}% | dt: {dt*1000:.1f}ms"
-    else:
-        # Headless mode: print periodic status
-        if perf_mon.packet_count % 100 == 0:
-            fps = perf_mon.get_fps() if ENABLE_VISUALIZATION else (perf_mon.packet_count / (time.time() - perf_mon.start_time))
-            print(f"  [{perf_mon.packet_count:6d}] IMU1: R={roll1:+6.1f}° P={pitch1:+6.1f}° Y={yaw1:+6.1f}°  |  "
-                  f"IMU2: R={roll2:+6.1f}° P={pitch2:+6.1f}° Y={yaw2:+6.1f}°  |  {fps:.1f} Hz", end='\r')
+            # Headless mode: print periodic status
+            if perf_mon.packet_count % 100 == 0:
+                fps = perf_mon.get_fps() if ENABLE_VISUALIZATION else (perf_mon.packet_count / (time.time() - perf_mon.start_time))
+                print(f"  [{perf_mon.packet_count:6d}] IMU1: R={roll1:+6.1f}° P={pitch1:+6.1f}° Y={yaw1:+6.1f}°  |  "
+                      f"IMU2: R={roll2:+6.1f}° P={pitch2:+6.1f}° Y={yaw2:+6.1f}°  |  {fps:.1f} Hz", end='\r')
 
 except KeyboardInterrupt:
     print("\n\n✓ Stopped by user")

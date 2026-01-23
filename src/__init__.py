@@ -43,6 +43,18 @@ from .imu_acquisition import (
     rotate_vec_by_quat
 )
 
+# Import synchronized acquisition (IMU + EMG)
+from .synchronized_acquisition import (
+    SynchronizedAcquisition,
+    SyncConfig,
+    IMUSyncConfig,
+    EMGSyncConfig,
+    EMGSelection,
+    IMUSample,
+    EMGChunk,
+    TimestampedBuffer,
+)
+
 # Legacy alias: DualIMU is the same as IMUDevice
 DualIMU = IMUDevice
 
@@ -81,4 +93,14 @@ __all__ = [
     'quat_inv',
     'quat_to_euler',
     'rotate_vec_by_quat'
+    ,
+    # Synchronized acquisition
+    'SynchronizedAcquisition',
+    'SyncConfig',
+    'IMUSyncConfig',
+    'EMGSyncConfig',
+    'EMGSelection',
+    'IMUSample',
+    'EMGChunk',
+    'TimestampedBuffer',
 ]
