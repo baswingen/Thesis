@@ -1,489 +1,348 @@
-# Thesis Project
+# EMG + IMU Data Acquisition System
 
-A clean Python project setup optimized for Google Colab and GitHub integration.
+Comprehensive system for synchronized EMG (electromyography) and IMU (inertial measurement unit) data acquisition, processing, and visualization.
 
-## Project Structure
+## 🎯 Project Overview
+
+This system enables researchers to collect synchronized biosignal data from multiple sources:
+- **EMG Signals**: Muscle activity from TMSi Porti7/REFA devices
+- **IMU Sensors**: Motion data from dual BMI160 sensors via Arduino
+- **Synchronized Acquisition**: Hardware-timestamped data alignment
+- **Real-time Processing**: Filtering, envelope extraction, normalization
+- **ML-Ready Storage**: HDF5 format compatible with PyTorch/Keras
+
+## 📁 Project Structure
 
 ```
-Thesis/
-├── src/                    # Source code package
-│   └── __init__.py
-├── notebooks/              # Jupyter notebooks
-├── tests/                  # Unit tests
-├── requirements.txt        # Python dependencies
-├── setup.py                # Package installation configuration
-├── .gitignore             # Git ignore rules
-├── LICENSE                # License file
-└── README.md              # This file
+├── src/                          # Core acquisition modules
+│   ├── emg_acquisition.py       # TMSi EMG device interface
+│   ├── imu_acquisition.py       # Dual BMI160 IMU interface
+│   ├── synchronized_acquisition.py  # Synchronized EMG+IMU
+│   ├── emg_processing.py        # Signal preprocessing
+│   └── emg_visualization.py     # Real-time plotting
+│
+├── trial/                       # Trial data collection system ⭐ NEW
+│   ├── setup_trial.py          # Configuration (edit this!)
+│   ├── trial_manager.py        # Core orchestration
+│   ├── trial_gui.py            # GUI interface
+│   ├── data_storage.py         # HDF5 storage
+│   ├── trial_protocols.py      # Protocol definitions
+│   └── README.md               # Detailed trial documentation
+│
+├── database/                    # Trial data storage
+│   ├── participant_XXX/
+│   │   └── session_XXX/
+│   │       ├── metadata.json
+│   │       ├── trial_XXX_raw.h5
+│   │       └── trial_XXX_preprocessed.h5
+│   └── README.md
+│
+├── tests/                       # Example scripts
+├── setup_scripts/               # Testing and setup scripts
+├── arduino/                     # Arduino sketches for IMU
+├── README/                      # Detailed documentation
+└── requirements.txt            # Python dependencies
 ```
 
-## Local Setup
+## 🚀 Quick Start
 
-### Prerequisites
+### 1. Installation
 
-- **Python 3.8-3.12** (Python 3.12 recommended for PyTorch, TensorFlow, and Keras 3 compatibility)
-- pip
-
-### Installation
-
-#### Option 1: Using Conda (Recommended for Deep Learning)
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/baswingen/Thesis.git
-cd Thesis
-```
-
-2. Create conda environment with Python 3.12:
-```bash
-# Using the setup script
-./setup_conda_env.sh
-
-# Or manually:
-conda env create -f environment.yml
-conda activate thesis
-```
-
-3. Install the project in editable mode:
-```bash
-pip install -e .
-```
-
-4. Register Jupyter kernel (if using Jupyter notebooks):
-```bash
-python -m ipykernel install --user --name thesis --display-name "Python (thesis)"
-```
-
-#### Option 2: Using venv (Cross-platform PowerShell script)
-
-**Prerequisites for PowerShell script:**
-- **PowerShell Core** (pwsh) - Cross-platform PowerShell
-  - **Windows**: Usually pre-installed, or install from [Microsoft Store](https://aka.ms/powershell)
-  - **macOS**: `brew install --cask powershell` (requires Homebrew)
-  - **Linux**: Install via package manager (e.g., `sudo apt install powershell`)
-
-1. Clone the repository:
-```bash
-git clone https://github.com/baswingen/Thesis.git
-cd Thesis
-```
-
-2. Run the PowerShell setup script (works on Windows, macOS, and Linux):
-```powershell
-# On Windows PowerShell or PowerShell Core
-pwsh setup_venv.ps1
-# Or on Windows: .\setup_venv.ps1
-```
-
-The script will:
-- Detect your OS automatically
-- Find compatible Python (3.8-3.12)
-- Create a virtual environment
-- Install all dependencies from `requirements.txt`
-- Provide activation instructions
-
-3. Activate the virtual environment:
-```bash
-# Windows PowerShell
-.\venv\Scripts\Activate.ps1
-
-# macOS/Linux (bash/zsh)
-source venv/bin/activate
-
-# macOS/Linux (PowerShell Core)
-. venv/bin/Activate.ps1
-```
-
-4. Install ipykernel for Jupyter (if not already installed):
-```bash
-pip install ipykernel
-python -m ipykernel install --user --name thesis --display-name "Python (thesis)"
-```
-
-#### Option 3: Using venv (Manual)
-
-1. Clone the repository:
-```bash
-git clone https://github.com/baswingen/Thesis.git
-cd Thesis
-```
-
-2. Create a virtual environment with Python 3.12:
-```bash
-python3.12 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-pip install -e .  # Install project in editable mode
-```
-
-4. Install ipykernel for Jupyter:
-```bash
-pip install ipykernel
-python -m ipykernel install --user --name thesis --display-name "Python (thesis)"
-```
-
-## Google Colab Setup
-
-Run this in a Colab cell (replace with your repo URL):
-
-```python
-REPO_URL = "https://github.com/baswingen/Thesis.git"
-
-import os
-import sys
-
 # Clone repository
-if not os.path.exists('thesis_project'):
-    os.system(f'git clone {REPO_URL} Thesis')
-    os.rename('Thesis', 'thesis_project')
+git clone <repository-url>
+cd Thesis
 
 # Install dependencies
-%pip install -q -r thesis_project/requirements.txt
-%pip install -q -e thesis_project/
-
-# Add to path
-sys.path.insert(0, '/content/thesis_project')
-sys.path.insert(0, '/content/thesis_project/src')
-
-print("✅ Setup complete!")
-```
-
-## Dependencies
-
-This project includes the following deep learning frameworks:
-- **PyTorch** (>=2.0.0)
-- **TensorFlow** (>=2.15.0)
-- **Keras 3** (>=3.0.0)
-
-Additional dependencies:
-- NumPy (compatible with TensorFlow requirements)
-- Pandas
-- Matplotlib
-- Jupyter/IPython kernel support
-
-## Development
-
-### Adding Dependencies
-
-Add new dependencies to `requirements.txt`:
-
-```bash
-# Add package name and version
-# Note: Ensure compatibility with PyTorch/TensorFlow if adding ML libraries
-numpy>=1.24.0
-pandas>=2.0.0
-```
-
-Then install:
-```bash
 pip install -r requirements.txt
+
+# Or use conda
+conda env create -f environment.yml
+conda activate emg-imu
 ```
 
-### Running Tests
+### 2. Hardware Setup
+
+**EMG Device (TMSi Porti7):**
+- Connect via USB
+- Install TMSi drivers
+- Test connection: `python tests/test_emg.py`
+
+**IMU Sensors (Dual BMI160):**
+- Upload Arduino sketch: `arduino/IMU_sketch/IMU_sketch_I2C/`
+- Connect via USB serial
+- Test connection: `python tests/test_imu.py`
+
+### 3. Run Trial Collection
 
 ```bash
-# Add your test framework commands here
-# Example with pytest:
-pytest tests/
+# Configure trial in trial/setup_trial.py
+# Then run:
+python -m trial.trial_manager
+
+# Or test without hardware:
+python -m trial.trial_manager --mock
 ```
 
-## IMU Tracking System
+## 📖 Documentation
 
-### Overview
+Comprehensive documentation is available in the `README/` directory:
 
-High-performance dual BMI160 IMU orientation tracking system with binary protocol, optimized filtering, and gravity-aligned correction.
+- **[INDEX.md](README/INDEX.md)** - Documentation overview
+- **[README_EMG.md](README/README_EMG.md)** - EMG acquisition guide
+- **[README_IMU.md](README/README_IMU.md)** - IMU acquisition guide
+- **[README_SIGNAL_ACQUISITION.md](README/README_SIGNAL_ACQUISITION.md)** - Synchronized acquisition
+- **[README_PREPROCESSING.md](README/README_PREPROCESSING.md)** - Signal processing
+- **[SYNCHRONIZATION_EXPLAINED.md](README/SYNCHRONIZATION_EXPLAINED.md)** - Synchronization deep-dive
+- **[trial/README.md](trial/README.md)** - Trial system guide ⭐
 
-**Key Features**:
-- 🚀 **200Hz sampling rate** (2x improvement)
-- ⚡ **5-8ms latency** (3-4x improvement)
-- 📉 **<0.5°/min drift** in roll/pitch (4-10x improvement)
-- 📦 **Binary protocol** for efficient data transfer
-- 🎯 **Mahony filter** with adaptive gains for gravity alignment
-- 📊 **Real-time performance monitoring**
+## 🎮 Trial Data Collection
 
-### Hardware Requirements
+The trial system provides a complete solution for structured data collection:
 
-- Arduino Uno R4 (or compatible)
-- 2× BMI160 IMU modules (6-DOF: gyro + accelerometer)
-- I2C connections:
-  - IMU1: Address 0x68 (SDO → GND)
-  - IMU2: Address 0x69 (SDO → 3.3V)
-- USB connection to computer
+### Features
 
-### Quick Start
+✅ **Interactive GUI** - Real-time signal visualization
+✅ **Keyboard Control** - Simple trial progression (SPACE, N, C, Q)
+✅ **Flexible Protocols** - Configurable exercise sequences
+✅ **HDF5 Storage** - ML-ready data format
+✅ **Comprehensive Metadata** - Participant, trial, device info
+✅ **Preprocessing Pipeline** - Bandpass, notch, envelope extraction
+✅ **Mock Mode** - Test without hardware
 
-#### 1. Upload Arduino Sketch
+### Quick Trial Setup
 
-```bash
-# Open arduino/IMU_sketch.ino in Arduino IDE
-# Select: Board → Arduino Uno R4
-# Upload to board
-```
+1. **Edit Configuration** (`trial/setup_trial.py`):
+   ```python
+   PARTICIPANT_ID = "P001"
+   SESSION_ID = "S001"
+   
+   TRIAL_EXERCISES = [
+       {'name': 'Wrist_Flexion', 'duration': 5.0, ...},
+       {'name': 'Hand_Grip', 'duration': 5.0, ...},
+       # ... more exercises
+   ]
+   ```
 
-#### 2. Install Python Dependencies
+2. **Run Collection**:
+   ```bash
+   python -m trial.trial_manager
+   ```
 
-```bash
-# If not already installed
-pip install pyserial numpy vpython
-```
+3. **Keyboard Controls**:
+   - **SPACE**: Start/stop trial
+   - **N**: Next trial
+   - **C**: Calibrate IMU
+   - **Q**: Quit
 
-#### 3. Run Tracking (Auto-detection)
+4. **Data Location**:
+   ```
+   database/participant_P001/session_S001/
+   ├── metadata.json
+   ├── trial_001_raw.h5
+   ├── trial_001_preprocessed.h5
+   └── ...
+   ```
 
-```bash
-# Auto-detect Arduino port (works on Windows, macOS, Linux)
-python scripts/IMU_testing.py
+See [trial/README.md](trial/README.md) for complete documentation.
 
-# Or specify port manually
-python scripts/IMU_testing.py --port COM3        # Windows
-python scripts/IMU_testing.py --port /dev/cu.usbmodem123  # macOS
-```
+## 💾 Data Format
 
-The script now automatically detects Arduino ports across all platforms! No manual configuration needed.
+All trial data is stored in HDF5 format, compatible with PyTorch and Keras:
 
-**Calibration Steps**:
-1. Place both IMUs flat on ground (component side UP)
-2. Keep them perfectly still during 5-second countdown
-3. System automatically calibrates gyro bias
-4. Start moving IMUs - visualization follows in real-time!
-
-### Coordinate Frame Reference
-
-```
-IMU Physical (component side UP):
-┌─────────────┐
-│   BMI160    │
-│   [●]       │  ← Dot = +X (forward)
-│             │
-│      Y↑     │
-│      │      │
-│      └─→X   │  Z = up (out of chip)
-└─────────────┘
-
-Expected Behavior:
-✅ Tilt forward  → Dice tilts forward
-✅ Tilt backward → Dice tilts backward
-✅ Roll left     → Dice rolls left
-✅ Roll right    → Dice rolls right
-✅ Rotate CW     → Dice rotates CW (yaw may drift)
-```
-
-### Configuration Options
-
-In `scripts/IMU_testing.py`:
+### Loading Data
 
 ```python
-# Filter tuning
-KP_BASE = 2.0              # Accel correction strength (higher = less drift, slower response)
-KI = 0.01                  # Gyro bias learning rate
-ADAPTIVE_GAINS = True      # Enable motion-based gain scheduling
+import h5py
+import torch
 
-# Calibration
-CALIB_SAMPLES = 200        # More = better bias estimate
-GYRO_STILL_THRESHOLD = 0.5 # rad/s for "stillness" detection
+# Load preprocessed EMG data
+with h5py.File('database/P001/S001/trial_001_preprocessed.h5', 'r') as f:
+    emg_filtered = torch.from_numpy(f['emg/filtered'][:])
+    emg_envelope = torch.from_numpy(f['emg/envelope'][:])
+    timestamps = f['emg/timestamps'][:]
 
-# Visualization
-SHOW_RELATIVE_IMU2_TO_IMU1 = False  # True = show relative orientation only
-SHOW_AXES = True                     # Show RGB coordinate axes
-SHOW_PERFORMANCE_STATS = True        # Display FPS, latency, loss
+print(f"EMG shape: {emg_filtered.shape}")  # (samples, channels)
 ```
 
-### Performance Benchmarks
+See [database/README.md](database/README.md) for detailed format documentation.
 
-| Metric | Previous (Text) | Optimized (Binary) | Improvement |
-|--------|-----------------|--------------------| ------------|
-| Sample Rate | ~100 Hz | ~200 Hz | **2×** |
-| Latency | 15-30 ms | 5-8 ms | **3-4×** |
-| Roll/Pitch Drift | 2-5 °/min | <0.5 °/min | **4-10×** |
-| Packet Loss | 1-2% | <0.1% | **10-20×** |
-| Bandwidth | ~8 KB/s | ~11 KB/s | Better utilization |
+## 🔬 Example Usage
 
-### Testing
-
-Comprehensive testing guide: See **[TESTING_IMU.md](TESTING_IMU.md)**
-
-Quick validation tests:
-```bash
-# 1. Coordinate frame test (CRITICAL)
-#    - Physical tilt forward → Dice tilts forward ✓
-
-# 2. Drift test
-#    - Keep IMUs still for 60s
-#    - Measure roll/pitch drift (target: <0.5°/min)
-
-# 3. Latency test
-#    - Check performance stats display
-#    - Target: <10ms, <0.1% loss
-```
-
-### Architecture
-
-```
-Arduino (500kbaud)          Python
-┌──────────────┐           ┌─────────────────┐
-│ BMI160 0x68  │──I2C──┐   │                 │
-│ BMI160 0x69  │──I2C──┤   │  Binary Parser  │
-│              │       │   │       ↓         │
-│ Burst Read   │       ├───│  Mahony Filter  │
-│ (12 bytes)   │   USB    │  (Adaptive)     │
-│              │       │   │       ↓         │
-│ Binary Pack  │───────┘   │  VPython Viz    │
-│ (54 bytes)   │           │                 │
-└──────────────┘           └─────────────────┘
-```
-
-**Key Optimizations**:
-1. **Burst I2C reads**: Single 12-byte transaction per IMU (vs 2 separate reads)
-2. **Binary protocol**: 54-byte packets vs ~80 bytes text
-3. **Mahony filter**: 30% faster than Madgwick, better gravity alignment
-4. **Adaptive gains**: High correction when still, low during motion
-5. **Running bias estimation**: Continuous gyro calibration
-
-### Troubleshooting
-
-**Issue**: Wrong orientation mapping
-- **Fix**: Verify IMU component side is UP during calibration
-- Check raw accel display: should show ~(0, 0, -1)g when flat
-
-**Issue**: High drift (>1°/min)
-- **Fix**: Recalibrate with IMUs on stable surface
-- Increase `KP_BASE` to 3.0 for stronger accel correction
-- Ensure IMUs warm up for 2 minutes before calibration
-
-**Issue**: Choppy visualization
-- **Fix**: Check USB cable quality
-- Verify serial port permissions (Linux: add user to `dialout` group)
-- Disable axes if needed: `SHOW_AXES = False`
-
-**Issue**: Serial connection fails
-- **Fix**: Update `PORT` in script to match your system
-- Check Arduino IDE Serial Monitor for "READY:BINARY_MODE:200HZ"
-- Try different USB port or cable
-
-### Advanced Tuning
-
-**Reduce drift further** (if <0.5°/min is not enough):
-```python
-KP_BASE = 3.0              # Trust accelerometer more
-ACCEL_GATE_MIN_G = 0.95    # Stricter accel validation
-ACCEL_GATE_MAX_G = 1.05
-```
-
-**Improve fast motion tracking**:
-```python
-KP_BASE = 1.5              # Trust gyro more during motion
-GYRO_STILL_THRESHOLD = 0.3 # More sensitive stillness detection
-```
-
-### Limitations
-
-- ⚠️ **Yaw drift**: Unavoidable without magnetometer (BMI160 is 6-DOF only)
-  - Roll/pitch are stable (gravity-corrected)
-  - Yaw will drift over time but initial rotation is accurate
-  - Solution: Add magnetometer (e.g., BMM150) for 9-DOF if absolute yaw needed
-
-- ⚠️ **High acceleration**: Filter may lag during impacts/shakes
-  - Adaptive gains minimize this effect
-  - Recovery time typically <2 seconds
-
-### Arduino Connection Module
-
-The project includes a reusable Arduino connection utility (`src/arduino_connection.py`) that provides cross-platform serial port detection and connection management.
-
-**Key Features**:
-- 🔍 **Auto-detection**: Automatically finds Arduino boards on Windows, macOS, and Linux
-- 🎯 **Smart matching**: Recognizes Arduino by vendor ID, description, and common USB-Serial chips
-- 🌐 **Cross-platform**: Single API works on all operating systems
-- 📋 **Port listing**: List and inspect all available serial ports
-- 🔌 **Easy connection**: One-line connection with auto-detection
-
-**Usage Examples**:
+### Simple EMG Acquisition
 
 ```python
-from src.arduino_connection import find_arduino_port, open_arduino_serial
+from src import EMGDevice
 
-# Find Arduino port
-port = find_arduino_port()
-print(f"Arduino found on: {port}")
-
-# Connect automatically
-ser = open_arduino_serial(baud=230400)
-
-# Or connect to specific port
-ser = open_arduino_serial(port="COM3", baud=115200)
+with EMGDevice(connection_type='usb') as emg:
+    emg.connect()
+    emg.configure_emg_differential_pair(pos_channel=1, neg_channel=2)
+    emg.start_acquisition(duration=10.0)
+    data = emg.get_data()
+    emg.export_data('my_recording.npy')
 ```
 
-**Test the module**:
+### Synchronized EMG + IMU
+
+```python
+from src.synchronized_acquisition import SynchronizedAcquisition, SyncConfig
+
+config = SyncConfig()
+with SynchronizedAcquisition(config) as acq:
+    acq.start()
+    
+    # Data available in buffers:
+    # acq.emg_buffer
+    # acq.imu_buffer
+    
+    time.sleep(10)  # Collect for 10 seconds
+    acq.stop()
+```
+
+### Signal Processing
+
+```python
+from src.emg_processing import EMGPreprocessor
+
+preprocessor = EMGPreprocessor(
+    fs=2048,
+    bandpass_low=20.0,
+    bandpass_high=450.0,
+    notch_freq=50.0,
+    envelope_cutoff=10.0
+)
+
+# Process raw EMG signal
+result = preprocessor.process(raw_emg, return_all_stages=True)
+filtered = result['filtered']
+envelope = result['envelope']
+```
+
+## 🧪 Testing
+
+### Basic Tests (No Hardware)
+
 ```bash
-# Run test suite
-python tests/test_arduino_connection.py
-
-# Or use as standalone script
-python src/arduino_connection.py
+python trial/test_simple.py
 ```
 
-**Available Functions**:
-- `find_arduino_port()` - Auto-detect Arduino serial port
-- `open_arduino_serial()` - Connect to Arduino with auto-detection
-- `list_all_ports()` - List all available serial ports
-- `is_port_available()` - Check if specific port exists
+### Full Integration Tests
 
-See `src/arduino_connection.py` for complete API documentation.
-
-## Synchronized IMU-EMG Acquisition
-
-For combined IMU and EMG data acquisition with real-time visualization, see:
-
-**Script**: `scripts/signal_acquisition_testing.py`  
-**Documentation**: [README/README_SIGNAL_ACQUISITION.md](README/README_SIGNAL_ACQUISITION.md)
-
-Features:
-- ✅ Synchronized dual IMU (~200Hz) and multi-channel EMG (~2000Hz) acquisition
-- ✅ Cross-platform Arduino auto-detection
-- ✅ Real-time matplotlib visualization
-- ✅ Thread-safe data buffering
-- ✅ Configurable for IMU-only, EMG-only, or combined use
-
-Quick start:
 ```bash
-# IMU only (works on all platforms)
-python scripts/signal_acquisition_testing.py
+python trial/test_trial_system.py
 ```
 
-### Files
+### Component Tests
 
-- `arduino/IMU_sketch_I2C/IMU_sketch_I2C.ino` - Optimized Arduino firmware
-- `scripts/IMU_testing.py` - IMU-only tracking with VPython visualization
-- `scripts/signal_acquisition_testing.py` - Synchronized IMU+EMG acquisition
-- `src/arduino_connection.py` - Arduino connection utilities (cross-platform)
-- `src/imu_acquisition.py` - IMU acquisition module
-- `tests/test_arduino_connection.py` - Arduino connection test suite
-- `README/README_SIGNAL_ACQUISITION.md` - Signal acquisition guide
-- `TESTING_IMU.md` - Comprehensive IMU testing guide
+```bash
+# Test EMG device
+python tests/test_emg.py
 
-### References
+# Test IMU device
+python tests/test_imu.py
 
-- BMI160 Datasheet: [Bosch Sensortec](https://www.bosch-sensortec.com/products/motion-sensors/imus/bmi160/)
-- Mahony Filter: [Mahony et al., 2008](http://ieeexplore.ieee.org/document/4608934/)
-- Madgwick Filter: [Madgwick, 2010](https://x-io.co.uk/open-source-imu-and-ahrs-algorithms/)
+# Test synchronization
+python setup_scripts/signal_acquisition_testing.py
+```
+
+## 🛠️ Development
+
+### Key Modules
+
+- **`src/emg_acquisition.py`** - EMG device interface
+- **`src/imu_acquisition.py`** - IMU device interface
+- **`src/synchronized_acquisition.py`** - Synchronized acquisition
+- **`src/emg_processing.py`** - Signal preprocessing
+- **`trial/trial_manager.py`** - Trial orchestration
+- **`trial/data_storage.py`** - HDF5 storage
+
+### Adding New Protocols
+
+Edit `trial/trial_protocols.py` or create in `trial/setup_trial.py`:
+
+```python
+MY_PROTOCOL = [
+    {
+        'name': 'Custom_Movement',
+        'duration': 5.0,
+        'instruction': 'Perform custom movement',
+        'rest_after': 3.0,
+        'repetitions': 5,
+    },
+    # ... more exercises
+]
+```
+
+## 📊 Data Processing Pipeline
+
+```
+Raw EMG/IMU Data
+      ↓
+Synchronized Acquisition (hardware timestamps)
+      ↓
+Real-time Preprocessing
+  - Bandpass filter (20-450 Hz)
+  - Notch filter (50/60 Hz)
+  - Rectification
+  - Envelope extraction
+      ↓
+HDF5 Storage (raw + preprocessed)
+      ↓
+ML Training (PyTorch/Keras)
+```
+
+## 🎓 Citation
+
+If you use this system in your research, please cite:
+
+```bibtex
+@software{emg_imu_system,
+  title={EMG + IMU Data Acquisition System},
+  author={Your Name},
+  year={2026},
+  url={https://github.com/your-repo}
+}
+```
+
+## 📝 License
+
+See [LICENSE](LICENSE) file.
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📧 Support
+
+For issues or questions:
+- Check documentation in `README/` directory
+- Review `trial/README.md` for trial system
+- Check `database/README.md` for data format
+- Run tests: `python trial/test_simple.py`
+
+## 🔄 Recent Updates
+
+### January 2026
+- ✨ **New Trial System**: Complete GUI-based data collection
+- 📦 **HDF5 Storage**: ML-ready data format
+- 🎮 **Keyboard Controls**: Intuitive trial progression
+- 📊 **Real-time Visualization**: Live EMG+IMU plots
+- 🧪 **Mock Mode**: Test without hardware
+- 📚 **Comprehensive Documentation**: Detailed guides
+
+## 🗺️ Roadmap
+
+- [ ] MVC calibration workflow
+- [ ] Advanced artifact detection
+- [ ] Video synchronization
+- [ ] Web-based interface
+- [ ] Real-time EMG-driven feedback
+- [ ] Multi-session analysis tools
 
 ---
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-See the [LICENSE](LICENSE) file for details.
-
-## Author
-
-Project Link: [https://github.com/baswingen/Thesis](https://github.com/baswingen/Thesis)
+**Ready to collect trial data?** See [trial/README.md](trial/README.md) to get started! 🚀

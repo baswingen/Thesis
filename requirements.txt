@@ -25,3 +25,9 @@ vpython>=7.6.0
 # Note: TMSi Python Interface may need manual installation from TMSi/Artinis website
 # If not available via pip, install manually or use ctypes wrapper for TMSiSDK.dll
 # tmsi>=5.0.0  # Uncomment if package becomes available on PyPI
+
+# Trial data collection (HDF5 storage)
+h5py>=3.10.0
+
+# GUI support (tkinter is built-in, but pillow helpful for images)
+pillow>=10.0.0
