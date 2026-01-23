@@ -377,5 +377,276 @@ def calculate_signal_quality(data: np.ndarray, fs: float) -> dict:
     return metrics
 
 
+# =============================================================================
+# COMPLETE PREPROCESSING PIPELINE
+# =============================================================================
+
+class EMGPreprocessor:
+    """
+    Complete real-time EMG preprocessing pipeline for ML-ready signals.
+    
+    Pipeline stages:
+    1. Bandpass filter (20-450 Hz) - Remove DC offset and high-frequency noise
+    2. Notch filter (50/60 Hz) - Remove powerline interference
+    3. Rectification + Smoothing (via EMGEnvelopeExtractor) - Extract envelope
+    4. MVC normalization - Normalize to 0-1 range based on Maximum Voluntary Contraction
+    
+    All filters are stateful to avoid edge artifacts in real-time processing.
+    
+    Example:
+        >>> preprocessor = EMGPreprocessor(fs=1024, mvc_value=100.0)
+        >>> result = preprocessor.process(raw_emg_chunk)
+        >>> normalized_signal = result['normalized']
+    """
+    
+    def __init__(self, 
+                 fs: float,
+                 mvc_value: Optional[float] = None,
+                 bandpass_low: float = 20.0,
+                 bandpass_high: float = 450.0,
+                 notch_freq: Optional[float] = 50.0,
+                 envelope_cutoff: float = 10.0,
+                 bandpass_order: int = 4,
+                 envelope_order: int = 4):
+        """
+        Initialize complete EMG preprocessing pipeline.
+        
+        Args:
+            fs: Sample rate (Hz)
+            mvc_value: Maximum Voluntary Contraction value for normalization (None = no normalization)
+            bandpass_low: Bandpass low cutoff (Hz), default 20 Hz
+            bandpass_high: Bandpass high cutoff (Hz), default 450 Hz
+            notch_freq: Notch frequency (Hz), typically 50 or 60, None to disable
+            envelope_cutoff: Envelope low-pass cutoff (Hz), default 10 Hz
+            bandpass_order: Bandpass filter order, default 4
+            envelope_order: Envelope filter order, default 4
+            
+        Raises:
+            RuntimeError: If scipy not available
+        """
+        if not SCIPY_AVAILABLE:
+            raise RuntimeError("scipy is required for EMG preprocessing")
+        
+        self.fs = fs
+        self.mvc_value = mvc_value
+        
+        # Initialize filters
+        self.bandpass = BandpassFilter(bandpass_low, bandpass_high, fs, order=bandpass_order)
+        
+        self.notch = None
+        if notch_freq is not None:
+            self.notch = NotchFilter(notch_freq, fs, quality=30.0)
+        
+        self.envelope_extractor = EMGEnvelopeExtractor(fs, cutoff=envelope_cutoff, order=envelope_order)
+        
+        # Store config for reference
+        self.config = {
+            'fs': fs,
+            'bandpass_low': bandpass_low,
+            'bandpass_high': bandpass_high,
+            'notch_freq': notch_freq,
+            'envelope_cutoff': envelope_cutoff,
+            'mvc_value': mvc_value
+        }
+    
+    def process(self, raw_emg: np.ndarray, return_all_stages: bool = False) -> Union[np.ndarray, dict]:
+        """
+        Process raw EMG through complete preprocessing pipeline.
+        
+        Args:
+            raw_emg: 1D numpy array of raw EMG samples
+            return_all_stages: If True, return dict with all stages; if False, return only normalized signal
+            
+        Returns:
+            If return_all_stages=False: Normalized EMG signal (1D array)
+            If return_all_stages=True: Dictionary with keys:
+                - 'raw': Original raw signal
+                - 'filtered': After bandpass + notch
+                - 'envelope': After rectification + smoothing
+                - 'normalized': After MVC normalization
+        """
+        # Stage 1: Bandpass filter
+        filtered = self.bandpass.filter(raw_emg)
+        
+        # Stage 2: Notch filter (if configured)
+        if self.notch is not None:
+            filtered = self.notch.filter(filtered)
+        
+        # Stage 3: Rectification + Smoothing (envelope extraction)
+        # Note: EMGEnvelopeExtractor.extract() does BOTH:
+        #   1. Rectification: np.abs(data)
+        #   2. Low-pass filtering
+        envelope = self.envelope_extractor.extract(filtered)
+        
+        # Stage 4: MVC normalization (if enabled)
+        if self.mvc_value is not None and self.mvc_value > 0:
+            normalized = envelope / self.mvc_value
+        else:
+            normalized = envelope
+        
+        if return_all_stages:
+            return {
+                'raw': raw_emg,
+                'filtered': filtered,
+                'envelope': envelope,
+                'normalized': normalized
+            }
+        else:
+            return normalized
+    
+    def set_mvc_value(self, mvc_value: float):
+        """
+        Update MVC value for normalization.
+        
+        Args:
+            mvc_value: New MVC value
+        """
+        self.mvc_value = mvc_value
+        self.config['mvc_value'] = mvc_value
+    
+    def reset(self):
+        """Reset all filter states (e.g., when starting new acquisition)."""
+        self.bandpass.reset()
+        if self.notch is not None:
+            self.notch.reset()
+        self.envelope_extractor.reset()
+    
+    def __repr__(self):
+        parts = [
+            f"fs={self.config['fs']}Hz",
+            f"BP={self.config['bandpass_low']}-{self.config['bandpass_high']}Hz"
+        ]
+        if self.config['notch_freq']:
+            parts.append(f"Notch={self.config['notch_freq']}Hz")
+        parts.append(f"Env={self.config['envelope_cutoff']}Hz")
+        if self.mvc_value:
+            parts.append(f"MVC={self.mvc_value:.2f}")
+        return f"EMGPreprocessor({', '.join(parts)})"
+
+
+# =============================================================================
+# MVC CALIBRATION
+# =============================================================================
+
+def calibrate_mvc_from_data(emg_data: np.ndarray,
+                            fs: float,
+                            percentile: float = 95.0,
+                            bandpass_low: float = 20.0,
+                            bandpass_high: float = 450.0,
+                            notch_freq: Optional[float] = 50.0,
+                            envelope_cutoff: float = 10.0) -> float:
+    """
+    Calibrate MVC (Maximum Voluntary Contraction) from recorded EMG data.
+    
+    This function processes a recording of maximum contraction and returns
+    the MVC value suitable for normalization.
+    
+    Args:
+        emg_data: 1D numpy array of raw EMG samples from maximum contraction
+        fs: Sample rate (Hz)
+        percentile: Percentile to use for MVC (95th avoids outliers), default 95.0
+        bandpass_low: Bandpass low cutoff (Hz), default 20 Hz
+        bandpass_high: Bandpass high cutoff (Hz), default 450 Hz
+        notch_freq: Notch frequency (Hz), default 50 Hz, None to disable
+        envelope_cutoff: Envelope cutoff (Hz), default 10 Hz
+        
+    Returns:
+        MVC value (peak envelope at specified percentile)
+        
+    Example:
+        >>> # Record 5 seconds of maximum contraction
+        >>> max_contraction_data = acquire_emg(duration=5.0)
+        >>> mvc = calibrate_mvc_from_data(max_contraction_data, fs=1024)
+        >>> preprocessor = EMGPreprocessor(fs=1024, mvc_value=mvc)
+    """
+    # Create temporary preprocessor without MVC normalization
+    temp_preprocessor = EMGPreprocessor(
+        fs=fs,
+        mvc_value=None,
+        bandpass_low=bandpass_low,
+        bandpass_high=bandpass_high,
+        notch_freq=notch_freq,
+        envelope_cutoff=envelope_cutoff
+    )
+    
+    # Process the data
+    result = temp_preprocessor.process(emg_data, return_all_stages=True)
+    envelope = result['envelope']
+    
+    # Calculate MVC from envelope
+    if len(envelope) > 0:
+        mvc_value = np.percentile(envelope, percentile)
+        return float(mvc_value)
+    else:
+        warnings.warn("No valid data for MVC calibration, returning 1.0")
+        return 1.0
+
+
+def calibrate_mvc_interactive(fs: float,
+                              duration: float = 5.0,
+                              percentile: float = 95.0,
+                              data_callback: Optional[Callable] = None,
+                              **preprocessing_kwargs) -> float:
+    """
+    Interactive MVC calibration with user prompts.
+    
+    Guides user through MVC calibration process. Requires a callback function
+    that acquires EMG data for the specified duration.
+    
+    Args:
+        fs: Sample rate (Hz)
+        duration: Calibration duration in seconds, default 5.0
+        percentile: Percentile to use for MVC, default 95.0
+        data_callback: Function that returns EMG data array when called with duration
+                      Signature: callback(duration: float) -> np.ndarray
+        **preprocessing_kwargs: Additional kwargs for EMGPreprocessor
+        
+    Returns:
+        MVC value
+        
+    Example:
+        >>> def acquire_data(duration):
+        ...     # Your acquisition code here
+        ...     return emg_samples
+        >>> mvc = calibrate_mvc_interactive(fs=1024, duration=5.0, 
+        ...                                data_callback=acquire_data)
+    """
+    if data_callback is None:
+        raise ValueError("data_callback is required for interactive calibration")
+    
+    print("\n" + "="*70)
+    print("MVC CALIBRATION")
+    print("="*70)
+    print(f"\nInstructions:")
+    print(f"  1. Get ready to perform MAXIMUM muscle contraction")
+    print(f"  2. Press ENTER to start calibration")
+    print(f"  3. Contract as hard as possible for {duration} seconds")
+    print(f"  4. Relax after completion")
+    
+    input("\nPress ENTER when ready...")
+    
+    print(f"\nCalibrating... CONTRACT NOW! ({duration} seconds)")
+    
+    # Acquire data
+    emg_data = data_callback(duration)
+    
+    print("\nCalibration complete! You can relax now.")
+    print("\a")  # Beep
+    
+    # Calculate MVC
+    mvc_value = calibrate_mvc_from_data(
+        emg_data, 
+        fs=fs, 
+        percentile=percentile,
+        **preprocessing_kwargs
+    )
+    
+    print(f"\nMVC Results:")
+    print(f"  - Samples collected: {len(emg_data)}")
+    print(f"  - MVC value ({percentile}th percentile): {mvc_value:.4f}")
+    
+    return mvc_value
+
+
 # Type hint import
-from typing import Union
+from typing import Union, Callable
