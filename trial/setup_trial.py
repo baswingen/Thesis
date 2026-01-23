@@ -23,8 +23,10 @@ from typing import List, Dict, Optional, Tuple
 # Fix Windows console encoding issues
 if sys.platform == 'win32':
     try:
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+        if hasattr(sys.stdout, 'buffer'):
+            sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        if hasattr(sys.stderr, 'buffer'):
+            sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
     except:
         pass
 
@@ -214,8 +216,8 @@ BACKUP_FORMATS = ['numpy']  # Additional formats for backup
 GUI_CONFIG = {
     # Window
     'window_title': 'EMG+IMU Trial Data Collection',
-    'window_width': 1400,
-    'window_height': 900,
+    'window_width': 1200,
+    'window_height': 700,
     'fullscreen': False,
     
     # Update rates
@@ -248,6 +250,12 @@ SYNC_CONFIG = {
     # Enable devices
     'enable_emg': True,
     'enable_imu': True,
+    
+    # Dummy signal mode (for testing without hardware)
+    'use_dummy_signals': True,  # Set to True to use simulated signals
+    'dummy_emg_amplitude': 50.0,  # Microvolts, peak amplitude
+    'dummy_emg_noise_level': 5.0,  # Microvolts, noise amplitude
+    'dummy_imu_motion': True,  # Add simulated motion to IMU
     
     # Buffer sizes
     'emg_buffer_max_chunks': 10000,
@@ -355,6 +363,14 @@ def print_config_summary():
     print(f"\nParticipant: {PARTICIPANT_ID}")
     print(f"Session: {SESSION_ID}")
     print(f"\nDevices:")
+    
+    # Show dummy signal mode
+    if SYNC_CONFIG.get('use_dummy_signals', False):
+        print(f"  ⚠ USING DUMMY SIGNALS (simulated - no hardware)")
+        print(f"     EMG amplitude: {SYNC_CONFIG.get('dummy_emg_amplitude', 50.0)} µV")
+        print(f"     EMG noise: {SYNC_CONFIG.get('dummy_emg_noise_level', 5.0)} µV")
+        print(f"     IMU motion: {SYNC_CONFIG.get('dummy_imu_motion', True)}")
+    
     print(f"  EMG: {'Enabled' if SYNC_CONFIG['enable_emg'] else 'Disabled'}")
     print(f"       Sample rate: {EMG_CONFIG['sample_rate']} Hz")
     print(f"       Channels: {len(EMG_CONFIG['raw_channels'])} raw channels")
@@ -452,7 +468,38 @@ if __name__ != '__main__':
         print("Please fix the configuration before running trials.")
 
 
-# If run directly, print configuration summary
+# If run directly, start trial manager
 if __name__ == '__main__':
+    import sys
+    import os
+    import subprocess
+    
     validate_config()
     print_config_summary()
+    
+    # Ask user to confirm before starting
+    print("\n" + "="*70)
+    response = input("Start trial data collection? [Y/n]: ").strip().lower()
+    
+    if response in ['', 'y', 'yes']:
+        print("\nStarting trial manager...")
+        print("="*70 + "\n")
+        
+        # Run trial manager as a subprocess to avoid circular imports
+        try:
+            # Try running as module first
+            result = subprocess.run(
+                [sys.executable, '-m', 'trial.trial_manager'],
+                cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
+            sys.exit(result.returncode)
+        except Exception as e:
+            print(f"[ERROR] Failed to start trial manager: {e}")
+            print("\nTo start manually, run:")
+            print("  python -m trial.trial_manager")
+            sys.exit(1)
+    else:
+        print("\nCancelled. To start later, run:")
+        print("  python -m trial.trial_manager")
+        print("  or")
+        print("  python trial/setup_trial.py")

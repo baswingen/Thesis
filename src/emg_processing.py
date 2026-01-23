@@ -11,7 +11,7 @@ Features:
 """
 
 import numpy as np
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, Callable
 import warnings
 
 # Optional scipy for filtering
@@ -77,16 +77,37 @@ class BandpassFilter:
         Apply bandpass filter to data.
         
         Args:
-            data: 1D numpy array of samples
+            data: 1D or 2D numpy array of samples
+                  If 2D, shape should be (n_samples, n_channels)
             
         Returns:
-            Filtered data
+            Filtered data (same shape as input)
         """
         if not SCIPY_AVAILABLE or self.sos is None:
             return data
         
         if len(data) == 0:
             return data
+        
+        # Handle multi-channel data (2D array)
+        if data.ndim == 2:
+            n_samples, n_channels = data.shape
+
+            # Initialize zi for multi-channel: (n_sections, 2, n_channels)
+            zi_base = signal.sosfilt_zi(self.sos)  # (n_sections, 2)
+            expected_shape = (zi_base.shape[0], zi_base.shape[1], n_channels)
+
+            if self.zi is None or getattr(self.zi, "shape", None) != expected_shape:
+                self.zi = np.repeat(zi_base[:, :, np.newaxis], n_channels, axis=2)
+
+            filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi, axis=0)
+            return filtered
+        
+        # Handle 1D data
+        # Initialize zi for 1D if missing or wrong-shaped
+        zi_base = signal.sosfilt_zi(self.sos)
+        if self.zi is None or getattr(self.zi, "shape", None) != zi_base.shape:
+            self.zi = zi_base.copy()
         
         # Handle NaN values
         if np.any(np.isnan(data)):
@@ -152,16 +173,38 @@ class NotchFilter:
         Apply notch filter to data.
         
         Args:
-            data: 1D numpy array of samples
+            data: 1D or 2D numpy array of samples
+                  If 2D, shape should be (n_samples, n_channels)
             
         Returns:
-            Filtered data
+            Filtered data (same shape as input)
         """
         if not SCIPY_AVAILABLE or self.sos is None:
             return data
         
         if len(data) == 0:
             return data
+        
+        # Handle multi-channel data (2D array)
+        if data.ndim == 2:
+            n_samples, n_channels = data.shape
+            
+            # Initialize zi for multi-channel: shape should be (n_sections, 2, n_channels)
+            zi_base = signal.sosfilt_zi(self.sos)  # shape: (n_sections, 2)
+            
+            # Check if zi needs initialization or resizing
+            expected_shape = (zi_base.shape[0], zi_base.shape[1], n_channels)
+            if self.zi is None or getattr(self.zi, "shape", None) != expected_shape:
+                self.zi = np.repeat(zi_base[:, :, np.newaxis], n_channels, axis=2)
+            
+            # Filter each channel
+            filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi, axis=0)
+            return filtered
+        
+        # Handle 1D data
+        zi_base = signal.sosfilt_zi(self.sos)
+        if self.zi is None or getattr(self.zi, "shape", None) != zi_base.shape:
+            self.zi = zi_base.copy()
         
         # Apply filter with state
         filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi)
@@ -215,10 +258,11 @@ class EMGEnvelopeExtractor:
         Extract EMG envelope.
         
         Args:
-            data: 1D numpy array of EMG samples
+            data: 1D or 2D numpy array of EMG samples
+                  If 2D, shape should be (n_samples, n_channels)
             
         Returns:
-            EMG envelope
+            EMG envelope (same shape as input)
         """
         if not SCIPY_AVAILABLE or self.sos is None:
             return np.abs(data)
@@ -228,6 +272,27 @@ class EMGEnvelopeExtractor:
         
         # Rectify (absolute value)
         rectified = np.abs(data)
+        
+        # Handle multi-channel data (2D array)
+        if rectified.ndim == 2:
+            n_samples, n_channels = rectified.shape
+            
+            # Initialize zi for multi-channel: shape should be (n_sections, 2, n_channels)
+            zi_base = signal.sosfilt_zi(self.sos)  # shape: (n_sections, 2)
+            
+            # Check if zi needs initialization or resizing
+            expected_shape = (zi_base.shape[0], zi_base.shape[1], n_channels)
+            if self.zi is None or getattr(self.zi, "shape", None) != expected_shape:
+                self.zi = np.repeat(zi_base[:, :, np.newaxis], n_channels, axis=2)
+            
+            # Low-pass filter each channel
+            envelope, self.zi = signal.sosfilt(self.sos, rectified, zi=self.zi, axis=0)
+            return envelope
+        
+        # Handle 1D data
+        zi_base = signal.sosfilt_zi(self.sos)
+        if self.zi is None or getattr(self.zi, "shape", None) != zi_base.shape:
+            self.zi = zi_base.copy()
         
         # Low-pass filter
         envelope, self.zi = signal.sosfilt(self.sos, rectified, zi=self.zi)
@@ -454,11 +519,12 @@ class EMGPreprocessor:
         Process raw EMG through complete preprocessing pipeline.
         
         Args:
-            raw_emg: 1D numpy array of raw EMG samples
+            raw_emg: 1D or 2D numpy array of raw EMG samples
+                     If 2D, shape should be (n_samples, n_channels)
             return_all_stages: If True, return dict with all stages; if False, return only normalized signal
             
         Returns:
-            If return_all_stages=False: Normalized EMG signal (1D array)
+            If return_all_stages=False: Normalized EMG signal (same shape as input)
             If return_all_stages=True: Dictionary with keys:
                 - 'raw': Original raw signal
                 - 'filtered': After bandpass + notch
@@ -646,7 +712,3 @@ def calibrate_mvc_interactive(fs: float,
     print(f"  - MVC value ({percentile}th percentile): {mvc_value:.4f}")
     
     return mvc_value
-
-
-# Type hint import
-from typing import Union, Callable

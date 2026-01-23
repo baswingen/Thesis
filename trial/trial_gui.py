@@ -100,8 +100,8 @@ class TrialGUI:
         """Get default GUI configuration."""
         return {
             'window_title': 'Trial Data Collection',
-            'window_width': 1400,
-            'window_height': 900,
+            'window_width': 1200,
+            'window_height': 700,
             'fullscreen': False,
             'plot_update_interval_ms': 50,
             'status_update_interval_ms': 100,
@@ -214,8 +214,8 @@ class TrialGUI:
         panel = ttk.Frame(parent, relief='ridge', borderwidth=2)
         panel.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
         
-        # Create matplotlib figure
-        self.fig = Figure(figsize=(14, 8), dpi=100)
+        # Create matplotlib figure (adjusted for smaller window)
+        self.fig = Figure(figsize=(11, 5.5), dpi=100)
         self.fig.patch.set_facecolor('white')
         
         # Create subplots: 2 rows (EMG, IMU)
@@ -320,16 +320,30 @@ class TrialGUI:
     
     def _schedule_plot_update(self):
         """Schedule periodic plot updates."""
+        if not self.root or not self.root.winfo_exists():
+            return
+        
         self._update_plots()
-        self.root.after(self.config['plot_update_interval_ms'], self._schedule_plot_update)
+        
+        if self.root and self.root.winfo_exists():
+            self.root.after(self.config['plot_update_interval_ms'], self._schedule_plot_update)
     
     def _schedule_status_update(self):
         """Schedule periodic status updates."""
+        if not self.root or not self.root.winfo_exists():
+            return
+        
         self._update_status()
-        self.root.after(self.config['status_update_interval_ms'], self._schedule_status_update)
+        
+        if self.root and self.root.winfo_exists():
+            self.root.after(self.config['status_update_interval_ms'], self._schedule_status_update)
     
     def _update_plots(self):
         """Update matplotlib plots with buffered data."""
+        # Check if window still exists
+        if not self.root or not self.root.winfo_exists():
+            return
+        
         try:
             with self.update_lock:
                 # Update EMG plots
@@ -347,7 +361,7 @@ class TrialGUI:
                     
                     # Set x-axis to show window
                     window = self.config['emg_plot_window_s']
-                    if time_array[-1] > window:
+                    if len(time_array) > 0 and time_array[-1] > window:
                         self.ax_emg.set_xlim(time_array[-1] - window, time_array[-1])
                 
                 # Update IMU plots
@@ -365,14 +379,15 @@ class TrialGUI:
                     
                     # Set x-axis
                     window = self.config['imu_plot_window_s']
-                    if time_array[-1] > window:
+                    if len(time_array) > 0 and time_array[-1] > window:
                         self.ax_imu.set_xlim(time_array[-1] - window, time_array[-1])
                 
                 # Redraw
-                self.canvas.draw_idle()
+                if self.canvas:
+                    self.canvas.draw_idle()
         
         except Exception as e:
-            # Silently handle plotting errors
+            # Silently handle plotting errors (may occur during shutdown)
             pass
     
     def _update_status(self):
@@ -563,8 +578,15 @@ class TrialGUI:
     def close(self):
         """Close the GUI window."""
         if self.root:
-            self.root.quit()
-            self.root.destroy()
+            try:
+                self.root.quit()
+            except:
+                pass
+            try:
+                self.root.destroy()
+            except:
+                pass
+            self.root = None
 
 
 # =============================================================================

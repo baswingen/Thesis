@@ -1,0 +1,56 @@
+{
+  "participant": {
+    "age": 25,
+    "gender": "M",
+    "handedness": "right",
+    "medical_notes": ""
+  },
+  "session": {
+    "experimenter": "Researcher Name",
+    "notes": ""
+  },
+  "emg_config": {
+    "connection_type": "usb",
+    "device_index": 0,
+    "sample_rate": 2048,
+    "reference_calculation": false,
+    "raw_channels": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "differential_pairs": null,
+    "channel_names": [
+      "EMG_CH1",
+      "EMG_CH2",
+      "EMG_CH3",
+      "EMG_CH4"
+    ]
+  },
+  "imu_config": {
+    "port": null,
+    "baud": 230400,
+    "calibration_samples": 200,
+    "auto_calibrate_on_start": true,
+    "use_mahony": true,
+    "kp": 2.0,
+    "ki": 0.01,
+    "adaptive_gains": true,
+    "accel_scale": 6.103515625e-05,
+    "gyro_scale": 0.007621951219512196
+  },
+  "preprocessing": {
+    "bandpass_low": 20.0,
+    "bandpass_high": 450.0,
+    "bandpass_order": 4,
+    "notch_freq": 50.0,
+    "notch_quality": 30.0,
+    "envelope_cutoff": 10.0,
+    "envelope_order": 4,
+    "mvc_normalization": false,
+    "mvc_value": null
+  },
+  "timestamp_created": "2026-01-23T15:17:48.449551",
+  "session_dir": "database\\participant_P001\\session_S001"
+}
