@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import time
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import deque
 from typing import Callable, Deque, Dict, Iterable, List, Optional, Tuple, Any
 
@@ -122,7 +122,7 @@ class EMGSelection:
 class EMGSyncConfig:
     connection_type: str = "usb"
     sample_rate: Optional[int] = None  # None = device default
-    selection: EMGSelection = EMGSelection(raw_channels=None, differential_pairs=None)
+    selection: EMGSelection = field(default_factory=EMGSelection)
     prefer_counter_timing: bool = True
     poll_interval_s: float = 0.01
     buffer_max_chunks: int = 10000
@@ -130,7 +130,7 @@ class EMGSyncConfig:
 
 @dataclass
 class IMUSyncConfig:
-    imu_config: IMUConfig = IMUConfig()
+    imu_config: IMUConfig = field(default_factory=IMUConfig)
     calibration_samples: int = 200
     flush_serial_on_start: bool = True
     resync_on_time_reset: bool = True
@@ -146,8 +146,8 @@ class SyncConfig:
     clock: ClockFn = time.perf_counter
     enable_imu: bool = True
     enable_emg: bool = True
-    imu: IMUSyncConfig = IMUSyncConfig()
-    emg: EMGSyncConfig = EMGSyncConfig()
+    imu: IMUSyncConfig = field(default_factory=IMUSyncConfig)
+    emg: EMGSyncConfig = field(default_factory=EMGSyncConfig)
 
 
 # =============================================================================
