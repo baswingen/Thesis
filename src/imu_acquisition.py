@@ -50,29 +50,41 @@ from .arduino_connection import find_arduino_port
 # CONFIGURATION
 # =============================================================================
 
+class IMUType(Enum):
+    """Type of IMU sensor."""
+    BMI160_DUAL = "bmi160_dual"  # Dual BMI160 (requires Mahony filter)
+    BNO085_SINGLE = "bno085_single"  # Single BNO085 (built-in sensor fusion)
+
+
 @dataclass
 class IMUConfig:
-    """Configuration for dual IMU acquisition."""
+    """Configuration for IMU acquisition (supports BMI160 and BNO085)."""
+    
+    # IMU type
+    imu_type: IMUType = IMUType.BMI160_DUAL
     
     # Serial settings
     port: Optional[str] = None  # None = auto-detect
-    baud: int = 230400
+    baud: int = 230400  # 230400 for BMI160, 115200 for BNO085
     timeout: float = 0.25
     
-    # Scaling factors (depends on Arduino BMI160 configuration)
+    # Scaling factors (BMI160 only)
     accel_scale: float = 1.0 / 16384.0  # ±2g range
     gyro_scale: float = 1.0 / 131.2     # ±250°/s range
     
-    # Filter settings
+    # Filter settings (BMI160 only - BNO085 has built-in fusion)
     use_mahony: bool = True
     kp: float = 2.0  # Mahony proportional gain
     ki: float = 0.01  # Mahony integral gain
     adaptive_gains: bool = True
     
-    # Calibration
+    # Calibration (BMI160 only)
     gyro_still_threshold: float = 0.5  # rad/s
     accel_gate_min: float = 0.92  # g
     accel_gate_max: float = 1.08  # g
+    
+    # BNO085 calibration settings
+    bno085_calib_samples: int = 50  # Samples for reference orientation
     
     # Axis remapping (if needed)
     imu1_axis_map: Tuple[int, int, int] = (1, 2, 3)
@@ -91,7 +103,7 @@ class IMUConfig:
 
 @dataclass
 class RawSample:
-    """Raw sample from Arduino (integer values)."""
+    """Raw sample from Arduino (integer values for BMI160)."""
     seq: int
     t_us: int
     ax1: int
@@ -108,6 +120,16 @@ class RawSample:
     gy2: int
     gz2: int
     ok2: int
+
+
+@dataclass
+class QuaternionSample:
+    """Raw quaternion sample from BNO085."""
+    t_ms: int
+    qw: float
+    qx: float
+    qy: float
+    qz: float
 
 
 @dataclass
@@ -414,6 +436,38 @@ def remap_vec(v: np.ndarray, mapping: Tuple[int, int, int]) -> np.ndarray:
     return out
 
 
+def parse_bno085_line(line: str) -> Optional[QuaternionSample]:
+    """
+    Parse BNO085 CSV line: t_ms,qw,qx,qy,qz
+    
+    Returns:
+        QuaternionSample if valid, else None
+    """
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return None
+    
+    parts = line.split(",")
+    if len(parts) != 5:
+        return None
+    
+    try:
+        t_ms = int(parts[0])
+        qw = float(parts[1])
+        qx = float(parts[2])
+        qy = float(parts[3])
+        qz = float(parts[4])
+        
+        # Validate quaternion
+        q_norm = np.sqrt(qw*qw + qx*qx + qy*qy + qz*qz)
+        if q_norm < 0.1 or q_norm > 2.0:
+            return None
+        
+        return QuaternionSample(t_ms=t_ms, qw=qw, qx=qx, qy=qy, qz=qz)
+    except (ValueError, IndexError):
+        return None
+
+
 # =============================================================================
 # SERIAL CONNECTION
 # =============================================================================
@@ -424,19 +478,29 @@ def remap_vec(v: np.ndarray, mapping: Tuple[int, int, int]) -> np.ndarray:
 
 class IMUDevice:
     """
-    Main interface for dual BMI160 IMU acquisition.
+    Main interface for IMU acquisition (supports BMI160 and BNO085).
     
     Handles serial communication, data parsing, calibration, and orientation
-    estimation for two BMI160 IMUs connected via Arduino.
+    estimation for:
+    - Dual BMI160 IMUs (with Mahony filter)
+    - Single BNO085 IMU (built-in sensor fusion)
     
     Example:
         ```python
-        with IMUDevice() as imu:
+        # BMI160 (dual IMU)
+        config = IMUConfig(imu_type=IMUType.BMI160_DUAL)
+        with IMUDevice(config) as imu:
             imu.calibrate(samples=200)
-            
             for reading in imu.read_stream(max_samples=1000):
                 print(f"Euler1: {reading.euler1}")
                 print(f"Euler2: {reading.euler2}")
+        
+        # BNO085 (single IMU)
+        config = IMUConfig(imu_type=IMUType.BNO085_SINGLE, baud=115200)
+        with IMUDevice(config) as imu:
+            imu.calibrate()  # Captures reference orientation
+            for reading in imu.read_stream(max_samples=1000):
+                print(f"Euler1: {reading.euler1}")
         ```
     """
     
@@ -453,8 +517,11 @@ class IMUDevice:
         self.last_rx_time = 0.0
         self.t_prev = None
         
-        # Filters
-        if self.config.use_mahony:
+        # BNO085-specific: reference quaternion for relative orientation
+        self.q_reference_inv: Optional[np.ndarray] = None
+        
+        # Filters (BMI160 only)
+        if self.config.imu_type == IMUType.BMI160_DUAL and self.config.use_mahony:
             self.filter1 = MahonyIMU(
                 kp=self.config.kp,
                 ki=self.config.ki,
@@ -549,17 +616,29 @@ class IMUDevice:
     def calibrate(self, samples: int = 200, timeout: float = 30.0,
                   callback: Optional[Callable[[int, int], None]] = None) -> IMUCalibration:
         """
-        Calibrate gyroscope biases (IMUs must be stationary and flat).
+        Calibrate IMU sensors.
+        
+        For BMI160: Calibrates gyroscope biases (IMUs must be stationary and flat)
+        For BNO085: Captures reference orientation (device in known position)
         
         Args:
-            samples: Number of samples to collect
+            samples: Number of samples to collect (BMI160: 200, BNO085: 50)
             timeout: Timeout in seconds
             callback: Optional callback(current, total) for progress
         
         Returns:
             IMUCalibration object
         """
-        print(f"\nCalibrating ({samples} samples)...")
+        if self.config.imu_type == IMUType.BNO085_SINGLE:
+            return self._calibrate_bno085(samples=self.config.bno085_calib_samples, 
+                                         timeout=timeout, callback=callback)
+        else:
+            return self._calibrate_bmi160(samples=samples, timeout=timeout, callback=callback)
+    
+    def _calibrate_bmi160(self, samples: int, timeout: float,
+                         callback: Optional[Callable[[int, int], None]]) -> IMUCalibration:
+        """Calibrate BMI160 gyroscope biases."""
+        print(f"\nCalibrating BMI160 ({samples} samples)...")
         print("Keep IMUs FLAT and STILL!")
         
         g1_samples = []
@@ -615,12 +694,62 @@ class IMUDevice:
         print(self.calibration)
         return self.calibration
     
-    def _read_raw(self) -> Optional[Tuple[RawSample, float]]:
+    def _calibrate_bno085(self, samples: int, timeout: float,
+                         callback: Optional[Callable[[int, int], None]]) -> IMUCalibration:
+        """Capture BNO085 reference orientation."""
+        print(f"\nCalibrating BNO085 ({samples} samples)...")
+        print("Place device in reference position (e.g., flat on table)")
+        
+        quaternions = []
+        t0 = time.time()
+        
+        while len(quaternions) < samples:
+            if time.time() - t0 > timeout:
+                if len(quaternions) >= 10:
+                    print(f"\nTimeout - using {len(quaternions)} samples")
+                    break
+                raise TimeoutError(f"Calibration failed: only {len(quaternions)} samples")
+            
+            raw_reading = self._read_raw()
+            if raw_reading is None:
+                continue
+            
+            # For BNO085, _read_raw returns quaternion sample
+            q_sample, timestamp = raw_reading
+            q = np.array([q_sample.qw, q_sample.qx, q_sample.qy, q_sample.qz])
+            q = quat_norm(q)
+            quaternions.append(q)
+            
+            if callback:
+                callback(len(quaternions), samples)
+            elif len(quaternions) % 10 == 0:
+                print(f"  {len(quaternions)}/{samples}...", end='\r')
+        
+        print(f"\n✓ Reference captured ({len(quaternions)} samples)")
+        
+        # Average quaternions
+        q_avg = np.mean(quaternions, axis=0)
+        q_avg = quat_norm(q_avg)
+        self.q_reference_inv = quat_inv(q_avg)
+        
+        print(f"  Reference: [{q_avg[0]:.3f}, {q_avg[1]:.3f}, {q_avg[2]:.3f}, {q_avg[3]:.3f}]")
+        
+        # Create dummy calibration object
+        self.calibration = IMUCalibration(
+            bias1=np.zeros(3),
+            bias2=np.zeros(3),
+            samples=len(quaternions)
+        )
+        
+        return self.calibration
+    
+    def _read_raw(self):
         """
         Read one raw sample from serial.
         
         Returns:
-            (RawSample, timestamp) or None
+            For BMI160: (RawSample, timestamp) or None
+            For BNO085: (QuaternionSample, timestamp) or None
         """
         if not self.ser or not self.ser.is_open:
             return None
@@ -634,11 +763,14 @@ class IMUDevice:
             if not line or line.startswith("#"):
                 return None
             
-            sample = parse_line(line)
-            if sample is None:
-                return None
+            if self.config.imu_type == IMUType.BNO085_SINGLE:
+                sample = parse_bno085_line(line)
+            else:
+                sample = parse_line(line)
+                if sample and (sample.ok1 == 0 or sample.ok2 == 0):
+                    return None
             
-            if sample.ok1 == 0 or sample.ok2 == 0:
+            if sample is None:
                 return None
             
             self.last_rx_time = time.time()
@@ -664,8 +796,6 @@ class IMUDevice:
                 try:
                     ok = self.reconnect()
                 except Exception as e:
-                    # IMPORTANT: transient USB/COM disconnects can make reconnect fail briefly.
-                    # Do not crash the acquisition loop; back off and try again on next call.
                     print(f"⚠ Reconnect attempt failed: {e}")
                     time.sleep(self.config.reconnect_backoff)
                     return None
@@ -682,6 +812,46 @@ class IMUDevice:
         
         sample, timestamp = raw_result
         
+        # Handle BNO085 (quaternion-based)
+        if self.config.imu_type == IMUType.BNO085_SINGLE:
+            return self._process_bno085(sample, timestamp)
+        
+        # Handle BMI160 (gyro/accel-based)
+        return self._process_bmi160(sample, timestamp)
+    
+    def _process_bno085(self, sample: QuaternionSample, timestamp: float) -> IMUReading:
+        """Process BNO085 quaternion sample."""
+        # Normalize quaternion
+        q_raw = np.array([sample.qw, sample.qx, sample.qy, sample.qz])
+        q_raw = quat_norm(q_raw)
+        
+        # Apply reference calibration if available
+        if self.q_reference_inv is not None:
+            quat1 = quat_mul(self.q_reference_inv, q_raw)
+        else:
+            quat1 = q_raw
+        
+        euler1 = quat_to_euler(quat1)
+        
+        # BNO085 only has one IMU
+        return IMUReading(
+            timestamp=timestamp,
+            t_us=sample.t_ms * 1000,  # Convert ms to us
+            seq=0,  # BNO085 doesn't provide sequence number
+            gyro1=np.zeros(3),  # BNO085 doesn't output raw gyro
+            accel1=np.zeros(3),  # BNO085 doesn't output raw accel
+            gyro2=np.zeros(3),
+            accel2=np.zeros(3),
+            quat1=quat1,
+            euler1=euler1,
+            quat2=None,
+            euler2=None,
+            ok1=True,
+            ok2=False
+        )
+    
+    def _process_bmi160(self, sample: RawSample, timestamp: float) -> IMUReading:
+        """Process BMI160 raw sample."""
         # Convert to physical units
         gyro1 = np.array([sample.gx1, sample.gy1, sample.gz1]) * self.config.gyro_scale
         accel1 = np.array([sample.ax1, sample.ay1, sample.az1]) * self.config.accel_scale
