@@ -78,14 +78,15 @@ EMG_CONFIG = {
 IMU_CONFIG = {
     # Connection
     'port': None,  # Serial port, None = auto-detect
-    'baud': 230400,  # Baud rate
+    'baud': 115200,  # Baud rate (BNO085 RVC default)
+    'imu_type': 'bno085_dual_rvc',  # IMU mode (for metadata)
     
     # Calibration
-    'calibration_samples': 200,  # Number of samples for gyro bias calibration
+    'calibration_samples': 50,  # Reference samples (BNO085) / gyro bias samples (BMI160)
     'auto_calibrate_on_start': True,  # Calibrate automatically when starting
     
     # Filtering
-    'use_mahony': True,  # Use Mahony AHRS filter for orientation
+    'use_mahony': False,  # BMI160-only; BNO085 has built-in fusion
     'kp': 2.0,  # Mahony proportional gain
     'ki': 0.01,  # Mahony integral gain
     'adaptive_gains': True,  # Enable adaptive gain scheduling
@@ -414,9 +415,10 @@ def get_imu_config():
     Returns:
         IMUConfig object
     """
-    from src.imu_acquisition import IMUConfig
+    from src.imu_acquisition import IMUConfig, IMUType
     
     return IMUConfig(
+        imu_type=IMUType.BNO085_DUAL_RVC,
         port=IMU_CONFIG['port'],
         baud=IMU_CONFIG['baud'],
         accel_scale=IMU_CONFIG['accel_scale'],
@@ -425,6 +427,7 @@ def get_imu_config():
         kp=IMU_CONFIG['kp'],
         ki=IMU_CONFIG['ki'],
         adaptive_gains=IMU_CONFIG['adaptive_gains'],
+        bno085_calib_samples=IMU_CONFIG['calibration_samples'],
     )
 
 

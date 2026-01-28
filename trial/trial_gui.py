@@ -302,6 +302,17 @@ class TrialGUI:
         self.emg_rms_label = tk.Label(quality_frame, text="0.0", 
                                       font=('Arial', 9, 'bold'), fg='green')
         self.emg_rms_label.pack(side=tk.LEFT, padx=5)
+
+        # IMU health indicators
+        tk.Label(quality_frame, text="IMU1:", font=('Arial', 9)).pack(side=tk.LEFT, padx=15)
+        self.imu1_health_label = tk.Label(quality_frame, text="UNKNOWN",
+                                          font=('Arial', 9, 'bold'), fg='gray')
+        self.imu1_health_label.pack(side=tk.LEFT, padx=5)
+
+        tk.Label(quality_frame, text="IMU2:", font=('Arial', 9)).pack(side=tk.LEFT, padx=10)
+        self.imu2_health_label = tk.Label(quality_frame, text="UNKNOWN",
+                                          font=('Arial', 9, 'bold'), fg='gray')
+        self.imu2_health_label.pack(side=tk.LEFT, padx=5)
     
     def _handle_keypress(self, event):
         """Handle keyboard events."""
@@ -521,6 +532,29 @@ class TrialGUI:
         self.emg_rate_label.config(text=f"{emg_rate:.0f} Hz")
         self.imu_rate_label.config(text=f"{imu_rate:.0f} Hz")
         self.emg_rms_label.config(text=f"{emg_rms:.2f}")
+
+    def update_imu_health(self, imu1_online: bool, imu1_zero_data: bool,
+                          imu2_online: bool, imu2_zero_data: bool):
+        """
+        Update IMU health indicators.
+
+        - Online + no zero_data: OK (green)
+        - Online + zero_data: ZERO (orange)
+        - Offline: OFFLINE (red)
+        """
+        def _fmt(online: bool, zero_data: bool):
+            if not online:
+                return "OFFLINE", "red"
+            if zero_data:
+                return "ZERO", "#FF9800"
+            return "OK", "green"
+
+        t1, c1 = _fmt(bool(imu1_online), bool(imu1_zero_data))
+        t2, c2 = _fmt(bool(imu2_online), bool(imu2_zero_data))
+        if hasattr(self, "imu1_health_label"):
+            self.imu1_health_label.config(text=t1, fg=c1)
+        if hasattr(self, "imu2_health_label"):
+            self.imu2_health_label.config(text=t2, fg=c2)
     
     def clear_plots(self):
         """Clear all plot data buffers."""

@@ -50,7 +50,7 @@ from src.emg_processing import (
     EMGPreprocessor,
     calibrate_mvc_from_data
 )
-from src.imu_acquisition import IMUConfig
+from src.imu_acquisition import IMUConfig, IMUType
 
 # =============================================================================
 # CONFIGURATION
@@ -361,6 +361,7 @@ def main():
         ),
         imu=IMUSyncConfig(
             imu_config=IMUConfig(
+                imu_type=IMUType.BMI160_DUAL,
                 port=None,  # Auto-detect
                 baud=230400
             ),

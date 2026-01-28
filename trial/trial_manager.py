@@ -120,6 +120,8 @@ class TrialManager:
         self._pending_imu_plot = None  # (timestamps, accel, gyro)
         self._emg_plot_update_scheduled = False
         self._imu_plot_update_scheduled = False
+        self._pending_imu_health = None
+        self._imu_health_update_scheduled = False
 
         # Quit coordination
         # If quit is requested while recording/saving, we finish saving the current trial first.
@@ -677,14 +679,15 @@ class TrialManager:
             result['accel2'].append(sample.reading.accel2)
             result['gyro2'].append(sample.reading.gyro2)
             
-            if sample.quat1 is not None:
-                result['quat1'].append(sample.quat1)
-            if sample.quat2 is not None:
-                result['quat2'].append(sample.quat2)
-            if sample.euler1 is not None:
-                result['euler1'].append(sample.euler1)
-            if sample.euler2 is not None:
-                result['euler2'].append(sample.euler2)
+            # IMUSample stores the IMUReading in `sample.reading`
+            if sample.reading.quat1 is not None:
+                result['quat1'].append(sample.reading.quat1)
+            if sample.reading.quat2 is not None:
+                result['quat2'].append(sample.reading.quat2)
+            if sample.reading.euler1 is not None:
+                result['euler1'].append(sample.reading.euler1)
+            if sample.reading.euler2 is not None:
+                result['euler2'].append(sample.reading.euler2)
         
         # Convert to arrays
         for key in result:
@@ -801,6 +804,13 @@ class TrialManager:
                     self._imu_plot_update_scheduled = True
                     callback_id = self.gui.root.after(0, self._flush_imu_plot_update)
                     self.scheduled_callbacks.append(callback_id)
+
+                # Coalesce IMU health updates too (IMU1/IMU2 online/zero stream)
+                self._pending_imu_health = getattr(sample.reading, "health", None)
+                if not self._imu_health_update_scheduled:
+                    self._imu_health_update_scheduled = True
+                    callback_id = self.gui.root.after(0, self._flush_imu_health_update)
+                    self.scheduled_callbacks.append(callback_id)
             except Exception as e:
                 # GUI may be closed, ignore
                 pass
@@ -824,6 +834,24 @@ class TrialManager:
             return
         timestamps, accel, gyro = pending
         self._safe_update_imu_plot(timestamps, accel, gyro)
+
+    def _flush_imu_health_update(self):
+        """Run a coalesced IMU health update (main thread)."""
+        self._imu_health_update_scheduled = False
+        health = self._pending_imu_health
+        self._pending_imu_health = None
+        if health is None:
+            return
+        try:
+            if self.gui and hasattr(self.gui, "update_imu_health"):
+                self.gui.update_imu_health(
+                    imu1_online=getattr(health, "imu1_online", False),
+                    imu1_zero_data=getattr(health, "imu1_zero_data", False),
+                    imu2_online=getattr(health, "imu2_online", False),
+                    imu2_zero_data=getattr(health, "imu2_zero_data", False),
+                )
+        except Exception:
+            pass
     
     def _clear_trial_buffers(self):
         """Clear data buffers for new trial."""
@@ -921,6 +949,16 @@ class TrialManager:
             if self.state == TrialState.RECORDING:
                 self._update_trial_progress()
             self._update_signal_quality()
+
+            # If IMU stream stalls, update health labels to OFFLINE (even without new samples).
+            if self.gui and hasattr(self.gui, "update_imu_health"):
+                last_t = self.stats.get("last_imu_time", None)
+                if last_t is None:
+                    self.gui.update_imu_health(False, False, False, False)
+                else:
+                    now_t = time.perf_counter()
+                    if (now_t - float(last_t)) > 1.0:
+                        self.gui.update_imu_health(False, False, False, False)
         except Exception:
             # Never let periodic GUI update crash the app
             pass

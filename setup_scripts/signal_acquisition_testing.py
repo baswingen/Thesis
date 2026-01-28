@@ -62,6 +62,7 @@ from src import (
     IMUDevice,
     IMUConfig,
     IMUReading,
+    IMUType,
     EMGDevice
 )
 
@@ -1030,6 +1031,7 @@ def main():
     
     if ENABLE_IMU:
         imu_config = IMUConfig(
+            imu_type=IMUType.BMI160_DUAL,
             port=IMU_PORT,
             baud=IMU_BAUD
         )
