@@ -412,7 +412,7 @@ class BNO085UartRvcDevice:
             az1_ref=float(np.mean(az1_list)),
             yaw2_ref=circular_mean_deg(yaw2_list),
             pitch2_ref=circular_mean_deg(pitch2_list),
-            roll2_ref=circular_mean_deg(roll2_list)),
+            roll2_ref=circular_mean_deg(roll2_list),
             ax2_ref=float(np.mean(ax2_list)),
             ay2_ref=float(np.mean(ay2_list)),
             az2_ref=float(np.mean(az2_list)),
