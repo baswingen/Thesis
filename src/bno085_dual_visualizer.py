@@ -6,11 +6,11 @@ This is the "native" version of the former setup script:
 `setup_scripts/dual_BNO085_testing.py`.
 
 It uses `src.imu_acquisition.IMUDevice` with `IMUType.BNO085_DUAL_RVC` and
-renders two dice (sensor 1 + sensor 2) plus RGB axes.
+renders two dice (sensor 1 + sensor 2) plus RGB axes and acceleration vectors.
 
 Arduino CSV format (Adafruit BNO08x_RVC standard):
-  t_ms,s1_y,s1_p,s1_r,s2_y,s2_p,s2_r
-  where y=yaw, p=pitch, r=roll (degrees)
+  t_ms,s1_y,s1_p,s1_r,s1_ax,s1_ay,s1_az,s2_y,s2_p,s2_r,s2_ax,s2_ay,s2_az
+  where y=yaw, p=pitch, r=roll (degrees), ax/ay/az=acceleration (m/s²)
 """
 
 from __future__ import annotations
@@ -36,6 +36,10 @@ class VizConfig:
     dice_size: float = 1.2
     die_separation: float = 2.0
 
+    # Acceleration visualization
+    show_accel: bool = True
+    accel_scale: float = 0.1  # Scale factor: m/s² to visual units
+
     # Optional corrections (pass-through by default; see IMUConfig)
     flip_yaw: bool = False
     swap_pitch_roll: bool = False
@@ -51,6 +55,8 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--port", default="auto", help='Serial port device (or "auto")')
     p.add_argument("--baud", type=int, default=115200, help="Baud rate (default: 115200)")
     p.add_argument("--fps", type=int, default=120, help="Render FPS cap (default: 120)")
+    p.add_argument("--hide-accel", action="store_true", help="Hide acceleration arrows")
+    p.add_argument("--accel-scale", type=float, default=0.1, help="Acceleration arrow scale (default: 0.1)")
     p.add_argument("--flip-yaw", action="store_true", help="Flip yaw sign (mounting correction)")
     p.add_argument("--swap-pitch-roll", action="store_true", help="Swap pitch/roll (mounting correction)")
     p.add_argument("--disable-yaw", action="store_true", help="Zero yaw (show only pitch/roll)")
@@ -79,6 +85,8 @@ def main(cfg: Optional[VizConfig] = None) -> None:
             port=None if str(args.port).lower() == "auto" else str(args.port),
             baud=int(args.baud),
             fps=int(args.fps),
+            show_accel=not bool(args.hide_accel),
+            accel_scale=float(args.accel_scale),
             flip_yaw=bool(args.flip_yaw),
             swap_pitch_roll=bool(args.swap_pitch_roll),
             disable_yaw=bool(args.disable_yaw),
@@ -181,6 +189,19 @@ def main(cfg: Optional[VizConfig] = None) -> None:
     ay2 = arrow(pos=dice2.pos, axis=vector(0, cfg.axis_len, 0), color=color.green, shaftwidth=0.05)
     az2 = arrow(pos=dice2.pos, axis=vector(0, 0, cfg.axis_len), color=color.blue, shaftwidth=0.05)
 
+    # Acceleration arrows (thinner to distinguish from orientation axes)
+    if cfg.show_accel:
+        accel_x1 = arrow(pos=dice1.pos, axis=vector(0.1, 0, 0), color=color.red, shaftwidth=0.03)
+        accel_y1 = arrow(pos=dice1.pos, axis=vector(0, 0.1, 0), color=color.green, shaftwidth=0.03)
+        accel_z1 = arrow(pos=dice1.pos, axis=vector(0, 0, 0.1), color=color.blue, shaftwidth=0.03)
+
+        accel_x2 = arrow(pos=dice2.pos, axis=vector(0.1, 0, 0), color=color.red, shaftwidth=0.03)
+        accel_y2 = arrow(pos=dice2.pos, axis=vector(0, 0.1, 0), color=color.green, shaftwidth=0.03)
+        accel_z2 = arrow(pos=dice2.pos, axis=vector(0, 0, 0.1), color=color.blue, shaftwidth=0.03)
+    else:
+        accel_x1 = accel_y1 = accel_z1 = None
+        accel_x2 = accel_y2 = accel_z2 = None
+
     status = label(
         pos=vector(0, 2.5, 0),
         text="Connecting...",
@@ -188,9 +209,14 @@ def main(cfg: Optional[VizConfig] = None) -> None:
         height=16,
         color=color.white,
     )
+    
+    legend_text = "White=Sensor1 | Orange=Sensor2 | Axes: X=Red Y=Green Z=Blue"
+    if cfg.show_accel:
+        legend_text += " | Thick=Orientation Thin=Acceleration"
+    
     legend = label(
         pos=vector(0, -2.5, 0),
-        text="White=Sensor1 | Orange=Sensor2 | Axes: X=Red Y=Green Z=Blue",
+        text=legend_text,
         box=False,
         height=10,
         color=color.gray(0.7),
@@ -256,13 +282,31 @@ def main(cfg: Optional[VizConfig] = None) -> None:
             ay2.axis = y2 * cfg.axis_len
             az2.axis = z2 * cfg.axis_len
 
+            # Update acceleration arrows
+            if cfg.show_accel:
+                a1 = reading.accel1 * cfg.accel_scale
+                a2 = reading.accel2 * cfg.accel_scale
+                
+                accel_x1.axis = vector(float(a1[0]), 0, 0)
+                accel_y1.axis = vector(0, float(a1[1]), 0)
+                accel_z1.axis = vector(0, 0, float(a1[2]))
+                
+                accel_x2.axis = vector(float(a2[0]), 0, 0)
+                accel_y2.axis = vector(0, float(a2[1]), 0)
+                accel_z2.axis = vector(0, 0, float(a2[2]))
+
             if reading.euler1 is not None and reading.euler2 is not None:
                 r1, p1, y1d = reading.euler1
                 r2d, p2d, y2d = reading.euler2
+                
+                # Format acceleration values
+                a1x, a1y, a1z = reading.accel1
+                a2x, a2y, a2z = reading.accel2
+                
                 status.text = (
                     f"t={reading.t_us/1000.0:.0f} ms\n"
-                    f"Sensor 1: Y={y1d:+6.1f}° P={p1:+6.1f}° R={r1:+6.1f}°\n"
-                    f"Sensor 2: Y={y2d:+6.1f}° P={p2d:+6.1f}° R={r2d:+6.1f}°"
+                    f"Sensor 1: Y={y1d:+6.1f}° P={p1:+6.1f}° R={r1:+6.1f}° | A=[{a1x:+5.2f}, {a1y:+5.2f}, {a1z:+5.2f}] m/s²\n"
+                    f"Sensor 2: Y={y2d:+6.1f}° P={p2d:+6.1f}° R={r2d:+6.1f}° | A=[{a2x:+5.2f}, {a2y:+5.2f}, {a2z:+5.2f}] m/s²"
                 )
 
 

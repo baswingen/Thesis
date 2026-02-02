@@ -65,6 +65,7 @@ from src import (
     IMUType,
     EMGDevice
 )
+from src.prbs_sync import PRBSGenerator, SynchronizationEngine
 
 # =============================================================================
 # CONFIGURATION
@@ -125,6 +126,17 @@ EMG_PLOT_SCALE = 'auto'  # 'auto' or specific range like (-500, 500)
 # --------------
 VERBOSE = True  # Print detailed acquisition info
 SHOW_TIMING_STATS = True  # Display timing statistics
+
+# PRBS Synchronization Configuration
+# -----------------------------------
+ENABLE_PRBS_SYNC = True  # Enable PRBS-based continuous re-synchronization
+PRBS_INJECTION_RATE = 10.0  # Hz (PRBS markers per second)
+PRBS_SEQUENCE_LENGTH = 255  # bits (m-sequence period: 2^8 - 1)
+PRBS_CORRELATION_WINDOW = 5.0  # seconds (window for cross-correlation)
+PRBS_UPDATE_INTERVAL = 5.0  # seconds (how often to recompute sync offset)
+PRBS_DRIFT_WARNING_MS = 10.0  # milliseconds (drift warning threshold)
+PRBS_DRIFT_ERROR_MS = 50.0  # milliseconds (drift error threshold)
+PRBS_LOG_STATS = True  # Log drift statistics periodically
 
 # =============================================================================
 # SYNCHRONIZATION METHODOLOGY
@@ -188,6 +200,7 @@ class IMUData:
     timestamp: float  # Python time.time() - synchronized
     reading: IMUReading  # IMUReading object from src.imu_acquisition
     hardware_time: float  # Arduino microseconds converted to seconds
+    prbs_marker: float = 0.0  # PRBS synchronization marker (±1)
 
 @dataclass
 class EMGData:
@@ -196,6 +209,7 @@ class EMGData:
     pairs: np.ndarray  # Differential pair values [pair1, pair2, ...]
     sample_count: int  # Number of samples in this chunk
     counter: Optional[int] = None  # Sample counter from COUNTER channel (if available)
+    prbs_marker: float = 0.0  # PRBS synchronization marker (±1)
 
 
 # =============================================================================
@@ -279,7 +293,8 @@ class TimestampedBuffer:
 class IMUAcquisitionThread(threading.Thread):
     """Thread for continuous IMU data acquisition with hardware timestamp synchronization."""
     
-    def __init__(self, buffer: TimestampedBuffer, config: IMUConfig, start_event: threading.Event):
+    def __init__(self, buffer: TimestampedBuffer, config: IMUConfig, start_event: threading.Event,
+                 prbs_generator: Optional[PRBSGenerator] = None, sync_engine: Optional[SynchronizationEngine] = None):
         """
         Initialize IMU acquisition thread.
         
@@ -287,6 +302,8 @@ class IMUAcquisitionThread(threading.Thread):
             buffer: Shared buffer for storing data
             config: IMU configuration
             start_event: Event used to start acquisition simultaneously across devices
+            prbs_generator: Optional PRBS generator for synchronization markers
+            sync_engine: Optional synchronization engine for drift correction
         """
         super().__init__(name="IMU-Thread", daemon=True)
         self.buffer = buffer
@@ -301,6 +318,8 @@ class IMUAcquisitionThread(threading.Thread):
         self.start_time_hardware = None  # Arduino t_us when acquisition starts
         self.time_offset = None  # Offset to convert Arduino time to Python time
         self._last_t_us = None  # Track Arduino time to detect resets/reconnects
+        self.prbs_generator = prbs_generator
+        self.sync_engine = sync_engine
     
     def run(self):
         """Main thread loop."""
@@ -388,11 +407,23 @@ class IMUAcquisitionThread(threading.Thread):
                 hardware_time_sec = reading.t_us / 1_000_000.0  # Convert µs to seconds
                 synchronized_timestamp = hardware_time_sec + self.time_offset
                 
+                # Apply PRBS-based drift correction if available
+                if self.sync_engine is not None:
+                    synchronized_timestamp = self.sync_engine.get_corrected_timestamp(synchronized_timestamp)
+                
+                # PRBS synchronization: Inject marker and add to sync engine
+                prbs_marker = 0.0
+                if self.prbs_generator is not None:
+                    prbs_marker = self.prbs_generator.get_marker_at_time(synchronized_timestamp)
+                    if self.sync_engine is not None:
+                        self.sync_engine.add_imu_data(synchronized_timestamp, prbs_marker)
+                
                 # Create IMU data with synchronized timestamp
                 imu_data = IMUData(
                     timestamp=synchronized_timestamp,
                     reading=reading,
-                    hardware_time=hardware_time_sec
+                    hardware_time=hardware_time_sec,
+                    prbs_marker=prbs_marker
                 )
                 
                 self.buffer.append(synchronized_timestamp, imu_data)
@@ -442,7 +473,8 @@ class IMUAcquisitionThread(threading.Thread):
 class EMGAcquisitionThread(threading.Thread):
     """Thread for continuous EMG data acquisition with timestamp synchronization."""
     
-    def __init__(self, buffer: TimestampedBuffer, start_event: threading.Event, connection_type: str = 'usb'):
+    def __init__(self, buffer: TimestampedBuffer, start_event: threading.Event, connection_type: str = 'usb',
+                 prbs_generator: Optional[PRBSGenerator] = None, sync_engine: Optional[SynchronizationEngine] = None):
         """
         Initialize EMG acquisition thread.
         
@@ -450,6 +482,8 @@ class EMGAcquisitionThread(threading.Thread):
             buffer: Shared buffer for storing data
             start_event: Event used to start acquisition simultaneously across devices
             connection_type: Connection type for EMG device
+            prbs_generator: Optional PRBS generator for synchronization markers
+            sync_engine: Optional synchronization engine for drift correction
         """
         super().__init__(name="EMG-Thread", daemon=True)
         self.buffer = buffer
@@ -460,6 +494,8 @@ class EMGAcquisitionThread(threading.Thread):
         self.running = False
         self.error = None
         self.sample_count = 0
+        self.prbs_generator = prbs_generator
+        self.sync_engine = sync_engine
         self.chunk_count = 0
         self.start_time = None  # Python time when acquisition starts
         self.counter_channel_idx = None  # Index of COUNTER channel (if available)
@@ -696,12 +732,20 @@ class EMGAcquisitionThread(threading.Thread):
                         # Store mean value of chunk
                         pair_values.append(np.nanmean(diff))
                     
+                    # PRBS synchronization: Inject marker and add to sync engine
+                    prbs_marker = 0.0
+                    if self.prbs_generator is not None:
+                        prbs_marker = self.prbs_generator.get_marker_at_time(chunk_timestamp)
+                        if self.sync_engine is not None:
+                            self.sync_engine.add_emg_data(chunk_timestamp, prbs_marker)
+                    
                     # Store in buffer with synchronized timestamp
                     emg_data = EMGData(
                         timestamp=chunk_timestamp,
                         pairs=np.array(pair_values),
                         sample_count=n_samples,
-                        counter=counter_raw
+                        counter=counter_raw,
+                        prbs_marker=prbs_marker
                     )
                     self.buffer.append(chunk_timestamp, emg_data)
                     
@@ -759,16 +803,19 @@ class EMGAcquisitionThread(threading.Thread):
 class RealtimePlotter:
     """Real-time matplotlib visualization of synchronized IMU and EMG data."""
     
-    def __init__(self, imu_buffer: TimestampedBuffer, emg_buffer: TimestampedBuffer):
+    def __init__(self, imu_buffer: TimestampedBuffer, emg_buffer: TimestampedBuffer, 
+                 sync_engine: Optional[SynchronizationEngine] = None):
         """
         Initialize plotter.
         
         Args:
             imu_buffer: Buffer containing IMU data
             emg_buffer: Buffer containing EMG data
+            sync_engine: Optional synchronization engine for drift monitoring
         """
         self.imu_buffer = imu_buffer
         self.emg_buffer = emg_buffer
+        self.sync_engine = sync_engine
         self.start_time = None  # Will be set from first data timestamp
         
         # Create figure and subplots
@@ -777,6 +824,7 @@ class RealtimePlotter:
         # Animation
         self.anim = None
         self.frame_count = 0
+        self.last_sync_update = 0.0
     
     def _setup_figure(self):
         """Setup matplotlib figure and subplots."""
@@ -861,6 +909,21 @@ class RealtimePlotter:
     def update(self, frame):
         """Update plot with new data using synchronized time axis."""
         self.frame_count += 1
+        
+        # PRBS synchronization: Periodic sync update
+        if self.sync_engine is not None and self.sync_engine.should_update():
+            current_time = time.time()
+            if current_time - self.last_sync_update >= 1.0:  # Update at most once per second
+                self.sync_engine.update_sync()
+                self.last_sync_update = current_time
+                
+                # Log sync state if enabled
+                if PRBS_LOG_STATS:
+                    sync_state = self.sync_engine.get_sync_state()
+                    if sync_state is not None:
+                        print(f"\n[SYNC] Offset: {sync_state.offset_ms:.2f} ms, "
+                              f"Drift: {sync_state.drift_rate_ppm:.1f} ppm, "
+                              f"Confidence: {sync_state.confidence:.3f}")
         
         # Get recent data
         imu_data = self.imu_buffer.get_recent(PLOT_WINDOW_SECONDS)
@@ -957,16 +1020,37 @@ class RealtimePlotter:
             if self.ax_imu2:
                 self.ax_imu2.set_xlim(x_min, x_max)
         
-        # Update title with stats
+        # Update title with stats (including PRBS sync info if enabled)
         if SHOW_TIMING_STATS and self.frame_count % 10 == 0:
             if self.start_time is not None:
                 elapsed = CLOCK() - self.start_time
                 imu_count = len(self.imu_buffer)
                 emg_count = len(self.emg_buffer)
+                
+                # Base title
                 title = (f'Synchronized IMU-EMG Acquisition  |  '
                         f'Time: {elapsed:.1f}s  |  '
                         f'IMU: {imu_count} samples  |  '
                         f'EMG: {emg_count} chunks')
+                
+                # Add PRBS sync info if available
+                if self.sync_engine is not None and ENABLE_PRBS_SYNC:
+                    sync_state = self.sync_engine.get_sync_state()
+                    if sync_state is not None:
+                        offset = sync_state.offset_ms
+                        confidence = sync_state.confidence
+                        
+                        # Color code based on offset magnitude
+                        if abs(offset) < 5.0:
+                            sync_status = "✓"  # Good
+                        elif abs(offset) < 10.0:
+                            sync_status = "⚠"  # Warning
+                        else:
+                            sync_status = "✗"  # Error
+                        
+                        title += (f'  |  PRBS Sync: {sync_status} '
+                                f'Δt={offset:+.1f}ms (conf={confidence:.2f})')
+                
                 self.fig.suptitle(title, fontsize=14, fontweight='bold')
         
         return []
@@ -1025,6 +1109,36 @@ def main():
     # Synchronized start event (ensures both devices begin acquisition together)
     start_event = threading.Event()
     
+    # PRBS synchronization setup
+    prbs_generator = None
+    sync_engine = None
+    
+    if ENABLE_PRBS_SYNC and ENABLE_EMG and ENABLE_IMU:
+        print("\n" + "="*70)
+        print("PRBS SYNCHRONIZATION ENABLED")
+        print("="*70)
+        print(f"  Injection rate: {PRBS_INJECTION_RATE} Hz")
+        print(f"  Sequence length: {PRBS_SEQUENCE_LENGTH} bits")
+        print(f"  Update interval: {PRBS_UPDATE_INTERVAL} seconds")
+        print(f"  Drift warning threshold: {PRBS_DRIFT_WARNING_MS} ms")
+        print(f"  Drift error threshold: {PRBS_DRIFT_ERROR_MS} ms")
+        
+        prbs_generator = PRBSGenerator(
+            sequence_length=PRBS_SEQUENCE_LENGTH,
+            injection_rate_hz=PRBS_INJECTION_RATE
+        )
+        
+        sync_engine = SynchronizationEngine(
+            prbs_generator=prbs_generator,
+            correlation_window_s=PRBS_CORRELATION_WINDOW,
+            update_interval_s=PRBS_UPDATE_INTERVAL,
+            max_drift_ms=PRBS_DRIFT_ERROR_MS,
+            drift_warning_ms=PRBS_DRIFT_WARNING_MS
+        )
+        
+        print(f"\n{prbs_generator}")
+        print(f"{sync_engine}")
+    
     # Create acquisition threads
     imu_thread = None
     emg_thread = None
@@ -1035,10 +1149,12 @@ def main():
             port=IMU_PORT,
             baud=IMU_BAUD
         )
-        imu_thread = IMUAcquisitionThread(imu_buffer, imu_config, start_event)
+        imu_thread = IMUAcquisitionThread(imu_buffer, imu_config, start_event, 
+                                         prbs_generator, sync_engine)
     
     if ENABLE_EMG:
-        emg_thread = EMGAcquisitionThread(emg_buffer, start_event, EMG_CONNECTION_TYPE)
+        emg_thread = EMGAcquisitionThread(emg_buffer, start_event, EMG_CONNECTION_TYPE,
+                                         prbs_generator, sync_engine)
     
     # Start threads
     print("\n" + "="*70)
@@ -1088,7 +1204,7 @@ def main():
         time.sleep(1)
         
         # Create and start visualization
-        plotter = RealtimePlotter(imu_buffer, emg_buffer)
+        plotter = RealtimePlotter(imu_buffer, emg_buffer, sync_engine)
         
         # Start animation (blocking)
         plotter.start()

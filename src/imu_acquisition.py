@@ -86,6 +86,7 @@ class IMUConfig:
     
     # BNO085 calibration settings
     bno085_calib_samples: int = 50  # Samples for reference orientation (single or dual)
+    bno085_use_gravity_correction: bool = True  # Apply gravity-based pitch/roll correction
 
     # BNO085 RVC (yaw/pitch/roll) corrections (defaults = native pass-through)
     bno085_rvc_flip_yaw: bool = False
@@ -146,18 +147,24 @@ class QuaternionSample:
 @dataclass
 class DualEulerSample:
     """
-    Dual BNO085 sample using RVC yaw/pitch/roll CSV (degrees).
+    Dual BNO085 sample using RVC yaw/pitch/roll CSV (degrees) and acceleration (m/s²).
 
     Arduino CSV format:
-      t_ms,s1_y,s1_p,s1_r,s2_y,s2_p,s2_r
+      t_ms,s1_y,s1_p,s1_r,s1_ax,s1_ay,s1_az,s2_y,s2_p,s2_r,s2_ax,s2_ay,s2_az
     """
     t_ms: int
     s1_yaw: float
     s1_pitch: float
     s1_roll: float
+    s1_ax: float
+    s1_ay: float
+    s1_az: float
     s2_yaw: float
     s2_pitch: float
     s2_roll: float
+    s2_ax: float
+    s2_ay: float
+    s2_az: float
 
 
 @dataclass
@@ -205,12 +212,29 @@ class IMUCalibration:
     bias2: np.ndarray  # IMU2 bias in rad/s
     samples: int
     
+    # Gravity-based calibration (for BNO085)
+    gravity1: Optional[np.ndarray] = None  # Reference gravity vector sensor 1 [m/s²]
+    gravity2: Optional[np.ndarray] = None  # Reference gravity vector sensor 2 [m/s²]
+    gravity_pitch_correction1: float = 0.0  # Pitch correction from gravity (degrees)
+    gravity_roll_correction1: float = 0.0   # Roll correction from gravity (degrees)
+    gravity_pitch_correction2: float = 0.0  # Pitch correction from gravity (degrees)
+    gravity_roll_correction2: float = 0.0   # Roll correction from gravity (degrees)
+    
     def __str__(self):
         b1_deg = np.rad2deg(self.bias1)
         b2_deg = np.rad2deg(self.bias2)
-        return (f"Calibration ({self.samples} samples):\n"
-                f"  IMU1: [{b1_deg[0]:.2f}, {b1_deg[1]:.2f}, {b1_deg[2]:.2f}] deg/s\n"
-                f"  IMU2: [{b2_deg[0]:.2f}, {b2_deg[1]:.2f}, {b2_deg[2]:.2f}] deg/s")
+        result = (f"Calibration ({self.samples} samples):\n"
+                  f"  IMU1: [{b1_deg[0]:.2f}, {b1_deg[1]:.2f}, {b1_deg[2]:.2f}] deg/s\n"
+                  f"  IMU2: [{b2_deg[0]:.2f}, {b2_deg[1]:.2f}, {b2_deg[2]:.2f}] deg/s")
+        
+        if self.gravity1 is not None:
+            g1_mag = np.linalg.norm(self.gravity1)
+            g2_mag = np.linalg.norm(self.gravity2)
+            result += (f"\n  Gravity-based corrections:"
+                       f"\n    Sensor 1: |g|={g1_mag:.2f} m/s², pitch={self.gravity_pitch_correction1:+.1f}°, roll={self.gravity_roll_correction1:+.1f}°"
+                       f"\n    Sensor 2: |g|={g2_mag:.2f} m/s², pitch={self.gravity_pitch_correction2:+.1f}°, roll={self.gravity_roll_correction2:+.1f}°")
+        
+        return result
 
 
 @dataclass(frozen=True)
@@ -317,6 +341,40 @@ def euler_zyx_deg_to_quat(yaw_deg: float, pitch_deg: float, roll_deg: float) -> 
     z = cr * cp * sy - sr * sp * cy
 
     return quat_norm(np.array([w, x, y, z], dtype=float))
+
+
+def gravity_to_pitch_roll(gravity: np.ndarray) -> Tuple[float, float]:
+    """
+    Compute pitch and roll angles from gravity vector.
+    
+    When sensor is stationary, accelerometer measures only gravity.
+    This function computes the tilt angles that align the sensor with gravity.
+    
+    Args:
+        gravity: Gravity vector [gx, gy, gz] in m/s² (sensor frame)
+    
+    Returns:
+        (pitch, roll) in degrees
+        
+    Note:
+        - pitch: rotation about Y-axis (tilt forward/backward)
+        - roll: rotation about X-axis (tilt left/right)
+    """
+    gx, gy, gz = gravity
+    g_mag = np.linalg.norm(gravity)
+    
+    # Normalize if magnitude is reasonable (within 20% of standard gravity)
+    if 7.8 < g_mag < 11.8:  # 9.81 ± 20%
+        gx, gy, gz = gravity / g_mag
+    
+    # Compute pitch and roll from gravity direction
+    pitch_rad = np.arctan2(-gx, np.sqrt(gy**2 + gz**2))
+    roll_rad = np.arctan2(gy, gz)
+    
+    pitch_deg = np.rad2deg(pitch_rad)
+    roll_deg = np.rad2deg(roll_rad)
+    
+    return pitch_deg, roll_deg
 
 
 def _wrap_angle_deg(x: float) -> float:
@@ -563,7 +621,7 @@ def parse_bno085_line(line: str) -> Optional[QuaternionSample]:
 def parse_bno085_dual_rvc_line(line: str) -> Optional[DualEulerSample]:
     """
     Parse dual BNO085 RVC CSV line:
-      t_ms,s1_y,s1_p,s1_r,s2_y,s2_p,s2_r
+      t_ms,s1_y,s1_p,s1_r,s1_ax,s1_ay,s1_az,s2_y,s2_p,s2_r,s2_ax,s2_ay,s2_az
 
     Returns:
         DualEulerSample if valid, else None
@@ -573,7 +631,7 @@ def parse_bno085_dual_rvc_line(line: str) -> Optional[DualEulerSample]:
         return None
 
     parts = line.split(",")
-    if len(parts) != 7:
+    if len(parts) != 13:
         return None
 
     try:
@@ -581,13 +639,21 @@ def parse_bno085_dual_rvc_line(line: str) -> Optional[DualEulerSample]:
         s1_y = float(parts[1])
         s1_p = float(parts[2])
         s1_r = float(parts[3])
-        s2_y = float(parts[4])
-        s2_p = float(parts[5])
-        s2_r = float(parts[6])
+        s1_ax = float(parts[4])
+        s1_ay = float(parts[5])
+        s1_az = float(parts[6])
+        s2_y = float(parts[7])
+        s2_p = float(parts[8])
+        s2_r = float(parts[9])
+        s2_ax = float(parts[10])
+        s2_ay = float(parts[11])
+        s2_az = float(parts[12])
         return DualEulerSample(
             t_ms=t_ms,
             s1_yaw=s1_y, s1_pitch=s1_p, s1_roll=s1_r,
+            s1_ax=s1_ax, s1_ay=s1_ay, s1_az=s1_az,
             s2_yaw=s2_y, s2_pitch=s2_p, s2_roll=s2_r,
+            s2_ax=s2_ax, s2_ay=s2_ay, s2_az=s2_az,
         )
     except (ValueError, IndexError):
         return None
@@ -924,9 +990,10 @@ class IMUDevice:
 
     def _calibrate_bno085_dual_rvc(self, samples: int, timeout: float,
                                    callback: Optional[Callable[[int, int], None]]) -> IMUCalibration:
-        """Capture dual BNO085 reference orientation from RVC yaw/pitch/roll."""
+        """Capture dual BNO085 reference orientation from RVC yaw/pitch/roll with gravity-based correction."""
         print(f"\nCalibrating dual BNO085 (RVC) ({samples} samples)...")
-        print("Place both sensors in reference position (e.g., flat on table)")
+        print("Place both sensors FLAT and STILL on a level surface")
+        print("Gravity will be used to determine true pitch/roll")
 
         y1: List[float] = []
         p1: List[float] = []
@@ -934,6 +1001,15 @@ class IMUDevice:
         y2: List[float] = []
         p2: List[float] = []
         r2: List[float] = []
+        
+        # Collect acceleration samples
+        ax1: List[float] = []
+        ay1: List[float] = []
+        az1: List[float] = []
+        ax2: List[float] = []
+        ay2: List[float] = []
+        az2: List[float] = []
+        
         t0 = time.time()
 
         while len(y1) < samples:
@@ -959,6 +1035,10 @@ class IMUDevice:
 
             y1.append(s1_yaw); p1.append(s1_pitch); r1.append(s1_roll)
             y2.append(s2_yaw); p2.append(s2_pitch); r2.append(s2_roll)
+            
+            # Collect acceleration
+            ax1.append(sample.s1_ax); ay1.append(sample.s1_ay); az1.append(sample.s1_az)
+            ax2.append(sample.s2_ax); ay2.append(sample.s2_ay); az2.append(sample.s2_az)
 
             if callback:
                 callback(len(y1), samples)
@@ -968,18 +1048,48 @@ class IMUDevice:
         # Use circular mean (robust to wrap) for all angles
         ref1 = (_circular_mean_deg(y1), _circular_mean_deg(p1), _circular_mean_deg(r1))
         ref2 = (_circular_mean_deg(y2), _circular_mean_deg(p2), _circular_mean_deg(r2))
+        
+        # Compute average gravity vectors
+        gravity1 = np.array([np.mean(ax1), np.mean(ay1), np.mean(az1)])
+        gravity2 = np.array([np.mean(ax2), np.mean(ay2), np.mean(az2)])
+        
+        # Compute gravity-based pitch/roll
+        grav_pitch1, grav_roll1 = gravity_to_pitch_roll(gravity1)
+        grav_pitch2, grav_roll2 = gravity_to_pitch_roll(gravity2)
+        
+        # Compute corrections (difference between gravity-based and sensor-reported)
+        pitch_correction1 = grav_pitch1 - ref1[1]  # ref1[1] is pitch
+        roll_correction1 = grav_roll1 - ref1[2]    # ref1[2] is roll
+        pitch_correction2 = grav_pitch2 - ref2[1]
+        roll_correction2 = grav_roll2 - ref2[2]
+        
         self._bno085_rvc_ref1 = ref1
         self._bno085_rvc_ref2 = ref2
 
+        # Print comprehensive calibration info
         print(f"\n✓ Reference captured ({len(y1)} samples)")
-        print(f"  Ref1 (Y,P,R): [{ref1[0]:+.1f}, {ref1[1]:+.1f}, {ref1[2]:+.1f}] deg")
-        print(f"  Ref2 (Y,P,R): [{ref2[0]:+.1f}, {ref2[1]:+.1f}, {ref2[2]:+.1f}] deg")
+        print(f"  Sensor 1:")
+        print(f"    Orientation (Y,P,R): [{ref1[0]:+.1f}, {ref1[1]:+.1f}, {ref1[2]:+.1f}] deg")
+        print(f"    Gravity vector: [{gravity1[0]:+.2f}, {gravity1[1]:+.2f}, {gravity1[2]:+.2f}] m/s² (|g|={np.linalg.norm(gravity1):.2f})")
+        print(f"    Gravity-based tilt: pitch={grav_pitch1:+.1f}°, roll={grav_roll1:+.1f}°")
+        print(f"    Corrections: pitch={pitch_correction1:+.1f}°, roll={roll_correction1:+.1f}°")
+        print(f"  Sensor 2:")
+        print(f"    Orientation (Y,P,R): [{ref2[0]:+.1f}, {ref2[1]:+.1f}, {ref2[2]:+.1f}] deg")
+        print(f"    Gravity vector: [{gravity2[0]:+.2f}, {gravity2[1]:+.2f}, {gravity2[2]:+.2f}] m/s² (|g|={np.linalg.norm(gravity2):.2f})")
+        print(f"    Gravity-based tilt: pitch={grav_pitch2:+.1f}°, roll={grav_roll2:+.1f}°")
+        print(f"    Corrections: pitch={pitch_correction2:+.1f}°, roll={roll_correction2:+.1f}°")
 
-        # Create dummy calibration object (kept for API compatibility)
+        # Create calibration object with gravity data
         self.calibration = IMUCalibration(
             bias1=np.zeros(3),
             bias2=np.zeros(3),
-            samples=len(y1)
+            samples=len(y1),
+            gravity1=gravity1,
+            gravity2=gravity2,
+            gravity_pitch_correction1=pitch_correction1,
+            gravity_roll_correction1=roll_correction1,
+            gravity_pitch_correction2=pitch_correction2,
+            gravity_roll_correction2=roll_correction2,
         )
         return self.calibration
     
@@ -1129,9 +1239,15 @@ class IMUDevice:
             sample.s2_yaw, sample.s2_pitch, sample.s2_roll
         )
 
+        # Extract acceleration data (in m/s² from BNO085)
+        accel1 = np.array([sample.s1_ax, sample.s1_ay, sample.s1_az])
+        accel2 = np.array([sample.s2_ax, sample.s2_ay, sample.s2_az])
+
         # Health: detect literal all-zero stream BEFORE any reference subtraction.
-        imu1_all_zero = (s1_yaw == 0.0 and s1_pitch == 0.0 and s1_roll == 0.0)
-        imu2_all_zero = (s2_yaw == 0.0 and s2_pitch == 0.0 and s2_roll == 0.0)
+        imu1_all_zero = (s1_yaw == 0.0 and s1_pitch == 0.0 and s1_roll == 0.0 and 
+                         sample.s1_ax == 0.0 and sample.s1_ay == 0.0 and sample.s1_az == 0.0)
+        imu2_all_zero = (s2_yaw == 0.0 and s2_pitch == 0.0 and s2_roll == 0.0 and
+                         sample.s2_ax == 0.0 and sample.s2_ay == 0.0 and sample.s2_az == 0.0)
         health = self._update_health(imu1_all_zero=imu1_all_zero, imu2_all_zero=imu2_all_zero, ok1=True, ok2=True)
 
         # Apply reference offsets if available (wrap after subtraction)
@@ -1144,6 +1260,13 @@ class IMUDevice:
             s2_yaw = _wrap_angle_deg(s2_yaw - ref2_y)
             s2_pitch = _wrap_angle_deg(s2_pitch - ref2_p)
             s2_roll = _wrap_angle_deg(s2_roll - ref2_r)
+            
+            # Apply gravity-based corrections if enabled and available
+            if self.config.bno085_use_gravity_correction and self.calibration:
+                s1_pitch += self.calibration.gravity_pitch_correction1
+                s1_roll += self.calibration.gravity_roll_correction1
+                s2_pitch += self.calibration.gravity_pitch_correction2
+                s2_roll += self.calibration.gravity_roll_correction2
 
         # Provide quaternions as well for consistency with the rest of the codebase
         q1 = euler_zyx_deg_to_quat(s1_yaw, s1_pitch, s1_roll)
@@ -1158,9 +1281,9 @@ class IMUDevice:
             t_us=sample.t_ms * 1000,  # convert ms to us for sync pipeline
             seq=0,
             gyro1=np.zeros(3),
-            accel1=np.zeros(3),
+            accel1=accel1,
             gyro2=np.zeros(3),
-            accel2=np.zeros(3),
+            accel2=accel2,
             quat1=q1,
             euler1=euler1,
             quat2=q2,
