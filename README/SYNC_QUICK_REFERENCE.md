@@ -190,6 +190,54 @@ To verify synchronization works:
 
 Good sync = smooth, aligned plots with consistent timing.
 
+## PRBS Synchronization (NEW!)
+
+For **extended recordings** (>10 minutes), enable PRBS-based drift correction:
+
+```python
+# In signal_acquisition_testing.py
+ENABLE_PRBS_SYNC = True  # Continuous drift correction
+```
+
+### How PRBS Works
+
+1. **Inject markers** at 10 Hz into both streams
+2. **Cross-correlate** every 5 seconds to detect drift
+3. **Auto-correct** timestamps in real-time
+4. **Monitor** drift in visualization title
+
+### PRBS Timing Accuracy
+
+| Duration | Without PRBS | With PRBS |
+|----------|-------------|-----------|
+| 10 minutes | 1-5 ms | <2 ms |
+| 2 hours | 50-150 ms | <5 ms |
+
+### When to Use PRBS
+
+✅ Use for recordings > 10 minutes  
+✅ Use for critical timing accuracy  
+✅ Use when analyzing temporal relationships  
+❌ Not needed for short tests (<5 minutes)  
+❌ Adds ~1% CPU overhead
+
+### Monitoring PRBS Sync
+
+Watch the visualization title:
+```
+PRBS Sync: ✓ Δt=+2.3ms (conf=0.89)  ← Good sync
+PRBS Sync: ⚠ Δt=+12.1ms (conf=0.85)  ← Warning
+PRBS Sync: ✗ Δt=+51.2ms (conf=0.45)  ← Error
+```
+
+### Validation
+
+Run validation tests:
+```bash
+python setup_scripts/prbs_sync_validation.py
+```
+
 ## For More Details
 
-See `SYNCHRONIZATION_EXPLAINED.md` for in-depth technical explanation.
+- `PRBS_SYNCHRONIZATION.md` - Complete PRBS theory and usage
+- `SYNCHRONIZATION_EXPLAINED.md` - Baseline sync explanation

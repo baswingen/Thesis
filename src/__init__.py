@@ -26,20 +26,25 @@ from .emg_visualization import (
     quick_plot_emg
 )
 
-# Import main IMU acquisition interface (dual BMI160 with ASCII protocol)
+# Import main IMU acquisition interface (supports BMI160 and BNO085)
 from .imu_acquisition import (
     IMUDevice, 
     acquire_imu_data,
     IMUReading,
+    IMUHealth,
     IMUCalibration,
     IMUConfig,
+    IMUType,
     MahonyIMU,
     RawSample,
+    QuaternionSample,
+    DualEulerSample,
     quat_mul,
     quat_conj,
     quat_norm,
     quat_inv,
     quat_to_euler,
+    euler_zyx_deg_to_quat,
     rotate_vec_by_quat
 )
 
@@ -82,18 +87,22 @@ __all__ = [
     'DualIMU',  # Alias for compatibility
     'acquire_imu_data',
     'IMUReading',
+    'IMUHealth',
     'IMUCalibration',
     'IMUConfig',
+    'IMUType',
     'MahonyIMU',
     'RawSample',
+    'QuaternionSample',
+    'DualEulerSample',
     # Quaternion math
     'quat_mul',
     'quat_conj',
     'quat_norm',
     'quat_inv',
     'quat_to_euler',
-    'rotate_vec_by_quat'
-    ,
+    'euler_zyx_deg_to_quat',
+    'rotate_vec_by_quat',
     # Synchronized acquisition
     'SynchronizedAcquisition',
     'SyncConfig',

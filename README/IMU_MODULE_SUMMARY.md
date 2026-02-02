@@ -2,7 +2,14 @@
 
 ## Overview
 
-A native Python module for acquiring data from BMI160 dual IMU sensors has been successfully added to the `src/` directory. This module provides the same functionality as `scripts/IMU_testing.py` but in a reusable, well-structured format.
+A native Python module for IMU acquisition lives in `src/imu_acquisition.py`.
+
+It now supports:
+- **Dual BMI160** (ASCII protocol + Mahony)
+- **Single BNO085** (quaternion CSV)
+- **Dual BNO085 (RVC)** (yaw/pitch/roll CSV) — this is the **primary/default IMU setup** for the program.
+
+The VPython visualizer for dual BNO085 is now a native module at `src/bno085_dual_visualizer.py` (with a backward-compatible launcher kept in `setup_scripts/dual_BNO085_testing.py`).
 
 ## Files Created
 
@@ -10,7 +17,7 @@ A native Python module for acquiring data from BMI160 dual IMU sensors has been 
 Main module containing:
 - **Classes:**
   - `IMUDevice`: High-level interface for dual IMU sensors
-  - `MadgwickIMU`: Madgwick AHRS filter for orientation estimation
+  - `MahonyIMU`: Mahony AHRS filter for BMI160 orientation estimation
   - `IMUReading`: Data structure for IMU samples
   - `IMUCalibration`: Data structure for calibration data
 

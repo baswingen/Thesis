@@ -1,0 +1,123 @@
+# Cursor AI Rules for Thesis Project
+
+## Project Context
+This is a Master Thesis project involving:
+- EMG (electromyography) signal acquisition using TMSi Porti7 devices
+- IMU (inertial measurement unit) data collection using dual BMI160 or BNO085 sensors via Arduino
+- Signal synchronization between EMG and IMU data streams
+- Signal preprocessing (filtering, envelope extraction, normalization)
+- Machine learning model development (PyTorch/TensorFlow/Keras)
+- Trial data management with HDF5 storage
+
+## Code Style & Standards
+- Follow PEP 8 Python style guidelines
+- Use type hints where appropriate (Python 3.8+)
+- Write docstrings for all functions and classes (Google or NumPy style)
+- Keep functions focused and single-purpose
+- Use meaningful variable names, especially for signal processing (e.g., `emg_filtered`, `imu_accel`, `sample_rate`)
+
+## Software Engineering Standards
+- **Maintainability**: Write code that is easy to understand, modify, and extend
+- **SOLID Principles**: Follow Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, and Dependency Inversion principles
+- **DRY (Don't Repeat Yourself)**: Eliminate code duplication through functions, classes, and modules
+- **Separation of Concerns**: Separate business logic, data access, and presentation layers
+- **Abstraction**: Use appropriate levels of abstraction to hide implementation details
+- **Error Handling**: Implement comprehensive error handling with specific exception types, proper error messages, and graceful degradation
+- **Resource Management**: Always use context managers (`with` statements) for file handles, hardware connections, and other resources
+- **Logging**: Use proper logging instead of print statements for debugging and monitoring
+- **Code Reusability**: Design functions and classes to be reusable across different contexts
+- **Testing**: Write testable code with clear interfaces, minimal side effects, and dependency injection where appropriate
+- **Performance**: Consider computational efficiency, especially for signal processing operations (vectorization, avoiding unnecessary copies)
+- **Code Review Readiness**: Write code as if it will be reviewed by others - clear, well-documented, and following best practices
+
+## Project Structure
+- `src/` - Main source code modules
+- `trial/` - Trial management and data collection
+- `tests/` - Unit tests and examples
+- `setup_scripts/` - Testing and setup utilities
+- `database/` - Participant data (excluded from AI context, contains sensitive data)
+- `tmsi-python-interface/` - Third-party TMSi SDK wrapper
+
+## Important Guidelines
+
+### File Creation & Token Efficiency
+- **NEVER create files unless explicitly requested by the user**
+- Do NOT create documentation files (README, markdown guides, etc.) unless explicitly asked
+- Do NOT create configuration files unless explicitly requested
+- Do NOT create example files, test files, or any other files unless the user specifically mentions them
+- Focus only on the exact task requested - no additional "helpful" additions
+- When in doubt, ask before creating any new files
+- This rule applies to all AI agents and sessions
+
+### Signal Processing
+- Always preserve timestamps when processing signals
+- Maintain sample rate consistency across operations
+- Document filter parameters (cutoff frequencies, filter types)
+- Use HDF5 for efficient data storage and retrieval
+- Include metadata in all data files
+
+### Hardware Integration
+- Handle serial communication errors gracefully (Arduino disconnections)
+- Implement proper error handling for TMSi device initialization
+- Include timeout mechanisms for hardware operations
+- Log hardware events for debugging
+
+### Data Privacy
+- Never include participant data in code examples
+- Database folder is excluded from AI context
+- Use dummy/test data for examples
+- Respect data anonymization requirements
+
+### Testing
+- Create test scripts in `tests/` directory
+- Use example data generators for testing signal processing
+- Test hardware connections separately from signal processing
+- Include edge cases (empty data, missing channels, etc.)
+
+### Documentation
+- Update README files when adding new features
+- Document API changes in module docstrings
+- Include usage examples in docstrings
+- Keep synchronization documentation up to date
+
+## Common Patterns
+
+### Signal Acquisition
+```python
+# Always use context managers for hardware resources
+with EMGAcquisition(device_id) as emg:
+    data = emg.read_samples(num_samples)
+```
+
+### Data Storage
+```python
+# Use HDF5 with proper metadata
+with h5py.File(path, 'w') as f:
+    f.create_dataset('emg/raw', data=emg_data)
+    f['emg'].attrs['sample_rate'] = sample_rate
+```
+
+### Error Handling
+```python
+# Handle hardware errors gracefully
+try:
+    imu_data = imu.read()
+except SerialException as e:
+    logger.error(f"IMU connection lost: {e}")
+    # Implement reconnection logic
+```
+
+## Dependencies
+- Python 3.8-3.12 (3.12 recommended)
+- PyTorch >= 2.0.0, TensorFlow >= 2.15.0, Keras >= 3.0.0
+- NumPy < 2.0 (TensorFlow requirement)
+- h5py for data storage
+- pyserial for Arduino communication
+
+## When Writing Code
+- Prefer existing modules in `src/` over creating new ones
+- Check `tests/` for usage examples before implementing
+- Maintain backward compatibility with existing data formats
+- Consider synchronization requirements when modifying acquisition code
+- Test with dummy data before using real hardware
+- **Suggest file system restructuring when scripts become too complex**: If a file exceeds ~500 lines, has multiple distinct responsibilities, or becomes hard to navigate, suggest splitting it into separate modules following the project structure (e.g., move signal processing to `src/`, utilities to appropriate submodules)

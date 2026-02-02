@@ -50,29 +50,53 @@ from .arduino_connection import find_arduino_port
 # CONFIGURATION
 # =============================================================================
 
+class IMUType(Enum):
+    """Type of IMU sensor."""
+    BMI160_DUAL = "bmi160_dual"  # Dual BMI160 (requires Mahony filter)
+    BNO085_SINGLE = "bno085_single"  # Single BNO085 (built-in sensor fusion)
+    BNO085_DUAL_RVC = "bno085_dual_rvc"  # Dual BNO085 via Arduino (RVC yaw/pitch/roll CSV)
+
+
 @dataclass
 class IMUConfig:
-    """Configuration for dual IMU acquisition."""
+    """Configuration for IMU acquisition (supports BMI160 and BNO085)."""
+    
+    # IMU type
+    imu_type: IMUType = IMUType.BNO085_DUAL_RVC
     
     # Serial settings
     port: Optional[str] = None  # None = auto-detect
-    baud: int = 230400
+    baud: int = 115200  # 230400 for BMI160, 115200 for BNO085
     timeout: float = 0.25
     
-    # Scaling factors (depends on Arduino BMI160 configuration)
+    # Scaling factors (BMI160 only)
     accel_scale: float = 1.0 / 16384.0  # ±2g range
     gyro_scale: float = 1.0 / 131.2     # ±250°/s range
     
-    # Filter settings
+    # Filter settings (BMI160 only - BNO085 has built-in fusion)
     use_mahony: bool = True
     kp: float = 2.0  # Mahony proportional gain
     ki: float = 0.01  # Mahony integral gain
     adaptive_gains: bool = True
     
-    # Calibration
+    # Calibration (BMI160 only)
     gyro_still_threshold: float = 0.5  # rad/s
     accel_gate_min: float = 0.92  # g
     accel_gate_max: float = 1.08  # g
+    
+    # BNO085 calibration settings
+    bno085_calib_samples: int = 50  # Samples for reference orientation (single or dual)
+    bno085_use_gravity_correction: bool = True  # Apply gravity-based pitch/roll correction
+
+    # BNO085 RVC (yaw/pitch/roll) corrections (defaults = native pass-through)
+    bno085_rvc_flip_yaw: bool = False
+    bno085_rvc_swap_pitch_roll: bool = False
+    bno085_rvc_disable_yaw: bool = False
+
+    # Health monitoring
+    # - "online": we are receiving samples recently and device reports ok (when available)
+    # - "zero_data": sensor appears to be streaming literal zeros for too long
+    health_zero_streak_threshold: int = 50  # consecutive all-zero samples to flag zero_data
     
     # Axis remapping (if needed)
     imu1_axis_map: Tuple[int, int, int] = (1, 2, 3)
@@ -91,7 +115,7 @@ class IMUConfig:
 
 @dataclass
 class RawSample:
-    """Raw sample from Arduino (integer values)."""
+    """Raw sample from Arduino (integer values for BMI160)."""
     seq: int
     t_us: int
     ax1: int
@@ -108,6 +132,39 @@ class RawSample:
     gy2: int
     gz2: int
     ok2: int
+
+
+@dataclass
+class QuaternionSample:
+    """Raw quaternion sample from BNO085."""
+    t_ms: int
+    qw: float
+    qx: float
+    qy: float
+    qz: float
+
+
+@dataclass
+class DualEulerSample:
+    """
+    Dual BNO085 sample using RVC yaw/pitch/roll CSV (degrees) and acceleration (m/s²).
+
+    Arduino CSV format:
+      t_ms,s1_y,s1_p,s1_r,s1_ax,s1_ay,s1_az,s2_y,s2_p,s2_r,s2_ax,s2_ay,s2_az
+    """
+    t_ms: int
+    s1_yaw: float
+    s1_pitch: float
+    s1_roll: float
+    s1_ax: float
+    s1_ay: float
+    s1_az: float
+    s2_yaw: float
+    s2_pitch: float
+    s2_roll: float
+    s2_ax: float
+    s2_ay: float
+    s2_az: float
 
 
 @dataclass
@@ -138,6 +195,9 @@ class IMUReading:
     # Status
     ok1: bool = True
     ok2: bool = True
+
+    # Health (optional; populated by IMUDevice)
+    health: Optional["IMUHealth"] = None
     
     @property
     def timestamp_ms(self) -> float:
@@ -152,12 +212,46 @@ class IMUCalibration:
     bias2: np.ndarray  # IMU2 bias in rad/s
     samples: int
     
+    # Gravity-based calibration (for BNO085)
+    gravity1: Optional[np.ndarray] = None  # Reference gravity vector sensor 1 [m/s²]
+    gravity2: Optional[np.ndarray] = None  # Reference gravity vector sensor 2 [m/s²]
+    gravity_pitch_correction1: float = 0.0  # Pitch correction from gravity (degrees)
+    gravity_roll_correction1: float = 0.0   # Roll correction from gravity (degrees)
+    gravity_pitch_correction2: float = 0.0  # Pitch correction from gravity (degrees)
+    gravity_roll_correction2: float = 0.0   # Roll correction from gravity (degrees)
+    
     def __str__(self):
         b1_deg = np.rad2deg(self.bias1)
         b2_deg = np.rad2deg(self.bias2)
-        return (f"Calibration ({self.samples} samples):\n"
-                f"  IMU1: [{b1_deg[0]:.2f}, {b1_deg[1]:.2f}, {b1_deg[2]:.2f}] deg/s\n"
-                f"  IMU2: [{b2_deg[0]:.2f}, {b2_deg[1]:.2f}, {b2_deg[2]:.2f}] deg/s")
+        result = (f"Calibration ({self.samples} samples):\n"
+                  f"  IMU1: [{b1_deg[0]:.2f}, {b1_deg[1]:.2f}, {b1_deg[2]:.2f}] deg/s\n"
+                  f"  IMU2: [{b2_deg[0]:.2f}, {b2_deg[1]:.2f}, {b2_deg[2]:.2f}] deg/s")
+        
+        if self.gravity1 is not None:
+            g1_mag = np.linalg.norm(self.gravity1)
+            g2_mag = np.linalg.norm(self.gravity2)
+            result += (f"\n  Gravity-based corrections:"
+                       f"\n    Sensor 1: |g|={g1_mag:.2f} m/s², pitch={self.gravity_pitch_correction1:+.1f}°, roll={self.gravity_roll_correction1:+.1f}°"
+                       f"\n    Sensor 2: |g|={g2_mag:.2f} m/s², pitch={self.gravity_pitch_correction2:+.1f}°, roll={self.gravity_roll_correction2:+.1f}°")
+        
+        return result
+
+
+@dataclass(frozen=True)
+class IMUHealth:
+    """
+    Simple IMU health snapshot.
+
+    - `imu*_online`: receiving data recently (connection not stale) AND ok flag (if provided)
+    - `imu*_zero_data`: suspicious "all fields exactly zero" stream lasting long enough
+    """
+    imu1_online: bool
+    imu2_online: bool
+    imu1_zero_data: bool
+    imu2_zero_data: bool
+    imu1_zero_streak: int
+    imu2_zero_streak: int
+    rx_age_s: float
 
 
 # =============================================================================
@@ -222,6 +316,84 @@ def quat_to_euler(q: np.ndarray) -> Tuple[float, float, float]:
     yaw = np.arctan2(siny_cosp, cosy_cosp)
     
     return np.degrees(roll), np.degrees(pitch), np.degrees(yaw)
+
+
+def euler_zyx_deg_to_quat(yaw_deg: float, pitch_deg: float, roll_deg: float) -> np.ndarray:
+    """
+    Convert Euler angles (Yaw-Pitch-Roll / Z-Y-X) in degrees to quaternion [w, x, y, z].
+
+    Convention: q = qz(yaw) * qy(pitch) * qx(roll)
+    """
+    yaw = np.deg2rad(float(yaw_deg))
+    pitch = np.deg2rad(float(pitch_deg))
+    roll = np.deg2rad(float(roll_deg))
+
+    cy = float(np.cos(yaw * 0.5))
+    sy = float(np.sin(yaw * 0.5))
+    cp = float(np.cos(pitch * 0.5))
+    sp = float(np.sin(pitch * 0.5))
+    cr = float(np.cos(roll * 0.5))
+    sr = float(np.sin(roll * 0.5))
+
+    w = cr * cp * cy + sr * sp * sy
+    x = sr * cp * cy - cr * sp * sy
+    y = cr * sp * cy + sr * cp * sy
+    z = cr * cp * sy - sr * sp * cy
+
+    return quat_norm(np.array([w, x, y, z], dtype=float))
+
+
+def gravity_to_pitch_roll(gravity: np.ndarray) -> Tuple[float, float]:
+    """
+    Compute pitch and roll angles from gravity vector.
+    
+    When sensor is stationary, accelerometer measures only gravity.
+    This function computes the tilt angles that align the sensor with gravity.
+    
+    Args:
+        gravity: Gravity vector [gx, gy, gz] in m/s² (sensor frame)
+    
+    Returns:
+        (pitch, roll) in degrees
+        
+    Note:
+        - pitch: rotation about Y-axis (tilt forward/backward)
+        - roll: rotation about X-axis (tilt left/right)
+    """
+    gx, gy, gz = gravity
+    g_mag = np.linalg.norm(gravity)
+    
+    # Normalize if magnitude is reasonable (within 20% of standard gravity)
+    if 7.8 < g_mag < 11.8:  # 9.81 ± 20%
+        gx, gy, gz = gravity / g_mag
+    
+    # Compute pitch and roll from gravity direction
+    pitch_rad = np.arctan2(-gx, np.sqrt(gy**2 + gz**2))
+    roll_rad = np.arctan2(gy, gz)
+    
+    pitch_deg = np.rad2deg(pitch_rad)
+    roll_deg = np.rad2deg(roll_rad)
+    
+    return pitch_deg, roll_deg
+
+
+def _wrap_angle_deg(x: float) -> float:
+    """Wrap degrees to [-180, 180)."""
+    v = (float(x) + 180.0) % 360.0 - 180.0
+    # ensure -180 maps to -180, not +180
+    if v == 180.0:
+        v = -180.0
+    return v
+
+
+def _circular_mean_deg(values: List[float]) -> float:
+    """Circular mean for degrees, result in [-180, 180)."""
+    if not values:
+        return 0.0
+    ang = np.deg2rad(np.array(values, dtype=float))
+    s = float(np.mean(np.sin(ang)))
+    c = float(np.mean(np.cos(ang)))
+    return _wrap_angle_deg(np.rad2deg(np.arctan2(s, c)))
 
 
 # =============================================================================
@@ -414,6 +586,79 @@ def remap_vec(v: np.ndarray, mapping: Tuple[int, int, int]) -> np.ndarray:
     return out
 
 
+def parse_bno085_line(line: str) -> Optional[QuaternionSample]:
+    """
+    Parse BNO085 CSV line: t_ms,qw,qx,qy,qz
+    
+    Returns:
+        QuaternionSample if valid, else None
+    """
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return None
+    
+    parts = line.split(",")
+    if len(parts) != 5:
+        return None
+    
+    try:
+        t_ms = int(parts[0])
+        qw = float(parts[1])
+        qx = float(parts[2])
+        qy = float(parts[3])
+        qz = float(parts[4])
+        
+        # Validate quaternion
+        q_norm = np.sqrt(qw*qw + qx*qx + qy*qy + qz*qz)
+        if q_norm < 0.1 or q_norm > 2.0:
+            return None
+        
+        return QuaternionSample(t_ms=t_ms, qw=qw, qx=qx, qy=qy, qz=qz)
+    except (ValueError, IndexError):
+        return None
+
+
+def parse_bno085_dual_rvc_line(line: str) -> Optional[DualEulerSample]:
+    """
+    Parse dual BNO085 RVC CSV line:
+      t_ms,s1_y,s1_p,s1_r,s1_ax,s1_ay,s1_az,s2_y,s2_p,s2_r,s2_ax,s2_ay,s2_az
+
+    Returns:
+        DualEulerSample if valid, else None
+    """
+    line = line.strip()
+    if not line or line.startswith("#") or line.startswith("t_ms"):
+        return None
+
+    parts = line.split(",")
+    if len(parts) != 13:
+        return None
+
+    try:
+        t_ms = int(parts[0])
+        s1_y = float(parts[1])
+        s1_p = float(parts[2])
+        s1_r = float(parts[3])
+        s1_ax = float(parts[4])
+        s1_ay = float(parts[5])
+        s1_az = float(parts[6])
+        s2_y = float(parts[7])
+        s2_p = float(parts[8])
+        s2_r = float(parts[9])
+        s2_ax = float(parts[10])
+        s2_ay = float(parts[11])
+        s2_az = float(parts[12])
+        return DualEulerSample(
+            t_ms=t_ms,
+            s1_yaw=s1_y, s1_pitch=s1_p, s1_roll=s1_r,
+            s1_ax=s1_ax, s1_ay=s1_ay, s1_az=s1_az,
+            s2_yaw=s2_y, s2_pitch=s2_p, s2_roll=s2_r,
+            s2_ax=s2_ax, s2_ay=s2_ay, s2_az=s2_az,
+        )
+    except (ValueError, IndexError):
+        return None
+
+
 # =============================================================================
 # SERIAL CONNECTION
 # =============================================================================
@@ -424,19 +669,29 @@ def remap_vec(v: np.ndarray, mapping: Tuple[int, int, int]) -> np.ndarray:
 
 class IMUDevice:
     """
-    Main interface for dual BMI160 IMU acquisition.
+    Main interface for IMU acquisition (supports BMI160 and BNO085).
     
     Handles serial communication, data parsing, calibration, and orientation
-    estimation for two BMI160 IMUs connected via Arduino.
+    estimation for:
+    - Dual BMI160 IMUs (with Mahony filter)
+    - Single BNO085 IMU (built-in sensor fusion)
     
     Example:
         ```python
-        with IMUDevice() as imu:
+        # BMI160 (dual IMU)
+        config = IMUConfig(imu_type=IMUType.BMI160_DUAL)
+        with IMUDevice(config) as imu:
             imu.calibrate(samples=200)
-            
             for reading in imu.read_stream(max_samples=1000):
                 print(f"Euler1: {reading.euler1}")
                 print(f"Euler2: {reading.euler2}")
+        
+        # BNO085 (single IMU)
+        config = IMUConfig(imu_type=IMUType.BNO085_SINGLE, baud=115200)
+        with IMUDevice(config) as imu:
+            imu.calibrate()  # Captures reference orientation
+            for reading in imu.read_stream(max_samples=1000):
+                print(f"Euler1: {reading.euler1}")
         ```
     """
     
@@ -453,8 +708,57 @@ class IMUDevice:
         self.last_rx_time = 0.0
         self.t_prev = None
         
-        # Filters
-        if self.config.use_mahony:
+        # BNO085-specific: reference quaternion for relative orientation
+        self.q_reference_inv: Optional[np.ndarray] = None
+
+        # BNO085 dual RVC: reference Euler offsets (yaw/pitch/roll degrees)
+        self._bno085_rvc_ref1: Optional[Tuple[float, float, float]] = None
+        self._bno085_rvc_ref2: Optional[Tuple[float, float, float]] = None
+
+        # Health monitoring state
+        self._zero_streak1: int = 0
+        self._zero_streak2: int = 0
+
+    def _update_health(self, *, imu1_all_zero: bool, imu2_all_zero: bool, ok1: bool, ok2: bool) -> IMUHealth:
+        """
+        Update internal health state and return a snapshot.
+
+        `imu*_all_zero` should reflect *raw sensor stream* zeros (not calibrated/offset-corrected).
+        """
+        if imu1_all_zero:
+            self._zero_streak1 += 1
+        else:
+            self._zero_streak1 = 0
+
+        if imu2_all_zero:
+            self._zero_streak2 += 1
+        else:
+            self._zero_streak2 = 0
+
+        now = time.time()
+        rx_age_s = max(0.0, float(now - self.last_rx_time)) if self.last_rx_time else float("inf")
+
+        # "Online" is primarily a stream/connection concept. Per-IMU `ok*` gates if available.
+        stream_ok = rx_age_s <= float(self.config.stall_timeout)
+        imu1_online = bool(stream_ok and ok1)
+        imu2_online = bool(stream_ok and ok2)
+
+        thresh = int(self.config.health_zero_streak_threshold)
+        imu1_zero = bool(thresh > 0 and self._zero_streak1 >= thresh)
+        imu2_zero = bool(thresh > 0 and self._zero_streak2 >= thresh)
+
+        return IMUHealth(
+            imu1_online=imu1_online,
+            imu2_online=imu2_online,
+            imu1_zero_data=imu1_zero,
+            imu2_zero_data=imu2_zero,
+            imu1_zero_streak=int(self._zero_streak1),
+            imu2_zero_streak=int(self._zero_streak2),
+            rx_age_s=float(rx_age_s),
+        )
+        
+        # Filters (BMI160 only)
+        if self.config.imu_type == IMUType.BMI160_DUAL and self.config.use_mahony:
             self.filter1 = MahonyIMU(
                 kp=self.config.kp,
                 ki=self.config.ki,
@@ -504,7 +808,7 @@ class IMUDevice:
         self.ser.reset_input_buffer()
         self.last_rx_time = time.time()
         
-        # Verify connection
+        # Verify connection (protocol depends on IMU type)
         valid = 0
         for _ in range(20):
             raw = self.ser.readline()
@@ -513,7 +817,12 @@ class IMUDevice:
                     line = raw.decode("ascii", errors="ignore").strip()
                     if line.startswith("#"):
                         continue
-                    sample = parse_line(line)
+                    if self.config.imu_type == IMUType.BNO085_SINGLE:
+                        sample = parse_bno085_line(line)
+                    elif self.config.imu_type == IMUType.BNO085_DUAL_RVC:
+                        sample = parse_bno085_dual_rvc_line(line)
+                    else:
+                        sample = parse_line(line)
                     if sample:
                         valid += 1
                         if valid >= 3:
@@ -549,17 +858,32 @@ class IMUDevice:
     def calibrate(self, samples: int = 200, timeout: float = 30.0,
                   callback: Optional[Callable[[int, int], None]] = None) -> IMUCalibration:
         """
-        Calibrate gyroscope biases (IMUs must be stationary and flat).
+        Calibrate IMU sensors.
+        
+        For BMI160: Calibrates gyroscope biases (IMUs must be stationary and flat)
+        For BNO085: Captures reference orientation (device in known position)
         
         Args:
-            samples: Number of samples to collect
+            samples: Number of samples to collect (BMI160: 200, BNO085: 50)
             timeout: Timeout in seconds
             callback: Optional callback(current, total) for progress
         
         Returns:
             IMUCalibration object
         """
-        print(f"\nCalibrating ({samples} samples)...")
+        if self.config.imu_type == IMUType.BNO085_SINGLE:
+            n = self.config.bno085_calib_samples if samples == 200 else int(samples)
+            return self._calibrate_bno085(samples=n, timeout=timeout, callback=callback)
+        if self.config.imu_type == IMUType.BNO085_DUAL_RVC:
+            n = self.config.bno085_calib_samples if samples == 200 else int(samples)
+            return self._calibrate_bno085_dual_rvc(samples=n, timeout=timeout, callback=callback)
+        else:
+            return self._calibrate_bmi160(samples=samples, timeout=timeout, callback=callback)
+    
+    def _calibrate_bmi160(self, samples: int, timeout: float,
+                         callback: Optional[Callable[[int, int], None]]) -> IMUCalibration:
+        """Calibrate BMI160 gyroscope biases."""
+        print(f"\nCalibrating BMI160 ({samples} samples)...")
         print("Keep IMUs FLAT and STILL!")
         
         g1_samples = []
@@ -615,12 +939,167 @@ class IMUDevice:
         print(self.calibration)
         return self.calibration
     
-    def _read_raw(self) -> Optional[Tuple[RawSample, float]]:
+    def _calibrate_bno085(self, samples: int, timeout: float,
+                         callback: Optional[Callable[[int, int], None]]) -> IMUCalibration:
+        """Capture BNO085 reference orientation."""
+        print(f"\nCalibrating BNO085 ({samples} samples)...")
+        print("Place device in reference position (e.g., flat on table)")
+        
+        quaternions = []
+        t0 = time.time()
+        
+        while len(quaternions) < samples:
+            if time.time() - t0 > timeout:
+                if len(quaternions) >= 10:
+                    print(f"\nTimeout - using {len(quaternions)} samples")
+                    break
+                raise TimeoutError(f"Calibration failed: only {len(quaternions)} samples")
+            
+            raw_reading = self._read_raw()
+            if raw_reading is None:
+                continue
+            
+            # For BNO085, _read_raw returns quaternion sample
+            q_sample, timestamp = raw_reading
+            q = np.array([q_sample.qw, q_sample.qx, q_sample.qy, q_sample.qz])
+            q = quat_norm(q)
+            quaternions.append(q)
+            
+            if callback:
+                callback(len(quaternions), samples)
+            elif len(quaternions) % 10 == 0:
+                print(f"  {len(quaternions)}/{samples}...", end='\r')
+        
+        print(f"\n✓ Reference captured ({len(quaternions)} samples)")
+        
+        # Average quaternions
+        q_avg = np.mean(quaternions, axis=0)
+        q_avg = quat_norm(q_avg)
+        self.q_reference_inv = quat_inv(q_avg)
+        
+        print(f"  Reference: [{q_avg[0]:.3f}, {q_avg[1]:.3f}, {q_avg[2]:.3f}, {q_avg[3]:.3f}]")
+        
+        # Create dummy calibration object
+        self.calibration = IMUCalibration(
+            bias1=np.zeros(3),
+            bias2=np.zeros(3),
+            samples=len(quaternions)
+        )
+        
+        return self.calibration
+
+    def _calibrate_bno085_dual_rvc(self, samples: int, timeout: float,
+                                   callback: Optional[Callable[[int, int], None]]) -> IMUCalibration:
+        """Capture dual BNO085 reference orientation from RVC yaw/pitch/roll with gravity-based correction."""
+        print(f"\nCalibrating dual BNO085 (RVC) ({samples} samples)...")
+        print("Place both sensors FLAT and STILL on a level surface")
+        print("Gravity will be used to determine true pitch/roll")
+
+        y1: List[float] = []
+        p1: List[float] = []
+        r1: List[float] = []
+        y2: List[float] = []
+        p2: List[float] = []
+        r2: List[float] = []
+        
+        # Collect acceleration samples
+        ax1: List[float] = []
+        ay1: List[float] = []
+        az1: List[float] = []
+        ax2: List[float] = []
+        ay2: List[float] = []
+        az2: List[float] = []
+        
+        t0 = time.time()
+
+        while len(y1) < samples:
+            if time.time() - t0 > timeout:
+                if len(y1) >= 10:
+                    print(f"\nTimeout - using {len(y1)} samples")
+                    break
+                raise TimeoutError(f"Calibration failed: only {len(y1)} samples")
+
+            raw_reading = self._read_raw()
+            if raw_reading is None:
+                continue
+
+            sample, _timestamp = raw_reading
+            if not isinstance(sample, DualEulerSample):
+                continue
+
+            # Apply configured corrections before computing reference
+            s1_yaw, s1_pitch, s1_roll, s2_yaw, s2_pitch, s2_roll = self._apply_bno085_rvc_corrections(
+                sample.s1_yaw, sample.s1_pitch, sample.s1_roll,
+                sample.s2_yaw, sample.s2_pitch, sample.s2_roll
+            )
+
+            y1.append(s1_yaw); p1.append(s1_pitch); r1.append(s1_roll)
+            y2.append(s2_yaw); p2.append(s2_pitch); r2.append(s2_roll)
+            
+            # Collect acceleration
+            ax1.append(sample.s1_ax); ay1.append(sample.s1_ay); az1.append(sample.s1_az)
+            ax2.append(sample.s2_ax); ay2.append(sample.s2_ay); az2.append(sample.s2_az)
+
+            if callback:
+                callback(len(y1), samples)
+            elif len(y1) % 10 == 0:
+                print(f"  {len(y1)}/{samples}...", end="\r")
+
+        # Use circular mean (robust to wrap) for all angles
+        ref1 = (_circular_mean_deg(y1), _circular_mean_deg(p1), _circular_mean_deg(r1))
+        ref2 = (_circular_mean_deg(y2), _circular_mean_deg(p2), _circular_mean_deg(r2))
+        
+        # Compute average gravity vectors
+        gravity1 = np.array([np.mean(ax1), np.mean(ay1), np.mean(az1)])
+        gravity2 = np.array([np.mean(ax2), np.mean(ay2), np.mean(az2)])
+        
+        # Compute gravity-based pitch/roll
+        grav_pitch1, grav_roll1 = gravity_to_pitch_roll(gravity1)
+        grav_pitch2, grav_roll2 = gravity_to_pitch_roll(gravity2)
+        
+        # Compute corrections (difference between gravity-based and sensor-reported)
+        pitch_correction1 = grav_pitch1 - ref1[1]  # ref1[1] is pitch
+        roll_correction1 = grav_roll1 - ref1[2]    # ref1[2] is roll
+        pitch_correction2 = grav_pitch2 - ref2[1]
+        roll_correction2 = grav_roll2 - ref2[2]
+        
+        self._bno085_rvc_ref1 = ref1
+        self._bno085_rvc_ref2 = ref2
+
+        # Print comprehensive calibration info
+        print(f"\n✓ Reference captured ({len(y1)} samples)")
+        print(f"  Sensor 1:")
+        print(f"    Orientation (Y,P,R): [{ref1[0]:+.1f}, {ref1[1]:+.1f}, {ref1[2]:+.1f}] deg")
+        print(f"    Gravity vector: [{gravity1[0]:+.2f}, {gravity1[1]:+.2f}, {gravity1[2]:+.2f}] m/s² (|g|={np.linalg.norm(gravity1):.2f})")
+        print(f"    Gravity-based tilt: pitch={grav_pitch1:+.1f}°, roll={grav_roll1:+.1f}°")
+        print(f"    Corrections: pitch={pitch_correction1:+.1f}°, roll={roll_correction1:+.1f}°")
+        print(f"  Sensor 2:")
+        print(f"    Orientation (Y,P,R): [{ref2[0]:+.1f}, {ref2[1]:+.1f}, {ref2[2]:+.1f}] deg")
+        print(f"    Gravity vector: [{gravity2[0]:+.2f}, {gravity2[1]:+.2f}, {gravity2[2]:+.2f}] m/s² (|g|={np.linalg.norm(gravity2):.2f})")
+        print(f"    Gravity-based tilt: pitch={grav_pitch2:+.1f}°, roll={grav_roll2:+.1f}°")
+        print(f"    Corrections: pitch={pitch_correction2:+.1f}°, roll={roll_correction2:+.1f}°")
+
+        # Create calibration object with gravity data
+        self.calibration = IMUCalibration(
+            bias1=np.zeros(3),
+            bias2=np.zeros(3),
+            samples=len(y1),
+            gravity1=gravity1,
+            gravity2=gravity2,
+            gravity_pitch_correction1=pitch_correction1,
+            gravity_roll_correction1=roll_correction1,
+            gravity_pitch_correction2=pitch_correction2,
+            gravity_roll_correction2=roll_correction2,
+        )
+        return self.calibration
+    
+    def _read_raw(self):
         """
         Read one raw sample from serial.
         
         Returns:
-            (RawSample, timestamp) or None
+            For BMI160: (RawSample, timestamp) or None
+            For BNO085: (QuaternionSample, timestamp) or None
         """
         if not self.ser or not self.ser.is_open:
             return None
@@ -634,11 +1113,16 @@ class IMUDevice:
             if not line or line.startswith("#"):
                 return None
             
-            sample = parse_line(line)
-            if sample is None:
-                return None
+            if self.config.imu_type == IMUType.BNO085_SINGLE:
+                sample = parse_bno085_line(line)
+            elif self.config.imu_type == IMUType.BNO085_DUAL_RVC:
+                sample = parse_bno085_dual_rvc_line(line)
+            else:
+                sample = parse_line(line)
+                if sample and (sample.ok1 == 0 or sample.ok2 == 0):
+                    return None
             
-            if sample.ok1 == 0 or sample.ok2 == 0:
+            if sample is None:
                 return None
             
             self.last_rx_time = time.time()
@@ -664,8 +1148,6 @@ class IMUDevice:
                 try:
                     ok = self.reconnect()
                 except Exception as e:
-                    # IMPORTANT: transient USB/COM disconnects can make reconnect fail briefly.
-                    # Do not crash the acquisition loop; back off and try again on next call.
                     print(f"⚠ Reconnect attempt failed: {e}")
                     time.sleep(self.config.reconnect_backoff)
                     return None
@@ -682,6 +1164,153 @@ class IMUDevice:
         
         sample, timestamp = raw_result
         
+        # Handle BNO085 (single quaternion-based)
+        if self.config.imu_type == IMUType.BNO085_SINGLE:
+            return self._process_bno085(sample, timestamp)
+
+        # Handle dual BNO085 (RVC Euler CSV)
+        if self.config.imu_type == IMUType.BNO085_DUAL_RVC:
+            return self._process_bno085_dual_rvc(sample, timestamp)
+        
+        # Handle BMI160 (gyro/accel-based)
+        return self._process_bmi160(sample, timestamp)
+    
+    def _process_bno085(self, sample: QuaternionSample, timestamp: float) -> IMUReading:
+        """Process BNO085 quaternion sample."""
+        # Normalize quaternion
+        q_raw = np.array([sample.qw, sample.qx, sample.qy, sample.qz])
+        q_raw = quat_norm(q_raw)
+        
+        # Apply reference calibration if available
+        if self.q_reference_inv is not None:
+            quat1 = quat_mul(self.q_reference_inv, q_raw)
+        else:
+            quat1 = q_raw
+        
+        euler1 = quat_to_euler(quat1)
+        
+        # Health: for single-BNO085 we only track stream/ok. (Zero-data is not meaningful here.)
+        health = self._update_health(imu1_all_zero=False, imu2_all_zero=False, ok1=True, ok2=False)
+
+        # BNO085 only has one IMU
+        return IMUReading(
+            timestamp=timestamp,
+            t_us=sample.t_ms * 1000,  # Convert ms to us
+            seq=0,  # BNO085 doesn't provide sequence number
+            gyro1=np.zeros(3),  # BNO085 doesn't output raw gyro
+            accel1=np.zeros(3),  # BNO085 doesn't output raw accel
+            gyro2=np.zeros(3),
+            accel2=np.zeros(3),
+            quat1=quat1,
+            euler1=euler1,
+            quat2=None,
+            euler2=None,
+            ok1=True,
+            ok2=False,
+            health=health,
+        )
+
+    def _apply_bno085_rvc_corrections(
+        self,
+        s1_yaw: float, s1_pitch: float, s1_roll: float,
+        s2_yaw: float, s2_pitch: float, s2_roll: float,
+    ) -> Tuple[float, float, float, float, float, float]:
+        """Apply optional corrections to dual BNO085 RVC (degrees)."""
+        if self.config.bno085_rvc_disable_yaw:
+            s1_yaw = 0.0
+            s2_yaw = 0.0
+        elif self.config.bno085_rvc_flip_yaw:
+            s1_yaw = -s1_yaw
+            s2_yaw = -s2_yaw
+
+        if self.config.bno085_rvc_swap_pitch_roll:
+            s1_pitch, s1_roll = s1_roll, s1_pitch
+            s2_pitch, s2_roll = s2_roll, s2_pitch
+
+        return (
+            float(s1_yaw), float(s1_pitch), float(s1_roll),
+            float(s2_yaw), float(s2_pitch), float(s2_roll),
+        )
+
+    def _process_bno085_dual_rvc(self, sample: DualEulerSample, timestamp: float) -> IMUReading:
+        """Process dual BNO085 RVC sample into IMUReading."""
+        s1_yaw, s1_pitch, s1_roll, s2_yaw, s2_pitch, s2_roll = self._apply_bno085_rvc_corrections(
+            sample.s1_yaw, sample.s1_pitch, sample.s1_roll,
+            sample.s2_yaw, sample.s2_pitch, sample.s2_roll
+        )
+
+        # Extract acceleration data (in m/s² from BNO085)
+        accel1 = np.array([sample.s1_ax, sample.s1_ay, sample.s1_az])
+        accel2 = np.array([sample.s2_ax, sample.s2_ay, sample.s2_az])
+
+        # Health: detect literal all-zero stream BEFORE any reference subtraction.
+        imu1_all_zero = (s1_yaw == 0.0 and s1_pitch == 0.0 and s1_roll == 0.0 and 
+                         sample.s1_ax == 0.0 and sample.s1_ay == 0.0 and sample.s1_az == 0.0)
+        imu2_all_zero = (s2_yaw == 0.0 and s2_pitch == 0.0 and s2_roll == 0.0 and
+                         sample.s2_ax == 0.0 and sample.s2_ay == 0.0 and sample.s2_az == 0.0)
+        health = self._update_health(imu1_all_zero=imu1_all_zero, imu2_all_zero=imu2_all_zero, ok1=True, ok2=True)
+
+        # Apply reference offsets if available (wrap after subtraction)
+        if self._bno085_rvc_ref1 is not None and self._bno085_rvc_ref2 is not None:
+            ref1_y, ref1_p, ref1_r = self._bno085_rvc_ref1
+            ref2_y, ref2_p, ref2_r = self._bno085_rvc_ref2
+            s1_yaw = _wrap_angle_deg(s1_yaw - ref1_y)
+            s1_pitch = _wrap_angle_deg(s1_pitch - ref1_p)
+            s1_roll = _wrap_angle_deg(s1_roll - ref1_r)
+            s2_yaw = _wrap_angle_deg(s2_yaw - ref2_y)
+            s2_pitch = _wrap_angle_deg(s2_pitch - ref2_p)
+            s2_roll = _wrap_angle_deg(s2_roll - ref2_r)
+            
+            # Apply gravity-based corrections if enabled and available
+            if self.config.bno085_use_gravity_correction and self.calibration:
+                s1_pitch += self.calibration.gravity_pitch_correction1
+                s1_roll += self.calibration.gravity_roll_correction1
+                s2_pitch += self.calibration.gravity_pitch_correction2
+                s2_roll += self.calibration.gravity_roll_correction2
+
+        # Provide quaternions as well for consistency with the rest of the codebase
+        q1 = euler_zyx_deg_to_quat(s1_yaw, s1_pitch, s1_roll)
+        q2 = euler_zyx_deg_to_quat(s2_yaw, s2_pitch, s2_roll)
+
+        # IMUReading stores euler as (roll, pitch, yaw)
+        euler1 = (s1_roll, s1_pitch, s1_yaw)
+        euler2 = (s2_roll, s2_pitch, s2_yaw)
+
+        return IMUReading(
+            timestamp=timestamp,
+            t_us=sample.t_ms * 1000,  # convert ms to us for sync pipeline
+            seq=0,
+            gyro1=np.zeros(3),
+            accel1=accel1,
+            gyro2=np.zeros(3),
+            accel2=accel2,
+            quat1=q1,
+            euler1=euler1,
+            quat2=q2,
+            euler2=euler2,
+            ok1=True,
+            ok2=True,
+            health=health,
+        )
+    
+    def _process_bmi160(self, sample: RawSample, timestamp: float) -> IMUReading:
+        """Process BMI160 raw sample."""
+        # Health: if Arduino is streaming literal zeros, treat as suspicious.
+        imu1_all_zero = (
+            sample.ax1 == 0 and sample.ay1 == 0 and sample.az1 == 0 and
+            sample.gx1 == 0 and sample.gy1 == 0 and sample.gz1 == 0
+        )
+        imu2_all_zero = (
+            sample.ax2 == 0 and sample.ay2 == 0 and sample.az2 == 0 and
+            sample.gx2 == 0 and sample.gy2 == 0 and sample.gz2 == 0
+        )
+        health = self._update_health(
+            imu1_all_zero=imu1_all_zero,
+            imu2_all_zero=imu2_all_zero,
+            ok1=bool(sample.ok1),
+            ok2=bool(sample.ok2),
+        )
+
         # Convert to physical units
         gyro1 = np.array([sample.gx1, sample.gy1, sample.gz1]) * self.config.gyro_scale
         accel1 = np.array([sample.ax1, sample.ay1, sample.az1]) * self.config.accel_scale
@@ -738,7 +1367,8 @@ class IMUDevice:
             quat2=quat2,
             euler2=euler2,
             ok1=bool(sample.ok1),
-            ok2=bool(sample.ok2)
+            ok2=bool(sample.ok2),
+            health=health,
         )
     
     def read_stream(self, duration: Optional[float] = None,
