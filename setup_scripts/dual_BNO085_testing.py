@@ -3,7 +3,7 @@ Dual BNO085 UART-RVC IMU Tracking
 ==================================
 
 Real-time orientation tracking with BNO085 9-DOF IMUs:
-- UART-RVC CSV protocol (115200 baud, 100Hz)
+- UART-RVC CSV protocol (115200 baud, 500Hz)
 - On-device sensor fusion (no calibration needed)
 - Real-time VPython visualization with dice representation
 - CSV data logging
@@ -12,7 +12,7 @@ Real-time orientation tracking with BNO085 9-DOF IMUs:
 Hardware Requirements:
 - STM32F401 with dual BNO085 IMUs in UART-RVC mode
 - 115200 baud (BNO085 RVC standard)
-- 100 Hz output rate
+- 500 Hz output rate
 - BNO085 configured for UART-RVC (P0 high/bridged)
 
 CSV Format from STM32:
@@ -109,9 +109,9 @@ IMU2_AXIS_MAP = (1, 2, 3)
 # component-side-down), set this to True to invert accel vector.
 INVERT_ACCEL = False
 
-# Read/compute: STM32 sends 100Hz but VPython renders ~60-120Hz.
+# Read/compute: STM32 sends 500Hz but VPython renders ~60-120Hz.
 # We must drain multiple packets per frame to avoid lag and desync.
-MAX_PACKETS_PER_FRAME = 8
+MAX_PACKETS_PER_FRAME = 16  # 500Hz / ~60fps ≈ 8+ packets per frame
 
 # ============================================================================
 # BNO085 UART-RVC CSV PROTOCOL
@@ -392,7 +392,7 @@ print(f"Visualization: {'ENABLED' if ENABLE_VISUALIZATION else 'DISABLED'}")
 # Initialize visualization if enabled
 scene = None
 if ENABLE_VISUALIZATION:
-    scene = canvas(title="Dual BNO085 IMU Tracker (100Hz UART-RVC)", 
+    scene = canvas(title="Dual BNO085 IMU Tracker (500Hz UART-RVC)", 
                    width=1600, height=900,
                    center=vector(0, 0, 0),
                    background=color.gray(0.1))
@@ -667,7 +667,7 @@ class PerformanceMonitor:
         return np.mean(self.latencies)
     
     def get_packet_loss_rate(self):
-        total_expected = (time.time() - self.start_time) * 100  # 100Hz
+        total_expected = (time.time() - self.start_time) * 500  # 500Hz
         if total_expected < 100:
             return 0.0
         return 100.0 * (1.0 - self.packet_count / total_expected)
@@ -700,7 +700,7 @@ try:
             last_rx_time = time.time()
             continue
         
-        # Drain multiple packets per frame so we can keep up with 100Hz source
+        # Drain multiple packets per frame so we can keep up with 500Hz source
         latest = None
         latest_sample = None
         got_any = False
@@ -758,7 +758,7 @@ try:
         # Calculate latency
         python_time_ms = (time.time() - python_start_time) * 1000
         latency_ms = python_time_ms - t_ms
-        dt = 0.01  # 100 Hz nominal
+        dt = 0.002  # 500 Hz nominal
         
         # Accel magnitudes
         a1_mag = np.linalg.norm(a1)
@@ -816,7 +816,8 @@ try:
             # Status display
             status_lab.text = f"IMU1: R={roll1:+6.1f}° P={pitch1:+6.1f}° Y={yaw1:+6.1f}°  |a|={a1_mag:.2f}g\n" + \
                               f"IMU2: R={roll2:+6.1f}° P={pitch2:+6.1f}° Y={yaw2:+6.1f}°  |a|={a2_mag:.2f}g\n" + \
-                              f"Raw accel IMU1: [{a1[0]:+.2f}, {a1[1]:+.2f}, {a1[2]:+.2f}]g"
+                              f"Raw accel IMU1: [{a1[0]:+.2f}, {a1[1]:+.2f}, {a1[2]:+.2f}]g\n" + \
+                              f"Raw accel IMU2: [{a2[0]:+.2f}, {a2[1]:+.2f}, {a2[2]:+.2f}]g"
             
             # Performance stats
             if SHOW_PERFORMANCE_STATS and perf_lab:
