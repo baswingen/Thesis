@@ -96,8 +96,8 @@ USE_EMG_DIFFERENTIAL_PAIR = True
 #
 # Set EMG_PAIR_CHANNELS_ARE_1_BASED=True and then use *channel numbers* below.
 EMG_PAIR_CHANNELS_ARE_1_BASED = True
-EMG_PAIR_POS_CHANNEL = 13   # channel number (if 1-based) OR index (if 0-based)
-EMG_PAIR_NEG_CHANNEL = 14   # channel number (if 1-based) OR index (if 0-based)
+EMG_PAIR_POS_CHANNEL = 1   # channel number (if 1-based) OR index (if 0-based)
+EMG_PAIR_NEG_CHANNEL = 2   # channel number (if 1-based) OR index (if 0-based)
 
 # Fallback selection options (used only if USE_EMG_DIFFERENTIAL_PAIR=False)
 EMG_INPUT_PORT = None            # e.g. 17 for "Input 17" (set to None to disable)
