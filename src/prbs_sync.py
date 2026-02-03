@@ -216,7 +216,8 @@ class SynchronizationEngine:
                  correlation_window_s: float = 5.0,
                  update_interval_s: float = 5.0,
                  max_drift_ms: float = 50.0,
-                 drift_warning_ms: float = 10.0):
+                 drift_warning_ms: float = 10.0,
+                 simulation_mode: bool = False):
         """
         Initialize synchronization engine.
         
@@ -226,12 +227,14 @@ class SynchronizationEngine:
             update_interval_s: How often to recompute offset (seconds)
             max_drift_ms: Maximum allowed drift before error (milliseconds)
             drift_warning_ms: Drift threshold for warnings (milliseconds)
+            simulation_mode: Use data timestamps instead of wall clock for timing (for fast validation)
         """
         self.prbs_gen = prbs_generator
         self.correlation_window_s = correlation_window_s
         self.update_interval_s = update_interval_s
         self.max_drift_ms = max_drift_ms
         self.drift_warning_ms = drift_warning_ms
+        self.simulation_mode = simulation_mode
         
         # Buffers for PRBS markers (time, marker)
         self.emg_buffer: Deque[Tuple[float, float]] = deque(maxlen=10000)
@@ -240,7 +243,8 @@ class SynchronizationEngine:
         # Synchronization state
         self.current_offset_ms = 0.0  # Current time offset (IMU - EMG)
         self.drift_rate_ppm = 0.0  # Drift rate in parts per million
-        self.last_update_time = 0.0
+        self.last_update_time = 0.0  # Wall clock time of last update (real-time mode)
+        self.last_data_time = 0.0  # Data timestamp of last update (simulation mode)
         self.sync_state: Optional[SyncState] = None
         
         # Kalman filter state (for smooth offset tracking)
@@ -286,14 +290,34 @@ class SynchronizationEngine:
         """
         Check if it's time to recompute synchronization.
         
+        In real-time mode: Uses wall clock time.
+        In simulation mode: Uses data timestamps (enables fast validation).
+        
         Returns:
             True if update should be performed
         """
-        current_time = time.time()
-        if self.last_update_time == 0.0:
-            return True  # First update
-        
-        return (current_time - self.last_update_time) >= self.update_interval_s
+        if self.simulation_mode:
+            # Simulation mode: Use most recent data timestamp instead of wall clock
+            if len(self.emg_buffer) == 0 and len(self.imu_buffer) == 0:
+                return False
+            
+            current_data_time = max(
+                self.emg_buffer[-1][0] if self.emg_buffer else 0,
+                self.imu_buffer[-1][0] if self.imu_buffer else 0
+            )
+            
+            if self.last_data_time == 0.0:
+                self.last_data_time = current_data_time
+                return True  # First update
+            
+            return (current_data_time - self.last_data_time) >= self.update_interval_s
+        else:
+            # Real-time mode: Original wall clock logic
+            current_time = time.time()
+            if self.last_update_time == 0.0:
+                return True  # First update
+            
+            return (current_time - self.last_update_time) >= self.update_interval_s
     
     def compute_time_offset(self) -> Optional[Tuple[float, float]]:
         """
@@ -303,8 +327,12 @@ class SynchronizationEngine:
             (offset_ms, correlation_confidence) or None if insufficient data
         """
         with self.lock:
-            # Check if we have enough data
-            if len(self.emg_buffer) < 10 or len(self.imu_buffer) < 10:
+            # Check if we have enough data for reliable correlation
+            # Need at least 2-3 PRBS cycles worth of samples
+            # With 10 Hz injection rate and 5s window, we expect ~50 samples
+            min_samples = max(50, int(2.5 * self.correlation_window_s * self.prbs_gen.injection_rate_hz))
+            
+            if len(self.emg_buffer) < min_samples or len(self.imu_buffer) < min_samples:
                 return None
             
             # Extract data from buffers
@@ -349,6 +377,12 @@ class SynchronizationEngine:
             imu_resampled = np.interp(common_times, imu_times_win, imu_markers_win)
             
             # Compute cross-correlation
+            # np.correlate(a, b, mode='full'):
+            #   - Slides signal b across signal a
+            #   - Result[k] corresponds to lag of b relative to a
+            #   - Positive lag: b is delayed (behind) relative to a
+            #   - Negative lag: b is ahead of a
+            # In our case: a=EMG, b=IMU
             correlation = np.correlate(emg_resampled, imu_resampled, mode='full')
             correlation = correlation / (np.std(emg_resampled) * np.std(imu_resampled) * len(emg_resampled))
             
@@ -357,6 +391,9 @@ class SynchronizationEngine:
             peak_value = correlation[peak_idx]
             
             # Convert peak index to time offset
+            # Positive offset_ms: IMU is delayed (behind) EMG → IMU timestamps need to be shifted back
+            # Negative offset_ms: IMU is ahead of EMG → IMU timestamps need to be shifted forward
+            # Usage: corrected_imu_time = imu_time - offset_ms/1000
             center_idx = len(correlation) // 2
             lag_samples = peak_idx - center_idx
             offset_seconds = lag_samples * resample_dt
@@ -407,20 +444,36 @@ class SynchronizationEngine:
             self.current_offset_ms = self.kf_offset
             
             # Estimate drift rate
-            if self.last_update_time > 0:
-                dt_hours = (time.time() - self.last_update_time) / 3600.0
-                if dt_hours > 0:
-                    drift_ms = self.current_offset_ms - old_offset
-                    # Convert to ppm (parts per million)
-                    self.drift_rate_ppm = (drift_ms / 1000.0) / dt_hours * 1e6
+            if self.simulation_mode:
+                # Simulation mode: use data timestamps
+                current_data_time = max(
+                    self.emg_buffer[-1][0] if self.emg_buffer else 0,
+                    self.imu_buffer[-1][0] if self.imu_buffer else 0
+                )
+                if self.last_data_time > 0:
+                    dt_hours = (current_data_time - self.last_data_time) / 3600.0
+                    if dt_hours > 0:
+                        drift_ms = self.current_offset_ms - old_offset
+                        # Convert to ppm (parts per million)
+                        self.drift_rate_ppm = (drift_ms / 1000.0) / dt_hours * 1e6
+                self.last_data_time = current_data_time
+            else:
+                # Real-time mode: use wall clock
+                current_time = time.time()
+                if self.last_update_time > 0:
+                    dt_hours = (current_time - self.last_update_time) / 3600.0
+                    if dt_hours > 0:
+                        drift_ms = self.current_offset_ms - old_offset
+                        # Convert to ppm (parts per million)
+                        self.drift_rate_ppm = (drift_ms / 1000.0) / dt_hours * 1e6
+                self.last_update_time = current_time
             
-            # Update state
-            self.last_update_time = time.time()
             self.update_count += 1
             
             # Store sync state
+            state_timestamp = self.last_data_time if self.simulation_mode else self.last_update_time
             self.sync_state = SyncState(
-                timestamp=self.last_update_time,
+                timestamp=state_timestamp,
                 offset_ms=self.current_offset_ms,
                 drift_rate_ppm=self.drift_rate_ppm,
                 correlation_peak=abs(confidence),
@@ -432,11 +485,11 @@ class SynchronizationEngine:
             abs_offset = abs(self.current_offset_ms)
             if abs_offset > self.max_drift_ms:
                 self.drift_errors += 1
-                print(f"\n⚠️ [SYNC] ERROR: Drift exceeds maximum ({abs_offset:.1f} ms > {self.max_drift_ms:.1f} ms)")
+                print(f"\n[SYNC] ERROR: Drift exceeds maximum ({abs_offset:.1f} ms > {self.max_drift_ms:.1f} ms)")
             elif abs_offset > self.drift_warning_ms:
                 self.drift_warnings += 1
                 if self.drift_warnings % 10 == 1:  # Print every 10th warning
-                    print(f"\n⚠️ [SYNC] WARNING: Drift detected ({abs_offset:.1f} ms)")
+                    print(f"\n[SYNC] WARNING: Drift detected ({abs_offset:.1f} ms)")
     
     def get_corrected_timestamp(self, imu_timestamp: float) -> float:
         """
@@ -600,9 +653,9 @@ if __name__ == "__main__":
         print(f"  Measured offset: {measured_offset_ms:.2f} ms")
         print(f"  Error: {error_ms:.2f} ms")
         print(f"  Confidence: {confidence:.3f}")
-        print(f"  ✓ Test {'PASSED' if error_ms < 1.0 else 'FAILED'}")
+        print(f"  [{'PASS' if error_ms < 1.0 else 'FAIL'}] Test {'PASSED' if error_ms < 1.0 else 'FAILED'}")
     else:
-        print(f"  ✗ Test FAILED: Could not compute offset")
+        print(f"  [FAIL] Test FAILED: Could not compute offset")
     
     print(f"\n{'='*60}")
-    print("✓ Demo complete")
+    print("[OK] Demo complete")

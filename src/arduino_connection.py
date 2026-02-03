@@ -62,7 +62,7 @@ def find_arduino_port(preferred_substr: Optional[str] = None, verbose: bool = Tr
     ports = list(list_ports.comports())
     if not ports:
         if verbose:
-            print("⚠ No serial ports found")
+            print("[!] No serial ports found")
         return None
 
     if verbose:
@@ -78,7 +78,7 @@ def find_arduino_port(preferred_substr: Optional[str] = None, verbose: bool = Tr
             desc_lower = (p.description or "").lower()
             if preferred_substr in device_lower or preferred_substr in desc_lower:
                 if verbose:
-                    print(f"✓ Matched preferred substring '{preferred_substr}': {p.device}")
+                    print(f"[OK] Matched preferred substring '{preferred_substr}': {p.device}")
                 return p.device
 
     # Priority 2: Arduino-specific identifiers
@@ -89,7 +89,7 @@ def find_arduino_port(preferred_substr: Optional[str] = None, verbose: bool = Tr
         # Check vendor ID (0x2341 is Arduino's official VID)
         if p.vid == 0x2341:  # Arduino vendor ID
             if verbose:
-                print(f"✓ Arduino detected by vendor ID: {p.device}")
+                print(f"[OK] Arduino detected by vendor ID: {p.device}")
             return p.device
         
         # Arduino keywords in description
@@ -97,7 +97,7 @@ def find_arduino_port(preferred_substr: Optional[str] = None, verbose: bool = Tr
             "arduino", "uno", "mega", "nano", "due", "leonardo"
         ]):
             if verbose:
-                print(f"✓ Arduino detected by description: {p.device}")
+                print(f"[OK] Arduino detected by description: {p.device}")
             return p.device
 
     # Priority 3: Common USB-Serial chips used in Arduinos
@@ -110,7 +110,7 @@ def find_arduino_port(preferred_substr: Optional[str] = None, verbose: bool = Tr
             "ftdi",   # FTDI USB-Serial on older Arduinos
         ]):
             if verbose:
-                print(f"✓ Arduino-compatible USB-Serial chip detected: {p.device}")
+                print(f"[OK] Arduino-compatible USB-Serial chip detected: {p.device}")
             return p.device
 
     # Priority 4: Generic USB serial ports (might be Arduino)
@@ -119,12 +119,12 @@ def find_arduino_port(preferred_substr: Optional[str] = None, verbose: bool = Tr
         device_lower = (p.device or "").lower()
         if "usb" in desc_lower or "serial" in desc_lower or "usbmodem" in device_lower:
             if verbose:
-                print(f"→ Generic USB serial port selected: {p.device}")
+                print(f"-> Generic USB serial port selected: {p.device}")
             return p.device
 
     # Priority 5: Last resort - return first available port
     if verbose:
-        print(f"→ Using first available port: {ports[0].device}")
+        print(f"-> Using first available port: {ports[0].device}")
     return ports[0].device if ports else None
 
 
@@ -225,7 +225,7 @@ def open_arduino_serial(
                         elif line.startswith("$"):
                             # Data line - we're receiving properly
                             if verbose:
-                                print("✓ Arduino data stream detected")
+                                print("[OK] Arduino data stream detected")
                             return ser
                     except Exception:
                         pass
@@ -238,10 +238,10 @@ def open_arduino_serial(
         
         if lines_seen > 0:
             if verbose:
-                print("✓ Arduino connected")
+                print("[OK] Arduino connected")
         else:
             if verbose:
-                print("⚠ No Arduino output detected (might work anyway)")
+                print("[!] No Arduino output detected (might work anyway)")
     
     return ser
 
