@@ -4,13 +4,12 @@
   2) Dual BNO085/BNO080 UART-RVC readout (two HW UARTs)
   3) Configurable button-matrix scanning (non-blocking, debounced)
 
+  Augmentation:
+  - Also outputs PRBS level to Serial for Python-side correlation:
+      prbs_tick, in_mark, prbs_level
+
   Board: STM32F401 (Arduino STM32 core)
   Library: "Adafruit BNO08x RVC" (Adafruit_BNO08x_RVC)
-
-  Notes:
-  - UART-RVC mode on BNO08x requires hardware config (P0 high / bridge P0).
-  - In UART-RVC wiring, sensor "SDA" is UART output (connect to MCU RX).
-  - PRBS pin must be a GPIO you can route to your TRIG cable (e.g. PA8).
 */
 
 #include <Arduino.h>
@@ -44,6 +43,9 @@ volatile uint32_t chips_per_frame = 0;
 volatile uint32_t mark_ticks      = 0;
 volatile bool     in_mark         = false;
 
+// NEW: latest PRBS output level (what is actually driven on PRBS_PIN)
+volatile uint8_t  prbs_level      = 0;
+
 HardwareTimer *prbsTimer = nullptr;
 
 static inline uint8_t lfsr_next_bit_prbs15(volatile uint16_t &s) {
@@ -67,7 +69,9 @@ void onPrbsTick() {
 
   if (in_mark) {
     // LOW gap marker: force LOW, do NOT advance LFSR
+    prbs_level = 0;
     digitalWrite(PRBS_PIN, LOW);
+
     if (mark_ticks > 0) {
       mark_ticks--;
     } else {
@@ -78,12 +82,14 @@ void onPrbsTick() {
 
   // PRBS output (NRZ)
   uint8_t bit = lfsr_next_bit_prbs15(lfsr);
-  digitalWrite(PRBS_PIN, bit ? HIGH : LOW);
+  prbs_level = bit ? 1 : 0;
+  digitalWrite(PRBS_PIN, prbs_level ? HIGH : LOW);
 }
 
 static void prbsInit() {
   pinMode(PRBS_PIN, OUTPUT);
   digitalWrite(PRBS_PIN, LOW);
+  prbs_level = 0;
 
   chips_per_frame = CHIP_RATE_HZ / FRAME_HZ;
   if (chips_per_frame < 2) chips_per_frame = 2;
@@ -99,9 +105,6 @@ static void prbsInit() {
 
 // ========================= DUAL IMU CONFIG =========================
 #if ENABLE_DUAL_IMU
-// Common STM32F401 mappings:
-//   USART1: TX=PA9,  RX=PA10
-//   USART2: TX=PA2,  RX=PA3
 #if defined(ARDUINO_ARCH_STM32)
 HardwareSerial IMU1Serial(PA10, PA9);  // RX,TX
 HardwareSerial IMU2Serial(PA3,  PA2);  // RX,TX
@@ -143,20 +146,16 @@ static void imuInit() {
 
 // ========================= MATRIX CONFIG ===========================
 #if ENABLE_MATRIX
-// ---- EDIT THESE ----
 const uint8_t ROWS = 3;
 const uint8_t COLS = 3;
 
-// Use STM32 pin names like PA0, PB3, etc.
-const uint8_t rowPins[ROWS] = { PA0, PA1, PA4 };
+const uint8_t rowPins[ROWS] = { PA0, PA1, PA2 };
 const uint8_t colPins[COLS] = { PB0, PB1, PB10 };
 
-// Scan + debounce settings (non-blocking)
 static const uint32_t MATRIX_SCAN_US   = 1000;   // 1 kHz scan loop target
-static const uint8_t  DEBOUNCE_SAMPLES = 4;      // consecutive equal samples
-// -------------------
+static const uint8_t  DEBOUNCE_SAMPLES = 4;
 
-static uint16_t rawState = 0;        // bit r*COLS + c
+static uint16_t rawState = 0;
 static uint16_t stableState = 0;
 static uint16_t lastStableState = 0;
 
@@ -182,7 +181,7 @@ static uint16_t matrixScanOnce() {
   for (uint8_t r = 0; r < ROWS; r++) {
     allRowsHigh();
     digitalWrite(rowPins[r], LOW);
-    delayMicroseconds(80); // settle
+    delayMicroseconds(80);
 
     for (uint8_t c = 0; c < COLS; c++) {
       const uint8_t pressed = (digitalRead(colPins[c]) == LOW) ? 1 : 0;
@@ -196,7 +195,6 @@ static uint16_t matrixScanOnce() {
 static void matrixUpdateDebounced(uint16_t newRaw) {
   rawState = newRaw;
 
-  // per-key debounce toward rawState
   for (uint8_t i = 0; i < ROWS * COLS; i++) {
     const uint16_t mask = (1u << i);
     const uint8_t rawBit = (rawState & mask) ? 1 : 0;
@@ -207,7 +205,6 @@ static void matrixUpdateDebounced(uint16_t newRaw) {
     } else {
       if (debounceCount[i] < 255) debounceCount[i]++;
       if (debounceCount[i] >= DEBOUNCE_SAMPLES) {
-        // accept transition
         if (rawBit) stableState |= mask;
         else        stableState &= (uint16_t)~mask;
         debounceCount[i] = 0;
@@ -226,7 +223,7 @@ static inline uint16_t matrixGetFallingEdges(){ return (uint16_t)(~stableState &
 // ========================= OUTPUT / SCHEDULING ======================
 static uint32_t t0_ms = 0;
 
-static const uint32_t PRINT_HZ = 500;                // CSV print rate
+static const uint32_t PRINT_HZ = 500;
 static const uint32_t PRINT_PERIOD_US = 1000000UL / PRINT_HZ;
 
 static uint32_t nextPrint_us = 0;
@@ -236,7 +233,7 @@ static void printHeader() {
                  "yaw1,pitch1,roll1,ax1,ay1,az1,"
                  "yaw2,pitch2,roll2,ax2,ay2,az2,"
                  "keys_mask,keys_rise,keys_fall,"
-                 "prbs_tick,in_mark");
+                 "prbs_tick,in_mark,prbs_level");
 }
 // ===================================================================
 
@@ -269,14 +266,13 @@ void setup() {
   nextPrint_us = micros() + PRINT_PERIOD_US;
 
   printHeader();
-
   digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
-  const uint32_t now_us = micros();   // DECLARE ONCE
-  const uint32_t now_ms = millis();
+  const uint32_t now_us = micros();
 
+  // ---------- Non-blocking matrix scan ----------
 #if ENABLE_MATRIX
   static uint32_t nextMatrix_us = 0;
   if ((int32_t)(now_us - nextMatrix_us) >= 0) {
@@ -286,6 +282,7 @@ void loop() {
   }
 #endif
 
+  // ---------- Read newest IMU packets (drain queues) ----------
 #if ENABLE_DUAL_IMU
   static BNO08x_RVC_Data last1, last2;
   static bool have1 = false, have2 = false;
@@ -299,9 +296,11 @@ void loop() {
   }
 #endif
 
-  // ---------- Fixed-rate print ----------
+  // ---------- Periodic print (fixed-rate) ----------
   if ((int32_t)(now_us - nextPrint_us) >= 0) {
     nextPrint_us += PRINT_PERIOD_US;
+
+    const uint32_t now_ms = millis();
     const uint32_t t_ms = now_ms - t0_ms;
 
 #if ENABLE_MATRIX
@@ -314,20 +313,23 @@ void loop() {
 #endif
 
 #if ENABLE_PRBS_TRIG
-    const uint32_t prbs_tick = tick_count;
-    const uint8_t  prbs_mark = in_mark ? 1 : 0;
+    // Snapshot volatile ISR-updated values as close together as possible
+    const uint32_t prbs_tick  = tick_count;
+    const uint8_t  prbs_mark  = in_mark ? 1 : 0;
+    const uint8_t  prbs_lvl   = prbs_level;
 #else
-    const uint32_t prbs_tick = 0;
-    const uint8_t  prbs_mark = 0;
+    const uint32_t prbs_tick  = 0;
+    const uint8_t  prbs_mark  = 0;
+    const uint8_t  prbs_lvl   = 0;
 #endif
 
     Serial.print(t_ms);
     Serial.print(",");
-    Serial.print(imu1_ok ? 1 : 0);
-    Serial.print(",");
-    Serial.print(imu2_ok ? 1 : 0);
 
 #if ENABLE_DUAL_IMU
+    Serial.print(imu1_ok ? 1 : 0); Serial.print(",");
+    Serial.print(imu2_ok ? 1 : 0);
+
     if (have1) {
       Serial.print(","); Serial.print(last1.yaw);
       Serial.print(","); Serial.print(last1.pitch);
@@ -335,7 +337,9 @@ void loop() {
       Serial.print(","); Serial.print(last1.x_accel);
       Serial.print(","); Serial.print(last1.y_accel);
       Serial.print(","); Serial.print(last1.z_accel);
-    } else Serial.print(",,,,,,");
+    } else {
+      Serial.print(",,,,,,");
+    }
 
     if (have2) {
       Serial.print(","); Serial.print(last2.yaw);
@@ -344,9 +348,13 @@ void loop() {
       Serial.print(","); Serial.print(last2.x_accel);
       Serial.print(","); Serial.print(last2.y_accel);
       Serial.print(","); Serial.print(last2.z_accel);
-    } else Serial.print(",,,,,,");
+    } else {
+      Serial.print(",,,,,,");
+    }
 #else
-    Serial.print(",,,,,,,,,,,,");
+    Serial.print("0,0");
+    Serial.print(",,,,,,");
+    Serial.print(",,,,,,");
 #endif
 
     Serial.print(",");
@@ -359,14 +367,18 @@ void loop() {
     Serial.print(prbs_tick);
     Serial.print(",");
     Serial.print(prbs_mark);
+    Serial.print(",");
+    Serial.print(prbs_lvl);
 
     Serial.println();
   }
 
-  // ---------- LED heartbeat ----------
+  // ---------- Slow LED heartbeat ----------
   static uint32_t lastBlink_ms = 0;
-  if (now_ms - lastBlink_ms >= 500) {
-    lastBlink_ms = now_ms;
+  const uint32_t now_ms2 = millis();
+  if (now_ms2 - lastBlink_ms >= 500) {
+    lastBlink_ms = now_ms2;
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
   }
 }
+
