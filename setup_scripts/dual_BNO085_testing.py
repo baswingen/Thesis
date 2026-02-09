@@ -76,7 +76,7 @@ def parse_args():
 args = parse_args()
 
 # ============================================================================
-# USER SETTINGS
+# USER SETTINGSß
 # ============================================================================
 PORT = None if args.port.lower() == "auto" else args.port
 BAUD = args.baud
