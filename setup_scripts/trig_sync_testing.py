@@ -12,14 +12,14 @@ Hardware setup:
 
 STM32 sketch parameters (must match the values below):
     - PRBS-15 LFSR: polynomial x^15 + x^14 + 1, seed 0x7ACE
-    - Chip rate: 2048 Hz  (matches Porti7 base sample rate)
+    - Chip rate: 2000 Hz  (matches Porti7 base sample rate)
     - NRZ encoding: bit value -> HIGH / LOW
     - Frame marker: 30 ms LOW gap once per second (LFSR paused during gap)
 
 Updated STM32 sketch (flash via Arduino IDE / STM32 core):
 ---------------------------------------------------------------
 /*
-  STM32F401 -> Porti7 TRIG PRBS-15 generator  (2048 Hz, LOW-gap marker)
+  STM32F401 -> Porti7 TRIG PRBS-15 generator  (2000 Hz, LOW-gap marker)
 
   Wiring to Porti7 TRIG (LEMO FFA.00 coax):
     - Center pin: PRBS_OUT (through 330R..1k series resistor recommended)
@@ -35,7 +35,7 @@ Updated STM32 sketch (flash via Arduino IDE / STM32 core):
 static const uint8_t PRBS_PIN = PA8;
 
 // --- PRBS + timing settings ---
-static const uint32_t CHIP_RATE_HZ = 2048;   // matches Porti7 sample rate
+static const uint32_t CHIP_RATE_HZ = 2000;   // matches Porti7 sample rate
 static const uint32_t FRAME_HZ     = 1;      // marker once per second
 static const uint32_t MARK_MS      = 30;     // 30 ms LOW-gap marker
 
@@ -171,16 +171,16 @@ except ImportError as e:
 # ============================================================================
 # STM32 sketch parameters -- keep in sync with the flashed firmware
 # ============================================================================
-CHIP_RATE_HZ = 2048          # PRBS chip rate (must equal Porti7 sample rate)
+CHIP_RATE_HZ = 2000          # PRBS chip rate (must equal Porti7 sample rate)
 FRAME_HZ = 1                 # marker rate (once per second)
 MARK_MS = 30                 # LOW-gap marker duration in ms
 PRBS15_SEED = 0x7ACE         # LFSR seed (non-zero, 15-bit)
 PRBS15_PERIOD = (1 << 15) - 1  # 32 767 chips
 
 # Derived constants
-MARK_CHIPS = int(CHIP_RATE_HZ * MARK_MS / 1000)          # ~61
-CHIPS_PER_FRAME = CHIP_RATE_HZ // FRAME_HZ                # 2048
-PRBS_CHIPS_PER_FRAME = CHIPS_PER_FRAME - MARK_CHIPS       # ~1987
+MARK_CHIPS = int(CHIP_RATE_HZ * MARK_MS / 1000)          # 60
+CHIPS_PER_FRAME = CHIP_RATE_HZ // FRAME_HZ                # 2000
+PRBS_CHIPS_PER_FRAME = CHIPS_PER_FRAME - MARK_CHIPS       # ~1940
 # Any run of zeros > MAX_NATURAL_ZERO_RUN is a marker gap
 MAX_NATURAL_ZERO_RUN = 14    # for PRBS-15 the longest natural zero run is n-1=14
 MIN_GAP_RUN = MAX_NATURAL_ZERO_RUN + 2  # detection threshold (16 consecutive 0s)
@@ -259,10 +259,13 @@ def find_trig_channel(channels):
 
     Strategy:
         1. Look for a channel explicitly named TRIG / TRIGGER.
-        2. Fall back to the STATUS channel (index 36) -- the Porti7 encodes
-           the TRIG LEMO input in the lowest bit(s) of the STATUS word.
+        2. Look for a channel named DIG / DIGITAL (Porti7 names the trigger
+           input channel "Dig" or "Digi" due to truncated UTF-16LE encoding).
+        3. Fall back to the STATUS channel by name or index 36.
 
     Returns (channel_index, is_status_bit)
+        is_status_bit: True  -> data is a bit-field, extract bit 0
+                       False -> data is a direct digital value or voltage
     """
     # 1. Explicit TRIG channel
     for i, ch in enumerate(channels):
@@ -270,11 +273,23 @@ def find_trig_channel(channels):
         if "TRIG" in name:
             return i, False
 
-    # 2. STATUS channel (index 36 by convention, or by name)
+    # 2. Digital channel (Porti7 "Dig" / "Digi" / "Digital")
     for i, ch in enumerate(channels):
         name = ch.get_channel_name().upper()
-        if "STATUS" in name or i == 36:
+        if name.startswith("DIG"):
+            # "Dig" channel is the digital trigger port -- may be bit-field
+            # or direct value; caller should try both extraction methods
             return i, True
+
+    # 3. STATUS channel by name or hard-coded index 36
+    for i, ch in enumerate(channels):
+        name = ch.get_channel_name().upper()
+        if "STATUS" in name or "STATU" in name:
+            return i, True
+
+    # 4. Last resort: index 36
+    if len(channels) > 36:
+        return 36, True
 
     return None, None
 
@@ -306,19 +321,44 @@ def extract_trig_bits(raw: np.ndarray, is_status_bit: bool) -> np.ndarray:
     """
     Convert raw channel data to a binary TRIG signal (0 / 1).
 
-    If the data comes from the STATUS channel, extract bit 0.
-    Otherwise threshold at 0.5 of the range.
-    """
-    if is_status_bit:
-        # Bit 0 of the STATUS word
-        return (raw.astype(np.int64) & 1).astype(np.float64)
+    Tries multiple strategies and picks the one with the most transitions:
+        1. Bit 0 extraction  (for STATUS / Digital bit-field channels)
+        2. Midpoint threshold (for analogue / voltage channels)
+        3. Non-zero detection (raw != 0)
 
-    # Dedicated TRIG channel -- simple threshold at midpoint
+    Returns the binary signal that shows the most transitions (i.e. the one
+    most likely to contain the PRBS pattern).
+    """
+    candidates = {}
+
+    # Strategy 1: bit 0
+    raw_int = raw.astype(np.int64)
+    bit0 = (raw_int & 1).astype(np.float64)
+    candidates["bit0"] = bit0
+
+    # Strategy 2: midpoint threshold
     lo, hi = np.nanmin(raw), np.nanmax(raw)
-    if hi - lo < 1e-9:
-        return np.zeros_like(raw)
-    threshold = (lo + hi) / 2.0
-    return (raw > threshold).astype(np.float64)
+    if hi - lo > 1e-9:
+        threshold = (lo + hi) / 2.0
+        thresh = (raw > threshold).astype(np.float64)
+        candidates["threshold"] = thresh
+
+    # Strategy 3: non-zero
+    nonzero = (raw_int != 0).astype(np.float64)
+    candidates["nonzero"] = nonzero
+
+    # Pick the candidate with the most transitions
+    best_name = None
+    best_trans = -1
+    best_sig = bit0  # default fallback
+    for name, sig in candidates.items():
+        t = int(np.sum(np.abs(np.diff(sig))))
+        if t > best_trans:
+            best_trans = t
+            best_name = name
+            best_sig = sig
+
+    return best_sig, best_name, best_trans
 
 
 def find_low_gaps(trig: np.ndarray, min_run: int = MIN_GAP_RUN):
@@ -617,8 +657,9 @@ def main():
         device.close()
         LegacyDevice.cleanup()
         return
-    source = "STATUS bit 0" if is_status else "dedicated TRIG"
-    print(f"\n  TRIG channel : index {trig_idx}  ({source})")
+    ch_name = channels[trig_idx].get_channel_name()
+    source = f"bit-field extraction" if is_status else "direct digital"
+    print(f"\n  TRIG channel : index {trig_idx}  (name: '{ch_name}', {source})")
 
     counter_idx, counter_gain, counter_offset = find_counter_channel(channels)
     if counter_idx is not None:
@@ -637,7 +678,8 @@ def main():
 
     if abs(sample_rate - CHIP_RATE_HZ) > 1:
         print(f"  WARNING: sample rate ({sample_rate}) != chip rate ({CHIP_RATE_HZ}).")
-        print(f"           Cross-correlation results may be degraded.")
+        print(f"           Update the STM32 sketch CHIP_RATE_HZ to match,")
+        print(f"           or cross-correlation results may be degraded.")
 
     # ------------------------------------------------------------------
     # 3. Acquire data
@@ -676,45 +718,57 @@ def main():
 
     # Concatenate into a single array
     trig_raw = np.concatenate(trig_chunks)
-    trig = extract_trig_bits(trig_raw, is_status)
+
+    # Debug: show raw channel statistics before extraction
+    print(f"\n  Raw channel statistics:")
+    print(f"    min = {np.nanmin(trig_raw):.6f}")
+    print(f"    max = {np.nanmax(trig_raw):.6f}")
+    print(f"    mean = {np.nanmean(trig_raw):.6f}")
+    unique_vals = np.unique(trig_raw)
+    if len(unique_vals) <= 20:
+        print(f"    unique values ({len(unique_vals)}): {unique_vals}")
+    else:
+        print(f"    unique values: {len(unique_vals)} distinct  "
+              f"(first 10: {unique_vals[:10]})")
+
+    # Extract binary TRIG signal using best-of-multiple strategies
+    trig, extraction_method, transitions = extract_trig_bits(trig_raw, is_status)
 
     ones_frac = np.mean(trig)
-    print(f"  TRIG high fraction: {ones_frac * 100:.1f}%  "
+    print(f"\n  Extraction method  : {extraction_method}")
+    print(f"  TRIG high fraction : {ones_frac * 100:.1f}%  "
           f"(expect ~45-55% for PRBS + markers)")
-    transitions = np.sum(np.abs(np.diff(trig)))
-    print(f"  TRIG transitions : {int(transitions)}  "
+    print(f"  TRIG transitions   : {int(transitions)}  "
           f"(expect ~{int(total_samples * 0.40)}-{int(total_samples * 0.55)} "
           f"for PRBS-15)")
 
     if transitions < 10:
-        print("  WARNING: Very few transitions detected!")
+        print("\n  WARNING: Very few transitions detected!")
         print("  -> Is the STM32 running and the TRIG cable connected?")
-        print("  -> Try checking other STATUS bits (current: bit 0).")
-        # Try other bits to help debug
-        if is_status:
-            print("\n  Bit analysis of STATUS channel:")
-            raw_int = trig_raw.astype(np.int64)
-            for bit in range(16):
-                bit_vals = (raw_int >> bit) & 1
-                bit_transitions = np.sum(np.abs(np.diff(bit_vals)))
-                bit_high = np.mean(bit_vals)
-                if bit_transitions > 0:
-                    print(f"    bit {bit:2d}: {int(bit_transitions):6d} transitions, "
-                          f"{bit_high * 100:.1f}% high")
-            # Pick the bit with the most transitions
-            best_bit = 0
-            best_trans = 0
-            for bit in range(16):
-                bit_vals = (raw_int >> bit) & 1
-                bt = np.sum(np.abs(np.diff(bit_vals)))
-                if bt > best_trans:
-                    best_trans = bt
-                    best_bit = bit
-            if best_trans > transitions and best_trans > 10:
-                print(f"\n  Auto-selecting STATUS bit {best_bit} "
-                      f"({int(best_trans)} transitions)")
-                trig = ((raw_int >> best_bit) & 1).astype(np.float64)
-                transitions = best_trans
+        # Exhaustive bit analysis of the raw channel
+        print("\n  Exhaustive bit analysis of raw channel:")
+        raw_int = trig_raw.astype(np.int64)
+        any_found = False
+        best_bit = 0
+        best_trans = 0
+        for bit in range(32):
+            bit_vals = (raw_int >> bit) & 1
+            bt = int(np.sum(np.abs(np.diff(bit_vals))))
+            bh = np.mean(bit_vals)
+            if bt > 0:
+                print(f"    bit {bit:2d}: {bt:6d} transitions, "
+                      f"{bh * 100:.1f}% high")
+                any_found = True
+            if bt > best_trans:
+                best_trans = bt
+                best_bit = bit
+        if not any_found:
+            print("    (no bits show any transitions)")
+        if best_trans > transitions and best_trans > 10:
+            print(f"\n  Auto-selecting bit {best_bit} "
+                  f"({best_trans} transitions)")
+            trig = ((raw_int >> best_bit) & 1).astype(np.float64)
+            transitions = best_trans
 
     # ------------------------------------------------------------------
     # 4. Detect frame markers (LOW gaps)
