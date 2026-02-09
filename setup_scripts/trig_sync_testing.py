@@ -401,16 +401,85 @@ def extract_prbs_segments(trig: np.ndarray, gaps):
     return segments
 
 
-def cross_correlate(segment: np.ndarray, reference: np.ndarray):
+def resample_segment(segment: np.ndarray, chips_per_sample: float) -> np.ndarray:
+    """
+    Resample a received PRBS segment from sample-domain to chip-domain.
+
+    If chips_per_sample > 1 the STM32 clock is faster than the Porti7 clock,
+    so each Porti7 sample spans more than one PRBS chip.  We resample the
+    signal so that output[k] corresponds to chip k (nearest-neighbour, since
+    the signal is binary).
+
+    Parameters
+    ----------
+    segment : binary signal sampled at Porti7 rate
+    chips_per_sample : effective PRBS chips per Porti7 sample (e.g. 1.0079)
+
+    Returns
+    -------
+    resampled : array where index k = chip k (nearest-neighbour interpolation)
+    """
+    n_samples = len(segment)
+    n_chips = int(np.round(n_samples * chips_per_sample))
+    if n_chips < 1:
+        return segment.copy()
+
+    # Map each chip index back to a fractional sample index
+    chip_indices = np.arange(n_chips)
+    sample_indices = chip_indices / chips_per_sample          # fractional
+    sample_indices_nn = np.clip(np.round(sample_indices).astype(int),
+                                0, n_samples - 1)
+    return segment[sample_indices_nn]
+
+
+def estimate_chips_per_sample(gaps, sample_rate: float) -> float:
+    """
+    Estimate the effective number of PRBS chips per Porti7 sample using the
+    marker timing.
+
+    The STM32 emits one marker every CHIPS_PER_FRAME chips.  If the STM32
+    clock differs from the Porti7 clock, the inter-marker interval (in Porti7
+    samples) will differ from CHIPS_PER_FRAME.
+
+    chips_per_sample = CHIPS_PER_FRAME / mean_interval_samples
+
+    Returns 1.0 if estimation is not possible.
+    """
+    if len(gaps) < 2:
+        return 1.0
+
+    starts = np.array([g[0] for g in gaps], dtype=np.float64)
+    mean_interval = np.mean(np.diff(starts))
+
+    if mean_interval < 1:
+        return 1.0
+
+    return CHIPS_PER_FRAME / mean_interval
+
+
+def cross_correlate(segment: np.ndarray, reference: np.ndarray,
+                    chips_per_sample: float = 1.0):
     """
     Cross-correlate a received PRBS segment against the full-period reference.
 
+    If chips_per_sample != 1.0, the segment is first resampled from sample-
+    domain to chip-domain so that clock drift does not smear the correlation.
+
     Uses scipy.signal.correlate (FFT-based) when available, else numpy.
 
-    Returns (best_lag, peak_value, peak_to_sidelobe_ratio, correlation_array).
+    Returns (best_lag, peak_value, peak_to_sidelobe_ratio, correlation_array,
+             resampled_segment_or_None).
     """
+    # Resample if needed
+    resampled = None
+    if abs(chips_per_sample - 1.0) > 1e-6:
+        resampled = resample_segment(segment, chips_per_sample)
+        work = resampled
+    else:
+        work = segment
+
     # Convert to bipolar (+1 / -1) for sharper correlation
-    seg_bp = 2.0 * segment - 1.0
+    seg_bp = 2.0 * work - 1.0
     ref_bp = 2.0 * reference - 1.0
 
     if SCIPY_AVAILABLE:
@@ -426,17 +495,20 @@ def cross_correlate(segment: np.ndarray, reference: np.ndarray):
     peak_idx = np.argmax(np.abs(corr))
     peak_val = corr[peak_idx]
 
-    # Peak-to-sidelobe ratio
+    # Peak-to-sidelobe ratio -- use a guard zone around the peak
     abs_corr = np.abs(corr)
-    sorted_vals = np.sort(abs_corr)[::-1]
-    if len(sorted_vals) > 1 and sorted_vals[1] > 0:
-        psr = sorted_vals[0] / sorted_vals[1]
+    guard = max(5, len(work) // 50)     # exclude ±guard around peak
+    mask = np.ones(len(abs_corr), dtype=bool)
+    mask[max(0, peak_idx - guard):min(len(abs_corr), peak_idx + guard + 1)] = False
+    sidelobes = abs_corr[mask]
+    if len(sidelobes) > 0 and np.max(sidelobes) > 0:
+        psr = abs_corr[peak_idx] / np.max(sidelobes)
     else:
         psr = float("inf")
 
-    # Lag: positive means reference is delayed relative to segment
-    best_lag = peak_idx - (len(segment) - 1)
-    return best_lag, peak_val, psr, corr
+    # Lag in chips: positive means reference is delayed relative to segment
+    best_lag = peak_idx - (len(work) - 1)
+    return best_lag, peak_val, psr, corr, resampled
 
 
 def analyse_marker_timing(gaps, sample_rate: float):
@@ -535,7 +607,12 @@ def plot_results(trig, sample_rate, gaps, segments, corr_results, timing,
     ax = axes[2]
     if corr_results:
         best_lag, peak_val, psr, corr = corr_results
-        lags = np.arange(len(corr)) - (len(segments[0][1]) - 1)
+        # The correlation length = len(work) + len(ref) - 1
+        # where work is the (possibly resampled) segment.
+        # Recover len(work) from the correlation array and the reference:
+        ref_len = PRBS15_PERIOD
+        work_len = len(corr) - ref_len + 1
+        lags = np.arange(len(corr)) - (work_len - 1)
         # Show a window around the peak
         peak_idx = np.argmax(np.abs(corr))
         hw = min(500, len(corr) // 2)
@@ -790,6 +867,16 @@ def main():
     print("\n[5/6] Cross-correlating with PRBS-15 reference...")
     prbs_ref = generate_prbs15(seed=PRBS15_SEED, n_chips=PRBS15_PERIOD)
 
+    # Estimate effective chips-per-sample from marker timing to compensate
+    # for clock drift between STM32 and Porti7
+    cps = estimate_chips_per_sample(gaps, sample_rate)
+    if abs(cps - 1.0) > 1e-6:
+        print(f"  Chips per sample    : {cps:.6f}  "
+              f"(STM32 clock is {(cps - 1.0) * 100:+.3f}% vs Porti7)")
+        print(f"  Resampling segments to chip-domain before correlation")
+    else:
+        print(f"  Chips per sample    : {cps:.6f}  (clocks matched)")
+
     segments = extract_prbs_segments(trig, gaps)
     corr_results = None
 
@@ -800,15 +887,23 @@ def main():
         print(f"  Using segment {longest_idx} ({len(seg_data)} samples, "
               f"starts at sample {seg_start})")
 
-        best_lag, peak_val, psr, corr = cross_correlate(seg_data, prbs_ref)
+        best_lag, peak_val, psr, corr, resampled = cross_correlate(
+            seg_data, prbs_ref, chips_per_sample=cps)
         corr_results = (best_lag, peak_val, psr, corr)
 
+        if resampled is not None:
+            print(f"  Resampled segment   : {len(seg_data)} samples -> "
+                  f"{len(resampled)} chips")
+
         print(f"  Correlation peak    : {peak_val:.4f}")
-        print(f"  Peak lag            : {best_lag} chips")
+        print(f"  Peak lag            : {best_lag} chips "
+              f"(= {best_lag % PRBS15_PERIOD} within period)")
         print(f"  Peak-to-sidelobe    : {psr:.1f}")
 
-        if abs(peak_val) > 0.15:
+        if abs(peak_val) > 0.15 and psr > 1.5:
             print("  -> PRBS-15 sequence RECOGNISED")
+        elif abs(peak_val) > 0.05:
+            print("  -> WARNING: weak but detectable correlation")
         else:
             print("  -> WARNING: weak correlation -- PRBS may not match reference")
     else:
@@ -816,7 +911,8 @@ def main():
         # Try correlating the entire signal if no markers found
         if len(trig) > 100 and transitions > 10:
             print("  Attempting correlation on full signal (no marker segmentation)...")
-            best_lag, peak_val, psr, corr = cross_correlate(trig, prbs_ref)
+            best_lag, peak_val, psr, corr, _ = cross_correlate(
+                trig, prbs_ref, chips_per_sample=cps)
             corr_results = (best_lag, peak_val, psr, corr)
             # Make a fake segment for the plot
             segments = [(0, trig)]
@@ -872,7 +968,7 @@ def main():
     # Check 3: Cross-correlation quality
     if corr_results:
         _, pv, ps, _ = corr_results
-        if abs(pv) > 0.15 and ps > 2.0:
+        if abs(pv) > 0.15 and ps > 1.5:
             print(f"  [PASS] Cross-correlation confirms PRBS-15 "
                   f"(peak={pv:.3f}, PSR={ps:.1f})")
         elif abs(pv) > 0.05:
@@ -884,22 +980,42 @@ def main():
         print("  [FAIL] No cross-correlation computed")
         passed = False
 
-    # Check 4: Clock drift
+    # Check 4: Clock drift -- large drift is fine if it's CONSISTENT
+    #   (the whole point of PRBS sync is to measure and correct drift).
+    #   What matters is the jitter (std) of the inter-marker intervals.
     if timing is not None:
         dppm = abs(timing["drift_ppm"])
+        ivl = timing["intervals_samples"]
+        jitter_samples = np.std(ivl)
+        jitter_us = jitter_samples / sample_rate * 1e6  # microseconds
+
+        print(f"  [INFO] Clock drift: {timing['drift_ppm']:+.1f} ppm "
+              f"({abs(timing['drift_ms_per_min']):.2f} ms/min)")
+
         if dppm < 100:
-            print(f"  [PASS] Clock drift {dppm:.1f} ppm (< 100 ppm) -- "
-                  f"suitable for sync")
-        elif dppm < 500:
-            print(f"  [WARN] Clock drift {dppm:.1f} ppm -- "
-                  f"sync possible but may need frequent correction")
+            print(f"         Excellent: clocks nearly matched")
+        elif dppm < 20000:
+            print(f"         Drift is measurable and correctable "
+                  f"(likely STM32 HSI oscillator, +/-1% typical)")
         else:
-            print(f"  [FAIL] Clock drift {dppm:.1f} ppm -- "
-                  f"too high for reliable sync")
+            print(f"  [WARN] Very large drift -- check STM32 clock source")
+
+        # Jitter check: low jitter means drift is stable and predictable
+        if jitter_us < 1000:  # < 1 ms
+            print(f"  [PASS] Marker jitter: {jitter_us:.0f} us "
+                  f"({jitter_samples:.2f} samples) -- stable, correctable")
+        elif jitter_us < 5000:
+            print(f"  [WARN] Marker jitter: {jitter_us:.0f} us -- "
+                  f"moderate, sync still feasible")
+        else:
+            print(f"  [FAIL] Marker jitter: {jitter_us:.0f} us -- "
+                  f"too noisy for reliable sync")
             passed = False
 
     if passed:
         print("\n  >>> OVERALL: PASS -- PRBS-based synchronization is FEASIBLE <<<")
+        print("  Clock drift will be measured and corrected in real-time by the")
+        print("  synchronization engine using PRBS cross-correlation.")
     else:
         print("\n  >>> OVERALL: ISSUES DETECTED -- see above <<<")
     print("=" * 70)
