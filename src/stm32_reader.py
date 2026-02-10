@@ -1,47 +1,29 @@
 """
-General STM32 acquisition
-==========================
+STM32 serial reader (native module)
+====================================
 
 High-performance, thread-safe acquisition for the STM32F401 sketch
-(STM32_all_in_python.ino).  Captures:
+(STM32_all_in_python.ino). Captures:
 
 - Dual BNO085 UART-RVC IMU (yaw, pitch, roll, accel x/y/z per sensor)
 - 3x3 button matrix (keys_mask, keys_rise, keys_fall)
 - PRBS-15 trigger state (prbs_tick, in_mark, prbs_level)
-
-Architecture
-------------
-``STM32Reader`` runs a **daemon thread** that continuously drains the serial
-port and pushes parsed samples into pre-allocated **NumPy ring buffers**.
-The main thread (or any other thread) can snapshot the latest N samples in
-O(1) via ``get_snapshot()``.
-
-PRBS data is stored as a ±1 float stream (``prbs_signal``) ready for
-cross-correlation with the ``SynchronizationEngine`` in ``src.prbs_sync``.
 
 Protocol: 115200 baud, 500 Hz CSV, 21 columns.
 Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
         yaw2,pitch2,roll2,ax2,ay2,az2,
         keys_mask,keys_rise,keys_fall,prbs_tick,in_mark,prbs_level
 
-Usage (standalone):
-  python all_STM32_acquisition.py [--port PORT] [--baud BAUD] [--csv FILE]
-                                  [--duration SEC] [--quiet]
-
-Usage (importable):
-  from setup_scripts.all_STM32_acquisition import STM32Reader
+Usage:
+  from src.stm32_reader import STM32Reader
   reader = STM32Reader(port=None, baud=115200)
   reader.start()
-  ...
-  snap = reader.get_snapshot(n=500)  # last 500 samples as dict of np arrays
+  snap = reader.get_snapshot(n=500)
   reader.stop()
 """
 
 from __future__ import annotations
 
-import csv
-import math
-import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -50,13 +32,12 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-# Project root for src imports
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+try:
+    import serial
+except ImportError:
+    serial = None  # type: ignore
 
-import serial  # noqa: E402
-from src.arduino_connection import open_arduino_serial  # noqa: E402
+from .arduino_connection import open_arduino_serial
 
 
 # ============================================================================
@@ -71,16 +52,7 @@ HEADER_NAMES: List[str] = [
     "prbs_tick", "in_mark", "prbs_level",
 ]
 
-NUM_COLUMNS = len(HEADER_NAMES)  # 21
-
-# Column indices (avoid magic numbers everywhere)
-_COL = {name: idx for idx, name in enumerate(HEADER_NAMES)}
-
-# Columns that are integer-typed
-_INT_COLS = {"imu1_ok", "imu2_ok", "keys_mask", "keys_rise", "keys_fall",
-             "prbs_tick", "in_mark", "prbs_level"}
-
-# Default ring-buffer capacity (seconds * Hz)
+NUM_COLUMNS = len(HEADER_NAMES)
 DEFAULT_CAPACITY = 60 * 500  # 60 s at 500 Hz
 
 
@@ -115,14 +87,13 @@ class SampleSTM32:
 
 
 # ============================================================================
-# Fast parser
+# Parser and ring buffer
 # ============================================================================
 
 _NAN = float("nan")
 
 
 def _fast_float(s: str) -> float:
-    """Convert stripped string to float; empty string -> NaN."""
     if not s:
         return _NAN
     try:
@@ -132,7 +103,6 @@ def _fast_float(s: str) -> float:
 
 
 def _fast_int(s: str) -> int:
-    """Convert stripped string to int; empty string -> 0."""
     if not s:
         return 0
     try:
@@ -148,7 +118,6 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
         return None
     c = line[0]
     if c in ("O", "E", "S", "#", "t", "C"):
-        # Skip OK:, ERR:, STM32..., #, t_ms,..., Columns:
         if (line.startswith("OK:") or line.startswith("ERR:")
                 or line.startswith("STM32") or c == "#"
                 or line.startswith("t_ms,") or line.startswith("Columns:")):
@@ -184,18 +153,8 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
         return None
 
 
-# ============================================================================
-# NumPy ring buffer
-# ============================================================================
-
 class RingBuffer:
-    """
-    Fixed-capacity, pre-allocated NumPy ring buffer.
-
-    - ``push(value)`` is O(1) – no allocation.
-    - ``get_last(n)`` returns the most-recent *n* values as a contiguous
-      NumPy array (one copy, no Python-level loop).
-    """
+    """Fixed-capacity NumPy ring buffer. push() O(1), get_last(n) returns last n values."""
 
     __slots__ = ("_buf", "_cap", "_cursor", "_count")
 
@@ -216,32 +175,26 @@ class RingBuffer:
         return self._count
 
     def get_last(self, n: int) -> np.ndarray:
-        """Return the last *n* values (oldest-first). Clips to available count."""
         n = min(n, self._count)
         if n == 0:
             return np.empty(0, dtype=self._buf.dtype)
         start = (self._cursor - n) % self._cap
         if start + n <= self._cap:
             return self._buf[start:start + n].copy()
-        # Wrap-around: two slices
         tail = self._buf[start:]
         head = self._buf[:n - len(tail)]
         return np.concatenate((tail, head))
 
 
 # ============================================================================
-# STM32Reader – threaded serial reader
+# STM32Reader
 # ============================================================================
 
 class STM32Reader:
     """
     High-performance threaded STM32 serial reader.
-
-    - Daemon thread reads serial at full speed (short timeout).
-    - Parsed samples are pushed into per-column ``RingBuffer`` instances.
-    - ``prbs_signal`` stores ``prbs_lvl`` as ±1 float for PRBS sync.
-    - ``get_snapshot(n)`` returns last *n* samples as dict of np arrays.
-    - Optional ``on_sample`` callback fired for every parsed sample.
+    Daemon thread fills ring buffers; get_snapshot(n) returns last n samples.
+    Optional on_sample callback for PRBS sync etc.
     """
 
     def __init__(
@@ -252,38 +205,32 @@ class STM32Reader:
         on_sample: Optional[Callable[[SampleSTM32], None]] = None,
         verbose: bool = True,
     ):
+        if serial is None:
+            raise RuntimeError("pyserial is required for STM32Reader. Install with: pip install pyserial")
         self.port = port
         self.baud = baud
         self.capacity = capacity
         self.on_sample = on_sample
         self.verbose = verbose
 
-        # Ring buffers – one per column + prbs_signal (±1)
         self.buffers: Dict[str, RingBuffer] = {
             name: RingBuffer(capacity) for name in HEADER_NAMES
         }
-        self.buffers["prbs_signal"] = RingBuffer(capacity)  # ±1 for sync engine
-        self.buffers["t_sec"] = RingBuffer(capacity)          # t_ms / 1000
-        self.buffers["pc_time"] = RingBuffer(capacity)        # time.perf_counter()
+        self.buffers["prbs_signal"] = RingBuffer(capacity)
+        self.buffers["t_sec"] = RingBuffer(capacity)
+        self.buffers["pc_time"] = RingBuffer(capacity)
 
-        # Latest sample (atomic via GIL for simple reads)
         self.latest: Optional[SampleSTM32] = None
-
-        # Stats
         self.sample_count = 0
         self.parse_fail_count = 0
         self._start_pc: float = 0.0
 
-        # Thread plumbing
         self._ser: Optional[serial.Serial] = None
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
 
-    # ---- public API ----
-
     def start(self) -> None:
-        """Open serial and start the reader thread."""
         self._stop_event.clear()
         self._ser = self._open_serial()
         self._start_pc = time.perf_counter()
@@ -295,7 +242,6 @@ class STM32Reader:
             print("[STM32Reader] started")
 
     def stop(self) -> None:
-        """Signal the reader thread to stop and close serial."""
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=3.0)
@@ -315,25 +261,18 @@ class STM32Reader:
         return self._thread is not None and self._thread.is_alive()
 
     def get_snapshot(self, n: int = 5000) -> Dict[str, np.ndarray]:
-        """
-        Return the last *n* samples across all ring buffers.
-        Keys match ``HEADER_NAMES`` plus ``prbs_signal``, ``t_sec``, ``pc_time``.
-        """
         with self._lock:
             return {name: rb.get_last(n) for name, rb in self.buffers.items()}
 
     def get_sample_rate(self) -> float:
-        """Measured sample rate (Hz) since start."""
         elapsed = time.perf_counter() - self._start_pc
         return self.sample_count / elapsed if elapsed > 0.5 else 0.0
-
-    # ---- internal ----
 
     def _open_serial(self) -> serial.Serial:
         return open_arduino_serial(
             port=self.port,
             baud=self.baud,
-            timeout=0.02,       # 20 ms – short so the loop stays responsive
+            timeout=0.02,
             wait_for_ready=True,
             ready_timeout=5.0,
             verbose=self.verbose,
@@ -349,13 +288,11 @@ class STM32Reader:
         return self._open_serial()
 
     def _reader_loop(self) -> None:
-        """Background thread: read serial as fast as possible."""
         ser = self._ser
         assert ser is not None
         last_rx = time.perf_counter()
 
         while not self._stop_event.is_set():
-            # Stall detection
             if time.perf_counter() - last_rx > 3.0:
                 if self.verbose:
                     print("[STM32Reader] stall detected, reconnecting...")
@@ -400,8 +337,6 @@ class STM32Reader:
             self.sample_count += 1
             self.latest = sample
 
-            # Push into ring buffers (lock-free for single-writer is safe,
-            # but we lock briefly so get_snapshot sees a consistent cursor)
             with self._lock:
                 b = self.buffers
                 b["t_ms"].push(sample.t_ms)
@@ -427,7 +362,6 @@ class STM32Reader:
                 b["prbs_tick"].push(float(sample.prbs_tick))
                 b["in_mark"].push(float(sample.in_mark))
                 b["prbs_level"].push(float(sample.prbs_lvl))
-                # ±1 for PRBS synchronization engine
                 b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
 
             if self.on_sample is not None:
@@ -435,104 +369,3 @@ class STM32Reader:
                     self.on_sample(sample)
                 except Exception:
                     pass
-
-
-# ============================================================================
-# CSV logger
-# ============================================================================
-
-class CSVLogger:
-    """Write parsed STM32 samples to CSV (21 columns, same as sketch)."""
-
-    def __init__(self, filepath: str | Path, quiet: bool = False):
-        self.filepath = Path(filepath)
-        self.filepath.parent.mkdir(parents=True, exist_ok=True)
-        self._fh = open(self.filepath, "w", newline="")
-        self._writer = csv.writer(self._fh)
-        self._writer.writerow(HEADER_NAMES)
-        self.count = 0
-        if not quiet:
-            print(f"[CSVLogger] logging to {self.filepath}")
-
-    def log(self, s: SampleSTM32) -> None:
-        self._writer.writerow([
-            s.t_ms, s.imu1_ok, s.imu2_ok,
-            s.yaw1, s.pitch1, s.roll1, s.ax1, s.ay1, s.az1,
-            s.yaw2, s.pitch2, s.roll2, s.ax2, s.ay2, s.az2,
-            s.keys_mask, s.keys_rise, s.keys_fall,
-            s.prbs_tick, s.in_mark, s.prbs_lvl,
-        ])
-        self.count += 1
-        if self.count % 100 == 0:
-            self._fh.flush()
-
-    def close(self) -> None:
-        if self._fh:
-            self._fh.flush()
-            self._fh.close()
-            self._fh = None
-            print(f"[CSVLogger] saved {self.filepath} ({self.count} samples)")
-
-
-# ============================================================================
-# CLI main (only runs when executed directly)
-# ============================================================================
-
-def main() -> None:
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="STM32 acquisition: dual IMU + matrix + PRBS (500 Hz)"
-    )
-    parser.add_argument("--port", type=str, default="auto")
-    parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--csv", type=str, default=None)
-    parser.add_argument("--duration", type=float, default=None)
-    parser.add_argument("--quiet", action="store_true")
-    args = parser.parse_args()
-
-    port = None if (args.port or "auto").lower() == "auto" else args.port
-    quiet = args.quiet
-
-    csv_logger = CSVLogger(args.csv, quiet=quiet) if args.csv else None
-
-    def _on_sample(s: SampleSTM32) -> None:
-        if csv_logger:
-            csv_logger.log(s)
-
-    reader = STM32Reader(
-        port=port, baud=args.baud,
-        on_sample=_on_sample,
-        verbose=not quiet,
-    )
-    reader.start()
-    start = time.time()
-    last_stats = start
-
-    try:
-        while True:
-            time.sleep(0.5)
-            now = time.time()
-            if args.duration and (now - start) >= args.duration:
-                if not quiet:
-                    print(f"\nDuration {args.duration}s reached.")
-                break
-            if not quiet and (now - last_stats) >= 2.0:
-                last_stats = now
-                s = reader.latest
-                rate = reader.get_sample_rate()
-                if s:
-                    print(f"  samples={reader.sample_count}  rate={rate:.0f} Hz  "
-                          f"t_ms={s.t_ms:.0f}  keys={s.keys_mask}  "
-                          f"prbs_tick={s.prbs_tick}  prbs_lvl={s.prbs_lvl}")
-    except KeyboardInterrupt:
-        if not quiet:
-            print("\nInterrupted.")
-    finally:
-        reader.stop()
-        if csv_logger:
-            csv_logger.close()
-
-
-if __name__ == "__main__":
-    main()

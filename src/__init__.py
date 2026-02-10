@@ -60,6 +60,23 @@ from .synchronized_acquisition import (
     TimestampedBuffer,
 )
 
+# Native signal acquisition (STM32 + TMSi Porti7 EMG + PRBS sync) — primary module
+from .stm32_reader import STM32Reader, SampleSTM32
+from .signal_acquisition import (
+    SignalAcquisition,
+    SignalAcquisitionConfig,
+    EMGData,
+    SyncState,
+    HardwarePRBSSync,
+    EMGAcquisitionThread,
+    fix_channel_name as fix_emg_channel_name,
+    run_stm32_only,
+    run_emg_only,
+    run_prbs_test,
+    run_combined,
+    main as signal_acquisition_main,
+)
+
 # Legacy alias: DualIMU is the same as IMUDevice
 DualIMU = IMUDevice
 
@@ -112,4 +129,19 @@ __all__ = [
     'IMUSample',
     'EMGChunk',
     'TimestampedBuffer',
+    # Native signal acquisition (STM32 + EMG + PRBS)
+    'SignalAcquisition',
+    'SignalAcquisitionConfig',
+    'STM32Reader',
+    'SampleSTM32',
+    'EMGData',
+    'SyncState',
+    'HardwarePRBSSync',
+    'EMGAcquisitionThread',
+    'fix_emg_channel_name',
+    'run_stm32_only',
+    'run_emg_only',
+    'run_prbs_test',
+    'run_combined',
+    'signal_acquisition_main',
 ]

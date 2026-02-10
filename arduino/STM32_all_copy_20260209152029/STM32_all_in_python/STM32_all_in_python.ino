@@ -8,6 +8,11 @@
   - Also outputs PRBS level to Serial for Python-side correlation:
       prbs_tick, in_mark, prbs_level
 
+  Target: main-loop sampling/logging at 500 Hz (2 ms)
+  - Print rate: 500 Hz
+  - Matrix scan rate: 500 Hz
+  - PRBS output stays at 2000 Hz (sync signal)
+
   Board: STM32F401 (Arduino STM32 core)
   Library: "Adafruit BNO08x RVC" (Adafruit_BNO08x_RVC)
 */
@@ -43,7 +48,7 @@ volatile uint32_t chips_per_frame = 0;
 volatile uint32_t mark_ticks      = 0;
 volatile bool     in_mark         = false;
 
-// NEW: latest PRBS output level (what is actually driven on PRBS_PIN)
+// Latest PRBS output level (driven on PRBS_PIN)
 volatile uint8_t  prbs_level      = 0;
 
 HardwareTimer *prbsTimer = nullptr;
@@ -56,11 +61,9 @@ static inline uint8_t lfsr_next_bit_prbs15(volatile uint16_t &s) {
   return newbit;
 }
 
-// Keep ISR short and deterministic
 void onPrbsTick() {
   tick_count++;
 
-  // Start marker at beginning of each frame
   if (tick_count % chips_per_frame == 1) {
     in_mark = true;
     mark_ticks = (uint32_t)((CHIP_RATE_HZ * MARK_MS) / 1000);
@@ -68,10 +71,8 @@ void onPrbsTick() {
   }
 
   if (in_mark) {
-    // LOW gap marker: force LOW, do NOT advance LFSR
     prbs_level = 0;
     digitalWrite(PRBS_PIN, LOW);
-
     if (mark_ticks > 0) {
       mark_ticks--;
     } else {
@@ -80,7 +81,6 @@ void onPrbsTick() {
     return;
   }
 
-  // PRBS output (NRZ)
   uint8_t bit = lfsr_next_bit_prbs15(lfsr);
   prbs_level = bit ? 1 : 0;
   digitalWrite(PRBS_PIN, prbs_level ? HIGH : LOW);
@@ -121,7 +121,7 @@ static bool imu2_ok = false;
 
 static bool initRVC(Adafruit_BNO08x_RVC &rvc, HardwareSerial &port, const char *name) {
   port.begin(115200);
-  delay(50); // sensor boot time
+  delay(50);
 
   const uint32_t t0 = millis();
   while (millis() - t0 < 1500) {
@@ -149,10 +149,12 @@ static void imuInit() {
 const uint8_t ROWS = 3;
 const uint8_t COLS = 3;
 
-const uint8_t rowPins[ROWS] = { PA0, PA1, PA2 };
+const uint8_t rowPins[ROWS] = { PA0, PA1, PA4 };
 const uint8_t colPins[COLS] = { PB0, PB1, PB10 };
 
-static const uint32_t MATRIX_SCAN_US   = 1000;   // 1 kHz scan loop target
+// Scan + debounce settings
+// Target matrix scan rate = 500 Hz -> 2000 us
+static const uint32_t MATRIX_SCAN_US   = 2000;
 static const uint8_t  DEBOUNCE_SAMPLES = 4;
 
 static uint16_t rawState = 0;
@@ -272,11 +274,11 @@ void setup() {
 void loop() {
   const uint32_t now_us = micros();
 
-  // ---------- Non-blocking matrix scan ----------
+  // ---------- Non-blocking matrix scan (500 Hz) ----------
 #if ENABLE_MATRIX
   static uint32_t nextMatrix_us = 0;
   if ((int32_t)(now_us - nextMatrix_us) >= 0) {
-    nextMatrix_us = now_us + MATRIX_SCAN_US;
+    nextMatrix_us += MATRIX_SCAN_US; // keep stable cadence
     const uint16_t s = matrixScanOnce();
     matrixUpdateDebounced(s);
   }
@@ -296,7 +298,7 @@ void loop() {
   }
 #endif
 
-  // ---------- Periodic print (fixed-rate) ----------
+  // ---------- Periodic print (500 Hz) ----------
   if ((int32_t)(now_us - nextPrint_us) >= 0) {
     nextPrint_us += PRINT_PERIOD_US;
 
@@ -313,7 +315,6 @@ void loop() {
 #endif
 
 #if ENABLE_PRBS_TRIG
-    // Snapshot volatile ISR-updated values as close together as possible
     const uint32_t prbs_tick  = tick_count;
     const uint8_t  prbs_mark  = in_mark ? 1 : 0;
     const uint8_t  prbs_lvl   = prbs_level;
@@ -381,4 +382,3 @@ void loop() {
     digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
   }
 }
-
