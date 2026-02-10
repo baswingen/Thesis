@@ -11,9 +11,11 @@ Performance tests for real-time synchronized acquisition of:
 - Multi-channel EMG differential pairs (via TMSi Porti7, ~2000 Hz)
 
 PRBS synchronization:
-    Uses prbs_tick and prbs_mark from the STM32 to reconstruct the full
-    2000 Hz PRBS signal on the host (no need to transmit raw PRBS over USB).
-    Cross-correlates reconstructed PRBS with EMG TRIG for clock offset.
+    Uses prbs_tick from the STM32 to reconstruct the full 500 Hz PRBS signal
+    on the host (no need to transmit raw PRBS over USB). Cross-correlates
+    reconstructed PRBS with EMG TRIG for clock offset. Continuous PRBS-15
+    generation (no frame markers) for optimal correlation properties.
+    Scaled to 500 Hz to match STM32 sample rate (1:1 ratio for optimal reconstruction).
 
 Hardware setup:
     STM32F401 PA8 --[330R]-- Porti7 TRIG (LEMO centre)

@@ -36,7 +36,7 @@
 static const uint8_t PRBS_PIN = PA8;
 
 // --- PRBS settings ---
-static const uint32_t CHIP_RATE_HZ = 2000;   // PRBS chip rate (2 kHz)
+static const uint32_t CHIP_RATE_HZ = 500;    // PRBS chip rate (500 Hz - matches STM32 sample rate)
 
 // LFSR state (PRBS-15): x^15 + x^14 + 1
 // Polynomial: taps at bit 15 and 14 (MSB-first notation)

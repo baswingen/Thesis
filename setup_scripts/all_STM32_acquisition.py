@@ -7,7 +7,7 @@ High-performance, thread-safe acquisition for the STM32F401 sketch
 
 - Dual BNO085 UART-RVC IMU (yaw, pitch, roll, accel x/y/z per sensor)
 - 3x3 button matrix (keys_mask, keys_rise, keys_fall)
-- PRBS-15 trigger state (prbs_tick, in_mark, prbs_level)
+- PRBS-15 trigger state (prbs_tick, prbs_level)
 
 Architecture
 ------------
@@ -22,7 +22,7 @@ cross-correlation with the ``SynchronizationEngine`` in ``src.prbs_sync``.
 Protocol: 115200 baud, 500 Hz CSV, 21 columns.
 Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
         yaw2,pitch2,roll2,ax2,ay2,az2,
-        keys_mask,keys_rise,keys_fall,prbs_tick,in_mark,prbs_level
+        keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level
 
 Usage (standalone):
   python all_STM32_acquisition.py [--port PORT] [--baud BAUD] [--csv FILE]
@@ -68,7 +68,7 @@ HEADER_NAMES: List[str] = [
     "yaw1", "pitch1", "roll1", "ax1", "ay1", "az1",
     "yaw2", "pitch2", "roll2", "ax2", "ay2", "az2",
     "keys_mask", "keys_rise", "keys_fall",
-    "prbs_tick", "in_mark", "prbs_level",
+    "prbs_tick", "prbs_level",
 ]
 
 NUM_COLUMNS = len(HEADER_NAMES)  # 21
@@ -78,7 +78,7 @@ _COL = {name: idx for idx, name in enumerate(HEADER_NAMES)}
 
 # Columns that are integer-typed
 _INT_COLS = {"imu1_ok", "imu2_ok", "keys_mask", "keys_rise", "keys_fall",
-             "prbs_tick", "in_mark", "prbs_level"}
+             "prbs_tick", "prbs_level"}
 
 # Default ring-buffer capacity (seconds * Hz)
 DEFAULT_CAPACITY = 60 * 500  # 60 s at 500 Hz
@@ -110,7 +110,6 @@ class SampleSTM32:
     keys_rise: int
     keys_fall: int
     prbs_tick: int
-    in_mark: int
     prbs_lvl: int
 
 
@@ -142,7 +141,7 @@ def _fast_int(s: str) -> int:
 
 
 def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
-    """Parse one CSV line (21 columns) -> SampleSTM32 or None."""
+    """Parse one CSV line (20 columns) -> SampleSTM32 or None."""
     line = line.strip()
     if not line:
         return None
@@ -177,8 +176,7 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
             keys_rise=_fast_int(parts[16]),
             keys_fall=_fast_int(parts[17]),
             prbs_tick=_fast_int(parts[18]),
-            in_mark=_fast_int(parts[19]),
-            prbs_lvl=_fast_int(parts[20]),
+            prbs_lvl=_fast_int(parts[19]),
         )
     except (ValueError, IndexError):
         return None
@@ -425,7 +423,6 @@ class STM32Reader:
                 b["keys_rise"].push(float(sample.keys_rise))
                 b["keys_fall"].push(float(sample.keys_fall))
                 b["prbs_tick"].push(float(sample.prbs_tick))
-                b["in_mark"].push(float(sample.in_mark))
                 b["prbs_level"].push(float(sample.prbs_lvl))
                 # ±1 for PRBS synchronization engine
                 b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
@@ -442,7 +439,7 @@ class STM32Reader:
 # ============================================================================
 
 class CSVLogger:
-    """Write parsed STM32 samples to CSV (21 columns, same as sketch)."""
+    """Write parsed STM32 samples to CSV (20 columns, same as sketch)."""
 
     def __init__(self, filepath: str | Path, quiet: bool = False):
         self.filepath = Path(filepath)
@@ -460,7 +457,7 @@ class CSVLogger:
             s.yaw1, s.pitch1, s.roll1, s.ax1, s.ay1, s.az1,
             s.yaw2, s.pitch2, s.roll2, s.ax2, s.ay2, s.az2,
             s.keys_mask, s.keys_rise, s.keys_fall,
-            s.prbs_tick, s.in_mark, s.prbs_lvl,
+            s.prbs_tick, s.prbs_lvl,
         ])
         self.count += 1
         if self.count % 100 == 0:

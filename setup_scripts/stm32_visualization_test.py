@@ -11,7 +11,7 @@ Displays:
 - IMU1 orientation (yaw, pitch, roll)
 - IMU2 orientation (yaw, pitch, roll)
 - Button matrix (keys_mask vs time)
-- PRBS (prbs_level as ±1 signal, in_mark overlay)
+- PRBS (prbs_level as ±1 signal)
 
 Usage:
   python stm32_visualization_test.py [--port PORT] [--baud BAUD]
@@ -101,10 +101,9 @@ def setup_figure():
 
     # ---- PRBS ----
     ax = axes[3]
-    ax.set_xlabel("Time (s)"); ax.set_ylabel("±1"); ax.set_title("PRBS", fontsize=10)
+    ax.set_xlabel("Time (s)"); ax.set_ylabel("±1"); ax.set_title("PRBS-15 (2 kHz)", fontsize=10)
     ax.set_ylim(-1.5, 1.5); ax.grid(True, alpha=0.3)
     lprbs, = ax.plot([], [], "b-", lw=0.6, label="prbs ±1")
-    lmark, = ax.plot([], [], color="orange", lw=1.2, label="in_mark")
     ax.legend(loc="upper right", fontsize=7)
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.96])
@@ -119,12 +118,12 @@ def setup_figure():
         "fig": fig,
         "axes": axes,
         "backgrounds": backgrounds,
-        "lines": [ly1, lp1, lr1, ly2, lp2, lr2, lk, lprbs, lmark],
+        "lines": [ly1, lp1, lr1, ly2, lp2, lr2, lk, lprbs],
         "line_keys": [
             ("yaw1", 0), ("pitch1", 0), ("roll1", 0),
             ("yaw2", 1), ("pitch2", 1), ("roll2", 1),
             ("keys_mask", 2),
-            ("prbs_signal", 3), ("in_mark", 3),
+            ("prbs_signal", 3),
         ],
     }
 

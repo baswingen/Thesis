@@ -12,9 +12,9 @@ Hardware setup:
 
 STM32 sketch parameters (must match the values below):
     - PRBS-15 LFSR: polynomial x^15 + x^14 + 1, seed 0x7ACE
-    - Chip rate: 2000 Hz  (matches Porti7 base sample rate)
+    - Chip rate: 500 Hz  (matches STM32 sample rate for 1:1 reconstruction)
     - NRZ encoding: bit value -> HIGH / LOW
-    - Frame marker: 30 ms LOW gap once per second (LFSR paused during gap)
+    - Continuous PRBS (no frame markers - preserves correlation properties)
 
 Updated STM32 sketch (flash via Arduino IDE / STM32 core):
 ---------------------------------------------------------------

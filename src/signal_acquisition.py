@@ -83,11 +83,12 @@ CLOCK = time.perf_counter
 # PRBS-15 RECONSTRUCTION (must match Arduino sketch)
 # =============================================================================
 
-# STM32 sketch: CHIP_RATE_HZ=2000, PRBS15 seed 0x7ACE
+# STM32 sketch: CHIP_RATE_HZ=500, PRBS15 seed 0x7ACE
 # Mark period REMOVED to preserve PRBS correlation properties
-PRBS_CHIP_RATE_HZ = 2000
+# Scaled to 500 Hz to match STM32 sample rate (1:1 ratio for optimal reconstruction)
+PRBS_CHIP_RATE_HZ = 500
 PRBS15_SEED = 0x7ACE
-PRBS15_PERIOD = (1 << 15) - 1  # 32_767 chips (~16.4 seconds at 2 kHz)
+PRBS15_PERIOD = (1 << 15) - 1  # 32_767 chips (~65.5 seconds at 500 Hz)
 
 
 def _build_prbs15_lookup() -> np.ndarray:
@@ -563,8 +564,10 @@ class EMGAcquisitionThread(threading.Thread):
 
 class HardwarePRBSSync:
     """
-    Cross-correlate reconstructed PRBS-15 (from STM32 prbs_tick/prbs_mark) with Porti7 TRIG.
-    Reconstructs the full 2000 Hz PRBS on the host from deterministic (t_ms, prbs_tick, prbs_mark).
+    Cross-correlate reconstructed PRBS-15 (from STM32 prbs_tick) with Porti7 TRIG.
+    Reconstructs the full 500 Hz PRBS on the host from deterministic (t_ms, prbs_tick).
+    Continuous PRBS-15 generation (no frame markers) for optimal correlation properties.
+    Scaled to 500 Hz to match STM32 sample rate (1:1 ratio for optimal reconstruction).
     """
 
     CHIP_PERIOD_S = 1.0 / PRBS_CHIP_RATE_HZ  # 0.0005 s
@@ -639,7 +642,7 @@ class HardwarePRBSSync:
                 item = self._stm32_queue.get(timeout=0.05)
             except queue.Empty:
                 continue
-            receive_time, t_ms, prbs_tick, prbs_mark = item
+            receive_time, t_ms, prbs_tick = item
 
             # Detect STM32 restarts / wraparound in t_ms; reset mapping.
             if self._last_stm32_t_ms is not None:
@@ -1219,9 +1222,9 @@ class HardwarePRBSSync:
             transitions = np.sum(np.abs(np.diff(values)) > 0.5) if len(values) > 1 else 0
             transition_rate = transitions / (len(values) - 1) if len(values) > 1 else 0
             
-            # Expected: PRBS at 2000 Hz with ~50% transitions = ~1000 Hz
-            # At EMG sample rate (usually 2000 Hz), we expect ~50% transition rate
-            # If EMG samples at different rate, adjust expectation
+            # Expected: PRBS at 500 Hz with ~50% transitions = ~250 Hz
+            # At EMG sample rate (usually 2000 Hz), we expect ~12.5% transition rate
+            # (4 EMG samples per PRBS chip, so 250 Hz transitions / 2000 Hz samples = 12.5%)
             window_duration = times[-1] - times[0] if len(times) > 1 else 1.0
             transition_rate_hz = transitions / window_duration if window_duration > 0 else 0
             
@@ -1231,11 +1234,11 @@ class HardwarePRBSSync:
                 issues.append(f"Not bipolar: values={unique_vals.tolist()[:5]}")
             if not (0.4 < ones_frac < 0.6):
                 issues.append(f"Unbalanced: {ones_frac:.1%} ones")
-            # Transition rate validation: allow 800-1200 Hz for 2kHz PRBS
-            if transition_rate_hz < 800:
-                issues.append(f"Too few transitions: {transition_rate_hz:.0f} Hz (expect ~1000 Hz)")
-            elif transition_rate_hz > 1200:
-                issues.append(f"Too many transitions: {transition_rate_hz:.0f} Hz (expect ~1000 Hz) - NOISE or WRONG BIT?")
+            # Transition rate validation: allow 200-300 Hz for 500Hz PRBS
+            if transition_rate_hz < 200:
+                issues.append(f"Too few transitions: {transition_rate_hz:.0f} Hz (expect ~250 Hz)")
+            elif transition_rate_hz > 300:
+                issues.append(f"Too many transitions: {transition_rate_hz:.0f} Hz (expect ~250 Hz) - NOISE or WRONG BIT?")
             
             return {
                 'valid': True,

@@ -14,7 +14,8 @@ Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
         yaw2,pitch2,roll2,ax2,ay2,az2,
         keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level
 
-PRBS-15 runs continuously at 2 kHz without frame markers for optimal correlation.
+PRBS-15 runs continuously at 500 Hz without frame markers for optimal correlation.
+Matches STM32 sample rate (1:1 ratio) for most reliable reconstruction.
 
 Usage:
   from src.stm32_reader import STM32Reader
@@ -360,7 +361,6 @@ class STM32Reader:
                 b["keys_rise"].push(float(sample.keys_rise))
                 b["keys_fall"].push(float(sample.keys_fall))
                 b["prbs_tick"].push(float(sample.prbs_tick))
-                b["in_mark"].push(float(sample.in_mark))
                 b["prbs_level"].push(float(sample.prbs_lvl))
                 b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
 
