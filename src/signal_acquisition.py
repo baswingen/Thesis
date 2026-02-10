@@ -7,9 +7,13 @@ Single, program-wide signal acquisition for:
 - TMSi Porti7: multi-channel EMG + TRIG input (~2000 Hz)
 - PRBS-15 hardware sync: STM32 PA8 → Porti7 TRIG; cross-correlation for clock offset.
 
-Use SignalAcquisition for one-shot start/stop and access to STM32 snapshots,
-EMG buffer, and sync state. All components are also importable for testing
-(STM32 only, EMG only, PRBS test).
+Comprehensive diagnostics are ALWAYS enabled, capturing:
+- Raw signal timelines (STM32 PRBS, EMG TRIG)
+- Bit extraction candidates and selection
+- Cross-correlation results with peak analysis
+- Drift compensation evolution over time
+- Timestamp jitter and spacing distributions
+- Sync state history (offset, confidence, drift rate)
 
 Usage:
   from src.signal_acquisition import SignalAcquisition, SignalAcquisitionConfig
@@ -20,6 +24,10 @@ Usage:
   snap = acq.get_stm32_snapshot(500)
   emg_list = acq.get_emg_recent(5.0)
   sync = acq.get_sync_state()
+  
+  # Save diagnostic plots (automatic in run_prbs_test and run_combined)
+  acq.save_diagnostic_plot()  # Saves to prbs_diagnostics_YYYYMMDD_HHMMSS.png
+  
   acq.stop()
 
 STM32 sketch: arduino/STM32_all_copy_20260209152029/STM32_all_in_python/STM32_all_in_python.ino
@@ -36,6 +44,7 @@ import threading
 import traceback
 from collections import deque
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -74,15 +83,11 @@ CLOCK = time.perf_counter
 # PRBS-15 RECONSTRUCTION (must match Arduino sketch)
 # =============================================================================
 
-# STM32 sketch: CHIP_RATE_HZ=2000, FRAME_HZ=1, MARK_MS=30, PRBS15 seed 0x7ACE
+# STM32 sketch: CHIP_RATE_HZ=2000, PRBS15 seed 0x7ACE
+# Mark period REMOVED to preserve PRBS correlation properties
 PRBS_CHIP_RATE_HZ = 2000
-PRBS_CHIPS_PER_FRAME = 2000
-PRBS_MARK_CHIPS = 61  # Arduino ISR outputs 61 LOW ticks per mark (not 60):
-                       # mark_ticks=60 on entry, counts down to 0, and the tick
-                       # where mark_ticks==0 still outputs LOW before clearing
-                       # in_mark.  Total mark duration = 61 chips = 30.5 ms.
 PRBS15_SEED = 0x7ACE
-PRBS15_PERIOD = (1 << 15) - 1  # 32_767
+PRBS15_PERIOD = (1 << 15) - 1  # 32_767 chips (~16.4 seconds at 2 kHz)
 
 
 def _build_prbs15_lookup() -> np.ndarray:
@@ -108,14 +113,14 @@ def _prbs15_bit_at_index(lfsr_idx: int) -> int:
 
 def reconstruct_prbs_chip_value(chip_idx: int) -> float:
     """
-    Reconstruct PRBS output at global chip index (0-based).
+    Reconstruct PRBS-15 output at global chip index (0-based).
     Returns ±1.0 (bipolar) for correlation with EMG TRIG.
+    
+    PRBS-15 period is 32767 chips (~16.4 seconds at 2 kHz).
+    No frame markers - continuous PRBS for optimal correlation.
     """
-    frame = chip_idx // PRBS_CHIPS_PER_FRAME
-    pos_in_frame = chip_idx % PRBS_CHIPS_PER_FRAME
-    if pos_in_frame < PRBS_MARK_CHIPS:
-        return -1.0  # LOW during marker gap (bipolar: -1)
-    lfsr_idx = frame * (PRBS_CHIPS_PER_FRAME - PRBS_MARK_CHIPS) + (pos_in_frame - PRBS_MARK_CHIPS)
+    # Direct mapping: chip_idx -> LFSR sequence index
+    lfsr_idx = chip_idx % PRBS15_PERIOD
     bit = _prbs15_bit_at_index(lfsr_idx)
     return 2.0 * bit - 1.0  # 0 -> -1, 1 -> +1
 
@@ -599,14 +604,28 @@ class HardwarePRBSSync:
         self._update_in_progress = False
 
         self._lock = threading.Lock()
-        self._stm32_queue: queue.Queue = queue.Queue(maxsize=60_000)
+        self._stm32_queue: queue.Queue = queue.Queue(maxsize=200_000)  # Issue 16: increased from 60k
+        self._queue_drops = 0  # Issue 16: track dropped samples
         self._drain_stop = threading.Event()
         self._last_prbs_tick: Optional[int] = None
         self._last_stm32_t_ms: Optional[float] = None
         # Map STM32 internal time (t_ms) into the host perf_counter domain.
-        # We intentionally set this ONCE (first valid sample) so STM32 clock drift
-        # relative to the host/EMG timebase remains measurable by correlation.
+        # Set ONCE (first valid sample) so the STM32 timestamps are monotonic
+        # (no USB serial jitter) but still roughly aligned with host time.
         self._stm32_time_offset_s: Optional[float] = None
+        # Drift estimation: anchor (receive_time, prbs_tick) from the first
+        # valid sample, then derive the real chip period in host seconds by
+        # cumulative regression.  This drift factor is used in the correlation
+        # step to warp s_t from STM32 time to host/EMG time.
+        self._anchor_receive_time: Optional[float] = None
+        self._anchor_prbs_tick: Optional[int] = None
+        self._real_chip_period: float = self.CHIP_PERIOD_S  # start with ideal 1/2000
+        # Issue 18: robust drift estimation with regression
+        self._drift_history: deque = deque(maxlen=100)
+        self._last_chip_period_update = 0.0
+        # Diagnostics
+        self.diagnostics_enabled = False
+        self.diagnostic_snapshots: List[Dict[str, Any]] = []
         self._drain_thread = threading.Thread(
             target=self._drain_stm32_queue,
             name="PRBS-drain-STM32",
@@ -621,45 +640,106 @@ class HardwarePRBSSync:
             except queue.Empty:
                 continue
             receive_time, t_ms, prbs_tick, prbs_mark = item
-            # Detect STM32 restarts / wraparound in t_ms; reset mapping if so.
+
+            # Detect STM32 restarts / wraparound in t_ms; reset mapping.
             if self._last_stm32_t_ms is not None:
-                # millis() wrap is ~49 days; in practice this catches device reset/reconnect.
                 if float(t_ms) + 1000.0 < float(self._last_stm32_t_ms):
                     self._last_prbs_tick = None
                     self._stm32_time_offset_s = None
+                    self._anchor_receive_time = None
+                    self._anchor_prbs_tick = None
+                    self._real_chip_period = self.CHIP_PERIOD_S
             self._last_stm32_t_ms = float(t_ms)
 
-            # Convert STM32 internal time to host perf_counter domain using a fixed offset.
-            # This makes the reconstructed PRBS run at the STM32 clock rate (incl. drift),
-            # instead of assuming an ideal 2000 Hz in host time.
+            # --- Map STM32 internal time to host domain (fixed offset) ---
+            # Using t_ms gives perfectly monotonic timestamps (no USB jitter)
+            # at the STM32 clock rate.  The drift relative to the EMG crystal
+            # clock is corrected in _update_sync_impl before correlation.
             stm32_now_s = float(t_ms) / 1000.0
             if self._stm32_time_offset_s is None:
                 self._stm32_time_offset_s = float(receive_time) - stm32_now_s
-            mapped_now_s = stm32_now_s + float(self._stm32_time_offset_s)
+            mapped_now_s = stm32_now_s + self._stm32_time_offset_s
+
+            # --- Drift estimation (Issue 18: robust regression-based) ---
+            # Track (receive_time, prbs_tick) to compute the real chip period
+            # in host seconds.  This factor is used by the correlation step to
+            # warp STM32 timestamps into the host/EMG time domain.
+            if self._anchor_receive_time is None:
+                self._anchor_receive_time = float(receive_time)
+                self._anchor_prbs_tick = int(prbs_tick)
+            
+            # Store measurement for regression
+            self._drift_history.append((float(receive_time), int(prbs_tick)))
+            
+            # Update every 5 seconds if we have enough data (robust regression)
+            if len(self._drift_history) >= 20 and (receive_time - self._last_chip_period_update) > 5.0:
+                # Linear regression: prbs_tick = slope * receive_time + intercept
+                # slope = chips/second, so chip_period = 1/slope
+                times = np.array([t for t, _ in self._drift_history])
+                ticks = np.array([p for _, p in self._drift_history])
+                
+                # Reject outliers (USB jitter)
+                coeffs = np.polyfit(times, ticks, 1)
+                predicted = np.polyval(coeffs, times)
+                residuals = ticks - predicted
+                std_res = np.std(residuals)
+                inliers = np.abs(residuals) < 3 * std_res
+                
+                if np.sum(inliers) >= 10:
+                    coeffs = np.polyfit(times[inliers], ticks[inliers], 1)
+                    predicted_inliers = np.polyval(coeffs, times[inliers])
+                    residuals_inliers = ticks[inliers] - predicted_inliers
+                    var_residuals = np.var(residuals_inliers) if len(residuals_inliers) > 1 else 0
+                    var_ticks = np.var(ticks[inliers]) if len(ticks[inliers]) > 1 else 1
+                    r2 = 1 - (var_residuals / var_ticks) if var_ticks > 0 else 0
+                    
+                    if r2 > 0.99 and coeffs[0] > 0:  # Only update if fit is excellent
+                        measured_chips_per_sec = coeffs[0]
+                        self._real_chip_period = 1.0 / measured_chips_per_sec
+                        self._last_chip_period_update = receive_time
 
             last = self._last_prbs_tick
             self._last_prbs_tick = prbs_tick
-            chip_start = 0 if last is None else last
-            chip_end = prbs_tick  # chips 0..prbs_tick-1 have been output
-            # Handle reset/wraparound: prbs_tick decreased
+            if last is None:
+                # First sample: set starting point, don't backfill historical
+                # chips whose timestamps would be placed with the not-yet-
+                # converged drift estimate, contaminating the correlation window.
+                continue
+            chip_start = last
+            chip_end = prbs_tick
             if chip_end <= chip_start:
                 continue
-            # Limit backfill on first sample to avoid huge burst
-            if last is None and prbs_tick > 50_000:
-                chip_start = prbs_tick - 50_000
+
             with self._lock:
                 for c in range(chip_start, chip_end):
-                    t_chip = mapped_now_s - (prbs_tick - 1 - c) * self.CHIP_PERIOD_S
+                    # Issue 15: Use measured chip period, not nominal
+                    t_chip = mapped_now_s - (prbs_tick - 1 - c) * self._real_chip_period
                     val = reconstruct_prbs_chip_value(c)
                     self.stm32_buf.append((t_chip, val))
+                
+                # Validate PRBS reconstruction (diagnostic check)
+                if self.diagnostics_enabled and len(self.stm32_buf) % 10000 == 0:
+                    # Every 10k samples, validate PRBS properties
+                    recent_vals = [v for _, v in list(self.stm32_buf)[-1000:]]
+                    if len(recent_vals) >= 1000:
+                        transitions = sum(1 for i in range(len(recent_vals)-1) 
+                                        if recent_vals[i] != recent_vals[i+1])
+                        ones = sum(1 for v in recent_vals if v > 0)
+                        # PRBS should have ~500 transitions and ~50% ones
+                        if transitions < 200 or ones < 200 or ones > 800:
+                            print(f"[WARN] PRBS reconstruction anomaly: "
+                                  f"transitions={transitions}/1000, ones={ones}/1000")
 
     def add_stm32_prbs_sample(self, receive_time: float, t_ms: float,
-                              prbs_tick: int, prbs_mark: int) -> None:
-        """Feed (receive_time, t_ms, prbs_tick, prbs_mark) for PRBS reconstruction."""
+                              prbs_tick: int) -> None:
+        """Feed (receive_time, t_ms, prbs_tick) for PRBS reconstruction."""
         try:
-            self._stm32_queue.put_nowait((receive_time, t_ms, prbs_tick, prbs_mark))
+            self._stm32_queue.put_nowait((receive_time, t_ms, prbs_tick))
         except queue.Full:
-            pass
+            # Issue 16: Track and warn about dropped samples
+            self._queue_drops += 1
+            if self._queue_drops % 100 == 1:
+                print(f"[WARN] PRBS queue overflow: {self._queue_drops} samples dropped")
 
     def add_stm32_prbs(self, timestamp: float, value: float) -> None:
         """Legacy: raw (t, v) pairs; prefer add_stm32_prbs_sample for reconstruction."""
@@ -755,6 +835,34 @@ class HardwarePRBSSync:
         e_t, e_v = e_t[em], e_v[em]
         if len(s_t) < 50 or len(e_t) < 50:
             return
+        
+        # Diagnostics: capture pre-correlation state
+        diagnostic_snapshot = None
+        if self.diagnostics_enabled:
+            diagnostic_snapshot = {
+                'timestamp': CLOCK(),
+                'stm32_t_raw': s_t.copy(),
+                'stm32_v_raw': s_v.copy(),
+                'emg_t_raw': e_t.copy(),
+                'emg_v_raw': e_v.copy() if e_v.dtype.kind == 'f' else None,
+                'emg_words_raw': e_v.copy() if e_v.dtype.kind in ('i', 'u') else None,
+                'trig_mode': self._trig_mode,
+                'trig_bit': self._trig_bit,
+                'real_chip_period': self._real_chip_period,
+                'nominal_chip_period': self.CHIP_PERIOD_S,
+                'bit_candidates': {},
+            }
+        # ---- Clock-drift compensation ----
+        # s_t comes from the STM32's millis() clock, which may run ~1 % faster
+        # than the Porti7's crystal.  Without correction the accumulated phase
+        # error over a 5 s window is ~42 ms, smearing the correlation peak into
+        # noise.  Warp s_t so that its time scale matches the host/EMG clock.
+        rcp = self._real_chip_period          # actual chip period in host-seconds
+        if rcp != self.CHIP_PERIOD_S and rcp > 0:
+            drift_factor = self.CHIP_PERIOD_S / rcp   # >1 when STM32 runs fast
+            s_mid = 0.5 * (s_t[0] + s_t[-1])
+            s_t = s_mid + (s_t - s_mid) / drift_factor
+
         t_lo, t_hi = max(s_t[0], e_t[0]), min(s_t[-1], e_t[-1])
         if t_hi - t_lo < 0.5:
             return
@@ -785,16 +893,18 @@ class HardwarePRBSSync:
         if e_v.dtype.kind in ("i", "u"):
             raw_words = e_v.astype(np.int64)
 
-            # Decide which candidate bits to try: only bits that actually vary in-window.
+            # Test ALL 16 bits to find the one carrying PRBS (enhanced diagnostics)
             candidate_bits: List[int] = []
             for b in range(0, 16):
                 vb = (raw_words >> b) & 1
                 m = float(np.mean(vb)) if vb.size else 0.0
-                if 0.05 < m < 0.95:
+                # Accept any bit that toggles (even if only 1% or 99% high)
+                # This catches PRBS that might be inverted or have low duty cycle
+                if 0.01 < m < 0.99:
                     candidate_bits.append(b)
-            # Always keep a small fallback set
+            # Always test at least bits 0-7 as fallback
             if not candidate_bits:
-                candidate_bits = [0, 1, 2, 3]
+                candidate_bits = list(range(8))
 
             # Build candidate e_rs streams on the common time-grid
             # Note: nearest-neighbour like behaviour is fine for digital; np.interp gives linear but values are 0/1.
@@ -804,12 +914,36 @@ class HardwarePRBSSync:
             best_bit: Optional[int] = None
             best_e_rs: Optional[np.ndarray] = None
 
-            # Candidate 1: per-bit extraction
+            # Candidate 1: per-bit extraction (test both polarities)
             for b in candidate_bits:
                 vb = ((raw_words >> b) & 1).astype(np.float64)
+                
+                # Test normal polarity
                 e_bit = 2.0 * vb - 1.0
                 e_rs_try = np.interp(common_t, e_t, e_bit)
                 peak_try = _norm_peak(e_rs_try, s_rs)
+                
+                # Test inverted polarity (PRBS might be inverted)
+                e_bit_inv = -1.0 * e_bit
+                e_rs_try_inv = np.interp(common_t, e_t, e_bit_inv)
+                peak_try_inv = _norm_peak(e_rs_try_inv, s_rs)
+                
+                # Use whichever polarity gives better correlation
+                if peak_try_inv > peak_try:
+                    peak_try = peak_try_inv
+                    e_rs_try = e_rs_try_inv
+                    polarity = "inverted"
+                else:
+                    polarity = "normal"
+                
+                # Diagnostics: record all candidates
+                if diagnostic_snapshot is not None:
+                    diagnostic_snapshot['bit_candidates'][f'bit{b}'] = {
+                        'peak': peak_try,
+                        'transitions': int(np.sum(np.abs(np.diff(e_bit)))),
+                        'mean': float(np.mean(vb)),
+                        'polarity': polarity,
+                    }
                 if peak_try > best_peak:
                     best_peak = peak_try
                     best_mode = "bit"
@@ -823,6 +957,13 @@ class HardwarePRBSSync:
                 e_thr = 2.0 * (rw_float > thr).astype(np.float64) - 1.0
                 e_rs_try = np.interp(common_t, e_t, e_thr)
                 peak_try = _norm_peak(e_rs_try, s_rs)
+                # Diagnostics: record threshold candidate
+                if diagnostic_snapshot is not None:
+                    diagnostic_snapshot['bit_candidates']['threshold'] = {
+                        'peak': peak_try,
+                        'threshold': thr,
+                        'range': (lo, hi),
+                    }
                 if peak_try > best_peak:
                     best_peak = peak_try
                     best_mode = "threshold"
@@ -833,6 +974,11 @@ class HardwarePRBSSync:
             e_nz = 2.0 * (raw_words != 0).astype(np.float64) - 1.0
             e_rs_try = np.interp(common_t, e_t, e_nz)
             peak_try = _norm_peak(e_rs_try, s_rs)
+            # Diagnostics: record nonzero candidate
+            if diagnostic_snapshot is not None:
+                diagnostic_snapshot['bit_candidates']['nonzero'] = {
+                    'peak': peak_try,
+                }
             if peak_try > best_peak:
                 best_peak = peak_try
                 best_mode = "nonzero"
@@ -888,6 +1034,26 @@ class HardwarePRBSSync:
                 confidence=confidence,
                 samples_analyzed=len(common_t),
             )
+            
+            # Diagnostics: complete snapshot with correlation results
+            if diagnostic_snapshot is not None:
+                diagnostic_snapshot.update({
+                    'common_t': common_t.copy(),
+                    'stm32_resampled': s_rs.copy(),
+                    'emg_resampled': e_rs.copy(),
+                    'correlation': corr.copy(),
+                    'peak_idx': peak_idx,
+                    'peak_val': peak_val,
+                    'lag_samples': lag_samples,
+                    'offset_ms': offset_ms,
+                    'confidence': confidence,
+                    'selected_mode': best_mode if e_v.dtype.kind in ('i', 'u') else 'direct',
+                    'selected_bit': best_bit if e_v.dtype.kind in ('i', 'u') else None,
+                    'kf_offset': self.kf_offset,
+                    'kf_variance': self.kf_variance,
+                    'drift_rate_ppm': self.drift_rate_ppm,
+                })
+                self.diagnostic_snapshots.append(diagnostic_snapshot)
 
         a = abs(self.current_offset_ms)
         if a > self.drift_error_ms:
@@ -902,6 +1068,189 @@ class HardwarePRBSSync:
     def get_corrected_time(self, stm32_time: float) -> float:
         with self._lock:
             return stm32_time - self.current_offset_ms / 1000.0
+
+    def enable_diagnostics(self) -> None:
+        """Enable diagnostic snapshot capture during sync updates (enabled by default)."""
+        with self._lock:
+            self.diagnostics_enabled = True
+            self.diagnostic_snapshots = []
+    
+    def get_diagnostic_summary(self) -> Dict[str, Any]:
+        """Get summary statistics from diagnostic snapshots."""
+        with self._lock:
+            if not self.diagnostic_snapshots:
+                return {}
+            
+            latest = self.diagnostic_snapshots[-1]
+            
+            # Get all bit candidates sorted by peak correlation
+            bit_candidates = latest.get('bit_candidates', {})
+            sorted_bits = sorted(bit_candidates.items(), 
+                               key=lambda x: x[1].get('peak', 0), 
+                               reverse=True)
+            
+            return {
+                'num_snapshots': len(self.diagnostic_snapshots),
+                'latest_offset_ms': latest.get('offset_ms', 0),
+                'latest_confidence': latest.get('confidence', 0),
+                'latest_peak': latest.get('peak_val', 0),
+                'selected_mode': latest.get('selected_mode', 'unknown'),
+                'selected_bit': latest.get('selected_bit'),
+                'real_chip_period_ms': latest.get('real_chip_period', 0.0005) * 1000,
+                'drift_rate_ppm': latest.get('drift_rate_ppm', 0),
+                'top_3_bits': [(name, data.get('peak', 0), data.get('polarity', 'N/A')) 
+                              for name, data in sorted_bits[:3]],
+                'all_bit_peaks': {name: data.get('peak', 0) for name, data in bit_candidates.items()},
+            }
+    
+    def validate_prbs_reconstruction(self) -> Dict[str, Any]:
+        """
+        Validate that reconstructed PRBS has expected statistical properties.
+        
+        Returns dict with validation metrics.
+        """
+        with self._lock:
+            if len(self.stm32_buf) < 1000:
+                return {'valid': False, 'reason': 'insufficient_data'}
+            
+            # Get recent 2000 samples (1 second at 2000 Hz)
+            recent = list(self.stm32_buf)[-2000:]
+            times = np.array([t for t, _ in recent])
+            values = np.array([v for _, v in recent])
+            
+            # Check 1: Temporal spacing should be uniform (~0.5ms)
+            spacing = np.diff(times) * 1000  # ms
+            mean_spacing = np.mean(spacing)
+            std_spacing = np.std(spacing)
+            
+            # Check 2: Values should be bipolar ±1
+            unique_vals = np.unique(values)
+            is_bipolar = len(unique_vals) == 2 and -1 in values and 1 in values
+            
+            # Check 3: ~50% should be +1 (balanced PRBS)
+            ones_frac = np.mean(values > 0)
+            
+            # Check 4: Transition rate should be ~50% (PRBS property)
+            transitions = np.sum(np.abs(np.diff(values)) > 0.5)
+            transition_rate = transitions / len(values)
+            
+            # Check 5: No long runs (PRBS-15 max run = 15)
+            max_run = 1
+            current_run = 1
+            for i in range(1, len(values)):
+                if values[i] == values[i-1]:
+                    current_run += 1
+                    max_run = max(max_run, current_run)
+                else:
+                    current_run = 1
+            
+            # Identify issues
+            issues = []
+            if not is_bipolar:
+                issues.append(f"Not bipolar: values={unique_vals.tolist()}")
+            if not (0.4 < ones_frac < 0.6):
+                issues.append(f"Unbalanced: {ones_frac:.1%} ones (expect ~50%)")
+            if not (0.3 < transition_rate < 0.7):
+                issues.append(f"Low transitions: {transition_rate:.1%} (expect ~50%)")
+            if max_run > 20:
+                issues.append(f"Long run: {max_run} (PRBS-15 max should be ~15)")
+            if std_spacing > 0.1:
+                issues.append(f"Jittery spacing: σ={std_spacing:.3f}ms")
+            
+            return {
+                'valid': True,
+                'source': 'stm32',
+                'num_samples': len(values),
+                'mean_spacing_ms': float(mean_spacing),
+                'std_spacing_ms': float(std_spacing),
+                'is_bipolar': bool(is_bipolar),
+                'unique_values': unique_vals.tolist(),
+                'ones_fraction': float(ones_frac),
+                'transition_rate': float(transition_rate),
+                'max_run_length': int(max_run),
+                'issues': issues,
+                'health': 'good' if len(issues) == 0 else ('warning' if len(issues) <= 2 else 'bad')
+            }
+    
+    def validate_emg_trig(self) -> Dict[str, Any]:
+        """
+        Validate EMG TRIG signal properties to detect noise, wrong bit, etc.
+        
+        Returns dict with validation metrics.
+        """
+        with self._lock:
+            # Use whichever buffer has data
+            if len(self.emg_word_buf) > 1000:
+                recent = list(self.emg_word_buf)[-2000:]
+                times = np.array([t for t, _ in recent])
+                raw_words = np.array([x for _, x in recent], dtype=np.int64)
+                
+                # Extract using current mode
+                if self._trig_mode == "bit" and self._trig_bit is not None:
+                    vb = ((raw_words >> self._trig_bit) & 1).astype(np.float64)
+                    values = 2.0 * vb - 1.0
+                    extraction = f"bit{self._trig_bit}"
+                elif self._trig_mode == "threshold":
+                    rw = raw_words.astype(np.float64)
+                    lo, hi = float(np.min(rw)), float(np.max(rw))
+                    thr = (lo + hi) / 2.0 if hi - lo > 1e-9 else 0.0
+                    values = 2.0 * (rw > thr).astype(np.float64) - 1.0
+                    extraction = "threshold"
+                else:
+                    values = 2.0 * (raw_words != 0).astype(np.float64) - 1.0
+                    extraction = "nonzero"
+            elif len(self.emg_buf) > 1000:
+                recent = list(self.emg_buf)[-2000:]
+                times = np.array([t for t, _ in recent])
+                values = np.array([v for _, v in recent])
+                extraction = "direct"
+            else:
+                return {'valid': False, 'reason': 'insufficient_data'}
+            
+            # Compute metrics (same as PRBS)
+            spacing = np.diff(times) * 1000 if len(times) > 1 else np.array([])
+            mean_spacing = np.mean(spacing) if len(spacing) > 0 else 0
+            std_spacing = np.std(spacing) if len(spacing) > 0 else 0
+            
+            unique_vals = np.unique(values)
+            is_bipolar = len(unique_vals) == 2 and -1 in values and 1 in values
+            ones_frac = np.mean(values > 0)
+            
+            transitions = np.sum(np.abs(np.diff(values)) > 0.5) if len(values) > 1 else 0
+            transition_rate = transitions / (len(values) - 1) if len(values) > 1 else 0
+            
+            # Expected: PRBS at 2000 Hz with ~50% transitions = ~1000 Hz
+            # At EMG sample rate (usually 2000 Hz), we expect ~50% transition rate
+            # If EMG samples at different rate, adjust expectation
+            window_duration = times[-1] - times[0] if len(times) > 1 else 1.0
+            transition_rate_hz = transitions / window_duration if window_duration > 0 else 0
+            
+            # Identify issues
+            issues = []
+            if not is_bipolar:
+                issues.append(f"Not bipolar: values={unique_vals.tolist()[:5]}")
+            if not (0.4 < ones_frac < 0.6):
+                issues.append(f"Unbalanced: {ones_frac:.1%} ones")
+            # Transition rate validation: allow 800-1200 Hz for 2kHz PRBS
+            if transition_rate_hz < 800:
+                issues.append(f"Too few transitions: {transition_rate_hz:.0f} Hz (expect ~1000 Hz)")
+            elif transition_rate_hz > 1200:
+                issues.append(f"Too many transitions: {transition_rate_hz:.0f} Hz (expect ~1000 Hz) - NOISE or WRONG BIT?")
+            
+            return {
+                'valid': True,
+                'source': 'emg_trig',
+                'extraction_mode': extraction,
+                'num_samples': len(values),
+                'mean_spacing_ms': float(mean_spacing),
+                'std_spacing_ms': float(std_spacing),
+                'is_bipolar': bool(is_bipolar),
+                'ones_fraction': float(ones_frac),
+                'transition_rate': float(transition_rate),
+                'transition_rate_hz': float(transition_rate_hz),
+                'issues': issues,
+                'health': 'good' if len(issues) == 0 else ('warning' if len(issues) <= 2 else 'bad')
+            }
 
 
 # =============================================================================
@@ -935,29 +1284,24 @@ class SignalAcquisition:
                 drift_warning_ms=cfg.prbs_drift_warning_ms,
                 drift_error_ms=cfg.prbs_drift_error_ms,
             )
+            # Diagnostics always enabled for production use
+            self._sync_engine.enable_diagnostics()
             if cfg.verbose:
-                print("[SYNC] Hardware PRBS-15 synchronisation enabled")
+                print("[SYNC] Hardware PRBS-15 synchronisation enabled (diagnostics on)")
 
         if cfg.enable_stm32:
-            def _on_stm32(sample: SampleSTM32):
-                if self._sync_engine is not None:
-                    self._sync_engine.add_stm32_prbs_sample(
-                        CLOCK(),
-                        sample.t_ms,
-                        sample.prbs_tick,
-                        sample.in_mark,
-                    )
-
+            # Issue 24: Start STM32 reader WITHOUT callback initially to avoid
+            # collecting PRBS data before EMG is ready
             self._reader = STM32Reader(
                 port=cfg.stm32_port,
                 baud=cfg.stm32_baud,
                 capacity=cfg.stm32_capacity,
-                on_sample=_on_stm32,
+                on_sample=None,  # No callback yet
                 verbose=cfg.verbose,
             )
             self._reader.start()
             if cfg.verbose:
-                print("[STM32] Reader started")
+                print("[STM32] Reader started (PRBS callback pending EMG)")
 
         if cfg.enable_emg:
             self._emg_buffer = TimestampedBuffer(
@@ -987,6 +1331,30 @@ class SignalAcquisition:
                 time.sleep(0.1)
             if cfg.verbose:
                 print("[MAIN] EMG ready")
+            
+            # Issue 24: NOW activate PRBS callback after EMG is ready
+            if cfg.enable_stm32 and self._sync_engine is not None and self._reader is not None:
+                # Clear any accumulated data during EMG startup
+                with self._sync_engine._lock:
+                    self._sync_engine.stm32_buf.clear()
+                    self._sync_engine.emg_buf.clear()
+                    self._sync_engine.emg_word_buf.clear()
+                
+                # Define and activate callback
+                def _on_stm32(sample: SampleSTM32):
+                    if self._sync_engine is not None:
+                        self._sync_engine.add_stm32_prbs_sample(
+                            CLOCK(),
+                            sample.t_ms,
+                            sample.prbs_tick,
+                        )
+                
+                self._reader.on_sample = _on_stm32
+                
+                # Settling period: let both devices accumulate data
+                if cfg.verbose:
+                    print("[SYNC] PRBS callback activated, settling for 2 seconds...")
+                time.sleep(2.0)
 
     def stop(self) -> None:
         if self._emg_thread is not None:
@@ -1021,6 +1389,28 @@ class SignalAcquisition:
         """Run PRBS sync update in a background thread if due."""
         if self._sync_engine is not None and self._sync_engine.should_update():
             threading.Thread(target=self._sync_engine.update_sync, name="PRBS-Sync", daemon=True).start()
+    
+    def get_diagnostic_summary(self) -> Dict[str, Any]:
+        """Get summary of diagnostic data from PRBS sync engine."""
+        if self._sync_engine is None:
+            return {}
+        return self._sync_engine.get_diagnostic_summary()
+    
+    def save_diagnostic_plot(self, output_path: Optional[str] = None) -> Optional[str]:
+        """
+        Save comprehensive diagnostic plot to file.
+        
+        Returns the path where the plot was saved, or None if diagnostics unavailable.
+        """
+        if self._sync_engine is None or not self._sync_engine.diagnostic_snapshots:
+            return None
+        
+        if output_path is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = str(Path.cwd() / f"prbs_diagnostics_{timestamp}.png")
+        
+        plot_prbs_diagnostics(self._sync_engine, output_path)
+        return output_path
 
     @property
     def stm32_reader(self) -> Optional[STM32Reader]:
@@ -1137,10 +1527,15 @@ def run_prbs_test(config: SignalAcquisitionConfig, duration_s: Optional[float], 
         drift_warning_ms=config.prbs_drift_warning_ms,
         drift_error_ms=config.prbs_drift_error_ms,
     )
+    
+    # Diagnostics always enabled for comprehensive signal analysis
+    sync_engine.enable_diagnostics()
+    if config.verbose:
+        print("[DIAGNOSTICS] Enabled - will generate plots after test")
 
     def _on_stm32(sample: SampleSTM32):
         sync_engine.add_stm32_prbs_sample(
-            CLOCK(), sample.t_ms, sample.prbs_tick, sample.in_mark
+            CLOCK(), sample.t_ms, sample.prbs_tick
         )
 
     reader = STM32Reader(
@@ -1175,13 +1570,43 @@ def run_prbs_test(config: SignalAcquisitionConfig, duration_s: Optional[float], 
     if config.verbose:
         print("[MAIN] EMG ready. Collecting TRIG data...\n")
     start = CLOCK()
+    last_update_check = start
+    update_count = 0
     try:
         while (CLOCK() - start) < duration:
+            # Trigger sync updates periodically (this was missing!)
+            now = CLOCK()
+            if now - last_update_check >= 1.0:
+                if sync_engine.should_update():
+                    update_count += 1
+                    if config.verbose:
+                        print(f"  [PRBS] Triggering sync update #{update_count} at t={now-start:.1f}s...")
+                    sync_engine.update_sync()
+                    state = sync_engine.get_sync_state()
+                    if state and config.verbose:
+                        print(f"  [PRBS] Sync result: offset={state.offset_ms:.2f}ms, "
+                              f"confidence={state.confidence:.3f}, peak={state.correlation_peak:.3f}")
+                        
+                        # Validate signals after first update
+                        if update_count == 1:
+                            stm32_val = sync_engine.validate_prbs_reconstruction()
+                            emg_val = sync_engine.validate_emg_trig()
+                            if stm32_val.get('health') != 'good' or emg_val.get('health') != 'good':
+                                print(f"  [WARN] Signal validation issues detected!")
+                                if stm32_val.get('issues'):
+                                    print(f"    STM32: {', '.join(stm32_val['issues'])}")
+                                if emg_val.get('issues'):
+                                    print(f"    EMG TRIG: {', '.join(emg_val['issues'])}")
+                last_update_check = now
             time.sleep(0.2)
     except KeyboardInterrupt:
         if config.verbose:
             print("\n[PRBS] Interrupted")
     elapsed = CLOCK() - start
+    
+    if config.verbose and update_count == 0:
+        print(f"  [WARN] No sync updates occurred during {elapsed:.1f}s test!")
+        print(f"         Need more data: STM32={len(sync_engine.stm32_buf)}, EMG={len(sync_engine.emg_word_buf) + len(sync_engine.emg_buf)}")
     emg_thread.stop()
     emg_thread.join(timeout=5)
     reader.stop()
@@ -1226,6 +1651,351 @@ def run_prbs_test(config: SignalAcquisitionConfig, duration_s: Optional[float], 
         result = "OK" if transition_rate_hz >= (0.25 * chip_rate_hz) else ("LOW" if transition_rate_hz > 0 else "NONE")
         print(f"  [PRBS] EMG TRIG: transitions={transition_count}, rate={transition_rate_hz:.0f} Hz (expected ~{expected_transitions_hz:.0f})")
         print(f"  [PRBS] PRBS signal on EMG: {result}\n")
+    
+    # Generate diagnostic plots (always enabled)
+    if len(sync_engine.diagnostic_snapshots) > 0:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = Path.cwd() / f"prbs_diagnostics_{timestamp}.png"
+        if config.verbose:
+            print(f"[DIAGNOSTICS] Generating comprehensive diagnostic plots...")
+        plot_prbs_diagnostics(sync_engine, str(output_path))
+        
+        # Print enhanced diagnostic summary
+        diag_summary = sync_engine.get_diagnostic_summary()
+        print(f"\n[DIAGNOSTICS] Top correlation peaks:")
+        for name, peak, polarity in diag_summary.get('top_3_bits', []):
+            print(f"  {name}: {peak:.4f} ({polarity})")
+        
+        # Print PRBS validation
+        validation = sync_engine.validate_prbs_reconstruction()
+        if validation.get('valid'):
+            print(f"\n[STM32 PRBS VALIDATION]")
+            print(f"  Samples: {validation['num_samples']}, Bipolar: {validation['is_bipolar']}")
+            print(f"  Ones fraction: {validation['ones_fraction']:.1%}, Transitions: {validation['transition_rate']:.1%}")
+            print(f"  Max run length: {validation['max_run_length']}, Spacing: {validation['mean_spacing_ms']:.3f}ms")
+            if validation.get('issues'):
+                print(f"  Issues: {', '.join(validation['issues'])}")
+        
+        # Validate EMG TRIG signal
+        emg_validation = sync_engine.validate_emg_trig()
+        if emg_validation.get('valid'):
+            print(f"\n[EMG TRIG VALIDATION]")
+            print(f"  Extraction: {emg_validation.get('extraction_mode', 'unknown')}")
+            print(f"  Samples: {emg_validation['num_samples']}, Bipolar: {emg_validation['is_bipolar']}")
+            print(f"  Ones fraction: {emg_validation['ones_fraction']:.1%}")
+            print(f"  Transition rate: {emg_validation['transition_rate']:.1%} ({emg_validation['transition_rate_hz']:.0f} Hz)")
+            if emg_validation.get('issues'):
+                print(f"  ⚠️  ISSUES: {', '.join(emg_validation['issues'])}")
+    else:
+        if config.verbose:
+            print("[DIAGNOSTICS] No snapshots captured - sync may not have run")
+
+
+def plot_prbs_diagnostics(sync_engine: HardwarePRBSSync, output_path: Optional[str] = None) -> None:
+    """
+    Generate comprehensive 9-panel diagnostic plot for PRBS synchronization.
+    
+    Shows all signals, timestamps, bit extraction candidates, correlation results,
+    and drift compensation to help identify why cross-correlation might fail.
+    """
+    try:
+        import matplotlib.pyplot as plt
+        from datetime import datetime
+    except ImportError:
+        print("[WARN] matplotlib not available - skipping diagnostic plots")
+        return
+    
+    if not sync_engine.diagnostic_snapshots:
+        print("[WARN] No diagnostic snapshots available - enable diagnostics before test")
+        return
+    
+    # Use the most recent snapshot
+    snap = sync_engine.diagnostic_snapshots[-1]
+    
+    # Create figure with 9 subplots
+    fig = plt.figure(figsize=(16, 22))
+    gs = fig.add_gridspec(9, 1, hspace=0.4)
+    
+    # Panel 1: Raw STM32 PRBS reconstruction timeline
+    ax1 = fig.add_subplot(gs[0])
+    if 'stm32_t_raw' in snap and 'stm32_v_raw' in snap:
+        s_t = snap['stm32_t_raw']
+        s_v = snap['stm32_v_raw']
+        # Show last 2 seconds for clarity
+        if len(s_t) > 4000:
+            s_t = s_t[-4000:]
+            s_v = s_v[-4000:]
+        ax1.plot(s_t - s_t[0], s_v, linewidth=0.5, color='steelblue', alpha=0.7)
+        ax1.set_ylabel('PRBS Value')
+        ax1.set_title('Panel 1: STM32 Reconstructed PRBS (last 2s)')
+        ax1.set_ylim(-1.2, 1.2)
+        ax1.grid(True, alpha=0.3)
+        ax1.set_xlabel('Time (s, relative)')
+    
+    # Panel 2: Raw EMG TRIG signal
+    ax2 = fig.add_subplot(gs[1])
+    if 'emg_t_raw' in snap:
+        e_t = snap['emg_t_raw']
+        if 'emg_words_raw' in snap and snap['emg_words_raw'] is not None:
+            e_raw = snap['emg_words_raw']
+            # Show last 2 seconds
+            if len(e_t) > 4000:
+                e_t = e_t[-4000:]
+                e_raw = e_raw[-4000:]
+            ax2.plot(e_t - e_t[0], e_raw, linewidth=0.5, color='orange', alpha=0.7)
+            ax2.set_ylabel('Raw Word Value')
+            ax2.set_title('Panel 2: EMG TRIG Raw Words (last 2s)')
+        elif 'emg_v_raw' in snap and snap['emg_v_raw'] is not None:
+            e_v = snap['emg_v_raw']
+            if len(e_t) > 4000:
+                e_t = e_t[-4000:]
+                e_v = e_v[-4000:]
+            ax2.plot(e_t - e_t[0], e_v, linewidth=0.5, color='orange', alpha=0.7)
+            ax2.set_ylabel('Bipolar Value')
+            ax2.set_title('Panel 2: EMG TRIG Bipolar (last 2s)')
+        ax2.grid(True, alpha=0.3)
+        ax2.set_xlabel('Time (s, relative)')
+    
+    # Panel 3: Overlaid signals on common time axis
+    ax3 = fig.add_subplot(gs[2])
+    if 'common_t' in snap and 'stm32_resampled' in snap and 'emg_resampled' in snap:
+        c_t = snap['common_t']
+        s_rs = snap['stm32_resampled']
+        e_rs = snap['emg_resampled']
+        # Show middle 1 second for clarity
+        mid = len(c_t) // 2
+        window = min(1000, len(c_t) // 2)
+        idx_start = max(0, mid - window)
+        idx_end = min(len(c_t), mid + window)
+        t_plot = c_t[idx_start:idx_end] - c_t[idx_start]
+        ax3.plot(t_plot, s_rs[idx_start:idx_end], linewidth=1, color='steelblue', alpha=0.7, label='STM32 PRBS')
+        ax3.plot(t_plot, e_rs[idx_start:idx_end], linewidth=1, color='orange', alpha=0.7, label='EMG TRIG')
+        ax3.set_ylabel('Resampled Signal')
+        ax3.set_title('Panel 3: Overlaid STM32 PRBS + EMG TRIG (resampled, 1s window)')
+        ax3.set_ylim(-1.5, 1.5)
+        ax3.legend(loc='upper right')
+        ax3.grid(True, alpha=0.3)
+        ax3.set_xlabel('Time (s, relative)')
+    
+    # Panel 4: Bit extraction candidates (ALL bits with polarity info)
+    ax4 = fig.add_subplot(gs[3])
+    if 'bit_candidates' in snap and snap['bit_candidates']:
+        candidates = snap['bit_candidates']
+        # Sort by peak correlation for better visualization
+        sorted_items = sorted(candidates.items(), key=lambda x: x[1].get('peak', 0), reverse=True)
+        names = [item[0] for item in sorted_items]
+        peaks = [item[1].get('peak', 0) for item in sorted_items]
+        polarities = [item[1].get('polarity', 'N/A') for item in sorted_items]
+        
+        # Color code: green=selected, blue=inverted polarity, gray=normal but not selected
+        colors = []
+        selected_name = f"bit{snap.get('selected_bit', -1)}" if snap.get('selected_mode') == 'bit' else None
+        for name, pol in zip(names, polarities):
+            if name == selected_name:
+                colors.append('green')
+            elif pol == 'inverted':
+                colors.append('steelblue')
+            else:
+                colors.append('gray')
+        
+        bars = ax4.barh(names, peaks, color=colors, alpha=0.7)
+        ax4.set_xlabel('Normalized Correlation Peak')
+        selected_info = f"{snap.get('selected_mode', 'N/A')}"
+        if snap.get('selected_bit') is not None:
+            selected_info += f" (bit{snap.get('selected_bit')})"
+        ax4.set_title(f"Panel 4: ALL Bit Extraction Candidates (selected: {selected_info})")
+        ax4.grid(True, alpha=0.3, axis='x')
+        
+        # Add peak value annotations for top 5
+        for i, (name, peak) in enumerate(zip(names[:5], peaks[:5])):
+            ax4.text(peak, i, f' {peak:.3f}', va='center', fontsize=8)
+        
+        # Add legend
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor='green', alpha=0.7, label='Selected'),
+            Patch(facecolor='steelblue', alpha=0.7, label='Inverted polarity'),
+            Patch(facecolor='gray', alpha=0.7, label='Normal polarity')
+        ]
+        ax4.legend(handles=legend_elements, loc='lower right', fontsize=8)
+    
+    # Panel 5: Visual comparison of top 3 bits vs STM32 PRBS (NEW)
+    ax5 = fig.add_subplot(gs[4])
+    if 'bit_candidates' in snap and snap['bit_candidates'] and 'emg_words_raw' in snap and snap['emg_words_raw'] is not None:
+        e_t = snap['emg_t_raw']
+        e_words = snap['emg_words_raw'].astype(np.int64)
+        s_t = snap['stm32_t_raw']
+        s_v = snap['stm32_v_raw']
+        
+        # Get top 3 bits
+        sorted_bits = sorted(snap['bit_candidates'].items(), 
+                           key=lambda x: x[1].get('peak', 0), reverse=True)
+        top_3_names = [name for name, _ in sorted_bits[:3] if name.startswith('bit')]
+        
+        # Extract bit numbers
+        top_bits = []
+        for name in top_3_names:
+            if name.startswith('bit'):
+                try:
+                    top_bits.append(int(name[3:]))
+                except:
+                    pass
+        
+        # Show 0.5 second window in the middle
+        mid_t = (e_t[0] + e_t[-1]) / 2
+        window = 0.5
+        mask_e = (e_t >= mid_t - window/2) & (e_t <= mid_t + window/2)
+        mask_s = (s_t >= mid_t - window/2) & (s_t <= mid_t + window/2)
+        
+        e_t_plot = e_t[mask_e] - mid_t
+        e_words_plot = e_words[mask_e]
+        s_t_plot = s_t[mask_s] - mid_t
+        s_v_plot = s_v[mask_s]
+        
+        # Plot STM32 PRBS reference
+        ax5.plot(s_t_plot, s_v_plot + 4, linewidth=1, color='steelblue', alpha=0.8, label='STM32 PRBS (ref)')
+        
+        # Plot top 3 EMG bits
+        colors = ['red', 'orange', 'yellow']
+        for i, bit_num in enumerate(top_bits[:3]):
+            bit_vals = ((e_words_plot >> bit_num) & 1).astype(np.float64)
+            bit_bipolar = 2.0 * bit_vals - 1.0
+            ax5.plot(e_t_plot, bit_bipolar + (2 - i), linewidth=0.8, 
+                    color=colors[i], alpha=0.7, label=f'EMG bit{bit_num}')
+        
+        ax5.set_xlabel('Time (s, relative to center)')
+        ax5.set_ylabel('Signal + offset')
+        ax5.set_title('Panel 5: Visual Comparison - STM32 PRBS vs Top 3 EMG Bits (0.5s window)')
+        ax5.legend(loc='upper right')
+        ax5.grid(True, alpha=0.3)
+        ax5.set_ylim(-0.5, 5.5)
+    
+    # Panel 6: Cross-correlation result (moved from panel 5)
+    ax6 = fig.add_subplot(gs[5])
+    if 'correlation' in snap and 'peak_idx' in snap:
+        corr = snap['correlation']
+        peak_idx = snap['peak_idx']
+        lag_samples = snap.get('lag_samples', 0)
+        # Show window around peak
+        window_half = min(500, len(corr) // 4)
+        idx_start = max(0, peak_idx - window_half)
+        idx_end = min(len(corr), peak_idx + window_half)
+        lags = np.arange(len(corr)) - len(corr) // 2
+        ax6.plot(lags[idx_start:idx_end], corr[idx_start:idx_end], linewidth=1, color='purple')
+        ax6.axvline(x=lag_samples, color='red', linestyle='--', linewidth=2, label=f'Peak lag={lag_samples}')
+        ax6.set_xlabel('Lag (samples)')
+        ax6.set_ylabel('Normalized Correlation')
+        ax6.set_title(f"Panel 6: Cross-Correlation (peak={snap.get('peak_val', 0):.3f}, offset={snap.get('offset_ms', 0):.2f} ms)")
+        ax6.legend()
+        ax6.grid(True, alpha=0.3)
+    
+    # Panel 7: Drift compensation over time
+    ax7 = fig.add_subplot(gs[6])
+    if len(sync_engine.diagnostic_snapshots) > 1:
+        times = [(s['timestamp'] - sync_engine.diagnostic_snapshots[0]['timestamp']) 
+                 for s in sync_engine.diagnostic_snapshots]
+        chip_periods = [s.get('real_chip_period', snap.get('nominal_chip_period', 0.0005)) * 1000 
+                       for s in sync_engine.diagnostic_snapshots]
+        nominal = snap.get('nominal_chip_period', 0.0005) * 1000
+        ax7.plot(times, chip_periods, marker='o', linewidth=2, color='teal', label='Measured')
+        ax7.axhline(y=nominal, color='gray', linestyle='--', linewidth=1, label='Nominal')
+        ax7.set_xlabel('Time (s)')
+        ax7.set_ylabel('Chip Period (ms)')
+        ax7.set_title('Panel 7: Drift Compensation (measured chip period over time)')
+        ax7.legend()
+        ax7.grid(True, alpha=0.3)
+    
+    # Panel 8: Timestamp histograms (jitter analysis)
+    ax8 = fig.add_subplot(gs[7])
+    if 'stm32_t_raw' in snap and 'emg_t_raw' in snap:
+        s_t = snap['stm32_t_raw']
+        e_t = snap['emg_t_raw']
+        if len(s_t) > 2:
+            s_dt = np.diff(s_t) * 1000  # ms
+            ax8.hist(s_dt, bins=50, alpha=0.5, color='steelblue', label=f'STM32 (σ={np.std(s_dt):.3f}ms)')
+        if len(e_t) > 2:
+            e_dt = np.diff(e_t) * 1000  # ms
+            ax8.hist(e_dt, bins=50, alpha=0.5, color='orange', label=f'EMG (σ={np.std(e_dt):.3f}ms)')
+        ax8.set_xlabel('Sample Spacing (ms)')
+        ax8.set_ylabel('Count')
+        ax8.set_title('Panel 8: Timestamp Spacing Distribution (jitter)')
+        ax8.legend()
+        ax8.grid(True, alpha=0.3, axis='y')
+    
+    # Panel 9: Sync state history
+    ax9 = fig.add_subplot(gs[8])
+    if len(sync_engine.diagnostic_snapshots) > 1:
+        times = [(s['timestamp'] - sync_engine.diagnostic_snapshots[0]['timestamp']) 
+                 for s in sync_engine.diagnostic_snapshots]
+        offsets = [s.get('offset_ms', 0) for s in sync_engine.diagnostic_snapshots]
+        confidences = [s.get('confidence', 0) for s in sync_engine.diagnostic_snapshots]
+        
+        ax9_twin = ax9.twinx()
+        line1 = ax9.plot(times, offsets, marker='o', linewidth=2, color='crimson', label='Offset (ms)')
+        line2 = ax9_twin.plot(times, confidences, marker='s', linewidth=2, color='green', alpha=0.7, label='Confidence')
+        
+        ax9.set_xlabel('Time (s)')
+        ax9.set_ylabel('Offset (ms)', color='crimson')
+        ax9_twin.set_ylabel('Confidence', color='green')
+        ax9.set_title('Panel 9: Sync State History (offset & confidence over time)')
+        ax9.tick_params(axis='y', labelcolor='crimson')
+        ax9_twin.tick_params(axis='y', labelcolor='green')
+        ax9.grid(True, alpha=0.3)
+        
+        # Combined legend
+        lines = line1 + line2
+        labels = [l.get_label() for l in lines]
+        ax9.legend(lines, labels, loc='upper left')
+    
+    # Add validation results as text annotation (both STM32 and EMG)
+    stm32_val = sync_engine.validate_prbs_reconstruction()
+    emg_val = sync_engine.validate_emg_trig()
+    
+    health_colors = {'good': 'lightgreen', 'warning': 'wheat', 'bad': 'lightcoral', 'unknown': 'lightgray'}
+    
+    validation_text = ""
+    
+    # STM32 PRBS validation
+    if stm32_val.get('valid'):
+        health = stm32_val.get('health', 'unknown')
+        validation_text += (
+            f"STM32 PRBS ({health.upper()}): {stm32_val['num_samples']} samples\n"
+            f"  Bipolar: {stm32_val['is_bipolar']}, Ones: {stm32_val['ones_fraction']:.1%}\n"
+            f"  Transitions: {stm32_val['transition_rate']:.1%}, Max run: {stm32_val['max_run_length']}\n"
+        )
+        if stm32_val.get('issues'):
+            validation_text += f"  Issues: {'; '.join(stm32_val['issues'][:2])}\n"
+    
+    # EMG TRIG validation
+    if emg_val.get('valid'):
+        health_emg = emg_val.get('health', 'unknown')
+        overall_health = health_emg if health_emg == 'bad' else (stm32_val.get('health', 'unknown') if stm32_val.get('valid') else 'unknown')
+        
+        validation_text += (
+            f"\nEMG TRIG ({health_emg.upper()}): {emg_val['num_samples']} samples\n"
+            f"  Mode: {emg_val.get('extraction_mode', '?')}, Ones: {emg_val['ones_fraction']:.1%}\n"
+            f"  Trans: {emg_val['transition_rate']:.1%} ({emg_val['transition_rate_hz']:.0f} Hz)\n"
+        )
+        if emg_val.get('issues'):
+            validation_text += f"  ⚠️  {'; '.join(emg_val['issues'][:2])}\n"
+    else:
+        overall_health = stm32_val.get('health', 'unknown') if stm32_val.get('valid') else 'unknown'
+    
+    if validation_text:
+        fig.text(0.02, 0.98, validation_text.strip(), transform=fig.transFigure, 
+                fontsize=8, verticalalignment='top', family='monospace',
+                bbox=dict(boxstyle='round', facecolor=health_colors.get(overall_health, 'lightgray'), alpha=0.7))
+    
+    fig.suptitle(f'PRBS Synchronization Diagnostics - {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 
+                 fontsize=14, fontweight='bold')
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    
+    if output_path:
+        plt.savefig(output_path, dpi=150, bbox_inches='tight')
+        print(f"[OK] Diagnostic plot saved: {output_path}")
+    
+    plt.show(block=False)
 
 
 def run_combined(config: SignalAcquisitionConfig, duration_s: Optional[float]) -> None:
@@ -1285,6 +2055,13 @@ def run_combined(config: SignalAcquisitionConfig, duration_s: Optional[float]) -
     stm32_reader = acq.stm32_reader
     emg_thread = acq.emg_thread
     sync_state = acq.get_sync_state()
+    
+    # Generate diagnostic plots if PRBS sync was enabled
+    if config.enable_prbs_sync and acq.sync_engine is not None:
+        diag_path = acq.save_diagnostic_plot()
+        if diag_path and config.verbose:
+            print(f"\n[DIAGNOSTICS] Plot saved: {diag_path}")
+    
     acq.stop()
 
     if config.verbose:
@@ -1298,6 +2075,43 @@ def run_combined(config: SignalAcquisitionConfig, duration_s: Optional[float]) -
             print(f"  [SUMMARY] EMG: {es['rate']:.1f} Hz, {es['samples']} samples, {es['elapsed']:.1f} s")
         if sync_state is not None:
             print(f"  [SUMMARY] PRBS sync: offset={sync_state.offset_ms:+.2f} ms, confidence={sync_state.confidence:.3f}")
+        
+        # Print diagnostic summary with enhanced bit analysis
+        diag_summary = acq.get_diagnostic_summary()
+        if diag_summary:
+            print(f"  [DIAGNOSTICS] Snapshots: {diag_summary.get('num_snapshots', 0)}, "
+                  f"Mode: {diag_summary.get('selected_mode', 'N/A')}, "
+                  f"Bit: {diag_summary.get('selected_bit', 'N/A')}")
+            
+            # Show top 3 bit candidates
+            top_3 = diag_summary.get('top_3_bits', [])
+            if top_3:
+                print(f"  [DIAGNOSTICS] Top 3 bits by correlation:")
+                for i, (name, peak, polarity) in enumerate(top_3, 1):
+                    print(f"    {i}. {name}: peak={peak:.4f} ({polarity})")
+        
+        # Print validation results
+        if acq.sync_engine:
+            stm32_val = acq.sync_engine.validate_prbs_reconstruction()
+            if stm32_val.get('valid'):
+                health = stm32_val.get('health', 'unknown')
+                print(f"  [STM32 PRBS] {health.upper()}: "
+                      f"Bipolar={stm32_val['is_bipolar']}, "
+                      f"Ones={stm32_val['ones_fraction']:.1%}, "
+                      f"Trans={stm32_val['transition_rate']:.1%}")
+                if stm32_val.get('issues'):
+                    print(f"    Issues: {', '.join(stm32_val['issues'])}")
+            
+            emg_val = acq.sync_engine.validate_emg_trig()
+            if emg_val.get('valid'):
+                health = emg_val.get('health', 'unknown')
+                print(f"  [EMG TRIG] {health.upper()}: "
+                      f"Mode={emg_val.get('extraction_mode', '?')}, "
+                      f"Ones={emg_val['ones_fraction']:.1%}, "
+                      f"TransRate={emg_val['transition_rate_hz']:.0f}Hz")
+                if emg_val.get('issues'):
+                    print(f"    ⚠️  Issues: {', '.join(emg_val['issues'])}")
+        
         print("\n" + "=" * 70 + "\nSHUTDOWN COMPLETE\n" + "=" * 70)
 
 

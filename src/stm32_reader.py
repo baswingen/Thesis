@@ -7,12 +7,14 @@ High-performance, thread-safe acquisition for the STM32F401 sketch
 
 - Dual BNO085 UART-RVC IMU (yaw, pitch, roll, accel x/y/z per sensor)
 - 3x3 button matrix (keys_mask, keys_rise, keys_fall)
-- PRBS-15 trigger state (prbs_tick, in_mark, prbs_level)
+- PRBS-15 trigger state (prbs_tick, prbs_level)
 
-Protocol: 115200 baud, 500 Hz CSV, 21 columns.
+Protocol: 115200 baud, 500 Hz CSV, 20 columns.
 Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
         yaw2,pitch2,roll2,ax2,ay2,az2,
-        keys_mask,keys_rise,keys_fall,prbs_tick,in_mark,prbs_level
+        keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level
+
+PRBS-15 runs continuously at 2 kHz without frame markers for optimal correlation.
 
 Usage:
   from src.stm32_reader import STM32Reader
@@ -49,7 +51,7 @@ HEADER_NAMES: List[str] = [
     "yaw1", "pitch1", "roll1", "ax1", "ay1", "az1",
     "yaw2", "pitch2", "roll2", "ax2", "ay2", "az2",
     "keys_mask", "keys_rise", "keys_fall",
-    "prbs_tick", "in_mark", "prbs_level",
+    "prbs_tick", "prbs_level",
 ]
 
 NUM_COLUMNS = len(HEADER_NAMES)
@@ -62,7 +64,7 @@ DEFAULT_CAPACITY = 60 * 500  # 60 s at 500 Hz
 
 @dataclass(slots=True)
 class SampleSTM32:
-    """One parsed STM32 CSV row (21 columns). Missing IMU fields are NaN."""
+    """One parsed STM32 CSV row (20 columns). Missing IMU fields are NaN."""
     t_ms: float
     imu1_ok: int
     imu2_ok: int
@@ -82,7 +84,6 @@ class SampleSTM32:
     keys_rise: int
     keys_fall: int
     prbs_tick: int
-    in_mark: int
     prbs_lvl: int
 
 
@@ -112,7 +113,7 @@ def _fast_int(s: str) -> int:
 
 
 def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
-    """Parse one CSV line (21 columns) -> SampleSTM32 or None."""
+    """Parse one CSV line (20 columns) -> SampleSTM32 or None."""
     line = line.strip()
     if not line:
         return None
@@ -146,8 +147,7 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
             keys_rise=_fast_int(parts[16]),
             keys_fall=_fast_int(parts[17]),
             prbs_tick=_fast_int(parts[18]),
-            in_mark=_fast_int(parts[19]),
-            prbs_lvl=_fast_int(parts[20]),
+            prbs_lvl=_fast_int(parts[19]),
         )
     except (ValueError, IndexError):
         return None

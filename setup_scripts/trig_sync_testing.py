@@ -178,7 +178,7 @@ PRBS15_SEED = 0x7ACE         # LFSR seed (non-zero, 15-bit)
 PRBS15_PERIOD = (1 << 15) - 1  # 32 767 chips
 
 # Derived constants
-MARK_CHIPS = int(CHIP_RATE_HZ * MARK_MS / 1000)          # 60
+MARK_CHIPS = int(CHIP_RATE_HZ * MARK_MS / 1000) + 1       # 61 (ISR off-by-one: see signal_acquisition.py)
 CHIPS_PER_FRAME = CHIP_RATE_HZ // FRAME_HZ                # 2000
 PRBS_CHIPS_PER_FRAME = CHIPS_PER_FRAME - MARK_CHIPS       # ~1940
 # Any run of zeros > MAX_NATURAL_ZERO_RUN is a marker gap

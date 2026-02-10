@@ -35,52 +35,35 @@
 #if ENABLE_PRBS_TRIG
 static const uint8_t PRBS_PIN = PA8;
 
-// --- PRBS + timing settings ---
-static const uint32_t CHIP_RATE_HZ = 2000;   // PRBS chip rate
-static const uint32_t FRAME_HZ     = 1;      // marker once per second
-static const uint32_t MARK_MS      = 30;     // LOW gap marker duration
+// --- PRBS settings ---
+static const uint32_t CHIP_RATE_HZ = 2000;   // PRBS chip rate (2 kHz)
 
 // LFSR state (PRBS-15): x^15 + x^14 + 1
+// Polynomial: taps at bit 15 and 14 (MSB-first notation)
 volatile uint16_t lfsr = 0x7ACE;             // non-zero seed
 
-volatile uint32_t tick_count      = 0;
-volatile uint32_t chips_per_frame = 0;
-volatile uint32_t mark_ticks      = 0;
-volatile bool     in_mark         = false;
+volatile uint32_t tick_count = 0;            // global chip counter
 
 // Latest PRBS output level (driven on PRBS_PIN)
-volatile uint8_t  prbs_level      = 0;
+volatile uint8_t  prbs_level = 0;
 
 HardwareTimer *prbsTimer = nullptr;
 
+// PRBS-15 generator: taps at positions 15 and 14 (x^15 + x^14 + 1)
+// Returns next bit (0 or 1) and advances LFSR state
 static inline uint8_t lfsr_next_bit_prbs15(volatile uint16_t &s) {
-  uint8_t b14 = (s >> 14) & 1;
-  uint8_t b13 = (s >> 13) & 1;
-  uint8_t newbit = b14 ^ b13;
+  uint8_t b14 = (s >> 14) & 1;  // bit 14
+  uint8_t b13 = (s >> 13) & 1;  // bit 13
+  uint8_t newbit = b14 ^ b13;   // XOR feedback
   s = (uint16_t)((s << 1) | newbit);
   return newbit;
 }
 
+// Timer ISR: advance PRBS at 2 kHz
 void onPrbsTick() {
   tick_count++;
-
-  if (tick_count % chips_per_frame == 1) {
-    in_mark = true;
-    mark_ticks = (uint32_t)((CHIP_RATE_HZ * MARK_MS) / 1000);
-    if (mark_ticks < 1) mark_ticks = 1;
-  }
-
-  if (in_mark) {
-    prbs_level = 0;
-    digitalWrite(PRBS_PIN, LOW);
-    if (mark_ticks > 0) {
-      mark_ticks--;
-    } else {
-      in_mark = false;
-    }
-    return;
-  }
-
+  
+  // Generate next PRBS bit and output to pin
   uint8_t bit = lfsr_next_bit_prbs15(lfsr);
   prbs_level = bit ? 1 : 0;
   digitalWrite(PRBS_PIN, prbs_level ? HIGH : LOW);
@@ -90,9 +73,6 @@ static void prbsInit() {
   pinMode(PRBS_PIN, OUTPUT);
   digitalWrite(PRBS_PIN, LOW);
   prbs_level = 0;
-
-  chips_per_frame = CHIP_RATE_HZ / FRAME_HZ;
-  if (chips_per_frame < 2) chips_per_frame = 2;
 
   prbsTimer = new HardwareTimer(TIM2);
   prbsTimer->setOverflow(CHIP_RATE_HZ, HERTZ_FORMAT);
@@ -235,7 +215,7 @@ static void printHeader() {
                  "yaw1,pitch1,roll1,ax1,ay1,az1,"
                  "yaw2,pitch2,roll2,ax2,ay2,az2,"
                  "keys_mask,keys_rise,keys_fall,"
-                 "prbs_tick,in_mark,prbs_level");
+                 "prbs_tick,prbs_level");
 }
 // ===================================================================
 
@@ -315,13 +295,11 @@ void loop() {
 #endif
 
 #if ENABLE_PRBS_TRIG
-    const uint32_t prbs_tick  = tick_count;
-    const uint8_t  prbs_mark  = in_mark ? 1 : 0;
-    const uint8_t  prbs_lvl   = prbs_level;
+    const uint32_t prbs_tick = tick_count;
+    const uint8_t  prbs_lvl  = prbs_level;
 #else
-    const uint32_t prbs_tick  = 0;
-    const uint8_t  prbs_mark  = 0;
-    const uint8_t  prbs_lvl   = 0;
+    const uint32_t prbs_tick = 0;
+    const uint8_t  prbs_lvl  = 0;
 #endif
 
     Serial.print(t_ms);
@@ -366,8 +344,6 @@ void loop() {
     Serial.print(keys_fall);
     Serial.print(",");
     Serial.print(prbs_tick);
-    Serial.print(",");
-    Serial.print(prbs_mark);
     Serial.print(",");
     Serial.print(prbs_lvl);
 
