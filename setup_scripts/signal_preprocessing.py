@@ -57,7 +57,7 @@ from src.imu_acquisition import IMUConfig, IMUType
 # =============================================================================
 
 # EMG Configuration
-EMG_SAMPLE_RATE = 1024  # Hz
+EMG_SAMPLE_RATE = 2000  # Hz
 EMG_DIFFERENTIAL_PAIRS = [(1, 2)]  # Channel pairs to acquire
 
 # EMG Preprocessing Parameters

@@ -60,6 +60,15 @@ from .synchronized_acquisition import (
     TimestampedBuffer,
 )
 
+# STM32-EMG PRBS synchronization (10 Hz chip rate, Kalman + postprocessing)
+from .stm32_emg_sync import (
+    SyncDelayEstimator,
+    SyncDelayResult,
+    DelaySignal,
+    compute_sync_delay_signal,
+    align_emg_to_stm32,
+)
+
 # Native signal acquisition (STM32 + TMSi Porti7 EMG + PRBS sync) — primary module
 from .stm32_reader import STM32Reader, SampleSTM32
 from .signal_acquisition import (
@@ -67,6 +76,7 @@ from .signal_acquisition import (
     SignalAcquisitionConfig,
     EMGData,
     SyncState,
+    RecordedSession,
     HardwarePRBSSync,
     EMGAcquisitionThread,
     fix_channel_name as fix_emg_channel_name,
@@ -129,6 +139,12 @@ __all__ = [
     'IMUSample',
     'EMGChunk',
     'TimestampedBuffer',
+    # STM32-EMG sync
+    'SyncDelayEstimator',
+    'SyncDelayResult',
+    'DelaySignal',
+    'compute_sync_delay_signal',
+    'align_emg_to_stm32',
     # Native signal acquisition (STM32 + EMG + PRBS)
     'SignalAcquisition',
     'SignalAcquisitionConfig',
@@ -136,6 +152,7 @@ __all__ = [
     'SampleSTM32',
     'EMGData',
     'SyncState',
+    'RecordedSession',
     'HardwarePRBSSync',
     'EMGAcquisitionThread',
     'fix_emg_channel_name',

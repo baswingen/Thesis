@@ -31,3 +31,7 @@ h5py>=3.10.0
 
 # GUI support (tkinter is built-in, but pillow helpful for images)
 pillow>=10.0.0
+
+# Real-time plotting (signal acquisition testing)
+pyqtgraph>=0.13.0
+PyQt6>=6.4.0  # QtWidgets, QtCore, QtGui for pyqtgraph

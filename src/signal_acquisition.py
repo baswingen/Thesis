@@ -46,7 +46,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 
@@ -75,6 +75,13 @@ except Exception:
     _USE_SCIPY = False
 
 from .stm32_reader import STM32Reader, SampleSTM32
+from .stm32_emg_sync import (
+    SyncDelayEstimator,
+    SyncDelayResult,
+    DelaySignal,
+    compute_sync_delay_signal,
+    align_emg_to_stm32,
+)
 
 CLOCK = time.perf_counter
 
@@ -145,8 +152,9 @@ class SignalAcquisitionConfig:
     emg_sample_rate: Optional[int] = 2000
     emg_poll_sleep_s: float = 0.002
     enable_prbs_sync: bool = True
+    sync_mode: Literal["realtime", "postprocessing", "none"] = "realtime"
     prbs_correlation_window_s: float = 10.0  # Increased from 5s for better correlation at 500 Hz
-    prbs_update_interval_s: float = 5.0
+    prbs_update_interval_s: float = 2.0  # Kalman smoothing needs infrequent measurements
     # Resample rate used for PRBS cross-correlation. Match the chip rate for
     # optimal correlation (500 Hz PRBS → 500 Hz resample).
     prbs_resample_rate_hz: float = 500.0
@@ -252,6 +260,16 @@ class SyncState:
     samples_analyzed: int
 
 
+@dataclass
+class RecordedSession:
+    """Recorded session for postprocessing sync. Contains both signals and delay signal."""
+
+    emg_chunks: List[Tuple[float, EMGData]]
+    stm32_samples: List[SampleSTM32]
+    delay_signal: DelaySignal
+    sync_result: SyncDelayResult
+
+
 class TimestampedBuffer:
     """Thread-safe deque of (timestamp, data) tuples."""
 
@@ -318,10 +336,14 @@ class EMGAcquisitionThread(threading.Thread):
         sample_rate: Optional[int] = 2000,
         poll_sleep_s: float = 0.002,
         verbose: bool = True,
+        sync_delay_estimator: Optional[SyncDelayEstimator] = None,
+        trig_collector: Optional[List[Tuple[np.ndarray, np.ndarray]]] = None,
     ):
         super().__init__(name="EMG-Thread", daemon=True)
         self.emg_buffer = emg_buffer
         self.sync_engine = sync_engine
+        self.sync_delay_estimator = sync_delay_estimator
+        self.trig_collector = trig_collector  # For postprocessing: [(ts, trig_raw), ...]
         self.connection_type = connection_type
         self.emg_differential_pairs = emg_differential_pairs or [(0, 1)]
         self.sample_rate_hz = sample_rate
@@ -437,9 +459,12 @@ class EMGAcquisitionThread(threading.Thread):
                     print("[EMG] COUNTER not found -- using receive-time timestamps")
 
             self.trig_idx, self.trig_is_status_bit = find_trig_channel(channels)
-            if self.trig_idx is not None and self.verbose:
-                mode = "bit-field" if self.trig_is_status_bit else "direct"
-                print(f"[EMG] TRIG channel at index {self.trig_idx} ({mode})")
+            if self.trig_idx is not None:
+                if self.sync_delay_estimator is not None:
+                    self.sync_delay_estimator.set_trig_is_status(self.trig_is_status_bit)
+                if self.verbose:
+                    mode = "bit-field" if self.trig_is_status_bit else "direct"
+                    print(f"[EMG] TRIG channel at index {self.trig_idx} ({mode})")
             elif self.trig_idx is None and self.verbose:
                 print("[EMG] TRIG channel not found -- PRBS sync disabled")
 
@@ -520,6 +545,14 @@ class EMGAcquisitionThread(threading.Thread):
                     else:
                         trig_bp = self._extract_trig_bipolar(trig_raw)
                         self.sync_engine.add_emg_trig_batch(ts_arr, trig_bp)
+
+                if self.trig_idx is not None and self.sync_delay_estimator is not None:
+                    trig_raw = samples[:, self.trig_idx].astype(np.float64)
+                    self.sync_delay_estimator.add_emg_trig_chunk(ts_arr, trig_raw)
+
+                if self.trig_idx is not None and self.trig_collector is not None:
+                    trig_raw = samples[:, self.trig_idx].astype(np.float64)
+                    self.trig_collector.append((ts_arr.copy(), trig_raw.copy()))
 
                 if self.verbose and self.chunk_count % 100 == 0:
                     lat = receive_time - chunk_ts
@@ -1269,9 +1302,12 @@ class SignalAcquisition:
     def __init__(self, config: Optional[SignalAcquisitionConfig] = None):
         self.config = config or SignalAcquisitionConfig()
         self._sync_engine: Optional[HardwarePRBSSync] = None
+        self._sync_delay_estimator: Optional[SyncDelayEstimator] = None
         self._reader: Optional[STM32Reader] = None
         self._emg_thread: Optional[EMGAcquisitionThread] = None
         self._emg_buffer: Optional[TimestampedBuffer] = None
+        self._postprocessing_trig_collector: List[Tuple[np.ndarray, np.ndarray]] = []
+        self._postprocessing_stm32_samples: List[SampleSTM32] = []
 
     def start(self) -> None:
         """Start STM32 (if enabled), sync engine (if PRBS), and EMG (if enabled)."""
@@ -1279,18 +1315,33 @@ class SignalAcquisition:
         if cfg.enable_emg and not _TMSI_AVAILABLE:
             raise RuntimeError("EMG enabled but TMSi SDK not available. Add tmsi-python-interface to project.")
 
-        if cfg.enable_prbs_sync and cfg.enable_stm32 and cfg.enable_emg:
-            self._sync_engine = HardwarePRBSSync(
-                correlation_window_s=cfg.prbs_correlation_window_s,
+        use_realtime_sync = (
+            cfg.enable_prbs_sync
+            and cfg.enable_stm32
+            and cfg.enable_emg
+            and cfg.sync_mode == "realtime"
+        )
+        use_postprocessing_sync = (
+            cfg.enable_prbs_sync
+            and cfg.enable_stm32
+            and cfg.enable_emg
+            and cfg.sync_mode == "postprocessing"
+        )
+
+        if use_postprocessing_sync:
+            self._postprocessing_trig_collector.clear()
+            self._postprocessing_stm32_samples.clear()
+
+        if use_realtime_sync:
+            emg_rate = cfg.emg_sample_rate or 2000
+            self._sync_delay_estimator = SyncDelayEstimator(
+                chip_rate_hz=10.0,
+                emg_sample_rate=float(emg_rate),
+                sync_window_s=cfg.prbs_correlation_window_s,
                 update_interval_s=cfg.prbs_update_interval_s,
-                resample_rate_hz=cfg.prbs_resample_rate_hz,
-                drift_warning_ms=cfg.prbs_drift_warning_ms,
-                drift_error_ms=cfg.prbs_drift_error_ms,
             )
-            # Diagnostics always enabled for production use
-            self._sync_engine.enable_diagnostics()
             if cfg.verbose:
-                print("[SYNC] Hardware PRBS-15 synchronisation enabled (diagnostics on)")
+                print("[SYNC] Real-time PRBS sync enabled (Kalman-smoothed, 10 Hz chip rate)")
 
         if cfg.enable_stm32:
             # Issue 24: Start STM32 reader WITHOUT callback initially to avoid
@@ -1319,6 +1370,8 @@ class SignalAcquisition:
                 sample_rate=cfg.emg_sample_rate,
                 poll_sleep_s=cfg.emg_poll_sleep_s,
                 verbose=cfg.verbose,
+                sync_delay_estimator=self._sync_delay_estimator,
+                trig_collector=self._postprocessing_trig_collector if use_postprocessing_sync else None,
             )
             self._emg_thread.start()
             if cfg.verbose:
@@ -1335,29 +1388,22 @@ class SignalAcquisition:
             if cfg.verbose:
                 print("[MAIN] EMG ready")
             
-            # Issue 24: NOW activate PRBS callback after EMG is ready
-            if cfg.enable_stm32 and self._sync_engine is not None and self._reader is not None:
-                # Clear any accumulated data during EMG startup
-                with self._sync_engine._lock:
-                    self._sync_engine.stm32_buf.clear()
-                    self._sync_engine.emg_buf.clear()
-                    self._sync_engine.emg_word_buf.clear()
-                
-                # Define and activate callback
-                def _on_stm32(sample: SampleSTM32):
-                    if self._sync_engine is not None:
-                        self._sync_engine.add_stm32_prbs_sample(
-                            CLOCK(),
-                            sample.t_ms,
-                            sample.prbs_tick,
-                        )
-                
-                self._reader.on_sample = _on_stm32
-                
-                # Settling period: let both devices accumulate data
-                if cfg.verbose:
-                    print("[SYNC] PRBS callback activated, settling for 2 seconds...")
-                time.sleep(2.0)
+            # Activate STM32 callback for sync (real-time or postprocessing)
+            if cfg.enable_stm32 and self._reader is not None:
+                if self._sync_delay_estimator is not None:
+                    def _on_stm32_realtime(sample: SampleSTM32):
+                        if self._sync_delay_estimator is not None:
+                            self._sync_delay_estimator.add_stm32_samples([sample])
+                    self._reader.on_sample = _on_stm32_realtime
+                    if cfg.verbose:
+                        print("[SYNC] PRBS callback activated (real-time), settling for 2 seconds...")
+                    time.sleep(2.0)
+                elif use_postprocessing_sync:
+                    def _on_stm32_postproc(sample: SampleSTM32):
+                        self._postprocessing_stm32_samples.append(sample)
+                    self._reader.on_sample = _on_stm32_postproc
+                    if cfg.verbose:
+                        print("[SYNC] PRBS callback activated (postprocessing mode)")
 
     def stop(self) -> None:
         if self._emg_thread is not None:
@@ -1379,39 +1425,77 @@ class SignalAcquisition:
         return self._emg_buffer.get_recent(window_seconds, now=now)
 
     def get_sync_state(self) -> Optional[SyncState]:
-        if self._sync_engine is None:
+        if self._sync_delay_estimator is not None:
+            result = self._sync_delay_estimator.get_result()
+            if result is not None:
+                return SyncState(
+                    timestamp=0.0,
+                    offset_ms=self._sync_delay_estimator.get_delay_ms(),
+                    drift_rate_ppm=self._sync_delay_estimator.get_drift_rate_ppm(),
+                    correlation_peak=result.correlation_peak,
+                    confidence=result.confidence,
+                    samples_analyzed=len(result.lag_series_chips),
+                )
             return None
-        return self._sync_engine.get_sync_state()
+        if self._sync_engine is not None:
+            return self._sync_engine.get_sync_state()
+        return None
+
+    def get_sync_delay_ms(self) -> float:
+        """Return current Kalman-smoothed sync delay in milliseconds (real-time mode)."""
+        if self._sync_delay_estimator is not None:
+            return self._sync_delay_estimator.get_delay_ms()
+        return 0.0
 
     def get_corrected_time(self, stm32_time: float) -> float:
-        if self._sync_engine is None:
-            return stm32_time
-        return self._sync_engine.get_corrected_time(stm32_time)
+        if self._sync_delay_estimator is not None:
+            return stm32_time - self._sync_delay_estimator.get_delay_ms() / 1000.0
+        if self._sync_engine is not None:
+            return self._sync_engine.get_corrected_time(stm32_time)
+        return stm32_time
 
     def trigger_prbs_update(self) -> None:
         """Run PRBS sync update in a background thread if due."""
-        if self._sync_engine is not None and self._sync_engine.should_update():
+        if self._sync_delay_estimator is not None and self._sync_delay_estimator.should_update():
+            threading.Thread(
+                target=self._sync_delay_estimator.update,
+                name="PRBS-Sync",
+                daemon=True,
+            ).start()
+        elif self._sync_engine is not None and self._sync_engine.should_update():
             threading.Thread(target=self._sync_engine.update_sync, name="PRBS-Sync", daemon=True).start()
     
     def get_diagnostic_summary(self) -> Dict[str, Any]:
         """Get summary of diagnostic data from PRBS sync engine."""
-        if self._sync_engine is None:
+        if self._sync_delay_estimator is not None:
+            result = self._sync_delay_estimator.get_result()
+            if result is not None:
+                return {
+                    "num_snapshots": self._sync_delay_estimator._update_count,
+                    "latest_offset_ms": self._sync_delay_estimator.get_delay_ms(),
+                    "latest_confidence": result.confidence,
+                    "latest_peak": result.correlation_peak,
+                    "drift_rate_ppm": self._sync_delay_estimator.get_drift_rate_ppm(),
+                }
             return {}
-        return self._sync_engine.get_diagnostic_summary()
+        if self._sync_engine is not None:
+            return self._sync_engine.get_diagnostic_summary()
+        return {}
     
     def save_diagnostic_plot(self, output_path: Optional[str] = None) -> Optional[str]:
         """
         Save comprehensive diagnostic plot to file.
-        
+
         Returns the path where the plot was saved, or None if diagnostics unavailable.
+        (Only available when using legacy HardwarePRBSSync; real-time mode has no diagnostic snapshots.)
         """
         if self._sync_engine is None or not self._sync_engine.diagnostic_snapshots:
             return None
-        
+
         if output_path is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             output_path = str(Path.cwd() / f"prbs_diagnostics_{timestamp}.png")
-        
+
         plot_prbs_diagnostics(self._sync_engine, output_path)
         return output_path
 
@@ -1428,8 +1512,61 @@ class SignalAcquisition:
         return self._sync_engine
 
     @property
+    def sync_delay_estimator(self) -> Optional[SyncDelayEstimator]:
+        return self._sync_delay_estimator
+
+    @property
     def emg_buffer(self) -> Optional[TimestampedBuffer]:
         return self._emg_buffer
+
+    def record_for_postprocessing(
+        self, duration_s: float
+    ) -> Optional[RecordedSession]:
+        """
+        Record for given duration, then compute delay signal for postprocessing.
+
+        Must be called after start() with sync_mode="postprocessing".
+        Blocks for duration_s, then stops acquisition and returns RecordedSession
+        with emg_chunks, stm32_samples, delay_signal, and sync_result.
+        """
+        if self.config.sync_mode != "postprocessing":
+            raise RuntimeError(
+                "record_for_postprocessing requires sync_mode='postprocessing'. "
+                "Create SignalAcquisition with sync_mode='postprocessing' and start() first."
+            )
+        if self._emg_thread is None or self._reader is None:
+            raise RuntimeError("Acquisition not started. Call start() first.")
+
+        time.sleep(duration_s)
+        emg_chunks = self._emg_buffer.get_all() if self._emg_buffer else []
+        stm32_samples = list(self._postprocessing_stm32_samples)
+        emg_thread = self._emg_thread
+        self.stop()
+
+        if not self._postprocessing_trig_collector or not stm32_samples:
+            return None
+
+        trig_arrays = [trig for _, trig in self._postprocessing_trig_collector]
+        emg_trig_raw = np.concatenate(trig_arrays)
+        emg_sample_rate = emg_thread.sample_rate if emg_thread else 2000.0
+        is_status = getattr(emg_thread, "trig_is_status_bit", False)
+
+        try:
+            delay_signal, sync_result = compute_sync_delay_signal(
+                emg_trig_raw=emg_trig_raw,
+                stm32_samples=stm32_samples,
+                emg_sample_rate=emg_sample_rate,
+                is_status=is_status,
+            )
+        except ValueError:
+            return None
+
+        return RecordedSession(
+            emg_chunks=emg_chunks,
+            stm32_samples=stm32_samples,
+            delay_signal=delay_signal,
+            sync_result=sync_result,
+        )
 
 
 # =============================================================================
@@ -1515,14 +1652,61 @@ def run_emg_only(config: SignalAcquisitionConfig, duration_s: Optional[float]) -
         print(f"\n  [SUMMARY] EMG: {rate:.1f} Hz, {st['samples']} samples")
 
 
-def run_prbs_test(config: SignalAcquisitionConfig, duration_s: Optional[float], chip_rate_hz: int = 2000) -> None:
+def _run_prbs_test_integrated(config: SignalAcquisitionConfig, duration: float) -> None:
+    """PRBS test using integrated SyncDelayEstimator (10 Hz chip rate, Kalman)."""
+    cfg = SignalAcquisitionConfig(
+        enable_stm32=True,
+        enable_emg=True,
+        enable_prbs_sync=True,
+        sync_mode="realtime",
+        verbose=config.verbose,
+        stm32_port=config.stm32_port,
+        stm32_baud=config.stm32_baud,
+        prbs_correlation_window_s=config.prbs_correlation_window_s,
+        prbs_update_interval_s=config.prbs_update_interval_s,
+    )
+    acq = SignalAcquisition(cfg)
+    acq.start()
+    time.sleep(1.0)
+    start = CLOCK()
+    last_log = start
+    try:
+        while (CLOCK() - start) < duration:
+            now = CLOCK()
+            acq.trigger_prbs_update()
+            if config.verbose and (now - last_log) >= 1.0:
+                last_log = now
+                ss = acq.get_sync_state()
+                if ss is not None:
+                    print(f"  [PRBS] offset={ss.offset_ms:+.2f} ms, confidence={ss.confidence:.3f}, drift={ss.drift_rate_ppm:.1f} ppm")
+                else:
+                    print("  [PRBS] waiting for first sync update...")
+            time.sleep(0.2)
+    except KeyboardInterrupt:
+        if config.verbose:
+            print("\n[PRBS] Interrupted")
+    acq.stop()
+    if config.verbose:
+        ss = acq.get_sync_state()
+        if ss is not None:
+            print(f"\n  [SUMMARY] PRBS sync: offset={ss.offset_ms:+.2f} ms, confidence={ss.confidence:.3f}")
+
+
+def run_prbs_test(config: SignalAcquisitionConfig, duration_s: Optional[float], chip_rate_hz: int = 10) -> None:
     if not _TMSI_AVAILABLE:
         print("\nERROR: TMSi SDK not available. Cannot run PRBS test.")
         return
     duration = duration_s if duration_s is not None else 5.0
     if config.verbose:
         print("\n" + "=" * 50 + "\nPhase: PRBS (EMG TRIG)\n" + "=" * 50 +
-              f"\n  Target: PRBS on TRIG (~{chip_rate_hz} Hz). Duration: {duration:.0f} s. Press Ctrl+C to stop.\n")
+              f"\n  Target: PRBS on TRIG (10 Hz chip rate). Duration: {duration:.0f} s. Press Ctrl+C to stop.\n")
+
+    # Use integrated SyncDelayEstimator when sync_mode is realtime (default)
+    if config.sync_mode == "realtime":
+        _run_prbs_test_integrated(config, duration)
+        return
+
+    # Legacy HardwarePRBSSync path (500 Hz) for backward compatibility
     sync_engine = HardwarePRBSSync(
         correlation_window_s=config.prbs_correlation_window_s,
         update_interval_s=config.prbs_update_interval_s,
