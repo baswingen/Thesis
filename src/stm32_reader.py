@@ -9,10 +9,10 @@ High-performance, thread-safe acquisition for the STM32F401 sketch
 - 3x3 button matrix (keys_mask, keys_rise, keys_fall)
 - PRBS-15 trigger state (prbs_tick, prbs_level)
 
-Protocol: 115200 baud, 500 Hz CSV, 20 columns.
+Protocol: 115200 baud, 500 Hz CSV, 21 columns.
 Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
         yaw2,pitch2,roll2,ax2,ay2,az2,
-        keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level
+        keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level,in_mark
 
 PRBS-15 runs continuously at 500 Hz without frame markers for optimal correlation.
 Matches STM32 sample rate (1:1 ratio) for most reliable reconstruction.
@@ -52,7 +52,7 @@ HEADER_NAMES: List[str] = [
     "yaw1", "pitch1", "roll1", "ax1", "ay1", "az1",
     "yaw2", "pitch2", "roll2", "ax2", "ay2", "az2",
     "keys_mask", "keys_rise", "keys_fall",
-    "prbs_tick", "prbs_level",
+    "prbs_tick", "prbs_level", "in_mark",
 ]
 
 NUM_COLUMNS = len(HEADER_NAMES)
@@ -65,7 +65,7 @@ DEFAULT_CAPACITY = 60 * 500  # 60 s at 500 Hz
 
 @dataclass(slots=True)
 class SampleSTM32:
-    """One parsed STM32 CSV row (20 columns). Missing IMU fields are NaN."""
+    """One parsed STM32 CSV row (21 columns). Missing IMU fields are NaN."""
     t_ms: float
     imu1_ok: int
     imu2_ok: int
@@ -86,6 +86,7 @@ class SampleSTM32:
     keys_fall: int
     prbs_tick: int
     prbs_lvl: int
+    in_mark: int
 
 
 # ============================================================================
@@ -114,7 +115,7 @@ def _fast_int(s: str) -> int:
 
 
 def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
-    """Parse one CSV line (20 columns) -> SampleSTM32 or None."""
+    """Parse one CSV line (21 columns) -> SampleSTM32 or None."""
     line = line.strip()
     if not line:
         return None
@@ -125,8 +126,10 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
                 or line.startswith("t_ms,") or line.startswith("Columns:")):
             return None
     parts = line.split(",")
-    if len(parts) != NUM_COLUMNS:
+    if len(parts) not in (NUM_COLUMNS, NUM_COLUMNS - 1):
         return None
+    # Allow 20 columns (legacy firmware): in_mark defaults to 0
+    in_mark_val = _fast_int(parts[20]) if len(parts) >= NUM_COLUMNS else 0
     try:
         return SampleSTM32(
             t_ms=_fast_float(parts[0]),
@@ -149,6 +152,7 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
             keys_fall=_fast_int(parts[17]),
             prbs_tick=_fast_int(parts[18]),
             prbs_lvl=_fast_int(parts[19]),
+            in_mark=in_mark_val,
         )
     except (ValueError, IndexError):
         return None
@@ -362,6 +366,7 @@ class STM32Reader:
                 b["keys_fall"].push(float(sample.keys_fall))
                 b["prbs_tick"].push(float(sample.prbs_tick))
                 b["prbs_level"].push(float(sample.prbs_lvl))
+                b["in_mark"].push(float(sample.in_mark))
                 b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
 
             if self.on_sample is not None:
