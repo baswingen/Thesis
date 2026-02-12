@@ -3,16 +3,16 @@ PRBS Synchronization Testing: 30 s STM32 + EMG recording and diagnostics
 ========================================================================
 
 Records 30 s of STM32 (prbs_tick, prbs_level, in_mark) and EMG TRIG in parallel,
-reconstructs the STM32 PRBS at 100 Hz, cross-correlates with the received PRBS
-on the EMG TRIG channel, and shows a 4-panel diagnostics plot.
+reconstructs the STM32 PRBS at 2000 Hz (one chip per EMG sample), cross-correlates
+with the received PRBS on the EMG TRIG channel, and shows a 4-panel diagnostics plot.
 
 Hardware setup:
     STM32F401 PA8 --[330R]-- Porti7 TRIG (LEMO centre)
     STM32F401 GND ---------- Porti7 TRIG (LEMO shield)
 
 STM32 firmware (STM32_all_in_python.ino):
-    - 100 Hz chip rate, 2000 Hz TRIG output, gap every 10 s, LFSR reset at gap
-    - CSV: ...,prbs_tick,prbs_level,in_mark  (prbs_tick = chip index 0..999)
+    - 2000 Hz chip rate (matches Porti7), gap every 1 s, LFSR reset at gap
+    - CSV: ...,prbs_tick,prbs_level,in_mark  (prbs_tick = chip index 0..1999)
 
 Usage:
     python setup_scripts/prbs_sync_testing.py --duration 30 --save-plot prbs_diagnostics.png

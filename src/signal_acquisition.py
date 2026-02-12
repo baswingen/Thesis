@@ -145,11 +145,11 @@ class SignalAcquisitionConfig:
     emg_sample_rate: Optional[int] = 2000
     emg_poll_sleep_s: float = 0.002
     enable_prbs_sync: bool = True
-    prbs_correlation_window_s: float = 5.0
+    prbs_correlation_window_s: float = 10.0  # Increased from 5s for better correlation at 500 Hz
     prbs_update_interval_s: float = 5.0
-    # Resample rate used for PRBS cross-correlation. Using the chip-rate avoids
-    # aliasing a 2000 Hz NRZ chipstream down to 1 kHz.
-    prbs_resample_rate_hz: float = 2000.0
+    # Resample rate used for PRBS cross-correlation. Match the chip rate for
+    # optimal correlation (500 Hz PRBS → 500 Hz resample).
+    prbs_resample_rate_hz: float = 500.0
     prbs_drift_warning_ms: float = 10.0
     prbs_drift_error_ms: float = 50.0
     max_emg_buffer_size: int = 200_000
@@ -573,9 +573,9 @@ class HardwarePRBSSync:
     CHIP_PERIOD_S = 1.0 / PRBS_CHIP_RATE_HZ  # 0.0005 s
 
     def __init__(self, *,
-                 correlation_window_s: float = 5.0,
+                 correlation_window_s: float = 10.0,  # Increased for 500 Hz PRBS
                  update_interval_s: float = 5.0,
-                 resample_rate_hz: float = 1000.0,
+                 resample_rate_hz: float = 500.0,  # Match PRBS chip rate
                  drift_warning_ms: float = 10.0,
                  drift_error_ms: float = 50.0):
         self.correlation_window_s = correlation_window_s
@@ -797,15 +797,15 @@ class HardwarePRBSSync:
         if self._update_in_progress:
             return False
         if self.last_update_time == 0.0:
-            # Reconstructed PRBS: stm32_buf has 2000 chips/s, need ~5 s for correlation
-            min_stm32 = int(self.correlation_window_s * PRBS_CHIP_RATE_HZ * 0.5)  # ~5000 chips
+            # Reconstructed PRBS: stm32_buf has 500 chips/s, need ~10s window for correlation
+            min_stm32 = int(self.correlation_window_s * PRBS_CHIP_RATE_HZ * 0.5)  # ~2500 chips
             emg_len = len(self.emg_word_buf) if len(self.emg_word_buf) > 0 else len(self.emg_buf)
             return len(self.stm32_buf) > min_stm32 and emg_len > 2000
         return (CLOCK() - self.last_update_time) >= self.update_interval_s
 
     def update_sync(self):
         with self._lock:
-            min_stm32 = int(self.correlation_window_s * PRBS_CHIP_RATE_HZ * 0.2)  # ~2000 chips
+            min_stm32 = int(self.correlation_window_s * PRBS_CHIP_RATE_HZ * 0.2)  # ~1000 chips (10s * 500 Hz * 0.2)
             emg_len = len(self.emg_word_buf) if len(self.emg_word_buf) > 0 else len(self.emg_buf)
             if len(self.stm32_buf) < min_stm32 or emg_len < 200:
                 return
@@ -828,7 +828,7 @@ class HardwarePRBSSync:
 
     def _update_sync_impl(self, s_t: np.ndarray, s_v: np.ndarray,
                           e_t: np.ndarray, e_v: np.ndarray):
-        min_chips = int(self.correlation_window_s * PRBS_CHIP_RATE_HZ * 0.2)
+        min_chips = int(self.correlation_window_s * PRBS_CHIP_RATE_HZ * 0.2)  # ~1000 chips
         if len(s_t) < min_chips or len(e_t) < 200:
             return
         latest = max(s_t[-1], e_t[-1])

@@ -40,6 +40,11 @@ The main project README is located in the root directory: `../README.md`
 - Calibration: [README_IMU.md - Calibration](README_IMU.md#calibration)
 - Troubleshooting: [README_IMU.md - Troubleshooting](README_IMU.md#troubleshooting)
 
+- **[PORTI7_TRIG_WIRING.md](PORTI7_TRIG_WIRING.md)** - Porti7 TRIG input wiring and troubleshooting
+  - TMSi interface and trigger behaviour (SAGA/APEX/legacy)
+  - Recommended wiring (LEMO, 330 Ω, GND)
+  - Why TRIG can stay flat (level, resistor, cable) and what to try (5 V level shifter, smaller R, manual)
+
 ## Additional Resources
 
 ### Tests and Examples

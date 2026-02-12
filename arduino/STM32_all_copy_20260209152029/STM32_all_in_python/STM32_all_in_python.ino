@@ -1,17 +1,17 @@
 /*
   High-performance STM32F401 Arduino sketch combining:
-  1) PRBS-15 TRIG output at 2000 Hz (EMG max rate), 100 Hz chip rate, gap every 10 s
+  1) PRBS-15 TRIG output at 2000 Hz pin rate, 100 Hz chip rate, gap every 10 s
   2) Dual BNO085/BNO080 UART-RVC readout (two HW UARTs)
   3) Configurable button-matrix scanning (non-blocking, debounced)
 
-  PRBS: 100 Hz chip rate (easy cross-correlation), TRIG pin toggles at 2000 Hz.
-  After every 1000 chips (10 s) output 30 ms LOW gap, then reset LFSR to seed and repeat.
+  PRBS: 100 Hz chip rate (fixed). TRIG pin toggles at 2000 Hz (20 ticks per chip).
+  After every 1000 chips (10 s) output 30 ms LOW gap, then reset LFSR and repeat.
   Serial output: prbs_tick (chip index 0..999), prbs_level, in_mark (1 = in gap).
 
   Target: main-loop sampling/logging at 500 Hz (2 ms)
   - Print rate: 500 Hz
   - Matrix scan rate: 500 Hz
-  - PRBS TRIG output: 2000 Hz (20 ticks per chip)
+  - PRBS TRIG: TIM3 at 2000 Hz, PA8 -> Porti7 TRIG (LEMO centre, 330R), GND -> LEMO shield
 
   Board: STM32F401 (Arduino STM32 core)
   Library: "Adafruit BNO08x RVC" (Adafruit_BNO08x_RVC)
@@ -31,11 +31,11 @@
 // ===================================================================
 
 
-// ========================= PRBS TRIG CONFIG =========================
+// --- PRBS TRIG CONFIG (chip rate fixed at 100 Hz; matches prbs_sync_testing.py) ---
 #if ENABLE_PRBS_TRIG
 static const uint8_t PRBS_PIN = PA8;
 
-// --- PRBS settings: 100 Hz chip rate, 2000 Hz TRIG output, gap every 10 s ---
+// 100 Hz chip rate, 2000 Hz TRIG pin output (20 ticks per chip)
 static const uint32_t CHIP_RATE_HZ = 100;
 static const uint32_t TRIG_OUTPUT_HZ = 2000;
 static const uint32_t TICKS_PER_CHIP = TRIG_OUTPUT_HZ / CHIP_RATE_HZ;  // 20
@@ -79,12 +79,11 @@ void onPrbsTick() {
       gap_ticks_remaining--;
     }
     if (gap_ticks_remaining == 0) {
-      lfsr = PRBS15_SEED;   // reset PRBS for next segment
+      lfsr = PRBS15_SEED;
       chip_counter = 0;
       sub_tick = 1;        // so next 19 ticks hold this chip (don't advance LFSR)
       phase = 0;
       in_mark = 0;
-      // Output first chip of new segment
       uint8_t bit = lfsr_next_bit_prbs15(lfsr);
       prbs_level = bit ? 1 : 0;
       prbs_chip_index = 0;
@@ -125,7 +124,8 @@ static void prbsInit() {
   lfsr = PRBS15_SEED;
   prbs_chip_index = 0;
 
-  prbsTimer = new HardwareTimer(TIM2);
+  // Use TIM3 to avoid conflict with TIM2 (often used by Arduino core for micros/delay)
+  prbsTimer = new HardwareTimer(TIM3);
   prbsTimer->setOverflow(TRIG_OUTPUT_HZ, HERTZ_FORMAT);
   prbsTimer->attachInterrupt(onPrbsTick);
   prbsTimer->resume();
