@@ -64,9 +64,9 @@ from src.stm32_reader import STM32Reader, SampleSTM32
 # =============================================================================
 # Constants
 # =============================================================================
-CHIP_RATE_HZ = 10
+CHIP_RATE_HZ = 50
 EMG_SAMPLE_RATE = 2000
-SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 200
+SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 40
 RECORD_DURATION_S = 60
 MIN_OVERLAP_RATIO = 0.6
 SYNC_WINDOW_S = 20.0

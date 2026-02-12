@@ -1,10 +1,10 @@
 /*
   High-performance STM32F401 Arduino sketch combining:
-  1) PRBS-15 TRIG output at 2000 Hz pin rate, 10 Hz chip rate (continuous)
+  1) PRBS-15 TRIG output at 2000 Hz pin rate, 50 Hz chip rate (continuous)
   2) Dual BNO085/BNO080 UART-RVC readout (two HW UARTs)
   3) Configurable button-matrix scanning (non-blocking, debounced)
 
-  PRBS: 10 Hz chip rate (fixed). TRIG pin updates at 2000 Hz (200 ticks per chip).
+  PRBS: 50 Hz chip rate (fixed). TRIG pin updates at 2000 Hz (40 ticks per chip).
   Continuous output: no marker gap phase and no periodic LFSR reset.
   Serial output: prbs_tick (continuous chip index), prbs_level, in_mark (always 0).
 
@@ -31,14 +31,14 @@
 // ===================================================================
 
 
-// --- PRBS TRIG CONFIG (chip rate fixed at 10 Hz; matches prbs_sync_testing.py) ---
+// --- PRBS TRIG CONFIG (chip rate fixed at 50 Hz; matches prbs_sync_testing.py) ---
 #if ENABLE_PRBS_TRIG
 static const uint8_t PRBS_PIN = PA8;
 
-// 10 Hz chip rate, 2000 Hz TRIG pin output (200 ticks per chip)
-static const uint32_t CHIP_RATE_HZ = 10;
+// 50 Hz chip rate, 2000 Hz TRIG pin output (40 ticks per chip)
+static const uint32_t CHIP_RATE_HZ = 50;
 static const uint32_t TRIG_OUTPUT_HZ = 2000;
-static const uint32_t TICKS_PER_CHIP = TRIG_OUTPUT_HZ / CHIP_RATE_HZ;  // 200
+static const uint32_t TICKS_PER_CHIP = TRIG_OUTPUT_HZ / CHIP_RATE_HZ;  // 40
 static const uint16_t PRBS15_SEED = 0x7ACE;
 
 // LFSR state (PRBS-15): x^15 + x^14 + 1
@@ -65,7 +65,7 @@ static inline uint8_t lfsr_next_bit_prbs15(volatile uint16_t &s) {
   return newbit;
 }
 
-// Timer ISR: 2000 Hz — each chip held for 200 ticks (continuous PRBS)
+// Timer ISR: 2000 Hz — each chip held for 40 ticks (continuous PRBS)
 void onPrbsTick() {
   if (sub_tick == 0) {
     uint8_t bit = lfsr_next_bit_prbs15(lfsr);
