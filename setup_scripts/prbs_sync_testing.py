@@ -64,15 +64,13 @@ from src.stm32_reader import STM32Reader, SampleSTM32
 # =============================================================================
 # Constants
 # =============================================================================
-CHIP_RATE_HZ = 100
+CHIP_RATE_HZ = 10
 EMG_SAMPLE_RATE = 2000
-SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 20
-PRBS15_SEED = 0x7ACE
-CHIPS_PER_SEQUENCE = 1000
-RECORD_DURATION_S = 60.0
+SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 200
+RECORD_DURATION_S = 60
 MIN_OVERLAP_RATIO = 0.6
-SYNC_WINDOW_S = 10.0
-SYNC_STEP_S = 1.0
+SYNC_WINDOW_S = 20.0
+SYNC_STEP_S = 2.0
 
 
 def fix_channel_name(channel_index: int) -> str:
@@ -115,7 +113,19 @@ def find_trig_channel(channels):
     return None, None
 
 
-def extract_trig_bits(raw: np.ndarray):
+def extract_trig_bits(raw: np.ndarray, is_status: bool = False):
+    """Extract binary TRIG signal from raw STATUS/TRIG channel data.
+
+    Args:
+        raw: Raw channel data (float64 from TMSi SDK).
+        is_status: If True, this is a STATUS register channel. Bit-0 is
+                   preferred but only used if it has a plausible transition
+                   count (the SDK's gain/offset conversion may alter the
+                   integer representation, making bit-0 extraction unreliable).
+
+    Returns:
+        (signal, method_name, transition_count, all_method_stats)
+    """
     raw_int = raw.astype(np.int64)
     bit0 = (raw_int & 1).astype(np.float64)
     lo, hi = np.nanmin(raw), np.nanmax(raw)
@@ -123,16 +133,28 @@ def extract_trig_bits(raw: np.ndarray):
     nonzero = (raw_int != 0).astype(np.float64)
     candidates = {"bit0": bit0, "threshold": threshold, "nonzero": nonzero}
 
+    # Compute transition counts for all methods (for diagnostics)
+    method_stats: dict[str, int] = {}
+    for name, sig in candidates.items():
+        method_stats[name] = int(np.sum(np.abs(np.diff(sig))))
+
+    # For STATUS channels, prefer bit-0 only if it has a plausible number
+    # of transitions (at least 100). The TMSi SDK may apply gain/offset to
+    # the STATUS channel, making the integer bit layout unreliable.
+    MIN_PLAUSIBLE_TRANSITIONS = 100
+    if is_status and method_stats["bit0"] >= MIN_PLAUSIBLE_TRANSITIONS:
+        return bit0, "bit0", method_stats["bit0"], method_stats
+
+    # Heuristic fallback: pick the method with the most transitions
     best_name = "bit0"
     best_sig = bit0
     best_transitions = -1
     for name, sig in candidates.items():
-        transitions = int(np.sum(np.abs(np.diff(sig))))
-        if transitions > best_transitions:
+        if method_stats[name] > best_transitions:
             best_name = name
             best_sig = sig
-            best_transitions = transitions
-    return best_sig, best_name, best_transitions
+            best_transitions = method_stats[name]
+    return best_sig, best_name, best_transitions, method_stats
 
 
 def downsample_to_100hz(trig: np.ndarray) -> np.ndarray:
@@ -144,48 +166,31 @@ def downsample_to_100hz(trig: np.ndarray) -> np.ndarray:
     return out
 
 
-def generate_prbs15(seed: int = PRBS15_SEED, n_chips: int = CHIPS_PER_SEQUENCE) -> np.ndarray:
-    lfsr = seed & 0x7FFF
-    seq = np.empty(n_chips, dtype=np.float64)
-    for i in range(n_chips):
-        b14 = (lfsr >> 14) & 1
-        b13 = (lfsr >> 13) & 1
-        newbit = b14 ^ b13
-        lfsr = ((lfsr << 1) | newbit) & 0x7FFF
-        seq[i] = float(newbit)
-    return seq
 
+def stm32_samples_to_chipstream(samples: list) -> np.ndarray:
+    """Convert 500 Hz STM32 samples to ~100 Hz chip stream using prbs_lvl directly.
 
-def stm32_samples_to_chipstream(prbs_tick: np.ndarray, in_mark: np.ndarray, ref_1000: np.ndarray) -> np.ndarray:
-    if len(prbs_tick) == 0:
+    Instead of reconstructing PRBS bits from tick indices via a reference table,
+    this uses the actual prbs_lvl value that the STM32 reports for each sample.
+    One chip is emitted each time prbs_tick changes.
+    """
+    if not samples:
         return np.array([], dtype=np.float64)
 
-    ticks = np.asarray(prbs_tick, dtype=np.int64) % CHIPS_PER_SEQUENCE
-    marks = np.asarray(in_mark, dtype=np.int64)
     out: list[float] = []
-    prev_tick = int(ticks[0])
-    out.append(0.0 if marks[0] == 1 else float(ref_1000[prev_tick]))
+    prev_tick = samples[0].prbs_tick
+    out.append(float(samples[0].prbs_lvl))
 
-    for i in range(1, len(ticks)):
-        tick = int(ticks[i])
-        if tick == prev_tick:
-            continue
-        delta = (tick - prev_tick) % CHIPS_PER_SEQUENCE
-        if delta == 0:
-            prev_tick = tick
-            continue
-
-        for step in range(1, delta):
-            fill_tick = (prev_tick + step) % CHIPS_PER_SEQUENCE
-            out.append(float(ref_1000[fill_tick]))
-
-        out.append(0.0 if marks[i] == 1 else float(ref_1000[tick]))
-        prev_tick = tick
+    for s in samples[1:]:
+        if s.prbs_tick != prev_tick:
+            out.append(float(s.prbs_lvl))
+            prev_tick = s.prbs_tick
 
     return np.asarray(out, dtype=np.float64)
 
 
 def cross_correlate_fullstream(signal_a: np.ndarray, signal_b: np.ndarray, min_overlap_ratio: float = MIN_OVERLAP_RATIO):
+    M, N = len(signal_a), len(signal_b)
     a = 2.0 * signal_a - 1.0
     b = 2.0 * signal_b - 1.0
     if SCIPY_AVAILABLE:
@@ -193,12 +198,19 @@ def cross_correlate_fullstream(signal_a: np.ndarray, signal_b: np.ndarray, min_o
     else:
         corr_raw = np.correlate(a, b, mode="full")
 
-    lags = np.arange(len(corr_raw)) - (len(signal_a) - 1)
-    overlap = len(signal_a) - np.abs(lags)
+    lags = np.arange(len(corr_raw)) - (M - 1)
+    # Correct overlap for potentially unequal-length signals:
+    #   lag >= 0: overlap = min(M - lag, N)
+    #   lag <  0: overlap = min(M, N + lag)
+    overlap = np.where(
+        lags >= 0,
+        np.minimum(M - lags, N),
+        np.minimum(M, N + lags),
+    )
     overlap = np.maximum(overlap.astype(np.float64), 1.0)
     corr = corr_raw / overlap
 
-    min_overlap = max(1, int(np.ceil(min_overlap_ratio * len(signal_a))))
+    min_overlap = max(1, int(np.ceil(min_overlap_ratio * min(M, N))))
     valid = overlap >= min_overlap
     abs_corr = np.abs(corr)
     abs_corr_valid = np.where(valid, abs_corr, 0.0)
@@ -288,7 +300,7 @@ def main():
 
         channels = device.get_device_channels()
         fix_all_channel_names(channels)
-        trig_idx, _ = find_trig_channel(channels)
+        trig_idx, is_status = find_trig_channel(channels)
         if trig_idx is None:
             print("  ERROR: TRIG channel not found.")
             return
@@ -327,14 +339,18 @@ def main():
             return
 
         print("\n[4/4] Running single PRBS cross-correlation...")
-        trig_bin, ext_method, n_trans = extract_trig_bits(trig_raw)
-        print(f"  TRIG extraction: {ext_method}, transitions: {n_trans}")
+        trig_bin, ext_method, n_trans, method_stats = extract_trig_bits(
+            trig_raw, is_status=bool(is_status)
+        )
+        print(f"  TRIG extraction: {ext_method} (is_status={is_status}), transitions: {n_trans}")
+        print(f"  All methods: {', '.join(f'{k}={v}' for k, v in method_stats.items())}")
+        lo, hi = np.nanmin(trig_raw), np.nanmax(trig_raw)
+        print(f"  Raw TRIG stats: min={lo:.4g}, max={hi:.4g}, mean={np.nanmean(trig_raw):.4g}, "
+              f"unique_ints={len(np.unique(trig_raw.astype(np.int64)))}")
 
         emg_chips = downsample_to_100hz(trig_bin)
-        ref_1000 = generate_prbs15(seed=PRBS15_SEED, n_chips=CHIPS_PER_SEQUENCE)
-        stm32_ticks = np.array([s.prbs_tick for s in stm32_samples])
-        stm32_marks = np.array([s.in_mark for s in stm32_samples])
-        stm32_chips = stm32_samples_to_chipstream(stm32_ticks, stm32_marks, ref_1000)
+        stm32_chips = stm32_samples_to_chipstream(stm32_samples)
+        print(f"  Chip streams: EMG={len(emg_chips)} chips, STM32={len(stm32_chips)} chips")
 
         n_common = min(len(emg_chips), len(stm32_chips))
         if n_common < 200:
