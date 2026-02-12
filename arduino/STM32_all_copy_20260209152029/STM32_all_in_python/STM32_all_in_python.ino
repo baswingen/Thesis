@@ -1,12 +1,12 @@
 /*
   High-performance STM32F401 Arduino sketch combining:
-  1) PRBS-15 TRIG output at 2000 Hz pin rate, 100 Hz chip rate, gap every 10 s
+  1) PRBS-15 TRIG output at 2000 Hz pin rate, 100 Hz chip rate (continuous)
   2) Dual BNO085/BNO080 UART-RVC readout (two HW UARTs)
   3) Configurable button-matrix scanning (non-blocking, debounced)
 
-  PRBS: 100 Hz chip rate (fixed). TRIG pin toggles at 2000 Hz (20 ticks per chip).
-  After every 1000 chips (10 s) output 30 ms LOW gap, then reset LFSR and repeat.
-  Serial output: prbs_tick (chip index 0..999), prbs_level, in_mark (1 = in gap).
+  PRBS: 100 Hz chip rate (fixed). TRIG pin updates at 2000 Hz (20 ticks per chip).
+  Continuous output: no marker gap phase and no periodic LFSR reset.
+  Serial output: prbs_tick (continuous chip index), prbs_level, in_mark (always 0).
 
   Target: main-loop sampling/logging at 500 Hz (2 ms)
   - Print rate: 500 Hz
@@ -39,25 +39,20 @@ static const uint8_t PRBS_PIN = PA8;
 static const uint32_t CHIP_RATE_HZ = 100;
 static const uint32_t TRIG_OUTPUT_HZ = 2000;
 static const uint32_t TICKS_PER_CHIP = TRIG_OUTPUT_HZ / CHIP_RATE_HZ;  // 20
-static const uint32_t CHIPS_PER_SEQUENCE = 1000;   // 10 s at 100 Hz
-static const uint32_t GAP_TICKS = 60;              // 30 ms LOW at 2000 Hz
 static const uint16_t PRBS15_SEED = 0x7ACE;
 
 // LFSR state (PRBS-15): x^15 + x^14 + 1
 volatile uint16_t lfsr = PRBS15_SEED;
 
-// Chip index 0..999 (read by main loop as prbs_tick)
+// Continuous chip index (read by main loop as prbs_tick)
 volatile uint32_t prbs_chip_index = 0;
 // Current PRBS bit on pin
 volatile uint8_t  prbs_level = 0;
-// 1 = in gap (LOW), 0 = normal PRBS
+// Marker support removed; keep field for log compatibility
 volatile uint8_t  in_mark = 0;
 
-// State machine: normal phase (chip 0..999) or gap phase (30 ms LOW)
-static volatile uint8_t  phase = 0;           // 0 = normal, 1 = gap
-static volatile uint16_t chip_counter = 0;   // 0..999 in normal phase
+static volatile uint32_t chip_counter = 0;   // continuous chip counter
 static volatile uint8_t  sub_tick = 0;       // 0..19 within current chip
-static volatile uint16_t gap_ticks_remaining = 0;
 
 HardwareTimer *prbsTimer = nullptr;
 
@@ -70,29 +65,8 @@ static inline uint8_t lfsr_next_bit_prbs15(volatile uint16_t &s) {
   return newbit;
 }
 
-// Timer ISR: 2000 Hz — each chip held for 20 ticks, gap every 1000 chips
+// Timer ISR: 2000 Hz — each chip held for 20 ticks (continuous PRBS)
 void onPrbsTick() {
-  if (phase == 1) {
-    // Gap phase: output LOW
-    digitalWrite(PRBS_PIN, LOW);
-    if (gap_ticks_remaining > 0) {
-      gap_ticks_remaining--;
-    }
-    if (gap_ticks_remaining == 0) {
-      lfsr = PRBS15_SEED;
-      chip_counter = 0;
-      sub_tick = 1;        // so next 19 ticks hold this chip (don't advance LFSR)
-      phase = 0;
-      in_mark = 0;
-      uint8_t bit = lfsr_next_bit_prbs15(lfsr);
-      prbs_level = bit ? 1 : 0;
-      prbs_chip_index = 0;
-      digitalWrite(PRBS_PIN, prbs_level ? HIGH : LOW);
-    }
-    return;
-  }
-
-  // Normal phase
   if (sub_tick == 0) {
     uint8_t bit = lfsr_next_bit_prbs15(lfsr);
     prbs_level = bit ? 1 : 0;
@@ -103,12 +77,6 @@ void onPrbsTick() {
   if (sub_tick >= TICKS_PER_CHIP) {
     sub_tick = 0;
     chip_counter++;
-    if (chip_counter >= CHIPS_PER_SEQUENCE) {
-      phase = 1;
-      gap_ticks_remaining = GAP_TICKS;
-      in_mark = 1;
-      digitalWrite(PRBS_PIN, LOW);
-    }
   }
 }
 
@@ -117,10 +85,8 @@ static void prbsInit() {
   digitalWrite(PRBS_PIN, LOW);
   prbs_level = 0;
   in_mark = 0;
-  phase = 0;
   chip_counter = 0;
   sub_tick = 0;
-  gap_ticks_remaining = 0;
   lfsr = PRBS15_SEED;
   prbs_chip_index = 0;
 

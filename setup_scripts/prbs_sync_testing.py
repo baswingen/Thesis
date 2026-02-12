@@ -1,28 +1,17 @@
 """
-PRBS Synchronization Testing: 30 s STM32 + EMG recording and diagnostics
-========================================================================
+Basic PRBS synchronization test: STM32 + EMG TRIG recording.
 
-Records 30 s of STM32 (prbs_tick, prbs_level, in_mark) and EMG TRIG in parallel,
-reconstructs the STM32 PRBS at 2000 Hz (one chip per EMG sample), cross-correlates
-with the received PRBS on the EMG TRIG channel, and shows a 4-panel diagnostics plot.
-
-Hardware setup:
-    STM32F401 PA8 --[330R]-- Porti7 TRIG (LEMO centre)
-    STM32F401 GND ---------- Porti7 TRIG (LEMO shield)
-
-STM32 firmware (STM32_all_in_python.ino):
-    - 2000 Hz chip rate (matches Porti7), gap every 1 s, LFSR reset at gap
-    - CSV: ...,prbs_tick,prbs_level,in_mark  (prbs_tick = chip index 0..1999)
-
-Usage:
-    python setup_scripts/prbs_sync_testing.py --duration 30 --save-plot prbs_diagnostics.png
-    python setup_scripts/prbs_sync_testing.py --no-plot
+This script keeps synchronization intentionally simple:
+1) Record STM32 and EMG TRIG in parallel.
+2) Convert both to 100 Hz chip streams.
+3) Run one full-stream PRBS cross-correlation.
+4) Report lag and correlation peak.
+5) Optionally show/save diagnostics with lag-over-time.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 import time
 from pathlib import Path
@@ -41,23 +30,30 @@ if _tmsi_path.exists() and str(_tmsi_path) not in sys.path:
 # Optional matplotlib
 try:
     import matplotlib
+
     matplotlib.use("TkAgg")
     import matplotlib.pyplot as plt
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
 try:
     from scipy import signal as sp_signal
+
     SCIPY_AVAILABLE = True
 except Exception:
     SCIPY_AVAILABLE = False
 
 # TMSi SDK
 try:
-    from TMSiSDK.tmsi_sdk import TMSiSDK
-    from TMSiSDK.device.tmsi_device_enums import DeviceType, DeviceInterfaceType, MeasurementType
     from TMSiSDK.device.devices.legacy.legacy_device import LegacyDevice
+    from TMSiSDK.device.tmsi_device_enums import (
+        DeviceInterfaceType,
+        DeviceType,
+        MeasurementType,
+    )
+    from TMSiSDK.tmsi_sdk import TMSiSDK
 except ImportError as e:
     print("ERROR: TMSi Python Interface not found. Ensure tmsi-python-interface is in project root.")
     print(f"  {e}")
@@ -66,46 +62,41 @@ except ImportError as e:
 from src.stm32_reader import STM32Reader, SampleSTM32
 
 # =============================================================================
-# Constants (match STM32 firmware)
+# Constants
 # =============================================================================
 CHIP_RATE_HZ = 100
 EMG_SAMPLE_RATE = 2000
 SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 20
 PRBS15_SEED = 0x7ACE
-CHIPS_PER_SEQUENCE = 1000   # 10 s segment
-RECORD_DURATION_S = 30.0
-# Gap on wire: 30 ms LOW at 2000 Hz = 60 samples; detect runs of LOW >= 60 (or use 16 for safety)
-MIN_GAP_RUN = 60
+CHIPS_PER_SEQUENCE = 1000
+RECORD_DURATION_S = 60.0
+MIN_OVERLAP_RATIO = 0.6
+SYNC_WINDOW_S = 10.0
+SYNC_STEP_S = 1.0
 
-# =============================================================================
-# Helpers from trig_sync_testing (simplified)
-# =============================================================================
 
-def fix_channel_name(corrupted_name: str, channel_index: int) -> str:
+def fix_channel_name(channel_index: int) -> str:
     if channel_index < 16:
         return f"UNI{channel_index + 1}"
-    elif channel_index < 36:
+    if channel_index < 36:
         return f"BIP{channel_index - 15}"
-    elif channel_index == 36:
+    if channel_index == 36:
         return "STATUS"
-    elif channel_index == 37:
+    if channel_index == 37:
         return "COUNTER"
     return f"CH{channel_index}"
 
 
-def fix_all_channel_names(channels):
-    fixed = 0
+def fix_all_channel_names(channels) -> None:
     for i, ch in enumerate(channels):
         try:
             name = ch.get_channel_name()
             if any(ord(c) > 127 for c in name):
-                corrected = fix_channel_name(name, i)
+                corrected = fix_channel_name(i)
                 ch._alt_name = corrected
                 ch._def_name = corrected
-                fixed += 1
         except Exception:
             pass
-    return fixed
 
 
 def find_trig_channel(channels):
@@ -116,45 +107,41 @@ def find_trig_channel(channels):
         if ch.get_channel_name().upper().startswith("DIG"):
             return i, True
     for i, ch in enumerate(channels):
-        if "STATUS" in ch.get_channel_name().upper() or "STATU" in ch.get_channel_name().upper():
+        name = ch.get_channel_name().upper()
+        if "STATUS" in name or "STATU" in name:
             return i, True
     if len(channels) > 36:
         return 36, True
     return None, None
 
 
-def extract_trig_bits(raw: np.ndarray, is_status_bit: bool):
+def extract_trig_bits(raw: np.ndarray):
     raw_int = raw.astype(np.int64)
     bit0 = (raw_int & 1).astype(np.float64)
-    candidates = {"bit0": bit0}
     lo, hi = np.nanmin(raw), np.nanmax(raw)
-    if hi - lo > 1e-9:
-        thresh = (raw > (lo + hi) / 2.0).astype(np.float64)
-        candidates["threshold"] = thresh
+    threshold = (raw > (lo + hi) / 2.0).astype(np.float64) if (hi - lo) > 1e-9 else bit0
     nonzero = (raw_int != 0).astype(np.float64)
-    candidates["nonzero"] = nonzero
-    best_name, best_trans, best_sig = "bit0", -1, bit0
+    candidates = {"bit0": bit0, "threshold": threshold, "nonzero": nonzero}
+
+    best_name = "bit0"
+    best_sig = bit0
+    best_transitions = -1
     for name, sig in candidates.items():
-        t = int(np.sum(np.abs(np.diff(sig))))
-        if t > best_trans:
-            best_trans, best_name, best_sig = t, name, sig
-    return best_sig, best_name, best_trans
+        transitions = int(np.sum(np.abs(np.diff(sig))))
+        if transitions > best_transitions:
+            best_name = name
+            best_sig = sig
+            best_transitions = transitions
+    return best_sig, best_name, best_transitions
 
 
-def find_low_gaps(trig: np.ndarray, min_run: int = MIN_GAP_RUN):
-    gaps = []
-    n, i = len(trig), 0
-    while i < n:
-        if trig[i] == 0:
-            j = i
-            while j < n and trig[j] == 0:
-                j += 1
-            if (j - i) >= min_run:
-                gaps.append((i, j))
-            i = j
-        else:
-            i += 1
-    return gaps
+def downsample_to_100hz(trig: np.ndarray) -> np.ndarray:
+    n_chips = len(trig) // SAMPLES_PER_CHIP
+    out = np.empty(n_chips, dtype=np.float64)
+    for k in range(n_chips):
+        block = trig[k * SAMPLES_PER_CHIP : (k + 1) * SAMPLES_PER_CHIP]
+        out[k] = 1.0 if np.mean(block) > 0.5 else 0.0
+    return out
 
 
 def generate_prbs15(seed: int = PRBS15_SEED, n_chips: int = CHIPS_PER_SEQUENCE) -> np.ndarray:
@@ -169,245 +156,307 @@ def generate_prbs15(seed: int = PRBS15_SEED, n_chips: int = CHIPS_PER_SEQUENCE) 
     return seq
 
 
-def cross_correlate_100hz(segment: np.ndarray, reference: np.ndarray):
-    seg_bp = 2.0 * segment - 1.0
-    ref_bp = 2.0 * reference - 1.0
+def stm32_samples_to_chipstream(prbs_tick: np.ndarray, in_mark: np.ndarray, ref_1000: np.ndarray) -> np.ndarray:
+    if len(prbs_tick) == 0:
+        return np.array([], dtype=np.float64)
+
+    ticks = np.asarray(prbs_tick, dtype=np.int64) % CHIPS_PER_SEQUENCE
+    marks = np.asarray(in_mark, dtype=np.int64)
+    out: list[float] = []
+    prev_tick = int(ticks[0])
+    out.append(0.0 if marks[0] == 1 else float(ref_1000[prev_tick]))
+
+    for i in range(1, len(ticks)):
+        tick = int(ticks[i])
+        if tick == prev_tick:
+            continue
+        delta = (tick - prev_tick) % CHIPS_PER_SEQUENCE
+        if delta == 0:
+            prev_tick = tick
+            continue
+
+        for step in range(1, delta):
+            fill_tick = (prev_tick + step) % CHIPS_PER_SEQUENCE
+            out.append(float(ref_1000[fill_tick]))
+
+        out.append(0.0 if marks[i] == 1 else float(ref_1000[tick]))
+        prev_tick = tick
+
+    return np.asarray(out, dtype=np.float64)
+
+
+def cross_correlate_fullstream(signal_a: np.ndarray, signal_b: np.ndarray, min_overlap_ratio: float = MIN_OVERLAP_RATIO):
+    a = 2.0 * signal_a - 1.0
+    b = 2.0 * signal_b - 1.0
     if SCIPY_AVAILABLE:
-        corr = sp_signal.correlate(seg_bp, ref_bp, mode="full")
+        corr_raw = sp_signal.correlate(a, b, mode="full")
     else:
-        corr = np.correlate(seg_bp, ref_bp, mode="full")
-    norm = np.sqrt(np.sum(seg_bp ** 2) * np.sum(ref_bp ** 2))
-    if norm > 0:
-        corr = corr / norm
-    peak_idx = np.argmax(np.abs(corr))
-    peak_val = corr[peak_idx]
+        corr_raw = np.correlate(a, b, mode="full")
+
+    lags = np.arange(len(corr_raw)) - (len(signal_a) - 1)
+    overlap = len(signal_a) - np.abs(lags)
+    overlap = np.maximum(overlap.astype(np.float64), 1.0)
+    corr = corr_raw / overlap
+
+    min_overlap = max(1, int(np.ceil(min_overlap_ratio * len(signal_a))))
+    valid = overlap >= min_overlap
     abs_corr = np.abs(corr)
-    guard = max(5, len(segment) // 50)
-    mask = np.ones(len(abs_corr), dtype=bool)
-    mask[max(0, peak_idx - guard):min(len(abs_corr), peak_idx + guard + 1)] = False
-    sidelobes = abs_corr[mask]
-    psr = abs_corr[peak_idx] / np.max(sidelobes) if (len(sidelobes) > 0 and np.max(sidelobes) > 0) else float("inf")
-    best_lag = peak_idx - (len(segment) - 1)
-    return best_lag, peak_val, psr, corr
+    abs_corr_valid = np.where(valid, abs_corr, 0.0)
+    peak_idx = int(np.argmax(abs_corr_valid))
+    lag = int(lags[peak_idx])
+    peak = float(corr[peak_idx])
+    overlap_at_peak = int(overlap[peak_idx])
+    return lag, peak, corr, lags, overlap_at_peak
 
 
-def downsample_to_100hz(trig: np.ndarray, samples_per_chip: int = SAMPLES_PER_CHIP) -> np.ndarray:
-    n = len(trig)
-    n_chips = n // samples_per_chip
-    out = np.empty(n_chips, dtype=np.float64)
-    for k in range(n_chips):
-        block = trig[k * samples_per_chip:(k + 1) * samples_per_chip]
-        out[k] = 1.0 if np.mean(block) > 0.5 else 0.0
-    return out
+def sliding_window_lag_series(
+    signal_a: np.ndarray,
+    signal_b: np.ndarray,
+    window_chips: int,
+    step_chips: int,
+    min_overlap_ratio: float = MIN_OVERLAP_RATIO,
+):
+    n = min(len(signal_a), len(signal_b))
+    if n < window_chips or window_chips <= 0:
+        return np.array([]), np.array([]), np.array([]), np.array([])
 
+    starts = list(range(0, max(1, n - window_chips + 1), step_chips))
+    if starts[-1] != (n - window_chips):
+        starts.append(n - window_chips)
 
-# =============================================================================
-# Main
-# =============================================================================
+    centers_s = []
+    lags = []
+    peaks = []
+    overlaps = []
+    for s in starts:
+        a_win = signal_a[s : s + window_chips]
+        b_win = signal_b[s : s + window_chips]
+        lag, peak, _, _, overlap = cross_correlate_fullstream(
+            a_win, b_win, min_overlap_ratio=min_overlap_ratio
+        )
+        centers_s.append((s + 0.5 * window_chips) / CHIP_RATE_HZ)
+        lags.append(lag)
+        peaks.append(peak)
+        overlaps.append(overlap)
+
+    return (
+        np.asarray(centers_s, dtype=np.float64),
+        np.asarray(lags, dtype=np.int64),
+        np.asarray(peaks, dtype=np.float64),
+        np.asarray(overlaps, dtype=np.int64),
+    )
+
 
 def main():
-    parser = argparse.ArgumentParser(description="PRBS sync: 30 s STM32 + EMG record, cross-correlate, diagnostics plot")
-    parser.add_argument("--duration", type=float, default=30.0, help="Recording duration in seconds (default: 30)")
+    parser = argparse.ArgumentParser(description="Basic PRBS sync test (single full-stream cross-correlation)")
+    parser.add_argument("--duration", type=float, default=RECORD_DURATION_S, help="Recording duration in seconds")
+    parser.add_argument("--sync-window-s", type=float, default=SYNC_WINDOW_S, help="Window length used for lag estimation (seconds)")
+    parser.add_argument("--sync-step-s", type=float, default=SYNC_STEP_S, help="Sliding-window step size (seconds)")
     parser.add_argument("--save-plot", type=str, default=None, help="Save figure to this path")
-    parser.add_argument("--no-plot", action="store_true", help="Skip visualisation")
+    parser.add_argument("--no-plot", action="store_true", help="Skip plotting")
     args = parser.parse_args()
 
-    duration_s = args.duration
+    duration_s = float(args.duration)
+    sync_window_s = max(2.0, float(args.sync_window_s))
+    sync_step_s = max(0.2, float(args.sync_step_s))
     save_plot = args.save_plot
     do_plot = (not args.no_plot) and MATPLOTLIB_AVAILABLE
 
     print("=" * 60)
-    print("  PRBS Synchronization Testing (30 s record)")
+    print("  Basic PRBS Synchronization Test")
     print("=" * 60)
-    print(f"  Duration      : {duration_s:.1f} s")
-    print(f"  Chip rate     : {CHIP_RATE_HZ} Hz")
-    print(f"  EMG rate      : {EMG_SAMPLE_RATE} Hz")
-    print(f"  Chips/segment : {CHIPS_PER_SEQUENCE} (10 s)")
+    print(f"  Duration  : {duration_s:.1f} s")
+    print(f"  Chip rate : {CHIP_RATE_HZ} Hz")
+    print(f"  EMG rate  : {EMG_SAMPLE_RATE} Hz")
     print()
 
-    # ----- 1. Discover TMSi device -----
-    print("[1/5] Discovering TMSi Porti7...")
-    sdk = TMSiSDK()
-    devices, _ = sdk.discover(DeviceType.legacy, dr_interface=DeviceInterfaceType.usb)
-    if not devices:
-        print("  ERROR: No TMSi legacy device found.")
-        return
-    device = devices[0]
-    device.open()
-    print(f"  Connected: {device.get_device_name()}")
-
-    channels = device.get_device_channels()
-    fix_all_channel_names(channels)
-    trig_idx, is_status = find_trig_channel(channels)
-    if trig_idx is None:
-        print("  ERROR: TRIG channel not found.")
-        device.close()
-        LegacyDevice.cleanup()
-        return
-    print(f"  TRIG channel index: {trig_idx}")
-
-    # ----- 2. Create measurement and start STM32 -----
-    print("\n[2/5] Creating measurement and starting STM32 reader...")
-    measurement = MeasurementType.LEGACY_SIGNAL(device)
-    measurement.set_reference_calculation(False)
-    sample_rate = measurement.get_device_sample_rate()
-    print(f"  EMG sample rate: {sample_rate} Hz")
-
-    stm32_samples: list[SampleSTM32] = []
-
-    def on_stm32_sample(s: SampleSTM32):
-        stm32_samples.append(s)
+    device = None
+    measurement = None
+    reader = None
 
     try:
+        print("[1/4] Discovering TMSi Porti7...")
+        sdk = TMSiSDK()
+        devices, _ = sdk.discover(DeviceType.legacy, dr_interface=DeviceInterfaceType.usb)
+        if not devices:
+            print("  ERROR: No TMSi legacy device found.")
+            return
+
+        device = devices[0]
+        device.open()
+        print(f"  Connected: {device.get_device_name()}")
+
+        channels = device.get_device_channels()
+        fix_all_channel_names(channels)
+        trig_idx, _ = find_trig_channel(channels)
+        if trig_idx is None:
+            print("  ERROR: TRIG channel not found.")
+            return
+        print(f"  TRIG channel index: {trig_idx}")
+
+        print("\n[2/4] Starting measurement and STM32 reader...")
+        measurement = MeasurementType.LEGACY_SIGNAL(device)
+        measurement.set_reference_calculation(False)
+        print(f"  EMG sample rate: {measurement.get_device_sample_rate()} Hz")
+
+        stm32_samples: list[SampleSTM32] = []
+
+        def on_stm32_sample(sample: SampleSTM32):
+            stm32_samples.append(sample)
+
         reader = STM32Reader(port=None, baud=115200, on_sample=on_stm32_sample, verbose=True)
         reader.start()
-    except Exception as e:
-        print(f"  ERROR: STM32Reader failed: {e}")
-        print("  Ensure STM32 is connected and firmware is flashed (100 Hz chip, in_mark column).")
-        device.close()
-        LegacyDevice.cleanup()
-        return
+        measurement.start()
 
-    measurement.start()
-    trig_chunks = []
-    t_start = time.time()
-
-    # ----- 3. Record for duration_s -----
-    print(f"\n[3/5] Recording for {duration_s:.1f} s (STM32 + EMG)...")
-    try:
+        print(f"\n[3/4] Recording for {duration_s:.1f} s...")
+        trig_chunks = []
+        t_start = time.time()
         while (time.time() - t_start) < duration_s:
             samples = measurement.get_samples(blocking=False)
             if samples is not None and len(samples) > 0:
                 trig_chunks.append(samples[:, trig_idx].copy())
             time.sleep(0.002)
-    except KeyboardInterrupt:
-        print("  Interrupted.")
-    finally:
-        measurement.stop()
-        reader.stop()
 
-    elapsed = time.time() - t_start
-    trig_raw = np.concatenate(trig_chunks) if trig_chunks else np.array([])
-    n_emg = len(trig_raw)
-    n_stm32 = len(stm32_samples)
-    print(f"  Done. EMG: {n_emg} samples, STM32: {n_stm32} samples in {elapsed:.2f} s")
+        elapsed = time.time() - t_start
+        trig_raw = np.concatenate(trig_chunks) if trig_chunks else np.array([])
+        n_emg = len(trig_raw)
+        n_stm32 = len(stm32_samples)
+        print(f"  Done. EMG: {n_emg} samples, STM32: {n_stm32} samples in {elapsed:.2f} s")
+        if n_emg < 1000 or n_stm32 < 100:
+            print("  ERROR: Not enough data. Check cables and STM32.")
+            return
 
-    if n_emg < 1000 or n_stm32 < 100:
-        print("  ERROR: Not enough data. Check cables and STM32.")
-        device.close()
-        LegacyDevice.cleanup()
-        return
+        print("\n[4/4] Running single PRBS cross-correlation...")
+        trig_bin, ext_method, n_trans = extract_trig_bits(trig_raw)
+        print(f"  TRIG extraction: {ext_method}, transitions: {n_trans}")
 
-    # ----- 4. Extract binary TRIG, downsample, reconstruct STM32 PRBS -----
-    print("\n[4/5] Extracting TRIG, reconstructing PRBS, cross-correlating...")
-    trig_bin, ext_method, n_trans = extract_trig_bits(trig_raw, is_status)
-    print(f"  TRIG extraction: {ext_method}, transitions: {n_trans}")
+        emg_chips = downsample_to_100hz(trig_bin)
+        ref_1000 = generate_prbs15(seed=PRBS15_SEED, n_chips=CHIPS_PER_SEQUENCE)
+        stm32_ticks = np.array([s.prbs_tick for s in stm32_samples])
+        stm32_marks = np.array([s.in_mark for s in stm32_samples])
+        stm32_chips = stm32_samples_to_chipstream(stm32_ticks, stm32_marks, ref_1000)
 
-    # Downsample EMG TRIG to 100 Hz (one value per chip)
-    emg_100hz = downsample_to_100hz(trig_bin)
-    t_emg_s = np.arange(len(emg_100hz)) / CHIP_RATE_HZ
+        n_common = min(len(emg_chips), len(stm32_chips))
+        if n_common < 200:
+            print("  ERROR: Not enough chip overlap for sync.")
+            return
 
-    # Reference: first 1000 chips of PRBS-15
-    ref_1000 = generate_prbs15(seed=PRBS15_SEED, n_chips=CHIPS_PER_SEQUENCE)
+        emg_sync = emg_chips[:n_common]
+        stm32_sync = stm32_chips[:n_common]
+        sync_window_chips = min(n_common, int(round(sync_window_s * CHIP_RATE_HZ)))
+        sync_step_chips = max(1, int(round(sync_step_s * CHIP_RATE_HZ)))
 
-    # Reconstructed STM32 PRBS from samples (each sample has prbs_tick 0..999)
-    stm32_t_ms = np.array([s.t_ms for s in stm32_samples])
-    stm32_prbs_tick = np.array([s.prbs_tick for s in stm32_samples])
-    stm32_in_mark = np.array([s.in_mark for s in stm32_samples])
-    stm32_reconstructed = ref_1000[(stm32_prbs_tick % CHIPS_PER_SEQUENCE).astype(int)]
-    t_stm32_s = stm32_t_ms / 1000.0
-
-    # Find gaps on EMG for alignment (optional)
-    gaps = find_low_gaps(trig_bin, min_run=MIN_GAP_RUN)
-    print(f"  Gaps detected on EMG TRIG: {len(gaps)}")
-
-    # Cross-correlate: use first 10 s segment of downsampled EMG vs reference
-    seg_len = min(CHIPS_PER_SEQUENCE, len(emg_100hz) // 2)
-    segment = emg_100hz[:seg_len]
-    ref_seg = ref_1000[:seg_len]
-    best_lag, peak_val, psr, corr = cross_correlate_100hz(segment, ref_seg)
-    print(f"  Correlation peak: {peak_val:.4f}, lag: {best_lag} chips, PSR: {psr:.1f}")
-
-    if abs(peak_val) > 0.15 and psr > 1.5:
-        reliability = "PRBS sync RELIABLE"
-    elif abs(peak_val) > 0.05:
-        reliability = "Weak but detectable correlation"
-    else:
-        reliability = "Weak correlation - check wiring and firmware"
-
-    print(f"  Assessment: {reliability}")
-
-    # ----- 5. Diagnostics plot -----
-    if do_plot or save_plot:
-        print("\n[5/5] Generating diagnostics plot...")
-        fig, axes = plt.subplots(4, 1, figsize=(12, 12))
-        fig.suptitle("PRBS Synchronization Diagnostics", fontsize=14, fontweight="bold")
-
-        # Panel 1: Incoming PRBS (EMG TRIG) - show last 2 s for clarity
-        ax = axes[0]
-        show_emg = min(int(2 * EMG_SAMPLE_RATE), len(trig_bin))
-        t_show = np.arange(show_emg) / EMG_SAMPLE_RATE
-        ax.plot(t_show, trig_bin[-show_emg:], linewidth=0.5, color="steelblue")
-        base_idx = len(trig_bin) - show_emg
-        for (gs, ge) in gaps:
-            if gs < len(trig_bin) and ge > base_idx:
-                x0 = max(0.0, (gs - base_idx) / EMG_SAMPLE_RATE)
-                x1 = min(t_show[-1] if len(t_show) else 2.0, (ge - base_idx) / EMG_SAMPLE_RATE)
-                ax.axvspan(x0, x1, alpha=0.25, color="salmon")
-        ax.set_ylabel("TRIG (binary)")
-        ax.set_xlabel("Time (s)")
-        ax.set_title("Panel 1: Incoming PRBS (EMG TRIG, last 2 s)")
-        ax.set_ylim(-0.1, 1.3)
-
-        # Panel 2: Reconstructed STM32 PRBS - last 2 s
-        ax = axes[1]
-        n_stm32_show = min(int(2 * 500), len(stm32_t_ms))
-        t_s_show = stm32_t_ms[-n_stm32_show:] / 1000.0
-        ax.plot(t_s_show, stm32_reconstructed[-n_stm32_show:], linewidth=0.5, color="green", alpha=0.8)
-        ax.set_ylabel("PRBS (0/1)")
-        ax.set_xlabel("Time (s)")
-        ax.set_title("Panel 2: Reconstructed STM32 PRBS (last 2 s)")
-        ax.set_ylim(-0.1, 1.3)
-
-        # Panel 3: Cross-correlation
-        ax = axes[2]
-        lags = np.arange(len(corr)) - (len(segment) - 1)
-        hw = min(500, len(corr) // 2)
-        peak_idx = np.argmax(np.abs(corr))
-        cl, cr = max(0, peak_idx - hw), min(len(corr), peak_idx + hw)
-        ax.plot(lags[cl:cr], corr[cl:cr], linewidth=0.8, color="steelblue")
-        ax.axvline(best_lag, color="red", linestyle="--", label=f"peak lag = {best_lag}")
-        ax.legend()
-        ax.set_ylabel("Normalised correlation")
-        ax.set_xlabel("Lag (chips)")
-        ax.set_title(f"Panel 3: Cross-correlation (peak = {peak_val:.4f}, PSR = {psr:.1f})")
-
-        # Panel 4: Summary
-        ax = axes[3]
-        ax.axis("off")
-        summary = (
-            f"Duration: {duration_s:.1f} s  |  EMG samples: {n_emg}  |  STM32 samples: {n_stm32}\n"
-            f"Correlation peak: {peak_val:.4f}  |  Lag: {best_lag} chips  |  PSR: {psr:.1f}\n"
-            f"Gaps on EMG: {len(gaps)}  |  STM32 in_mark range: [{stm32_in_mark.min()}, {stm32_in_mark.max()}]\n\n"
-            f"Assessment: {reliability}"
+        lag_t_s, lag_series_chips, peak_series, overlap_series = sliding_window_lag_series(
+            emg_sync,
+            stm32_sync,
+            window_chips=sync_window_chips,
+            step_chips=sync_step_chips,
+            min_overlap_ratio=MIN_OVERLAP_RATIO,
         )
-        ax.text(0.05, 0.5, summary, transform=ax.transAxes, fontsize=11, verticalalignment="center",
-                fontfamily="monospace")
+        if len(lag_series_chips) == 0:
+            print("  ERROR: Sliding-window lag estimation failed (window too large for available data).")
+            return
 
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-        if save_plot:
-            fig.savefig(save_plot, dpi=150, bbox_inches="tight")
-            print(f"  Plot saved: {save_plot}")
-        if do_plot:
-            plt.show(block=True)
+        strong_mask = np.abs(peak_series) >= 0.10
+        selected_idx = np.where(strong_mask)[0] if np.any(strong_mask) else np.arange(len(lag_series_chips))
+        lag_chips = int(np.round(np.median(lag_series_chips[selected_idx])))
+        representative_i = int(selected_idx[np.argmin(np.abs(lag_series_chips[selected_idx] - lag_chips))])
+        corr_peak = float(peak_series[representative_i])
+        overlap_at_peak = int(overlap_series[representative_i])
+        lag_ms = lag_chips / CHIP_RATE_HZ * 1000.0
+        polarity_note = "normal"
+        if corr_peak < 0:
+            polarity_note = "inverted"
+        lag_std = float(np.std(lag_series_chips[selected_idx])) if len(selected_idx) > 1 else 0.0
 
-    # Cleanup
-    try:
-        device.close()
-        LegacyDevice.cleanup()
-    except Exception:
-        pass
-    print("\nDone.")
+        rep_start_chip = int(np.clip(int(round(lag_t_s[representative_i] * CHIP_RATE_HZ - 0.5 * sync_window_chips)), 0, n_common - sync_window_chips))
+        rep_a = emg_sync[rep_start_chip : rep_start_chip + sync_window_chips]
+        rep_b = stm32_sync[rep_start_chip : rep_start_chip + sync_window_chips]
+        _, _, corr, lags, _ = cross_correlate_fullstream(rep_a, rep_b, min_overlap_ratio=MIN_OVERLAP_RATIO)
+
+        mean_abs_peak = float(np.mean(np.abs(peak_series[selected_idx])))
+        if mean_abs_peak >= 0.50:
+            assessment = "Reliable"
+        elif mean_abs_peak >= 0.25:
+            assessment = "Moderate"
+        else:
+            assessment = "Weak"
+
+        print(
+            f"  Result: lag={lag_chips} chips ({lag_ms:.1f} ms), representative_peak={corr_peak:.4f}, "
+            f"overlap={overlap_at_peak}/{sync_window_chips}, polarity={polarity_note}, "
+            f"window={sync_window_s:.1f}s, step={sync_step_s:.1f}s"
+        )
+        print(
+            f"  Sliding lag stats: median={lag_chips} chips, std={lag_std:.2f} chips, "
+            f"windows_used={len(selected_idx)}/{len(lag_series_chips)}, mean|peak|={mean_abs_peak:.4f}"
+        )
+        print(f"  Assessment: {assessment}")
+
+        if do_plot or save_plot:
+            print("  Generating simple diagnostics plot...")
+            fig, axes = plt.subplots(4, 1, figsize=(12, 11))
+            fig.suptitle("Basic PRBS Synchronization Diagnostics", fontsize=14, fontweight="bold")
+
+            show_n = min(1000, n_common)
+            t_show = np.arange(show_n) / CHIP_RATE_HZ
+            axes[0].plot(t_show, emg_sync[:show_n], color="steelblue", linewidth=0.8)
+            axes[0].set_ylabel("EMG chips")
+            axes[0].set_xlabel("Time (s)")
+            axes[0].set_ylim(-0.1, 1.1)
+            axes[0].set_title("Panel 1: EMG chip stream (first 10 s max)")
+
+            axes[1].plot(t_show, stm32_sync[:show_n], color="green", linewidth=0.8)
+            axes[1].set_ylabel("STM32 chips")
+            axes[1].set_xlabel("Time (s)")
+            axes[1].set_ylim(-0.1, 1.1)
+            axes[1].set_title("Panel 2: STM32 chip stream (first 10 s max)")
+
+            axes[2].plot(lags, corr, color="purple", linewidth=0.8)
+            axes[2].axvline(lag_chips, color="red", linestyle="--", label=f"lag={lag_chips}")
+            axes[2].set_ylabel("Correlation")
+            axes[2].set_xlabel("Lag (chips)")
+            axes[2].set_title(
+                f"Panel 3: Correlation (representative window, peak={corr_peak:.4f}, overlap={overlap_at_peak})"
+            )
+            axes[2].legend()
+
+            axes[3].plot(lag_t_s, lag_series_chips, color="darkorange", linewidth=1.2, label="window lag")
+            axes[3].axhline(lag_chips, color="red", linestyle="--", label=f"median lag={lag_chips}")
+            axes[3].set_ylabel("Lag (chips)")
+            axes[3].set_xlabel("Window center time (s)")
+            axes[3].set_title(
+                f"Panel 4: Sliding-window lag over time ({sync_window_s:.1f}s window, {sync_step_s:.1f}s step)"
+            )
+            axes[3].legend()
+
+            plt.tight_layout(rect=[0, 0, 1, 0.96])
+            if save_plot:
+                fig.savefig(save_plot, dpi=150, bbox_inches="tight")
+                print(f"  Plot saved: {save_plot}")
+            if do_plot:
+                plt.show(block=True)
+
+    except KeyboardInterrupt:
+        print("\nInterrupted by user.")
+    finally:
+        try:
+            if measurement is not None:
+                measurement.stop()
+        except Exception:
+            pass
+        try:
+            if reader is not None:
+                reader.stop()
+        except Exception:
+            pass
+        try:
+            if device is not None:
+                device.close()
+                LegacyDevice.cleanup()
+        except Exception:
+            pass
+        print("\nDone.")
 
 
 if __name__ == "__main__":
