@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import struct
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -41,7 +42,15 @@ try:
 except ImportError:
     serial = None  # type: ignore
 
-from .arduino_connection import open_arduino_serial
+# Ensure parent and current directory are in path for direct execution
+_SRC_ROOT = Path(__file__).resolve().parent
+if str(_SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SRC_ROOT))
+
+try:
+    from .arduino_connection import open_arduino_serial
+except (ImportError, ValueError):
+    from arduino_connection import open_arduino_serial
 
 
 # ============================================================================
@@ -238,6 +247,8 @@ class STM32Reader:
         self.latest: Optional[SampleSTM32] = None
         self.sample_count = 0
         self.parse_fail_count = 0
+        self._time_offset: Optional[float] = None
+        self._last_raw_t_sec = 0.0
         self._start_pc: float = 0.0
 
         self._ser: Optional[serial.Serial] = None
@@ -328,6 +339,7 @@ class STM32Reader:
 
             try:
                 if self.binary_mode:
+                    chunk = None
                     # Binary mode: read chunks and look for sync
                     if ser.in_waiting > 0:
                         chunk = ser.read(ser.in_waiting)
@@ -437,14 +449,21 @@ class STM32Reader:
     def _push_sample(self, sample: SampleSTM32) -> None:
         """Helper to push a parsed sample into buffers."""
         pc_now = time.perf_counter()
+        t_sec = sample.t_ms / 1000.0
+        
+        if self._time_offset is None:
+            self._time_offset = pc_now - t_sec
+
+        pc_time = t_sec + self._time_offset
+        
         self.sample_count += 1
         self.latest = sample
 
         with self._lock:
             b = self.buffers
             b["t_ms"].push(sample.t_ms)
-            b["t_sec"].push(sample.t_ms / 1000.0)
-            b["pc_time"].push(pc_now)
+            b["t_sec"].push(t_sec)
+            b["pc_time"].push(pc_time)
             b["imu1_ok"].push(float(sample.imu1_ok))
             b["imu2_ok"].push(float(sample.imu2_ok))
             b["yaw1"].push(sample.yaw1)

@@ -30,9 +30,9 @@ except Exception:
 # Constants
 # =============================================================================
 
-CHIP_RATE_HZ = 200
+CHIP_RATE_HZ = 100
 EMG_SAMPLE_RATE = 2000
-SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 200
+SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 20
 MIN_OVERLAP_RATIO = 0.9
 DEFAULT_SYNC_WINDOW_S = 10.0
 DEFAULT_SYNC_STEP_S = 0.1
@@ -357,7 +357,8 @@ class SyncDelayEstimator:
     ):
         self.chip_rate_hz = chip_rate_hz
         self.emg_sample_rate = emg_sample_rate
-        self.samples_per_chip = max(1, int(round(emg_sample_rate / chip_rate_hz)))
+        # Float SPC to handle non-integer ratios (e.g. 2000 / 237 ≈ 8.44)
+        self.samples_per_chip = max(1.0, float(emg_sample_rate / chip_rate_hz))
         self.sync_window_s = sync_window_s
         self.sync_step_s = sync_step_s
         self.update_interval_s = update_interval_s
@@ -393,12 +394,23 @@ class SyncDelayEstimator:
         self._rolling_emg_chips = np.array([], dtype=np.float64)
         self._rolling_stm32_chips = np.array([], dtype=np.float64)
         self._emg_remainder = np.array([], dtype=np.float64)  # partial-chip leftovers
+        self._emg_accumulator = 0.0  # fractional sample phase for DDA extraction
         self._last_stm32_tick: Optional[int] = None
         self._max_rolling_chips = int(chip_rate_hz * 60)  # ~60 s history
         self._detected_trig_bit: Optional[int] = None  # auto-detected STATUS bit
         self._lag_history_chips = deque(maxlen=7)
-        self._min_confidence_for_update = 0.15
-        self._max_untrusted_jump_chips = 3
+        self._min_confidence_for_update = 0.05  # lowered from 0.15; Kalman R/confidence handles weak peaks
+        self._max_untrusted_jump_chips = 10  # widened from 3; let Kalman handle noisy early convergence
+
+    def update_emg_sample_rate(self, new_rate: float) -> None:
+        """Update the expected EMG sample rate in real-time.
+        
+        Recomputes samples_per_chip ratio. Does NOT clear buffers, allowing
+        seamless transition to the corrected rate.
+        """
+        with self._lock:
+            self.emg_sample_rate = new_rate
+            self.samples_per_chip = max(1.0, float(new_rate / self.chip_rate_hz))
 
     def set_trig_is_status(self, is_status: bool) -> None:
         """Set whether TRIG channel is STATUS/bit-field (True) or direct (False)."""
@@ -441,63 +453,68 @@ class SyncDelayEstimator:
     def _append_emg_chips(self, raw_samples: np.ndarray) -> None:
         """Extract chips from new EMG trig samples and append to rolling buffer.
 
-        Accumulates **raw** samples across chunk boundaries so that each
-        chip is determined from a full ``samples_per_chip`` block.
-
-        For STATUS channels, the specific bit carrying the TRIG signal is
-        auto-detected by scanning all 32 bits for the one with the most
-        transitions (same approach as ``trig_testing.py``).  The detected
-        bit is cached after the first successful detection.
-
-        For analog channels, a midpoint threshold is used.
+        Uses a fractional accumulator (DDA) to handle non-integer samples_per_chip
+        (e.g., 2048 Hz / 200 Hz = 10.24 samples/chip) without phase drift.
         """
         if len(raw_samples) == 0:
             return
 
-        # Accumulate RAW samples (not extracted bits) so chip boundaries
-        # are always processed from a consistent block of raw data.
+        # Prepend remainder from last chunk
         if len(self._emg_remainder) > 0:
             raw = np.concatenate([self._emg_remainder, raw_samples])
         else:
             raw = raw_samples
 
+        total_samples = len(raw)
         spc = self.samples_per_chip
-        n_complete = len(raw) // spc
+        acc = self._emg_accumulator
 
-        if n_complete > 0:
-            usable_flat = raw[: n_complete * spc]
+        # Detect TRIG bit if needed
+        if self._trig_is_status and self._detected_trig_bit is None:
+            if total_samples >= int(spc * 10):
+                 self._detected_trig_bit = self._detect_trig_bit(raw)
 
-            # --- Auto-detect TRIG bit (STATUS channels only, runs once) ---
-            if self._trig_is_status and self._detected_trig_bit is None:
-                self._detected_trig_bit = self._detect_trig_bit(usable_flat)
+        # Extract binary signal
+        if self._detected_trig_bit is not None:
+             raw_bits = ((raw.astype(np.int64) >> self._detected_trig_bit) & 1).astype(np.float64)
+        else:
+             lo, hi = np.nanmin(raw), np.nanmax(raw)
+             thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
+             raw_bits = (raw > thr).astype(np.float64)
 
-            # --- Extract binary signal ---
-            if self._detected_trig_bit is not None:
-                # Use the specific bit that carries TRIG
-                bits = (
-                    (usable_flat.astype(np.int64) >> self._detected_trig_bit) & 1
-                ).astype(np.float64)
-            else:
-                # Non-STATUS or detection pending: midpoint threshold
-                lo, hi = float(np.nanmin(usable_flat)), float(np.nanmax(usable_flat))
-                thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
-                bits = (usable_flat > thr).astype(np.float64)
+        new_chips = []
+        current_int_idx = 0
+        
+        # We walk through raw_bits in steps of 'spc'
+        # 'acc' is the fractional index into 'raw_bits' of the START of the current chip.
+        while (acc + spc) <= total_samples:
+            start_idx = int(round(acc))
+            end_idx = int(round(acc + spc))
+            
+            # Clamp indices
+            start_idx = max(0, min(total_samples - 1, start_idx))
+            end_idx = max(start_idx + 1, min(total_samples, end_idx))
+            
+            block = raw_bits[start_idx : end_idx]
+            if len(block) > 0:
+                chip_val = 1.0 if np.mean(block) > 0.5 else 0.0
+                new_chips.append(chip_val)
+            
+            acc += spc
+            current_int_idx = end_idx
 
-            # Majority-vote per chip block
-            new_chips = (
-                bits.reshape(n_complete, spc).mean(axis=1) > 0.5
-            ).astype(np.float64)
+        # Update state for next chunk
+        # Shift the remainder to the start (relative to the consumed samples)
+        self._emg_remainder = raw[current_int_idx:]
+        self._emg_accumulator = acc - current_int_idx
 
-            self._rolling_emg_chips = np.concatenate(
-                [self._rolling_emg_chips, new_chips]
-            )
+        if new_chips:
+            self._rolling_emg_chips = np.concatenate([
+                self._rolling_emg_chips,
+                np.array(new_chips, dtype=np.float64)
+            ])
             if len(self._rolling_emg_chips) > self._max_rolling_chips:
-                self._rolling_emg_chips = self._rolling_emg_chips[
-                    -self._max_rolling_chips :
-                ]
-
-        # Save RAW remainder for next chunk
-        self._emg_remainder = raw[n_complete * spc :]
+                self._rolling_emg_chips = self._rolling_emg_chips[-self._max_rolling_chips:]
 
     def _append_stm32_chips(self, samples: List) -> None:
         """Extract chips from new STM32 samples and append to rolling buffer.
@@ -600,6 +617,7 @@ class SyncDelayEstimator:
 
         t = now if now is not None else time.perf_counter()
         if not self._is_ready(t):
+            print(f"[SYNC-DBG] _do_update: not ready (last_update={self._last_update_time:.1f}, dt={t - self._last_update_time:.2f}s, interval={self.update_interval_s}s)")
             return False
 
         # ---- snapshot rolling chip buffers (cheap copy under lock) ----
@@ -615,6 +633,7 @@ class SyncDelayEstimator:
             len(stm32_chips),
         )
         if analysis_span_chips < 20:
+            print(f"[SYNC-DBG] _do_update: too few chips (span={analysis_span_chips})")
             return False
 
         emg_recent = emg_chips[-analysis_span_chips:]
@@ -626,6 +645,7 @@ class SyncDelayEstimator:
             len(stm32_recent),
         )
         if window_chips < 20:
+            print(f"[SYNC-DBG] _do_update: window too small ({window_chips})")
             return False
 
         step_chips = max(1, int(round(self.sync_step_s * self.chip_rate_hz)))
@@ -640,10 +660,12 @@ class SyncDelayEstimator:
                 min_overlap_ratio=self.min_overlap_ratio,
                 chip_rate_hz=self.chip_rate_hz,
             )
-        except Exception:
+        except Exception as exc:
+            print(f"[SYNC-DBG] _do_update: sliding_window exception: {exc}")
             return False
 
         if len(lag_series) == 0:
+            print("[SYNC-DBG] _do_update: empty lag series")
             return False
 
         strong_mask = np.abs(peak_series) >= 0.10
@@ -660,7 +682,14 @@ class SyncDelayEstimator:
         lag_std = float(np.std(lag_candidates)) if len(lag_candidates) > 1 else 0.0
         consistency = 1.0 / (1.0 + lag_std)
         confidence = min(1.0, abs(measured_peak) * 1.2 * consistency)
+        print(
+            f"[SYNC-DBG] corr: lag={measured_lag_chips} chips ({measured_ms:.1f} ms), "
+            f"peak={measured_peak:.3f}, lag_std={lag_std:.2f}, "
+            f"consistency={consistency:.3f}, confidence={confidence:.3f}, "
+            f"n_windows={len(lag_series)}, n_strong={len(idx)}"
+        )
         if confidence < self._min_confidence_for_update:
+            print(f"[SYNC-DBG] _do_update: LOW confidence {confidence:.3f} < {self._min_confidence_for_update}")
             return False
 
         with self._lock:
@@ -669,6 +698,7 @@ class SyncDelayEstimator:
                 prev_lag = int(self._last_result.delay_chips)
                 jump = abs(measured_lag_chips - prev_lag)
                 if jump > self._max_untrusted_jump_chips and confidence < 0.45:
+                    print(f"[SYNC-DBG] _do_update: JUMP rejected (jump={jump} chips, conf={confidence:.3f})")
                     return False
 
             # Compute time step for state transition

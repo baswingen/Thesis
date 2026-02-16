@@ -245,7 +245,7 @@ class STM32Reader:
     def __init__(
         self,
         port: Optional[str] = None,
-        baud: int = 115200,
+        baud: int = 921600,
         capacity: int = DEFAULT_CAPACITY,
         on_sample: Optional[Callable[[SampleSTM32], None]] = None,
         verbose: bool = True,
@@ -482,7 +482,7 @@ def main() -> None:
         description="STM32 acquisition: dual IMU + matrix + PRBS (500 Hz)"
     )
     parser.add_argument("--port", type=str, default="auto")
-    parser.add_argument("--baud", type=int, default=115200)
+    parser.add_argument("--baud", type=int, default=921600)
     parser.add_argument("--csv", type=str, default=None)
     parser.add_argument("--duration", type=float, default=None)
     parser.add_argument("--quiet", action="store_true")

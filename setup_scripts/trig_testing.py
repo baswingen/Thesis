@@ -12,7 +12,7 @@ Hardware setup:
 
 STM32 sketch parameters (must match the values below):
     - PRBS-15 LFSR: polynomial x^15 + x^14 + 1, seed 0x7ACE
-    - Chip rate: 500 Hz  (matches STM32 sample rate for 1:1 reconstruction)
+    - Chip rate: 200 Hz
     - NRZ encoding: bit value -> HIGH / LOW
     - Continuous PRBS (no frame markers - preserves correlation properties)
 
@@ -35,7 +35,7 @@ Updated STM32 sketch (flash via Arduino IDE / STM32 core):
 static const uint8_t PRBS_PIN = PA8;
 
 // --- PRBS + timing settings ---
-static const uint32_t CHIP_RATE_HZ = 2000;   // matches Porti7 sample rate
+static const uint32_t CHIP_RATE_HZ = 200;
 static const uint32_t FRAME_HZ     = 1;      // marker once per second
 static const uint32_t MARK_MS      = 30;     // 30 ms LOW-gap marker
 
@@ -171,7 +171,7 @@ except ImportError as e:
 # ============================================================================
 # STM32 sketch parameters -- keep in sync with the flashed firmware
 # ============================================================================
-CHIP_RATE_HZ = 2000          # PRBS chip rate (must equal Porti7 sample rate)
+CHIP_RATE_HZ = 200          # PRBS chip rate
 FRAME_HZ = 1                 # marker rate (once per second)
 MARK_MS = 30                 # LOW-gap marker duration in ms
 PRBS15_SEED = 0x7ACE         # LFSR seed (non-zero, 15-bit)

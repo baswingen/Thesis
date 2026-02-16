@@ -31,7 +31,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from all_STM32_acquisition import STM32Reader  # noqa: E402
+from src.stm32_reader import STM32Reader  # noqa: E402
 import numpy as np  # noqa: E402
 
 try:
@@ -49,7 +49,7 @@ except ImportError:
 def parse_args():
     p = argparse.ArgumentParser(description="Real-time STM32 signal verification")
     p.add_argument("--port", type=str, default="auto")
-    p.add_argument("--baud", type=int, default=115200)
+    p.add_argument("--baud", type=int, default=921600)
     p.add_argument("--window", type=float, default=10.0, help="Rolling window (s)")
     p.add_argument("--duration", type=float, default=None, help="Auto-exit after N s")
     p.add_argument("--debug", action="store_true")
@@ -101,7 +101,7 @@ def setup_figure():
 
     # ---- PRBS ----
     ax = axes[3]
-    ax.set_xlabel("Time (s)"); ax.set_ylabel("±1"); ax.set_title("PRBS-15 (2 kHz)", fontsize=10)
+    ax.set_xlabel("Time (s)"); ax.set_ylabel("±1"); ax.set_title("PRBS-15 (200 Hz)", fontsize=10)
     ax.set_ylim(-1.5, 1.5); ax.grid(True, alpha=0.3)
     lprbs, = ax.plot([], [], "b-", lw=0.6, label="prbs ±1")
     ax.legend(loc="upper right", fontsize=7)

@@ -52,6 +52,13 @@ import numpy as np
 
 # Project root (parent of src/) for TMSi SDK path
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
+_SRC_ROOT = Path(__file__).resolve().parent
+
+# Add both root and src to path for flexibility in direct execution
+for p in [_PROJECT_ROOT, _SRC_ROOT]:
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
+
 _TMSI_PATH = _PROJECT_ROOT / "tmsi-python-interface"
 if _TMSI_PATH.exists() and str(_TMSI_PATH) not in sys.path:
     sys.path.insert(0, str(_TMSI_PATH))
@@ -74,14 +81,24 @@ try:
 except Exception:
     _USE_SCIPY = False
 
-from .stm32_reader import STM32Reader, SampleSTM32
-from .stm32_emg_sync import (
-    SyncDelayEstimator,
-    SyncDelayResult,
-    DelaySignal,
-    compute_sync_delay_signal,
-    align_emg_to_stm32,
-)
+try:
+    from .stm32_reader import STM32Reader, SampleSTM32
+    from .stm32_emg_sync import (
+        SyncDelayEstimator,
+        SyncDelayResult,
+        DelaySignal,
+        compute_sync_delay_signal,
+        align_emg_to_stm32,
+    )
+except (ImportError, ValueError):
+    from stm32_reader import STM32Reader, SampleSTM32
+    from stm32_emg_sync import (
+        SyncDelayEstimator,
+        SyncDelayResult,
+        DelaySignal,
+        compute_sync_delay_signal,
+        align_emg_to_stm32,
+    )
 
 CLOCK = time.perf_counter
 
@@ -376,6 +393,18 @@ class EMGAcquisitionThread(threading.Thread):
         self.trig_idx: Optional[int] = None
         self.trig_is_status_bit = False
 
+        # --- Auto-Rate Estimation ---
+        self._rate_update_interval = 2.0  # seconds
+        self._last_rate_update = 0.0
+        self._estimated_rate = float(sample_rate or 2000)
+        self._samples_since_rate_reset = 0
+        self._rate_reset_time = 0.0
+
+    @property
+    def estimated_rate_hz(self) -> float:
+        """Return the current estimated hardware sample rate."""
+        return self._estimated_rate
+
     def _counter_to_int(self, x: float) -> Optional[int]:
         try:
             if x is None or not np.isfinite(x):
@@ -485,6 +514,8 @@ class EMGAcquisitionThread(threading.Thread):
             self._measurement.start()
             self.start_time = CLOCK()
             self.running = True
+            
+            # Simple fixed rate for base timeline
             sample_period = 1.0 / self.sample_rate
             if self.verbose:
                 print(f"[EMG] Acquisition started ({self.sample_rate} Hz)")
@@ -503,19 +534,17 @@ class EMGAcquisitionThread(threading.Thread):
                     raw_c = self._counter_to_int(samples[-1, self.counter_idx])
                     if raw_c is not None:
                         counter_unwrapped = self._unwrap_counter(raw_c)
-                        if self.first_counter_unwrapped is None:
-                            self.first_counter_unwrapped = counter_unwrapped
-                            self.counter_time_offset = receive_time - (counter_unwrapped * sample_period)
-                            if self.verbose:
-                                print(f"[EMG] Counter baseline: raw={raw_c}, offset={self.counter_time_offset:.6f} s")
 
-                if (self.use_counter_timing and counter_unwrapped is not None
-                        and self.counter_time_offset is not None):
-                    last_ts = counter_unwrapped * sample_period + self.counter_time_offset
+                if (self.use_counter_timing and counter_unwrapped is not None):
+                    # BASIC: Use fixed sample_period for absolute timeline stability.
+                    # The PRBS engine will handle the sub-ms drift.
+                    t_count_sec = counter_unwrapped * sample_period
+                    
+                    if self.counter_time_offset is None:
+                        self.counter_time_offset = receive_time - t_count_sec
+
+                    last_ts = t_count_sec + self.counter_time_offset
                     chunk_ts = last_ts - ((n_s - 1) / 2.0) * sample_period
-                    new_off = receive_time - counter_unwrapped * sample_period
-                    if np.isfinite(new_off):
-                        self.counter_time_offset = 0.995 * self.counter_time_offset + 0.005 * new_off
                 else:
                     last_ts = receive_time
                     chunk_ts = receive_time - n_s * sample_period / 2.0
@@ -554,11 +583,30 @@ class EMGAcquisitionThread(threading.Thread):
 
                 if self.trig_idx is not None and self.trig_collector is not None:
                     trig_raw = samples[:, self.trig_idx].astype(np.float64)
-                    self.trig_collector.append((ts_arr.copy(), trig_raw.copy()))
+                    trig_collector_ref = self.trig_collector # type: ignore
+                    trig_collector_ref.append((ts_arr.copy(), trig_raw.copy()))
+
+                # --- Auto-Rate Calculation & Feedback ---
+                if self._rate_reset_time == 0.0:
+                    self._rate_reset_time = receive_time
+                
+                self._samples_since_rate_reset += n_s
+                dt_rate = receive_time - self._rate_reset_time
+                
+                if dt_rate >= self._rate_update_interval:
+                    self._estimated_rate = self._samples_since_rate_reset / dt_rate
+                    # Exponential smoothing to avoid jitter
+                    # self._estimated_rate = 0.9 * self._estimated_rate + 0.1 * current_est
+                    
+                    if self.sync_delay_estimator is not None:
+                        self.sync_delay_estimator.update_emg_sample_rate(self._estimated_rate)
+                    
+                    self._samples_since_rate_reset = 0
+                    self._rate_reset_time = receive_time
 
                 if self.verbose and self.chunk_count % 100 == 0:
                     lat = receive_time - chunk_ts
-                    print(f"[EMG] chunks={self.chunk_count}  samples={self.sample_count}  lat={lat*1000:.1f} ms")
+                    print(f"[EMG] chunks={self.chunk_count}  samples={self.sample_count}  rate={self._estimated_rate:.1f} Hz  lat={lat*1000:.1f} ms")
 
         except Exception as e:
             self.error = e

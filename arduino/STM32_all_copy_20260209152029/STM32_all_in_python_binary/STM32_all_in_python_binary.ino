@@ -38,7 +38,7 @@
 // --- PRBS TRIG CONFIG ---
 #if ENABLE_PRBS_TRIG
 static const uint8_t PRBS_PIN = PA8;
-static const uint32_t CHIP_RATE_HZ = 200;
+static const uint32_t CHIP_RATE_HZ = 100;
 static const uint32_t TRIG_OUTPUT_HZ = 2000;
 static const uint32_t TICKS_PER_CHIP = TRIG_OUTPUT_HZ / CHIP_RATE_HZ;
 static const uint16_t PRBS15_SEED = 0x7ACE;

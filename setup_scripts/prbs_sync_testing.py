@@ -66,10 +66,10 @@ from src.signal_acquisition import fix_all_channel_names, find_trig_channel
 # Constants
 # =============================================================================
 EMG_SAMPLE_RATE = 2000
-RECORD_DURATION_S = 60
+RECORD_DURATION_S = 10
 MIN_OVERLAP_RATIO = 0.9
-SYNC_WINDOW_S = 10
-SYNC_STEP_S = 0.1
+SYNC_WINDOW_S = 0.05
+SYNC_STEP_S = 0.0001
 
 
 def main():
@@ -128,7 +128,13 @@ def main():
         def on_stm32_sample(sample: SampleSTM32):
             stm32_samples.append(sample)
 
-        reader = STM32Reader(port=None, baud=115200, on_sample=on_stm32_sample, verbose=True)
+        reader = STM32Reader(
+            port=None, 
+            baud=921600, 
+            on_sample=on_stm32_sample, 
+            verbose=True,
+            binary_mode=True
+        )
         reader.start()
         measurement.start()
 
