@@ -155,6 +155,7 @@ class SignalAcquisitionConfig:
     sync_mode: Literal["realtime", "postprocessing", "none"] = "realtime"
     prbs_correlation_window_s: float = 10.0  # Increased from 5s for better correlation at 500 Hz
     prbs_update_interval_s: float = 2.0  # Kalman smoothing needs infrequent measurements
+    prbs_chip_rate_hz: float = 10.0  # PRBS chip rate (Hz); must match STM32 output
     # Resample rate used for PRBS cross-correlation. Match the chip rate for
     # optimal correlation (500 Hz PRBS → 500 Hz resample).
     prbs_resample_rate_hz: float = 500.0
@@ -1335,13 +1336,13 @@ class SignalAcquisition:
         if use_realtime_sync:
             emg_rate = cfg.emg_sample_rate or 2000
             self._sync_delay_estimator = SyncDelayEstimator(
-                chip_rate_hz=10.0,
+                chip_rate_hz=cfg.prbs_chip_rate_hz,
                 emg_sample_rate=float(emg_rate),
                 sync_window_s=cfg.prbs_correlation_window_s,
                 update_interval_s=cfg.prbs_update_interval_s,
             )
             if cfg.verbose:
-                print("[SYNC] Real-time PRBS sync enabled (Kalman-smoothed, 10 Hz chip rate)")
+                print(f"[SYNC] Real-time PRBS sync enabled (Kalman-smoothed, {cfg.prbs_chip_rate_hz} Hz chip rate)")
 
         if cfg.enable_stm32:
             # Issue 24: Start STM32 reader WITHOUT callback initially to avoid

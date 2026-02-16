@@ -1,87 +1,57 @@
 """
-Synchronized STM32 + EMG Signal Acquisition (performance testing)
-================================================================
+Synchronized STM32 + EMG Signal Acquisition (single-mode test)
+=============================================================
 
-CLI wrapper around the native signal acquisition module in src.
-Uses the integrated PRBS synchronization (stm32_emg_sync) with:
-- Real-time mode: Kalman-smoothed delay estimation during live acquisition
-- Postprocessing mode: Records both streams, computes delay signal for offline alignment
+Single mode: run both acquisition devices (STM32 + EMG) and PRBS synchronization
+together with PyQtGraph real-time visualization. No CLI; tune via the config block below.
 
-Performance tests for real-time synchronized acquisition of:
-- Dual BNO085 IMU + button matrix + PRBS (via STM32F401, 500 Hz)
-- Multi-channel EMG differential pairs (via TMSi Porti7, ~2000 Hz)
-
-PRBS synchronization (10 Hz chip rate, PRBS-15):
-    STM32 outputs PRBS on PA8 -> Porti7 TRIG. Cross-correlates EMG TRIG
-    with STM32 chip stream for clock offset. Real-time mode uses Kalman
-    smoothing; postprocessing outputs full (t_s, delay_ms) for alignment.
-
-Hardware setup:
+Hardware:
     STM32F401 PA8 --[330R]-- Porti7 TRIG (LEMO centre)
     STM32F401 GND ---------- Porti7 TRIG (LEMO shield)
 
-Run modes:
-    --mode sequence     Run in order: STM32, EMG, combined (default).
-    --mode stm32        STM32 only (500 Hz).
-    --mode emg          EMG only (~2000 Hz).
-    --mode prbs         Combined STM32 + EMG + PRBS sync (alias for all).
-    --mode all          Combined STM32 + EMG + real-time PRBS sync.
-    --mode postprocess  Record for duration, then compute delay signal.
+Run:
+    python signal_acquisition_testing.py
 
-Sync mode (for all/prbs):
-    --sync-mode realtime     Kalman-smoothed delay during acquisition (default).
-    --sync-mode postprocessing  Collect data, compute delay signal at end.
-
-Visualization (default for prbs/all with realtime sync):
-    Real-time plot: STM32 PRBS, Porti7 PRBS, sync offset, drift, confidence.
-    Use --no-visualize to disable.
-
-Examples:
-    python signal_acquisition_testing.py --mode sequence --duration 10
-    python signal_acquisition_testing.py --mode all --duration 15
-    python signal_acquisition_testing.py --mode postprocess --duration 30
-
-Programmatic access:
-    from src import SignalAcquisition, SignalAcquisitionConfig
-    config = SignalAcquisitionConfig(sync_mode="realtime")
-    acq = SignalAcquisition(config)
-    acq.start()
-    delay_ms = acq.get_sync_delay_ms()
-    acq.stop()
+Tuning: edit the CONFIG block below (duration, PRBS window, update interval, chip rate).
 """
 
 from __future__ import annotations
 
-import argparse
 import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-# Try to import PyQtGraph for high-performance visualization
+# -----------------------------------------------------------------------------
+# CONFIG – edit these to tune duration and PRBS sync (no CLI)
+# -----------------------------------------------------------------------------
+DURATION_S: float = 30.0
+PRBS_CORRELATION_WINDOW_S: float = 10.0
+PRBS_UPDATE_INTERVAL_S: float = 2.0
+PRBS_CHIP_RATE_HZ: float = 10.0
+PRBS_VIZ_WINDOW_S: float = 10.0  # Scrolling time window for PRBS plots
+STM32_PORT: Optional[str] = None
+STM32_BAUD: int = 115200
+EMG_CONNECTION_TYPE: str = "usb"
+EMG_SAMPLE_RATE: Optional[int] = 2000
+VERBOSE: bool = True
+# -----------------------------------------------------------------------------
+
+# PyQtGraph required (no matplotlib fallback)
 try:
     import pyqtgraph as pg
-    from pyqtgraph.Qt import QtWidgets
+    from pyqtgraph.Qt import QtWidgets, QtCore
     _PYQTGRAPH_AVAILABLE = True
 except ImportError:
     _PYQTGRAPH_AVAILABLE = False
 
-# Ensure project root is on path when running from setup_scripts
 _project_root = Path(__file__).resolve().parents[1]
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
-from src.signal_acquisition import (
-    SignalAcquisition,
-    SignalAcquisitionConfig,
-    run_stm32_only,
-    run_emg_only,
-    run_prbs_test,
-    run_combined,
-)
+from src.signal_acquisition import SignalAcquisition, SignalAcquisitionConfig
 
 try:
     from src.signal_acquisition import _TMSI_AVAILABLE
@@ -89,457 +59,377 @@ except ImportError:
     _TMSI_AVAILABLE = False
 
 
-def run_postprocessing(config: SignalAcquisitionConfig, duration_s: float) -> None:
-    """Record STM32 + EMG, compute delay signal for postprocessing alignment."""
-    config = SignalAcquisitionConfig(
-        enable_stm32=True,
-        enable_emg=True,
-        enable_prbs_sync=True,
-        sync_mode="postprocessing",
-        verbose=config.verbose,
-        stm32_port=config.stm32_port,
-        stm32_baud=config.stm32_baud,
-        emg_connection_type=config.emg_connection_type,
-        emg_differential_pairs=config.emg_differential_pairs,
-        emg_sample_rate=config.emg_sample_rate,
-    )
-    acq = SignalAcquisition(config)
-    acq.start()
-    session = acq.record_for_postprocessing(duration_s=duration_s)
-    if session is not None and config.verbose:
-        print(f"\n  [POSTPROCESSING] Delay signal: {len(session.delay_signal.t_s)} points")
-        print(f"  [POSTPROCESSING] Median delay: {session.sync_result.delay_ms:.2f} ms")
-        print(f"  [POSTPROCESSING] EMG chunks: {len(session.emg_chunks)}, STM32 samples: {len(session.stm32_samples)}")
-    elif session is None and config.verbose:
-        print("\n  [POSTPROCESSING] Could not compute delay (insufficient data)")
-
-
-# Target 30 fps for PRBS visualization
-_VIZ_FPS = 30
-_VIZ_FRAME_S = 1.0 / _VIZ_FPS
-
-
-def _init_prbs_artists(
-    fig: plt.Figure, axes: List[plt.Axes]
-) -> Dict[str, object]:
-    """Create reusable line artists for blitted updates."""
-    # PRBS step plots (use drawstyle='steps-mid')
-    stm32_line, = axes[0].plot([], [], drawstyle="steps-mid", color="#2ecc71", linewidth=0.8)
-    emg_line, = axes[1].plot([], [], drawstyle="steps-mid", color="#3498db", linewidth=0.8)
-    offset_line, = axes[2].plot([], [], color="#9b59b6", linewidth=1.2)
-    drift_line, = axes[3].plot([], [], color="#e74c3c", linewidth=1.2)
-    confidence_line, = axes[4].plot([], [], color="#f39c12", linewidth=1.2)
-
-    for ax in axes:
-        ax.set_autoscale_on(False)
-    axes[0].set_ylabel("STM32 PRBS")
-    axes[0].set_ylim(-0.2, 1.2)
-    axes[0].set_xlim(0, 500)
-    axes[0].grid(True, alpha=0.3)
-    axes[1].set_ylabel("Porti7 PRBS")
-    axes[1].set_ylim(-0.2, 1.2)
-    axes[1].set_xlim(0, 500)
-    axes[1].grid(True, alpha=0.3)
-    axes[2].set_ylabel("Offset (ms)")
-    axes[2].set_ylim(-100, 100)  # Initial range, will auto-update
-    axes[2].grid(True, alpha=0.3)
-    axes[3].set_ylabel("Drift (ppm)")
-    axes[3].set_ylim(-5000, 5000)  # Cover observed range ±3000 ppm
-    axes[3].grid(True, alpha=0.3)
-    axes[4].set_ylabel("Confidence")
-    axes[4].set_ylim(0, 1.1)
-    axes[4].set_xlabel("Time (s)")
-    axes[4].grid(True, alpha=0.3)
-
-    waiting_text = fig.text(0.5, 0.15, "waiting for sync...", ha="center", va="center", fontsize=10)
-    
-    # Status indicator text at top
-    status_text = fig.text(
-        0.5, 0.96, "", 
-        ha="center", va="top", 
-        fontsize=12, fontweight="bold",
-        bbox=dict(boxstyle="round,pad=0.5", facecolor="gray", alpha=0.8, edgecolor="none")
-    )
-
-    return {
-        "stm32_line": stm32_line,
-        "emg_line": emg_line,
-        "offset_line": offset_line,
-        "drift_line": drift_line,
-        "confidence_line": confidence_line,
-        "waiting_text": waiting_text,
-        "status_text": status_text,
-    }
-
-
-def _update_prbs_visualization(
-    acq: SignalAcquisition,
-    axes: List[plt.Axes],
-    artists: Dict[str, object],
-    history: Dict[str, List[float]],
-    start_time: float,
-) -> None:
-    """Update PRBS plot via set_data (no clear/redraw) for 30 fps."""
-    estimator = getattr(acq, "sync_delay_estimator", None)
-    if estimator is None:
-        return
-
-    now = time.perf_counter()
-    sync_state = acq.get_sync_state()
-
-    stm32_chips, emg_chips = estimator.get_chip_streams_for_display(max_chips=300)
-
-    # Apply time alignment using measured offset
-    if stm32_chips is not None and len(stm32_chips) > 0:
-        stm32_x = np.arange(len(stm32_chips))
-        artists["stm32_line"].set_data(stm32_x, stm32_chips)
-        
-    if emg_chips is not None and len(emg_chips) > 0:
-        # get_chip_streams_for_display already time-aligns the arrays by
-        # integer chip lag.  Only apply the fractional chip remainder.
-        frac_offset = 0.0
-        if sync_state is not None:
-            total_offset = sync_state.offset_ms / 1000.0 * estimator.chip_rate_hz
-            frac_offset = total_offset - round(total_offset)
-        
-        emg_x = np.arange(len(emg_chips)) + frac_offset
-        artists["emg_line"].set_data(emg_x, emg_chips)
-        
-        # Update x-axis limits to show both signals (scrolling window)
-        if stm32_chips is not None and len(stm32_chips) > 0:
-            max_x = max(stm32_x[-1] if len(stm32_x) > 0 else 0,
-                       emg_x[-1] if len(emg_x) > 0 else 0)
-            axes[0].set_xlim(max(0, max_x - 300), max_x + 10)
-            axes[1].set_xlim(max(0, max_x - 300), max_x + 10)
-
-    if sync_state is not None:
-        history["t"].append(now - start_time)
-        history["offset"].append(sync_state.offset_ms)
-        history["drift"].append(sync_state.drift_rate_ppm)
-        history["confidence"].append(sync_state.confidence)
-        max_history = 200
-        for key in ("t", "offset", "drift", "confidence"):
-            history[key] = history[key][-max_history:]
-
-        artists["waiting_text"].set_visible(False)
-        t_hist = np.array(history["t"], dtype=np.float64)
-        artists["offset_line"].set_data(t_hist, history["offset"])
-        artists["drift_line"].set_data(t_hist, history["drift"])
-        artists["confidence_line"].set_data(t_hist, history["confidence"])
-        
-        # Update x-axis and y-axis limits for time series plots
-        for i in (2, 3, 4):
-            ax = axes[i]
-            if len(t_hist) > 1:
-                ax.set_xlim(t_hist[0], t_hist[-1] + 0.01)
-        
-        # Dynamic y-axis scaling for offset and drift
-        if len(history["offset"]) > 2:
-            offset_vals = history["offset"]
-            offset_range = max(abs(min(offset_vals)), abs(max(offset_vals)))
-            # Add 20% margin
-            axes[2].set_ylim(-offset_range * 1.2, offset_range * 1.2)
-            
-        if len(history["drift"]) > 2:
-            drift_vals = history["drift"]
-            drift_min = min(drift_vals)
-            drift_max = max(drift_vals)
-            drift_range = drift_max - drift_min
-            # Add 20% margin, ensure minimum range
-            margin = max(drift_range * 0.2, 100)
-            axes[3].set_ylim(drift_min - margin, drift_max + margin)
-        
-        # Update status indicator with color coding
-        confidence = sync_state.confidence
-        drift = abs(sync_state.drift_rate_ppm)
-        
-        # Determine status color
-        if confidence > 0.6 and drift < 1000:
-            color = "#27ae60"  # Green - good sync
-            status = "GOOD"
-        elif confidence > 0.3 or drift < 3000:
-            color = "#f39c12"  # Orange - moderate sync
-            status = "MODERATE"
-        else:
-            color = "#e74c3c"  # Red - poor sync
-            status = "POOR"
-        
-        status_str = (
-            f"SYNC {status}  |  "
-            f"Offset: {sync_state.offset_ms:+.2f} ms  |  "
-            f"Drift: {sync_state.drift_rate_ppm:+.1f} ppm  |  "
-            f"Confidence: {sync_state.confidence:.3f}"
-        )
-        artists["status_text"].set_text(status_str)
-        artists["status_text"].set_bbox(dict(boxstyle="round,pad=0.5", facecolor=color, alpha=0.9, edgecolor="none"))
-        artists["status_text"].set_color("white")
-    else:
-        artists["waiting_text"].set_visible(True)
-        artists["status_text"].set_text("Waiting for sync data...")
-        artists["status_text"].set_bbox(dict(boxstyle="round,pad=0.5", facecolor="gray", alpha=0.8, edgecolor="none"))
-
-
-def run_with_prbs_visualization(
-    config: SignalAcquisitionConfig,
-    duration_s: Optional[float],
-    mode: str,
-    use_pyqtgraph: Optional[bool] = None,
-) -> None:
-    """Run PRBS or combined acquisition with real-time visualization.
-    
-    Args:
-        config: Acquisition configuration
-        duration_s: Optional duration in seconds
-        mode: Run mode ('prbs' or 'all')
-        use_pyqtgraph: If True, force PyQtGraph. If False, force matplotlib.
-                       If None (default), use PyQtGraph if available, else matplotlib.
-    """
-    if not _TMSI_AVAILABLE:
-        print("\nERROR: TMSi SDK not available. Cannot run PRBS visualization.")
-        return
-    
-    # Decide which visualization to use
-    if use_pyqtgraph is None:
-        use_pg = _PYQTGRAPH_AVAILABLE
-    else:
-        use_pg = use_pyqtgraph and _PYQTGRAPH_AVAILABLE
-    
-    if use_pg:
-        print("[VIZ] Using PyQtGraph (high-performance mode)")
-        _run_with_pyqtgraph_viz(config, duration_s, mode)
-    else:
-        if use_pyqtgraph:
-            print("[VIZ] PyQtGraph not available, falling back to matplotlib")
-        else:
-            print("[VIZ] Using matplotlib")
-        _run_with_matplotlib_viz(config, duration_s, mode)
-
-
-def _run_with_pyqtgraph_viz(
-    config: SignalAcquisitionConfig,
-    duration_s: Optional[float],
-    mode: str,
-) -> None:
-    """Run visualization using PyQtGraph (imported from separate module)."""
-    try:
-        # Import the PyQtGraph visualization module
-        import signal_acquisition_testing_pyqtgraph as pg_viz
-        pg_viz.run_with_pyqtgraph_visualization(config, duration_s, mode)
-    except Exception as e:
-        print(f"[ERROR] PyQtGraph visualization failed: {e}")
-        print("[VIZ] Falling back to matplotlib...")
-        _run_with_matplotlib_viz(config, duration_s, mode)
-
-
-def _run_with_matplotlib_viz(
-    config: SignalAcquisitionConfig,
-    duration_s: Optional[float],
-    mode: str,
-) -> None:
-    """Run PRBS or combined acquisition with matplotlib visualization (fallback)."""
-    if not _TMSI_AVAILABLE:
-        print("\nERROR: TMSi SDK not available. Cannot run PRBS visualization.")
-        return
-
-    cfg = SignalAcquisitionConfig(
+def _build_config() -> SignalAcquisitionConfig:
+    """Build config from module-level CONFIG constants."""
+    return SignalAcquisitionConfig(
         enable_stm32=True,
         enable_emg=True,
         enable_prbs_sync=True,
         sync_mode="realtime",
-        verbose=config.verbose,
-        stm32_port=config.stm32_port,
-        stm32_baud=config.stm32_baud,
-        emg_connection_type=config.emg_connection_type,
-        emg_differential_pairs=config.emg_differential_pairs,
-        emg_sample_rate=config.emg_sample_rate,
-        prbs_correlation_window_s=config.prbs_correlation_window_s,
-        prbs_update_interval_s=config.prbs_update_interval_s,
+        verbose=VERBOSE,
+        stm32_port=STM32_PORT,
+        stm32_baud=STM32_BAUD,
+        emg_connection_type=EMG_CONNECTION_TYPE,
+        emg_sample_rate=EMG_SAMPLE_RATE,
+        prbs_correlation_window_s=PRBS_CORRELATION_WINDOW_S,
+        prbs_update_interval_s=PRBS_UPDATE_INTERVAL_S,
+        prbs_chip_rate_hz=PRBS_CHIP_RATE_HZ,
     )
-    if mode == "all":
-        cfg = SignalAcquisitionConfig(
-            enable_stm32=config.enable_stm32,
-            enable_emg=config.enable_emg,
-            enable_prbs_sync=True,
-            sync_mode="realtime",
-            verbose=config.verbose,
-            stm32_port=config.stm32_port,
-            stm32_baud=config.stm32_baud,
-            emg_connection_type=config.emg_connection_type,
-            emg_differential_pairs=config.emg_differential_pairs,
-            emg_sample_rate=config.emg_sample_rate,
-            prbs_correlation_window_s=config.prbs_correlation_window_s,
-            prbs_update_interval_s=config.prbs_update_interval_s,
-        )
 
-    # With visualization: run until Ctrl+C unless --duration is given
-    duration = duration_s if duration_s is not None else None
 
-    if config.verbose:
-        if mode == "prbs":
-            dur_msg = f"Duration: {duration:.0f} s. " if duration is not None else ""
-            print("\n" + "=" * 50 + "\nPhase: PRBS (EMG TRIG) + visualization\n" + "=" * 50 +
-                  f"\n  Target: PRBS on TRIG (10 Hz). {dur_msg}Press Ctrl+C to stop.\n")
+class PRBSVisualizationWindow(QtWidgets.QWidget):
+    """Real-time PRBS visualization with shared timeline (STM32 time)."""
+
+    def __init__(
+        self,
+        acq: SignalAcquisition,
+        duration_s: Optional[float] = None,
+    ):
+        super().__init__()
+        self.acq = acq
+        self.duration_s = duration_s
+        self.start_time = time.perf_counter()
+        self.metrics_plots_enabled = True
+        self.prbs_window_s = PRBS_VIZ_WINDOW_S
+
+        self.timer: Optional[QtCore.QTimer] = None
+        self.update_timer: Optional[QtCore.QTimer] = None
+        self.duration_timer: Optional[QtCore.QTimer] = None
+
+        self.history: Dict[str, List[float]] = {
+            "t": [], "offset": [], "drift": [], "confidence": []
+        }
+        self.max_history = 200
+
+        self._last_stm32_len: int = 0
+        self._last_stm32_hash: int = 0
+        self._last_emg_len: int = 0
+        self._last_emg_hash: int = 0
+
+        self.setWindowTitle("PRBS Sync – STM32 + EMG")
+        self.resize(1800, 1100)
+        layout = QtWidgets.QVBoxLayout()
+        self.setLayout(layout)
+
+        self.status_label = QtWidgets.QLabel("Initializing...")
+        self.status_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; padding: 10px;")
+        layout.addWidget(self.status_label)
+
+        self.metrics_checkbox = QtWidgets.QCheckBox("Show offset/drift/confidence plots")
+        self.metrics_checkbox.setChecked(True)
+        self.metrics_checkbox.toggled.connect(self._on_metrics_toggled)
+        layout.addWidget(self.metrics_checkbox)
+
+        self.graphics_layout = pg.GraphicsLayoutWidget()
+        layout.addWidget(self.graphics_layout)
+
+        self.plot_stm32 = self.graphics_layout.addPlot(row=0, col=0, title="STM32 PRBS (STM32 time)")
+        self.plot_stm32.setLabel("left", "Level")
+        self.plot_stm32.setLabel("bottom", "Time", units="s")
+        self.plot_stm32.setYRange(-0.2, 1.2)
+        self.plot_stm32.showGrid(x=True, y=True, alpha=0.3)
+        self.curve_stm32 = self.plot_stm32.plot(pen=pg.mkPen(color="#2ecc71", width=2))
+
+        self.plot_emg = self.graphics_layout.addPlot(row=1, col=0, title="Porti7 PRBS (same timeline)")
+        self.plot_emg.setLabel("left", "Level")
+        self.plot_emg.setLabel("bottom", "Time", units="s")
+        self.plot_emg.setYRange(-0.2, 1.2)
+        self.plot_emg.showGrid(x=True, y=True, alpha=0.3)
+        self.curve_emg = self.plot_emg.plot(pen=pg.mkPen(color="#3498db", width=2))
+        self.plot_emg.setXLink(self.plot_stm32)
+
+        self.plot_offset = self.graphics_layout.addPlot(row=2, col=0, title="Clock Offset")
+        self.plot_offset.setLabel("left", "Offset", units="ms")
+        self.plot_offset.setLabel("bottom", "Time", units="s")
+        self.plot_offset.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_offset.enableAutoRange(axis='y')
+        self.curve_offset = self.plot_offset.plot(pen=pg.mkPen(color="#9b59b6", width=2))
+
+        self.plot_drift = self.graphics_layout.addPlot(row=3, col=0, title="Clock Drift Rate")
+        self.plot_drift.setLabel("left", "Drift Rate", units="ppm")
+        self.plot_drift.setLabel("bottom", "Time", units="s")
+        self.plot_drift.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_drift.enableAutoRange(axis='y')
+        self.curve_drift = self.plot_drift.plot(pen=pg.mkPen(color="#e74c3c", width=2))
+
+        self.plot_confidence = self.graphics_layout.addPlot(row=4, col=0, title="Correlation Confidence")
+        self.plot_confidence.setLabel("left", "Confidence")
+        self.plot_confidence.setLabel("bottom", "Time", units="s")
+        self.plot_confidence.setYRange(0, 1.1)
+        self.plot_confidence.showGrid(x=True, y=True, alpha=0.3)
+        self.curve_confidence = self.plot_confidence.plot(pen=pg.mkPen(color="#f39c12", width=2))
+
+        for curve in [self.curve_offset, self.curve_drift, self.curve_confidence]:
+            curve.setDownsampling(auto=True, method='peak')
+            curve.setClipToView(True)
+        for curve in [self.curve_stm32, self.curve_emg]:
+            curve.setClipToView(True)
+
+        # Single timer for all viz updates (~30 fps)
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self._on_viz_tick)
+        self.timer.start(33)
+
+        self.update_timer = QtCore.QTimer()
+        self.update_timer.timeout.connect(self._trigger_sync_update)
+        self.update_timer.start(1000)
+
+        if self.duration_s is not None:
+            self.duration_timer = QtCore.QTimer()
+            self.duration_timer.timeout.connect(self._check_duration)
+            self.duration_timer.start(1000)
+
+    def _trigger_sync_update(self) -> None:
+        if self.acq is not None:
+            self.acq.trigger_prbs_update()
+
+    def _on_metrics_toggled(self, enabled: bool) -> None:
+        self.metrics_plots_enabled = bool(enabled)
+        if self.metrics_plots_enabled:
+            self.plot_offset.show()
+            self.plot_drift.show()
+            self.plot_confidence.show()
+            if self.update_timer is not None and not self.update_timer.isActive():
+                self.update_timer.start(1000)
         else:
-            dur_msg = f"Duration: {duration:.0f} s. " if duration is not None else ""
-            print("\n" + "=" * 70 + "\nSYNCHRONIZED STM32 + EMG (with visualization)\n" + "=" * 70 +
-                  f"\n  Combined STM32 + EMG + PRBS sync. {dur_msg}Press Ctrl+C to stop.\n")
+            self.plot_offset.hide()
+            self.plot_drift.hide()
+            self.plot_confidence.hide()
+            if self.update_timer is not None and self.update_timer.isActive():
+                self.update_timer.stop()
 
-    acq = SignalAcquisition(cfg)
+    def _check_duration(self) -> None:
+        if self.duration_s is not None:
+            elapsed = time.perf_counter() - self.start_time
+            if elapsed >= self.duration_s:
+                if VERBOSE:
+                    print(f"\n[VIZ] Duration {self.duration_s:.0f}s reached, closing...")
+                self.close()
+
+    def _on_viz_tick(self) -> None:
+        """Single tick: update sync metrics and PRBS plots (shared timeline)."""
+        self._update_sync_plots()
+        self._update_prbs_plots()
+
+    @staticmethod
+    def _make_step_data_from_x(x_base: np.ndarray, y_base: np.ndarray):
+        n = len(y_base)
+        if n == 0:
+            return np.empty(0, dtype=float), np.empty(0, dtype=float)
+        x = np.empty(2 * n, dtype=float)
+        y = np.empty(2 * n, dtype=float)
+        x[0::2] = x_base
+        if n > 1:
+            x[1::2] = np.concatenate((x_base[1:], [x_base[-1] + (x_base[-1] - x_base[-2])]))
+        else:
+            x[1::2] = x_base + 1.0 / 500.0
+        y[0::2] = y_base
+        y[1::2] = y_base
+        return x, y
+
+    def _update_sync_plots(self) -> None:
+        if self.acq is None or not self.metrics_plots_enabled:
+            return
+        sync_state = self.acq.get_sync_state()
+        if sync_state is not None:
+            elapsed = time.perf_counter() - self.start_time
+            self.history["t"].append(elapsed)
+            self.history["offset"].append(sync_state.offset_ms)
+            self.history["drift"].append(sync_state.drift_rate_ppm)
+            self.history["confidence"].append(sync_state.confidence)
+            for key in ("t", "offset", "drift", "confidence"):
+                self.history[key] = self.history[key][-self.max_history:]
+            if len(self.history["t"]) > 1:
+                t_arr = np.array(self.history["t"])
+                self.curve_offset.setData(t_arr, self.history["offset"])
+                self.curve_drift.setData(t_arr, self.history["drift"])
+                self.curve_confidence.setData(t_arr, self.history["confidence"])
+            status_color = self._status_color(sync_state)
+            self.status_label.setText(
+                f"Offset: {sync_state.offset_ms:+.2f} ms | "
+                f"Drift: {sync_state.drift_rate_ppm:+.1f} ppm | "
+                f"Confidence: {sync_state.confidence:.3f}"
+            )
+            self.status_label.setStyleSheet(
+                f"font-size: 14px; font-weight: bold; padding: 10px; "
+                f"background-color: {status_color}; color: white;"
+            )
+        else:
+            self.status_label.setText("Waiting for sync data...")
+            self.status_label.setStyleSheet(
+                "font-size: 14px; font-weight: bold; padding: 10px; "
+                "background-color: #95a5a6; color: white;"
+            )
+
+    def _update_prbs_plots(self) -> None:
+        # offset_ms from sync: negative when EMG is delayed; we use delay_emg_s = -offset_ms/1000
+        # so newest EMG is at t_ref - delay_emg_s (to the left when Porti7 receives later).
+        if self.acq is None:
+            return
+        try:
+            t_end = None
+            estimator = getattr(self.acq, "sync_delay_estimator", None)
+            chip_rate_hz = float(estimator.chip_rate_hz) if estimator is not None else PRBS_CHIP_RATE_HZ
+            chip_period_s = 1.0 / chip_rate_hz
+
+            stm32_snapshot = self.acq.get_stm32_snapshot(n=1200)
+            stm32_t = stm32_snapshot.get("t_sec")
+            stm32_pc = stm32_snapshot.get("pc_time")
+            stm32_tick = stm32_snapshot.get("prbs_tick")
+            stm32_prbs = stm32_snapshot.get("prbs_level")
+            use_host_time = (
+                stm32_t is not None
+                and stm32_pc is not None
+                and len(stm32_t) == len(stm32_pc)
+            )
+            if (
+                stm32_t is not None
+                and len(stm32_t) > 0
+                and not use_host_time
+                and not getattr(self, "_warned_no_pc_time", False)
+            ):
+                self._warned_no_pc_time = True
+                print("[VIZ] PRBS: pc_time not in snapshot, using STM32 time (alignment may drift)")
+            if (
+                stm32_t is not None and stm32_tick is not None and stm32_prbs is not None
+                and len(stm32_t) > 0 and len(stm32_t) == len(stm32_tick) == len(stm32_prbs)
+            ):
+                valid = np.isfinite(stm32_t) & np.isfinite(stm32_tick) & np.isfinite(stm32_prbs)
+                if use_host_time and stm32_pc is not None:
+                    valid = valid & np.isfinite(stm32_pc)
+                t_raw = np.asarray(stm32_t[valid], dtype=float)
+                tick_raw = np.asarray(stm32_tick[valid], dtype=np.int64)
+                prbs_raw = (np.asarray(stm32_prbs[valid], dtype=float) > 0.5).astype(float)
+                if use_host_time and stm32_pc is not None:
+                    t_axis = np.asarray(stm32_pc[valid], dtype=float)
+                else:
+                    t_axis = t_raw
+                if len(tick_raw) > 0:
+                    chip_change = np.empty(len(tick_raw), dtype=bool)
+                    chip_change[0] = True
+                    chip_change[1:] = tick_raw[1:] != tick_raw[:-1]
+                    t_vals = t_axis[chip_change]
+                    y_vals = prbs_raw[chip_change]
+                else:
+                    t_vals = np.empty(0, dtype=float)
+                    y_vals = np.empty(0, dtype=float)
+                if len(t_vals) > 0:
+                    t_end = float(t_vals[-1])
+                if len(t_vals) > 0:
+                    h = hash(y_vals.data.tobytes())
+                else:
+                    h = 0
+                if h != self._last_stm32_hash or len(y_vals) != self._last_stm32_len:
+                    self._last_stm32_hash = h
+                    self._last_stm32_len = len(y_vals)
+                    sx, sy = self._make_step_data_from_x(t_vals, y_vals)
+                    self.curve_stm32.setData(sx, sy)
+
+            if estimator is None:
+                if t_end is not None:
+                    self.plot_stm32.setXRange(max(0.0, t_end - self.prbs_window_s), t_end + 0.05, padding=0)
+                return
+
+            _, emg_chips = estimator.get_chip_streams_for_display(max_chips=200, apply_alignment=False)
+
+            if emg_chips is not None and len(emg_chips) > 0:
+                sync_state = self.acq.get_sync_state()
+                # EMG delay in seconds (positive when EMG is delayed); offset_ms is negative when delayed
+                delay_emg_s = (
+                    -sync_state.offset_ms / 1000.0 if sync_state is not None else 0.0
+                )
+                if t_end is None:
+                    t_end = time.perf_counter() - self.start_time
+                t_ref = t_end
+                n_emg = len(emg_chips)
+                t_emg = np.array([
+                    t_ref - delay_emg_s - (n_emg - 1 - i) * chip_period_s
+                    for i in range(n_emg)
+                ], dtype=float)
+                h = hash(emg_chips.data.tobytes())
+                if h != self._last_emg_hash or n_emg != self._last_emg_len:
+                    self._last_emg_hash = h
+                    self._last_emg_len = n_emg
+                    ex, ey = self._make_step_data_from_x(t_emg, emg_chips.astype(float))
+                    self.curve_emg.setData(ex, ey)
+
+            if t_end is None:
+                t_end = time.perf_counter() - self.start_time
+            self.plot_stm32.setXRange(max(0.0, t_end - self.prbs_window_s), t_end + 0.05, padding=0)
+        except Exception as exc:
+            if not hasattr(self, "_last_prbs_err") or self._last_prbs_err != str(exc):
+                print(f"[VIZ] PRBS plot error: {exc}")
+                self._last_prbs_err = str(exc)
+
+    @staticmethod
+    def _status_color(sync_state) -> str:
+        c = sync_state.confidence
+        d = abs(sync_state.drift_rate_ppm)
+        if c > 0.6 and d < 1000:
+            return "#27ae60"
+        if c > 0.3 or d < 3000:
+            return "#f39c12"
+        return "#e74c3c"
+
+    def closeEvent(self, event) -> None:
+        for attr in ("timer", "update_timer", "duration_timer"):
+            t = getattr(self, attr, None)
+            if t is not None:
+                t.stop()
+        event.accept()
+
+
+def run() -> None:
+    """Single mode: STM32 + EMG + PRBS sync with PyQtGraph. Runs for DURATION_S then exits."""
+    if not _PYQTGRAPH_AVAILABLE:
+        print("\nERROR: PyQtGraph is required. Install with: pip install pyqtgraph PyQt6")
+        sys.exit(1)
+    if not _TMSI_AVAILABLE:
+        print("\nERROR: TMSi SDK not available. Cannot run acquisition.")
+        sys.exit(1)
+
+    config = _build_config()
+    if VERBOSE:
+        print("\n" + "=" * 60)
+        print("STM32 + EMG + PRBS sync (single-mode test)")
+        print("=" * 60)
+        print(f"  Duration: {DURATION_S:.0f} s. Window closes automatically.\n")
+
+    acq = SignalAcquisition(config)
     acq.start()
     time.sleep(1.0)
 
-    plt.ion()
-    fig, axes = plt.subplots(5, 1, figsize=(10, 8), sharex=False)
-    fig.suptitle("PRBS Real-Time Sync", fontsize=12)
-    plt.tight_layout()
-    artists = _init_prbs_artists(fig, axes)
-    history: Dict[str, List[float]] = {"t": [], "offset": [], "drift": [], "confidence": []}
+    stm32_count_start = acq.stm32_reader.sample_count if acq.stm32_reader else 0
+    start_wall = time.perf_counter()
 
-    fig.canvas.draw()
-    try:
-        bg = fig.canvas.copy_from_bbox(fig.bbox)
-    except Exception:
-        bg = None
-
-    stm32_count_at_start = acq.stm32_reader.sample_count if acq.stm32_reader else 0
-    start = time.perf_counter()
-    last_log = start
-    bg_captured_with_data = False
-
-    line_artists = [
-        artists["stm32_line"], artists["emg_line"],
-        artists["offset_line"], artists["drift_line"], artists["confidence_line"],
-    ]
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
+    window = PRBSVisualizationWindow(acq, DURATION_S)
+    window.show()
 
     try:
-        while duration is None or (time.perf_counter() - start) < duration:
-            now = time.perf_counter()
-            acq.trigger_prbs_update()
-            _update_prbs_visualization(acq, axes, artists, history, start)
-
-            if bg is not None and not artists["waiting_text"].get_visible():
-                if not bg_captured_with_data:
-                    fig.canvas.draw()
-                    try:
-                        bg = fig.canvas.copy_from_bbox(fig.bbox)
-                        bg_captured_with_data = True
-                    except Exception:
-                        pass
-                if bg_captured_with_data:
-                    fig.canvas.restore_region(bg)
-                    for ax, line in zip(axes, line_artists):
-                        ax.draw_artist(line)
-                    fig.canvas.blit(fig.bbox)
-                else:
-                    fig.canvas.draw_idle()
-            else:
-                fig.canvas.draw_idle()
-
-            elapsed = time.perf_counter() - now
-            plt.pause(max(0.001, _VIZ_FRAME_S - elapsed))
-
-            if config.verbose and (now - last_log) >= 1.0:
-                last_log = now
-                elapsed = now - start
-                if acq.stm32_reader is not None:
-                    n = acq.stm32_reader.sample_count - stm32_count_at_start
-                    rate = n / elapsed if elapsed > 0 else 0
-                    print(f"  [PERF] STM32: {rate:.1f} Hz")
-                if acq.emg_thread is not None:
-                    es = acq.emg_thread.get_stats()
-                    print(f"  [PERF] EMG: {es['rate']:.0f} Hz")
-                ss = acq.get_sync_state()
-                if ss is not None:
-                    print(f"  [PERF] PRBS: offset={ss.offset_ms:+.2f} ms, conf={ss.confidence:.3f}, drift={ss.drift_rate_ppm:.1f} ppm")
+        app.exec() if hasattr(app, "exec") else app.exec_()
     except KeyboardInterrupt:
-        if config.verbose:
+        if VERBOSE:
             print("\n[MAIN] Interrupted")
     finally:
         acq.stop()
 
-    if config.verbose:
+    if VERBOSE:
+        elapsed = time.perf_counter() - start_wall
+        if acq.stm32_reader is not None:
+            n = acq.stm32_reader.sample_count - stm32_count_start
+            rate = n / elapsed if elapsed > 0.5 else 0
+            print(f"\n  [SUMMARY] STM32: {rate:.1f} Hz, {acq.stm32_reader.sample_count} samples")
+        if acq.emg_thread is not None:
+            st = acq.emg_thread.get_stats()
+            print(f"  [SUMMARY] EMG: {st['rate']:.0f} Hz, {st['samples']} samples")
         ss = acq.get_sync_state()
         if ss is not None:
-            print(f"\n  [SUMMARY] PRBS: offset={ss.offset_ms:+.2f} ms, confidence={ss.confidence:.3f}")
-
-    plt.show(block=True)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="STM32 + EMG signal acquisition with integrated PRBS sync.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python signal_acquisition_testing.py --mode sequence --duration 10
-  python signal_acquisition_testing.py --mode all --duration 15
-  python signal_acquisition_testing.py --mode postprocess --duration 30 --sync-mode postprocessing
-""",
-    )
-    parser.add_argument(
-        "--mode",
-        choices=["stm32", "emg", "prbs", "all", "sequence", "postprocess"],
-        default="sequence",
-        help="Run mode (postprocess=record then compute delay signal)",
-    )
-    parser.add_argument("--duration", type=float, default=None, metavar="SEC", help="Duration per phase (seconds)")
-    parser.add_argument(
-        "--sync-mode",
-        choices=["realtime", "postprocessing"],
-        default="realtime",
-        help="PRBS sync: realtime=Kalman during acquisition; postprocessing=delay signal at end (for all/prbs)",
-    )
-    parser.add_argument(
-        "--no-visualize",
-        action="store_true",
-        help="Disable real-time PRBS visualization (enabled by default for prbs/all)",
-    )
-    parser.add_argument(
-        "--viz",
-        choices=["auto", "pyqtgraph", "matplotlib"],
-        default="auto",
-        help="Visualization backend: auto (PyQtGraph if available, else matplotlib), pyqtgraph, or matplotlib",
-    )
-    args = parser.parse_args()
-
-    config = SignalAcquisitionConfig(
-        sync_mode=args.sync_mode,
-    )
-
-    use_viz = (not args.no_visualize) and args.sync_mode == "realtime"
-    
-    # Determine visualization backend
-    use_pyqtgraph = None  # Auto
-    if args.viz == "pyqtgraph":
-        use_pyqtgraph = True
-    elif args.viz == "matplotlib":
-        use_pyqtgraph = False
-
-    if args.mode == "stm32":
-        run_stm32_only(config, args.duration)
-    elif args.mode == "emg":
-        run_emg_only(config, args.duration)
-    elif args.mode == "prbs":
-        if use_viz:
-            run_with_prbs_visualization(config, args.duration, "prbs", use_pyqtgraph=use_pyqtgraph)
-        else:
-            run_prbs_test(config, args.duration)
-    elif args.mode == "all":
-        if use_viz:
-            run_with_prbs_visualization(config, args.duration, "all", use_pyqtgraph=use_pyqtgraph)
-        else:
-            run_combined(config, args.duration)
-    elif args.mode == "postprocess":
-        duration = args.duration if args.duration is not None else 30.0
-        run_postprocessing(config, duration)
-    else:
-        run_stm32_only(config, args.duration)
-        run_emg_only(config, args.duration)
-        if use_viz:
-            run_with_prbs_visualization(config, args.duration, "all", use_pyqtgraph=use_pyqtgraph)
-        else:
-            run_combined(config, args.duration)
+            print(f"  [SUMMARY] PRBS: offset={ss.offset_ms:+.2f} ms, confidence={ss.confidence:.3f}")
 
 
 if __name__ == "__main__":
-    main()
+    run()
