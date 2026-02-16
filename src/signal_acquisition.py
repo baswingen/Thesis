@@ -93,7 +93,7 @@ CLOCK = time.perf_counter
 # STM32 sketch: CHIP_RATE_HZ=500, PRBS15 seed 0x7ACE
 # Mark period REMOVED to preserve PRBS correlation properties
 # Scaled to 500 Hz to match STM32 sample rate (1:1 ratio for optimal reconstruction)
-PRBS_CHIP_RATE_HZ = 500
+PRBS_CHIP_RATE_HZ = 200
 PRBS15_SEED = 0x7ACE
 PRBS15_PERIOD = (1 << 15) - 1  # 32_767 chips (~65.5 seconds at 500 Hz)
 
@@ -156,10 +156,10 @@ class SignalAcquisitionConfig:
     sync_mode: Literal["realtime", "postprocessing", "none"] = "realtime"
     prbs_correlation_window_s: float = 10.0  # Increased from 5s for better correlation at 500 Hz
     prbs_update_interval_s: float = 2.0  # Kalman smoothing needs infrequent measurements
-    prbs_chip_rate_hz: float = 10.0  # PRBS chip rate (Hz); must match STM32 output
+    prbs_chip_rate_hz: float = 200.0  # PRBS chip rate (Hz); must match STM32 output
     # Resample rate used for PRBS cross-correlation. Match the chip rate for
-    # optimal correlation (500 Hz PRBS → 500 Hz resample).
-    prbs_resample_rate_hz: float = 500.0
+    # optimal correlation (200 Hz PRBS → 200 Hz resample).
+    prbs_resample_rate_hz: float = 200.0
     prbs_drift_warning_ms: float = 10.0
     prbs_drift_error_ms: float = 50.0
     max_emg_buffer_size: int = 200_000

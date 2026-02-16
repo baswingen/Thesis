@@ -30,7 +30,7 @@ import numpy as np
 DURATION_S: Optional[float] = None  # Run indefinitely until window closed
 PRBS_CORRELATION_WINDOW_S: float = 10.0
 PRBS_UPDATE_INTERVAL_S: float = 2.0
-PRBS_CHIP_RATE_HZ: float = 10.0  # Must match STM32 firmware (10 Hz chip rate)
+PRBS_CHIP_RATE_HZ: float = 200.0  # Must match STM32 firmware (200 Hz chip rate)
 PRBS_VIZ_WINDOW_S: float = 10.0  # Sliding window width in seconds for the plot
 STM32_PORT: Optional[str] = None # Auto-detect
 STM32_BAUD: int = 921600

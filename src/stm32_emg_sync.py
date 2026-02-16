@@ -30,7 +30,7 @@ except Exception:
 # Constants
 # =============================================================================
 
-CHIP_RATE_HZ = 10
+CHIP_RATE_HZ = 200
 EMG_SAMPLE_RATE = 2000
 SAMPLES_PER_CHIP = EMG_SAMPLE_RATE // CHIP_RATE_HZ  # 200
 MIN_OVERLAP_RATIO = 0.9
