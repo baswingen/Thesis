@@ -394,7 +394,7 @@ class SyncDelayEstimator:
         self._rolling_stm32_chips = np.array([], dtype=np.float64)
         self._emg_remainder = np.array([], dtype=np.float64)  # partial-chip leftovers
         self._last_stm32_tick: Optional[int] = None
-        self._max_rolling_chips = 500  # ~50 s at 10 Hz chip rate
+        self._max_rolling_chips = int(chip_rate_hz * 60)  # ~60 s history
         self._detected_trig_bit: Optional[int] = None  # auto-detected STATUS bit
         self._lag_history_chips = deque(maxlen=7)
         self._min_confidence_for_update = 0.15

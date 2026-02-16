@@ -1342,7 +1342,7 @@ class SignalAcquisition:
                 update_interval_s=cfg.prbs_update_interval_s,
             )
             if cfg.verbose:
-                print(f"[SYNC] Real-time PRBS sync enabled (Kalman-smoothed, {cfg.prbs_chip_rate_hz} Hz chip rate)")
+                print(f"[SYNC] PRBS chip extraction enabled ({cfg.prbs_chip_rate_hz} Hz chip rate)")
 
         if cfg.enable_stm32:
             # Issue 24: Start STM32 reader WITHOUT callback initially to avoid

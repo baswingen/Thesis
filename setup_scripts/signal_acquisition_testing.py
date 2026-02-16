@@ -1,9 +1,9 @@
 """
-Synchronized STM32 + EMG Signal Acquisition (single-mode test)
-=============================================================
+Synchronized STM32 + EMG Signal Acquisition (Real-time Visualization)
+=====================================================================
 
 Single mode: run both acquisition devices (STM32 + EMG) and PRBS synchronization
-together with PyQtGraph real-time visualization. No CLI; tune via the config block below.
+together with PyQtGraph real-time visualization.
 
 Hardware:
     STM32F401 PA8 --[330R]-- Porti7 TRIG (LEMO centre)
@@ -20,26 +20,26 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import numpy as np
 
 # -----------------------------------------------------------------------------
 # CONFIG – edit these to tune duration and PRBS sync (no CLI)
 # -----------------------------------------------------------------------------
-DURATION_S: float = 30.0
+DURATION_S: Optional[float] = None  # Run indefinitely until window closed
 PRBS_CORRELATION_WINDOW_S: float = 10.0
 PRBS_UPDATE_INTERVAL_S: float = 2.0
-PRBS_CHIP_RATE_HZ: float = 10.0
-PRBS_VIZ_WINDOW_S: float = 10.0  # Scrolling time window for PRBS plots
-STM32_PORT: Optional[str] = None
-STM32_BAUD: int = 115200
+PRBS_CHIP_RATE_HZ: float = 10.0  # Must match STM32 firmware (10 Hz chip rate)
+PRBS_VIZ_WINDOW_S: float = 10.0  # Sliding window width in seconds for the plot
+STM32_PORT: Optional[str] = None # Auto-detect
+STM32_BAUD: int = 921600
 EMG_CONNECTION_TYPE: str = "usb"
 EMG_SAMPLE_RATE: Optional[int] = 2000
 VERBOSE: bool = True
 # -----------------------------------------------------------------------------
 
-# PyQtGraph required (no matplotlib fallback)
+# PyQtGraph required
 try:
     import pyqtgraph as pg
     from pyqtgraph.Qt import QtWidgets, QtCore
@@ -51,11 +51,13 @@ _project_root = Path(__file__).resolve().parents[1]
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
-from src.signal_acquisition import SignalAcquisition, SignalAcquisitionConfig
-
 try:
+    from src.signal_acquisition import SignalAcquisition, SignalAcquisitionConfig
+    from src.stm32_reader import STM32Reader
+    from src.stm32_emg_sync import SyncDelayEstimator
     from src.signal_acquisition import _TMSI_AVAILABLE
-except ImportError:
+except ImportError as e:
+    print(f"Import Error: {e}")
     _TMSI_AVAILABLE = False
 
 
@@ -89,115 +91,64 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.acq = acq
         self.duration_s = duration_s
         self.start_time = time.perf_counter()
-        self.metrics_plots_enabled = True
         self.prbs_window_s = PRBS_VIZ_WINDOW_S
 
         self.timer: Optional[QtCore.QTimer] = None
-        self.update_timer: Optional[QtCore.QTimer] = None
         self.duration_timer: Optional[QtCore.QTimer] = None
-
-        self.history: Dict[str, List[float]] = {
-            "t": [], "offset": [], "drift": [], "confidence": []
-        }
-        self.max_history = 200
 
         self._last_stm32_len: int = 0
         self._last_stm32_hash: int = 0
         self._last_emg_len: int = 0
         self._last_emg_hash: int = 0
+        self._last_prbs_err: Optional[str] = None
 
-        self.setWindowTitle("PRBS Sync – STM32 + EMG")
-        self.resize(1800, 1100)
+        self.setWindowTitle("PRBS Signal Monitor – STM32 + EMG")
+        self.resize(1000, 800)
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
-        self.status_label = QtWidgets.QLabel("Initializing...")
+        self.status_label = QtWidgets.QLabel("Acquiring PRBS signals...")
         self.status_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet("font-size: 14px; font-weight: bold; padding: 10px;")
+        self.status_label.setStyleSheet(
+            "font-size: 14px; font-weight: bold; padding: 10px; "
+            "background-color: #2c3e50; color: white;"
+        )
         layout.addWidget(self.status_label)
-
-        self.metrics_checkbox = QtWidgets.QCheckBox("Show offset/drift/confidence plots")
-        self.metrics_checkbox.setChecked(True)
-        self.metrics_checkbox.toggled.connect(self._on_metrics_toggled)
-        layout.addWidget(self.metrics_checkbox)
 
         self.graphics_layout = pg.GraphicsLayoutWidget()
         layout.addWidget(self.graphics_layout)
 
-        self.plot_stm32 = self.graphics_layout.addPlot(row=0, col=0, title="STM32 PRBS (STM32 time)")
+        # Plot 1: STM32 PRBS
+        self.plot_stm32 = self.graphics_layout.addPlot(row=0, col=0, title="STM32 PRBS (500 Hz)")
         self.plot_stm32.setLabel("left", "Level")
         self.plot_stm32.setLabel("bottom", "Time", units="s")
-        self.plot_stm32.setYRange(-0.2, 1.2)
+        self.plot_stm32.setYRange(-1.2, 1.2)
         self.plot_stm32.showGrid(x=True, y=True, alpha=0.3)
         self.curve_stm32 = self.plot_stm32.plot(pen=pg.mkPen(color="#2ecc71", width=2))
 
-        self.plot_emg = self.graphics_layout.addPlot(row=1, col=0, title="Porti7 PRBS (same timeline)")
+        # Plot 2: EMG TRIG
+        self.plot_emg = self.graphics_layout.addPlot(row=1, col=0, title="Porti7 TRIG (EMG)")
         self.plot_emg.setLabel("left", "Level")
         self.plot_emg.setLabel("bottom", "Time", units="s")
-        self.plot_emg.setYRange(-0.2, 1.2)
+        self.plot_emg.setYRange(-1.2, 1.2)
         self.plot_emg.showGrid(x=True, y=True, alpha=0.3)
         self.curve_emg = self.plot_emg.plot(pen=pg.mkPen(color="#3498db", width=2))
+        
+        # Link X axes
         self.plot_emg.setXLink(self.plot_stm32)
 
-        self.plot_offset = self.graphics_layout.addPlot(row=2, col=0, title="Clock Offset")
-        self.plot_offset.setLabel("left", "Offset", units="ms")
-        self.plot_offset.setLabel("bottom", "Time", units="s")
-        self.plot_offset.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_offset.enableAutoRange(axis='y')
-        self.curve_offset = self.plot_offset.plot(pen=pg.mkPen(color="#9b59b6", width=2))
-
-        self.plot_drift = self.graphics_layout.addPlot(row=3, col=0, title="Clock Drift Rate")
-        self.plot_drift.setLabel("left", "Drift Rate", units="ppm")
-        self.plot_drift.setLabel("bottom", "Time", units="s")
-        self.plot_drift.showGrid(x=True, y=True, alpha=0.3)
-        self.plot_drift.enableAutoRange(axis='y')
-        self.curve_drift = self.plot_drift.plot(pen=pg.mkPen(color="#e74c3c", width=2))
-
-        self.plot_confidence = self.graphics_layout.addPlot(row=4, col=0, title="Correlation Confidence")
-        self.plot_confidence.setLabel("left", "Confidence")
-        self.plot_confidence.setLabel("bottom", "Time", units="s")
-        self.plot_confidence.setYRange(0, 1.1)
-        self.plot_confidence.showGrid(x=True, y=True, alpha=0.3)
-        self.curve_confidence = self.plot_confidence.plot(pen=pg.mkPen(color="#f39c12", width=2))
-
-        for curve in [self.curve_offset, self.curve_drift, self.curve_confidence]:
-            curve.setDownsampling(auto=True, method='peak')
-            curve.setClipToView(True)
         for curve in [self.curve_stm32, self.curve_emg]:
             curve.setClipToView(True)
 
-        # Single timer for all viz updates (~30 fps)
+        # Single timer for viz updates (~30 fps)
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self._on_viz_tick)
         self.timer.start(33)
-
-        self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self._trigger_sync_update)
-        self.update_timer.start(1000)
 
         if self.duration_s is not None:
             self.duration_timer = QtCore.QTimer()
             self.duration_timer.timeout.connect(self._check_duration)
             self.duration_timer.start(1000)
-
-    def _trigger_sync_update(self) -> None:
-        if self.acq is not None:
-            self.acq.trigger_prbs_update()
-
-    def _on_metrics_toggled(self, enabled: bool) -> None:
-        self.metrics_plots_enabled = bool(enabled)
-        if self.metrics_plots_enabled:
-            self.plot_offset.show()
-            self.plot_drift.show()
-            self.plot_confidence.show()
-            if self.update_timer is not None and not self.update_timer.isActive():
-                self.update_timer.start(1000)
-        else:
-            self.plot_offset.hide()
-            self.plot_drift.hide()
-            self.plot_confidence.hide()
-            if self.update_timer is not None and self.update_timer.isActive():
-                self.update_timer.stop()
 
     def _check_duration(self) -> None:
         if self.duration_s is not None:
@@ -208,180 +159,170 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 self.close()
 
     def _on_viz_tick(self) -> None:
-        """Single tick: update sync metrics and PRBS plots (shared timeline)."""
-        self._update_sync_plots()
+        """Update PRBS signal plots."""
         self._update_prbs_plots()
+        
+        # Update status
+        elapsed = time.perf_counter() - self.start_time
+        reader = getattr(self.acq, "stm32_reader", None)
+        estimator = getattr(self.acq, "sync_delay_estimator", None)
+        
+        stm32_info = "STM32: --"
+        if reader is not None:
+            n_samples = reader.sample_count
+            rate = n_samples / elapsed if elapsed > 0.5 else 0
+            stm32_info = f"STM32: {n_samples} samples ({rate:.0f} Hz)"
+            
+        emg_info = "EMG: --"
+        if estimator is not None:
+             # Use internal buffer length as proxy for activity
+            n_bufs = len(estimator._emg_buf_lockless) if hasattr(estimator, '_emg_buf_lockless') else 0
+            emg_info = f"EMG Buf: {n_bufs}"
 
-    @staticmethod
-    def _make_step_data_from_x(x_base: np.ndarray, y_base: np.ndarray):
-        n = len(y_base)
-        if n == 0:
-            return np.empty(0, dtype=float), np.empty(0, dtype=float)
-        x = np.empty(2 * n, dtype=float)
-        y = np.empty(2 * n, dtype=float)
-        x[0::2] = x_base
-        if n > 1:
-            x[1::2] = np.concatenate((x_base[1:], [x_base[-1] + (x_base[-1] - x_base[-2])]))
-        else:
-            x[1::2] = x_base + 1.0 / 500.0
-        y[0::2] = y_base
-        y[1::2] = y_base
-        return x, y
-
-    def _update_sync_plots(self) -> None:
-        if self.acq is None or not self.metrics_plots_enabled:
-            return
-        sync_state = self.acq.get_sync_state()
-        if sync_state is not None:
-            elapsed = time.perf_counter() - self.start_time
-            self.history["t"].append(elapsed)
-            self.history["offset"].append(sync_state.offset_ms)
-            self.history["drift"].append(sync_state.drift_rate_ppm)
-            self.history["confidence"].append(sync_state.confidence)
-            for key in ("t", "offset", "drift", "confidence"):
-                self.history[key] = self.history[key][-self.max_history:]
-            if len(self.history["t"]) > 1:
-                t_arr = np.array(self.history["t"])
-                self.curve_offset.setData(t_arr, self.history["offset"])
-                self.curve_drift.setData(t_arr, self.history["drift"])
-                self.curve_confidence.setData(t_arr, self.history["confidence"])
-            status_color = self._status_color(sync_state)
-            self.status_label.setText(
-                f"Offset: {sync_state.offset_ms:+.2f} ms | "
-                f"Drift: {sync_state.drift_rate_ppm:+.1f} ppm | "
-                f"Confidence: {sync_state.confidence:.3f}"
-            )
-            self.status_label.setStyleSheet(
-                f"font-size: 14px; font-weight: bold; padding: 10px; "
-                f"background-color: {status_color}; color: white;"
-            )
-        else:
-            self.status_label.setText("Waiting for sync data...")
-            self.status_label.setStyleSheet(
-                "font-size: 14px; font-weight: bold; padding: 10px; "
-                "background-color: #95a5a6; color: white;"
-            )
+        self.status_label.setText(
+            f"{stm32_info} | {emg_info} | Elapsed: {elapsed:.0f}s"
+        )
 
     def _update_prbs_plots(self) -> None:
-        # offset_ms from sync: negative when EMG is delayed; we use delay_emg_s = -offset_ms/1000
-        # so newest EMG is at t_ref - delay_emg_s (to the left when Porti7 receives later).
+        """Fetch latest data and update curves."""
         if self.acq is None:
             return
+
         try:
-            t_end = None
-            estimator = getattr(self.acq, "sync_delay_estimator", None)
-            chip_rate_hz = float(estimator.chip_rate_hz) if estimator is not None else PRBS_CHIP_RATE_HZ
-            chip_period_s = 1.0 / chip_rate_hz
+            # We want to show the last N seconds of data.
+            # We can get this from SignalAcquisition.stm32_reader and SignalAcquisition.emg_buffer (via Thread)
+            # OR better, use the ring buffers in SignalAcquisition directly if available.
+            # Actually, SignalAcquisition wraps STM32Reader.
+            
+            elapsed = time.perf_counter() - self.start_time
+            now = time.perf_counter()
+            
+            # --- STM32 Data ---
+            # Get last window seconds
+            # 500 Hz * window
+            n_samples_stm32 = int(self.prbs_window_s * 550) 
+            stm32_snap = self.acq.get_stm32_snapshot(n=n_samples_stm32)
+            
+            if stm32_snap and "t_sec" in stm32_snap and len(stm32_snap["t_sec"]) > 0:
+                # Re-align t_sec to be relative to start_time for simple viewing
+                # But wait, t_sec from reader is "t_ms / 1000.0". 
+                # This is STM32 internal time.
+                # Ideally we want to plot against "pc_time" which is host time.
+                
+                t_host = stm32_snap.get("pc_time", None)
+                prbs_lvl = stm32_snap.get("prbs_signal", None) # -1, 1
+                
+                if t_host is not None and prbs_lvl is not None:
+                     # Filter to window
+                    mask = t_host > (now - self.prbs_window_s)
+                    t_plot = t_host[mask]
+                    y_plot = prbs_lvl[mask]
+                    
+                    if len(t_plot) > 0:
+                        # Normalize time to relative to viz start
+                        t_rel = t_plot - self.start_time
+                        self.curve_stm32.setData(t_rel, y_plot)
+            
+            # --- EMG Data ---
+            # The SignalAcquisition sync_engine stores TRIG data in either emg_buf (bipolar) or emg_word_buf (raw bits).
+            # We must check both.
+            sync_engine = getattr(self.acq, "sync_engine", None)
+            
+            if sync_engine:
+                # Try emg_buf first (bipolar floats)
+                target_buf = sync_engine.emg_buf
+                is_word_buf = False
+                
+                if len(target_buf) == 0:
+                    target_buf = sync_engine.emg_word_buf
+                    is_word_buf = True
+                
+                if len(target_buf) > 0:
+                    try:
+                        # Fetch last 2.5s worth of data approx (2000Hz * 2.5 = 5000)
+                        # or based on window. 2000Hz * 10s = 20000.
+                        buf_len = len(target_buf)
+                        points_to_fetch = min(buf_len, int(self.prbs_window_s * 2500))
+                        
+                        # Efficient deque slicing using itertools
+                        import itertools
+                        slice_iter = itertools.islice(target_buf, buf_len - points_to_fetch, buf_len)
+                        data_points = list(slice_iter)
+                        
+                        if data_points:
+                            arr = np.array(data_points) # shape (N, 2)
+                            t_vals = arr[:, 0]
+                            y_vals = arr[:, 1]
+                            
+                            # Filter to window
+                            mask = t_vals > (now - self.prbs_window_s)
+                            t_plot = t_vals[mask]
+                            y_plot = y_vals[mask]
+                            
+                            if is_word_buf:
+                                # Data is raw integer bitfield.
+                                # Check if sync_engine has identified a trigger bit
+                                trig_bit = getattr(sync_engine, "_trig_bit", None)
+                                
+                                if trig_bit is not None:
+                                    # Extract that bit
+                                    y_plot = ((y_plot.astype(int) >> trig_bit) & 1).astype(float)
+                                else:
+                                    # Auto-detect: find the bit with the most transitions in this window
+                                    # We check bits 0-7 (Porti7 status/dig usually low bits)
+                                    best_bit = 0
+                                    max_trans = -1
+                                    
+                                    # Cast once to int to avoid repeated casting
+                                    y_int = y_plot.astype(int)
+                                    
+                                    # Heuristic: check variance/transitions
+                                    # Optimization: checking 8 bits for 20k samples is fast enough for 30fps viz
+                                    for b in range(8):
+                                        bit_sig = (y_int >> b) & 1
+                                        # Count transitions (simple sum of absolute differences)
+                                        # Use a subset if array is huge to save time
+                                        subset = bit_sig[::10] if len(bit_sig) > 2000 else bit_sig
+                                        if len(subset) > 1:
+                                            trans = np.sum(np.abs(np.diff(subset)))
+                                            if trans > max_trans:
+                                                max_trans = trans
+                                                best_bit = b
+                                    
+                                    # If no activity found, stay at 0, otherwise use best
+                                    if max_trans > 0:
+                                        y_plot = ((y_int >> best_bit) & 1).astype(float)
+                                    else:
+                                        # Fallback to bit 0
+                                        y_plot = (y_int & 1).astype(float)
 
-            stm32_snapshot = self.acq.get_stm32_snapshot(n=1200)
-            stm32_t = stm32_snapshot.get("t_sec")
-            stm32_pc = stm32_snapshot.get("pc_time")
-            stm32_tick = stm32_snapshot.get("prbs_tick")
-            stm32_prbs = stm32_snapshot.get("prbs_level")
-            use_host_time = (
-                stm32_t is not None
-                and stm32_pc is not None
-                and len(stm32_t) == len(stm32_pc)
-            )
-            if (
-                stm32_t is not None
-                and len(stm32_t) > 0
-                and not use_host_time
-                and not getattr(self, "_warned_no_pc_time", False)
-            ):
-                self._warned_no_pc_time = True
-                print("[VIZ] PRBS: pc_time not in snapshot, using STM32 time (alignment may drift)")
-            if (
-                stm32_t is not None and stm32_tick is not None and stm32_prbs is not None
-                and len(stm32_t) > 0 and len(stm32_t) == len(stm32_tick) == len(stm32_prbs)
-            ):
-                valid = np.isfinite(stm32_t) & np.isfinite(stm32_tick) & np.isfinite(stm32_prbs)
-                if use_host_time and stm32_pc is not None:
-                    valid = valid & np.isfinite(stm32_pc)
-                t_raw = np.asarray(stm32_t[valid], dtype=float)
-                tick_raw = np.asarray(stm32_tick[valid], dtype=np.int64)
-                prbs_raw = (np.asarray(stm32_prbs[valid], dtype=float) > 0.5).astype(float)
-                if use_host_time and stm32_pc is not None:
-                    t_axis = np.asarray(stm32_pc[valid], dtype=float)
-                else:
-                    t_axis = t_raw
-                if len(tick_raw) > 0:
-                    chip_change = np.empty(len(tick_raw), dtype=bool)
-                    chip_change[0] = True
-                    chip_change[1:] = tick_raw[1:] != tick_raw[:-1]
-                    t_vals = t_axis[chip_change]
-                    y_vals = prbs_raw[chip_change]
-                else:
-                    t_vals = np.empty(0, dtype=float)
-                    y_vals = np.empty(0, dtype=float)
-                if len(t_vals) > 0:
-                    t_end = float(t_vals[-1])
-                if len(t_vals) > 0:
-                    h = hash(y_vals.data.tobytes())
-                else:
-                    h = 0
-                if h != self._last_stm32_hash or len(y_vals) != self._last_stm32_len:
-                    self._last_stm32_hash = h
-                    self._last_stm32_len = len(y_vals)
-                    sx, sy = self._make_step_data_from_x(t_vals, y_vals)
-                    self.curve_stm32.setData(sx, sy)
+                            if len(t_plot) > 0:
+                                t_rel = t_plot - self.start_time
+                                self.curve_emg.setData(t_rel, y_plot)
+                                
+                    except Exception:
+                        pass
 
-            if estimator is None:
-                if t_end is not None:
-                    self.plot_stm32.setXRange(max(0.0, t_end - self.prbs_window_s), t_end + 0.05, padding=0)
-                return
+            # Update X Range to latest time
+            # Relative time
+            current_rel = now - self.start_time
+            self.plot_stm32.setXRange(max(0, current_rel - self.prbs_window_s), current_rel + 0.5)
 
-            _, emg_chips = estimator.get_chip_streams_for_display(max_chips=200, apply_alignment=False)
-
-            if emg_chips is not None and len(emg_chips) > 0:
-                sync_state = self.acq.get_sync_state()
-                # EMG delay in seconds (positive when EMG is delayed); offset_ms is negative when delayed
-                delay_emg_s = (
-                    -sync_state.offset_ms / 1000.0 if sync_state is not None else 0.0
-                )
-                if t_end is None:
-                    t_end = time.perf_counter() - self.start_time
-                t_ref = t_end
-                n_emg = len(emg_chips)
-                t_emg = np.array([
-                    t_ref - delay_emg_s - (n_emg - 1 - i) * chip_period_s
-                    for i in range(n_emg)
-                ], dtype=float)
-                h = hash(emg_chips.data.tobytes())
-                if h != self._last_emg_hash or n_emg != self._last_emg_len:
-                    self._last_emg_hash = h
-                    self._last_emg_len = n_emg
-                    ex, ey = self._make_step_data_from_x(t_emg, emg_chips.astype(float))
-                    self.curve_emg.setData(ex, ey)
-
-            if t_end is None:
-                t_end = time.perf_counter() - self.start_time
-            self.plot_stm32.setXRange(max(0.0, t_end - self.prbs_window_s), t_end + 0.05, padding=0)
         except Exception as exc:
-            if not hasattr(self, "_last_prbs_err") or self._last_prbs_err != str(exc):
-                print(f"[VIZ] PRBS plot error: {exc}")
+            if self._last_prbs_err != str(exc):
+                print(f"[VIZ] PRBS update error: {exc}")
                 self._last_prbs_err = str(exc)
 
-    @staticmethod
-    def _status_color(sync_state) -> str:
-        c = sync_state.confidence
-        d = abs(sync_state.drift_rate_ppm)
-        if c > 0.6 and d < 1000:
-            return "#27ae60"
-        if c > 0.3 or d < 3000:
-            return "#f39c12"
-        return "#e74c3c"
-
     def closeEvent(self, event) -> None:
-        for attr in ("timer", "update_timer", "duration_timer"):
-            t = getattr(self, attr, None)
-            if t is not None:
-                t.stop()
+        if self.timer:
+            self.timer.stop()
+        if self.duration_timer:
+            self.duration_timer.stop()
         event.accept()
 
 
 def run() -> None:
-    """Single mode: STM32 + EMG + PRBS sync with PyQtGraph. Runs for DURATION_S then exits."""
+    """Run real-time visualization."""
     if not _PYQTGRAPH_AVAILABLE:
         print("\nERROR: PyQtGraph is required. Install with: pip install pyqtgraph PyQt6")
         sys.exit(1)
@@ -390,46 +331,56 @@ def run() -> None:
         sys.exit(1)
 
     config = _build_config()
-    if VERBOSE:
-        print("\n" + "=" * 60)
-        print("STM32 + EMG + PRBS sync (single-mode test)")
-        print("=" * 60)
-        print(f"  Duration: {DURATION_S:.0f} s. Window closes automatically.\n")
+    print("=" * 60)
+    print("STM32 + EMG PRBS Real-time Monitor")
+    print("=" * 60)
+    print(f"  Duration: {DURATION_S if DURATION_S else 'Indefinite'} s")
 
+    # Initialize Acquisition
     acq = SignalAcquisition(config)
     acq.start()
+    
+    # Wait a moment for threads to spin up
     time.sleep(1.0)
 
-    stm32_count_start = acq.stm32_reader.sample_count if acq.stm32_reader else 0
-    start_wall = time.perf_counter()
-
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication(sys.argv)
-    window = PRBSVisualizationWindow(acq, DURATION_S)
-    window.show()
-
     try:
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            app = QtWidgets.QApplication(sys.argv)
+            
+        # Set dark theme for cool aesthetics (as per instructions 'Use Rich Aesthetics')
+        app.setStyle("Fusion")
+        palette = QtGui.QPalette()
+        palette.setColor(QtGui.QPalette.ColorRole.Window, QtGui.QColor(53, 53, 53))
+        palette.setColor(QtGui.QPalette.ColorRole.WindowText, QtCore.Qt.GlobalColor.white)
+        palette.setColor(QtGui.QPalette.ColorRole.Base, QtGui.QColor(25, 25, 25))
+        palette.setColor(QtGui.QPalette.ColorRole.AlternateBase, QtGui.QColor(53, 53, 53))
+        palette.setColor(QtGui.QPalette.ColorRole.ToolTipBase, QtCore.Qt.GlobalColor.white)
+        palette.setColor(QtGui.QPalette.ColorRole.ToolTipText, QtCore.Qt.GlobalColor.white)
+        palette.setColor(QtGui.QPalette.ColorRole.Text, QtCore.Qt.GlobalColor.white)
+        palette.setColor(QtGui.QPalette.ColorRole.Button, QtGui.QColor(53, 53, 53))
+        palette.setColor(QtGui.QPalette.ColorRole.ButtonText, QtCore.Qt.GlobalColor.white)
+        palette.setColor(QtGui.QPalette.ColorRole.BrightText, QtCore.Qt.GlobalColor.red)
+        palette.setColor(QtGui.QPalette.ColorRole.Link, QtGui.QColor(42, 130, 218))
+        palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtGui.QColor(42, 130, 218))
+        palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtCore.Qt.GlobalColor.black)
+        app.setPalette(palette)
+
+        window = PRBSVisualizationWindow(acq, DURATION_S)
+        window.show()
+
         app.exec() if hasattr(app, "exec") else app.exec_()
+        
     except KeyboardInterrupt:
-        if VERBOSE:
-            print("\n[MAIN] Interrupted")
+        print("\n[MAIN] Interrupted by user.")
+    except Exception as e:
+        print(f"\n[MAIN] Error: {e}")
     finally:
+        print("\n[MAIN] Stopping acquisition...")
         acq.stop()
-
-    if VERBOSE:
-        elapsed = time.perf_counter() - start_wall
-        if acq.stm32_reader is not None:
-            n = acq.stm32_reader.sample_count - stm32_count_start
-            rate = n / elapsed if elapsed > 0.5 else 0
-            print(f"\n  [SUMMARY] STM32: {rate:.1f} Hz, {acq.stm32_reader.sample_count} samples")
-        if acq.emg_thread is not None:
-            st = acq.emg_thread.get_stats()
-            print(f"  [SUMMARY] EMG: {st['rate']:.0f} Hz, {st['samples']} samples")
-        ss = acq.get_sync_state()
-        if ss is not None:
-            print(f"  [SUMMARY] PRBS: offset={ss.offset_ms:+.2f} ms, confidence={ss.confidence:.3f}")
-
+        print("[MAIN] Done.")
 
 if __name__ == "__main__":
+    # Import QtGui here for the palette code above
+    from pyqtgraph.Qt import QtGui
     run()

@@ -241,7 +241,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
 
-  Serial.begin(115200);
+  Serial.begin(921600);
   delay(50);
 
 #if ENABLE_MATRIX
