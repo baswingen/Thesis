@@ -27,6 +27,7 @@ Usage:
 
 from __future__ import annotations
 
+import struct
 import threading
 import time
 from dataclasses import dataclass
@@ -57,6 +58,13 @@ HEADER_NAMES: List[str] = [
 
 NUM_COLUMNS = len(HEADER_NAMES)
 DEFAULT_CAPACITY = 60 * 500  # 60 s at 500 Hz
+
+# Binary Protocol Constants
+BIN_SYNC1 = 0xAA
+BIN_SYNC2 = 0x55
+BIN_PACKET_SIZE = 67
+# Format: sync1(B), sync2(B), t_ms(I), imu_ok(B), imu1(6f), imu2(6f), keys(3H), prbs_tick(I), prbs_bits(B), cs(B)
+BIN_FORMAT = "<BB I B 6f 6f 3H I B B"
 
 
 # ============================================================================
@@ -205,10 +213,11 @@ class STM32Reader:
     def __init__(
         self,
         port: Optional[str] = None,
-        baud: int = 115200,
+        baud: int = 921600,
         capacity: int = DEFAULT_CAPACITY,
         on_sample: Optional[Callable[[SampleSTM32], None]] = None,
         verbose: bool = True,
+        binary_mode: bool = True,
     ):
         if serial is None:
             raise RuntimeError("pyserial is required for STM32Reader. Install with: pip install pyserial")
@@ -217,6 +226,7 @@ class STM32Reader:
         self.capacity = capacity
         self.on_sample = on_sample
         self.verbose = verbose
+        self.binary_mode = binary_mode
 
         self.buffers: Dict[str, RingBuffer] = {
             name: RingBuffer(capacity) for name in HEADER_NAMES
@@ -297,6 +307,9 @@ class STM32Reader:
         assert ser is not None
         last_rx = time.perf_counter()
 
+        # Buffer for binary mode
+        bin_buf = bytearray()
+
         while not self._stop_event.is_set():
             if time.perf_counter() - last_rx > 3.0:
                 if self.verbose:
@@ -304,6 +317,7 @@ class STM32Reader:
                 try:
                     ser = self._reopen_serial()
                     self._ser = ser
+                    bin_buf.clear()
                 except Exception as e:
                     if self.verbose:
                         print(f"[STM32Reader] reconnect failed: {e}")
@@ -313,64 +327,148 @@ class STM32Reader:
                 continue
 
             try:
-                raw = ser.readline()
+                if self.binary_mode:
+                    # Binary mode: read chunks and look for sync
+                    if ser.in_waiting > 0:
+                        chunk = ser.read(ser.in_waiting)
+                        if chunk:
+                            bin_buf.extend(chunk)
+                            last_rx = time.perf_counter()
+                    
+                    # Process as many packets as possible
+                    while len(bin_buf) >= BIN_PACKET_SIZE:
+                        # Find sync
+                        sync_pos = bin_buf.find(bytes([BIN_SYNC1, BIN_SYNC2]))
+                        if sync_pos == -1:
+                            # No sync found, clear buffer except possible start of sync
+                            if bin_buf[-1] == BIN_SYNC1:
+                                del bin_buf[:-1]
+                            else:
+                                bin_buf.clear()
+                            break
+                        
+                        if sync_pos > 0:
+                            # Skip garbage
+                            del bin_buf[:sync_pos]
+                        
+                        if len(bin_buf) < BIN_PACKET_SIZE:
+                            break
+                        
+                        # Peek at packet
+                        packet_data = bin_buf[:BIN_PACKET_SIZE]
+                        
+                        # Validate checksum (XOR of bytes 2 to size-2)
+                        cs = 0
+                        for b in packet_data[2:-1]:
+                            cs ^= b
+                        
+                        if cs != packet_data[-1]:
+                            # Checksum failed, skip the sync and continue
+                            del bin_buf[:2]
+                            self.parse_fail_count += 1
+                            continue
+                        
+                        # Valid packet! Parse it.
+                        try:
+                            sample = self._parse_binary_packet(packet_data)
+                            if sample:
+                                self._push_sample(sample)
+                        except Exception:
+                            self.parse_fail_count += 1
+                        
+                        # Remove packet from buffer
+                        del bin_buf[:BIN_PACKET_SIZE]
+                    
+                    if not chunk: # if no data read, sleep a bit
+                        time.sleep(0.001)
+                    continue
+
+                else:
+                    # Legacy CSV mode
+                    raw = ser.readline()
+                    if not raw:
+                        continue
+                    try:
+                        line = raw.decode("ascii", errors="ignore")
+                        sample = parse_line_stm32(line)
+                        if sample:
+                            self._push_sample(sample)
+                        else:
+                            self.parse_fail_count += 1
+                    except Exception:
+                        self.parse_fail_count += 1
+                        continue
+                    last_rx = time.perf_counter()
+
             except serial.SerialException as e:
                 if self.verbose:
                     print(f"[STM32Reader] serial error: {e}")
                 try:
                     ser = self._reopen_serial()
                     self._ser = ser
+                    bin_buf.clear()
                 except Exception:
                     time.sleep(1.0)
                 continue
 
-            if not raw:
-                continue
+    def _parse_binary_packet(self, data: bytes) -> Optional[SampleSTM32]:
+        """Unpack 67-byte binary packet into SampleSTM32."""
+        try:
+            # Format: <BB I B 6f 6f 3H I B B
+            vals = struct.unpack(BIN_FORMAT, data)
+            # 0:s1, 1:s2, 2:t_ms, 3:imu_ok, 4-9:imu1, 10-15:imu2, 16:mask, 17:rise, 18:fall, 19:tick, 20:bits, 21:cs
+            
+            return SampleSTM32(
+                t_ms=float(vals[2]),
+                imu1_ok=(vals[3] & 1),
+                imu2_ok=((vals[3] >> 1) & 1),
+                yaw1=vals[4], pitch1=vals[5], roll1=vals[6], ax1=vals[7], ay1=vals[8], az1=vals[9],
+                yaw2=vals[10], pitch2=vals[11], roll2=vals[12], ax2=vals[13], ay2=vals[14], az2=vals[15],
+                keys_mask=int(vals[16]),
+                keys_rise=int(vals[17]),
+                keys_fall=int(vals[18]),
+                prbs_tick=int(vals[19]),
+                prbs_lvl=(vals[20] & 1),
+                in_mark=((vals[20] >> 1) & 1)
+            )
+        except Exception:
+            return None
 
+    def _push_sample(self, sample: SampleSTM32) -> None:
+        """Helper to push a parsed sample into buffers."""
+        pc_now = time.perf_counter()
+        self.sample_count += 1
+        self.latest = sample
+
+        with self._lock:
+            b = self.buffers
+            b["t_ms"].push(sample.t_ms)
+            b["t_sec"].push(sample.t_ms / 1000.0)
+            b["pc_time"].push(pc_now)
+            b["imu1_ok"].push(float(sample.imu1_ok))
+            b["imu2_ok"].push(float(sample.imu2_ok))
+            b["yaw1"].push(sample.yaw1)
+            b["pitch1"].push(sample.pitch1)
+            b["roll1"].push(sample.roll1)
+            b["ax1"].push(sample.ax1)
+            b["ay1"].push(sample.ay1)
+            b["az1"].push(sample.az1)
+            b["yaw2"].push(sample.yaw2)
+            b["pitch2"].push(sample.pitch2)
+            b["roll2"].push(sample.roll2)
+            b["ax2"].push(sample.ax2)
+            b["ay2"].push(sample.ay2)
+            b["az2"].push(sample.az2)
+            b["keys_mask"].push(float(sample.keys_mask))
+            b["keys_rise"].push(float(sample.keys_rise))
+            b["keys_fall"].push(float(sample.keys_fall))
+            b["prbs_tick"].push(float(sample.prbs_tick))
+            b["prbs_level"].push(float(sample.prbs_lvl))
+            b["in_mark"].push(float(sample.in_mark))
+            b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
+
+        if self.on_sample is not None:
             try:
-                line = raw.decode("ascii", errors="ignore")
+                self.on_sample(sample)
             except Exception:
-                continue
-
-            sample = parse_line_stm32(line)
-            if sample is None:
-                self.parse_fail_count += 1
-                continue
-
-            pc_now = time.perf_counter()
-            last_rx = pc_now
-            self.sample_count += 1
-            self.latest = sample
-
-            with self._lock:
-                b = self.buffers
-                b["t_ms"].push(sample.t_ms)
-                b["t_sec"].push(sample.t_ms / 1000.0)
-                b["pc_time"].push(pc_now)
-                b["imu1_ok"].push(float(sample.imu1_ok))
-                b["imu2_ok"].push(float(sample.imu2_ok))
-                b["yaw1"].push(sample.yaw1)
-                b["pitch1"].push(sample.pitch1)
-                b["roll1"].push(sample.roll1)
-                b["ax1"].push(sample.ax1)
-                b["ay1"].push(sample.ay1)
-                b["az1"].push(sample.az1)
-                b["yaw2"].push(sample.yaw2)
-                b["pitch2"].push(sample.pitch2)
-                b["roll2"].push(sample.roll2)
-                b["ax2"].push(sample.ax2)
-                b["ay2"].push(sample.ay2)
-                b["az2"].push(sample.az2)
-                b["keys_mask"].push(float(sample.keys_mask))
-                b["keys_rise"].push(float(sample.keys_rise))
-                b["keys_fall"].push(float(sample.keys_fall))
-                b["prbs_tick"].push(float(sample.prbs_tick))
-                b["prbs_level"].push(float(sample.prbs_lvl))
-                b["in_mark"].push(float(sample.in_mark))
-                b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
-
-            if self.on_sample is not None:
-                try:
-                    self.on_sample(sample)
-                except Exception:
-                    pass
+                pass

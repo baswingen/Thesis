@@ -143,8 +143,9 @@ class SignalAcquisitionConfig:
     enable_stm32: bool = True
     enable_emg: bool = True
     stm32_port: Optional[str] = None
-    stm32_baud: int = 115200
+    stm32_baud: int = 921600
     stm32_capacity: int = 60 * 500
+    stm32_binary_mode: bool = True
     emg_differential_pairs: List[Tuple[int, int]] = field(
         default_factory=lambda: [(0, 1)]
     )
@@ -1353,6 +1354,7 @@ class SignalAcquisition:
                 capacity=cfg.stm32_capacity,
                 on_sample=None,  # No callback yet
                 verbose=cfg.verbose,
+                binary_mode=cfg.stm32_binary_mode,
             )
             self._reader.start()
             if cfg.verbose:
@@ -1583,6 +1585,7 @@ def run_stm32_only(config: SignalAcquisitionConfig, duration_s: Optional[float])
         capacity=config.stm32_capacity,
         on_sample=None,
         verbose=config.verbose,
+        binary_mode=config.stm32_binary_mode,
     )
     reader.start()
     start = CLOCK()

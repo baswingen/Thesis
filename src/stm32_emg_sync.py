@@ -715,7 +715,8 @@ class SyncDelayEstimator:
 
             # Trim raw buffers to prevent unbounded memory growth
             # (still appended to by add_* for backward compatibility)
-            max_raw_chunks = 20  # ~1-2 s of EMG data
+            # Increased from 20 to 1000 to support longer visualization windows (~50s)
+            max_raw_chunks = 1000  
             if len(self._emg_trig_buf) > max_raw_chunks:
                 self._emg_trig_buf = self._emg_trig_buf[-max_raw_chunks:]
             max_stm32 = 5000  # ~10 s at 500 Hz
@@ -738,6 +739,18 @@ class SyncDelayEstimator:
         """Return last SyncDelayResult from update, or None."""
         with self._lock:
             return self._last_result
+
+    @property
+    def emg_buf_len(self) -> int:
+        """Return number of chips in the rolling EMG buffer."""
+        with self._lock:
+            return len(self._rolling_emg_chips)
+
+    @property
+    def stm32_buf_len(self) -> int:
+        """Return number of chips in the rolling STM32 buffer."""
+        with self._lock:
+            return len(self._rolling_stm32_chips)
 
     def _align_chips_for_display(
         self, emg_chips: np.ndarray, stm32_chips: np.ndarray, max_chips: int = 500

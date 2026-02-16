@@ -175,13 +175,35 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             
         emg_info = "EMG: --"
         if estimator is not None:
-             # Use internal buffer length as proxy for activity
-            n_bufs = len(estimator._emg_buf_lockless) if hasattr(estimator, '_emg_buf_lockless') else 0
+            # Use SyncDelayEstimator rolling buffer length
+            n_bufs = estimator.emg_buf_len
+            emg_info = f"EMG Buf: {n_bufs}"
+        elif sync_engine is not None:
+            # Fallback to legacy sync_engine buffer length
+            n_bufs = len(sync_engine.emg_word_buf) + len(sync_engine.emg_buf)
             emg_info = f"EMG Buf: {n_bufs}"
 
         self.status_label.setText(
             f"{stm32_info} | {emg_info} | Elapsed: {elapsed:.0f}s"
         )
+        
+        # DEBUG: Print status every ~1s
+        if int(elapsed) > getattr(self, "_last_debug_s", -1):
+            self._last_debug_s = int(elapsed)
+            print(f"[DEBUG] {stm32_info} | {emg_info}")
+            if estimator:
+                 sync = getattr(self.acq, "sync_engine", None)
+                 if sync:
+                     wb = len(sync.emg_word_buf)
+                     bb = len(sync.emg_buf)
+                     print(f"  Buffers: word_buf={wb}, bipolar_buf={bb}")
+                     if wb > 0:
+                         # Print last few raw words to see if we have valid data
+                         last_few = [x for _, x in list(sync.emg_word_buf)[-5:]]
+                         print(f"  Last 5 raw words: {last_few}")
+                     if bb > 0:
+                         last_few = [x for _, x in list(sync.emg_buf)[-5:]]
+                         print(f"  Last 5 bipolar: {last_few}")
 
     def _update_prbs_plots(self) -> None:
         """Fetch latest data and update curves."""
@@ -210,7 +232,7 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 # Ideally we want to plot against "pc_time" which is host time.
                 
                 t_host = stm32_snap.get("pc_time", None)
-                prbs_lvl = stm32_snap.get("prbs_signal", None) # -1, 1
+                prbs_lvl = stm32_snap.get("prbs_level", None) # 0, 1
                 
                 if t_host is not None and prbs_lvl is not None:
                      # Filter to window
@@ -224,11 +246,43 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                         self.curve_stm32.setData(t_rel, y_plot)
             
             # --- EMG Data ---
-            # The SignalAcquisition sync_engine stores TRIG data in either emg_buf (bipolar) or emg_word_buf (raw bits).
-            # We must check both.
+            # Priority 1: SyncDelayEstimator (real-time mode)
+            estimator = getattr(self.acq, "sync_delay_estimator", None)
             sync_engine = getattr(self.acq, "sync_engine", None)
             
-            if sync_engine:
+            if estimator is not None:
+                # RAW 2000 Hz signal visualization
+                with estimator._lock:
+                    chunks = list(estimator._emg_trig_buf)
+                
+                if chunks:
+                    # Concatenate all recent raw chunks
+                    t_raw = np.concatenate([c[0] for c in chunks])
+                    v_raw = np.concatenate([c[1] for c in chunks])
+                    
+                    # Convert raw STATUS/TRIG to binary (0/1) for visual clarity
+                    is_status = getattr(estimator, "_trig_is_status", True)
+                    trig_bit = getattr(estimator, "_detected_trig_bit", None)
+                    
+                    if is_status and trig_bit is not None:
+                        y_plot = ((v_raw.astype(np.int64) >> trig_bit) & 1).astype(np.float64)
+                    else:
+                        # Fallback bit extraction for visual
+                        lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
+                        thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
+                        y_plot = (v_raw > thr).astype(np.float64)
+                    
+                    # Filter to window
+                    mask = t_raw > (now - self.prbs_window_s)
+                    t_plot = t_raw[mask]
+                    y_plot = y_plot[mask]
+                    
+                    if len(t_plot) > 0:
+                        t_rel = t_plot - self.start_time
+                        self.curve_emg.setData(t_rel, y_plot)
+            
+            # Priority 2: Legacy sync_engine (if estimator not used)
+            elif sync_engine:
                 # Try emg_buf first (bipolar floats)
                 target_buf = sync_engine.emg_buf
                 is_word_buf = False
