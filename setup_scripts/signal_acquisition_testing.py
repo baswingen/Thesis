@@ -37,9 +37,9 @@ except ImportError:
 # -----------------------------------------------------------------------------
 DURATION_S: Optional[float] = None  # Run indefinitely until window closed
 PRBS_CORRELATION_WINDOW_S: float = 1  # Search range ±8s (accounting for overlap ratio)
-PRBS_UPDATE_INTERVAL_S: float = 0.1   # Update every 1s
+PRBS_UPDATE_INTERVAL_S: float = 0.05   # Update every 1s
 PRBS_CHIP_RATE_HZ: float = 100.0  # Must match STM32 firmware (100 Hz chip rate)
-PRBS_VIZ_WINDOW_S: float = 5.0  # Sliding window width in seconds for the plot
+PRBS_VIZ_WINDOW_S: float = 2.0  # Sliding window width in seconds for the plot
 STM32_PORT: Optional[str] = None # Auto-detect
 STM32_BAUD: int = 921600
 EMG_CONNECTION_TYPE: str = "usb"
@@ -93,11 +93,23 @@ class RawTMSiThread(threading.Thread):
     def run(self):
         try:
             print("[TMSi] Discovering devices...")
-            devices = LegacyDevice.discover("usb")
-            if not devices:
-                raise RuntimeError("No TMSi devices found")
+            # Ensure fresh start
+            try: LegacyDevice.cleanup()
+            except: pass
             
-            self.device = devices[0]
+            devices = LegacyDevice.discover("usb")
+            valid_devices = [d for d in devices if d._device_name and len(d._device_name) > 5 and "-" not in d._device_name[4:]]
+            
+            if not valid_devices:
+                if devices:
+                    print(f"[TMSi] WARNING: Found {len(devices)} devices but none seem valid: {[d._device_name for d in devices]}")
+                    # Fallback to first if we have to, but maybe it's the "USB -" one
+                    self.device = devices[0]
+                else:
+                    raise RuntimeError("No TMSi devices found")
+            else:
+                self.device = valid_devices[0]
+
             print(f"[TMSi] Opening {self.device._device_name}...")
             self.device.open()
             
@@ -384,11 +396,11 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.plot_synced.setYRange(-0.3, 1.5)
         self.plot_synced.showGrid(x=True, y=True, alpha=0.3)
         self.curve_sync_stm32 = self.plot_synced.plot(
-            pen=pg.mkPen(color="#2ecc71", width=2), name="STM32",
+            pen=pg.mkPen(color="#2ecc71", width=2), name="STM32"
         )
         self.curve_sync_emg = self.plot_synced.plot(
             pen=pg.mkPen(color="#3498db", width=2, style=QtCore.Qt.PenStyle.DashLine),
-            name="EMG (shifted)",
+            name="EMG (shifted)"
         )
         self.plot_synced.addLegend(offset=(10, 10))
 
@@ -517,9 +529,14 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                     t_plot = t_host[mask]
                     y_plot = prbs_lvl[mask]
                     
-                    if len(t_plot) > 0:
+                    if len(t_plot) > 1:
                         t_rel = t_plot - self.start_time
-                        self.curve_stm32.setData(t_rel, y_plot)
+                        # Manual step mode: repeat points to create horizontal and vertical segments
+                        # t0, t1, t1, t2, t2, t3...
+                        # y0, y0, y1, y1, y2, y2...
+                        sx = np.repeat(t_rel, 2)[1:]
+                        sy = np.repeat(y_plot, 2)[:-1]
+                        self.curve_stm32.setData(sx, sy)
             
             # --- EMG Data ---
             if self.estimator is not None:
@@ -544,9 +561,11 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                     t_plot = t_raw[mask]
                     y_plot = y_plot[mask]
                     
-                    if len(t_plot) > 0:
+                    if len(t_plot) > 1:
                         t_rel = t_plot - self.start_time
-                        self.curve_emg.setData(t_rel, y_plot)
+                        sx = np.repeat(t_rel, 2)[1:]
+                        sy = np.repeat(y_plot, 2)[:-1]
+                        self.curve_emg.setData(sx, sy)
 
             # Update X Range to latest time
             # Relative time
@@ -615,9 +634,11 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 t_plot = t_host[mask]
                 y_plot = prbs_lvl[mask]
                 
-                if len(t_plot) > 0:
+                if len(t_plot) > 1:
                     t_stm32_rel = t_plot - self.start_time
-                    self.curve_sync_stm32.setData(t_stm32_rel, y_plot)
+                    sx = np.repeat(t_stm32_rel, 2)[1:]
+                    sy = np.repeat(y_plot, 2)[:-1]
+                    self.curve_sync_stm32.setData(sx, sy)
 
         # --- EMG Data ---
         with self.estimator._lock:
@@ -635,9 +656,11 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             t_plot = t_raw[mask]
             y_plot = y_plot[mask]
             
-            if len(t_plot) > 0:
+            if len(t_plot) > 1:
                 t_rel = (t_plot - delay_s) - self.start_time
-                self.curve_sync_emg.setData(t_rel, y_plot)
+                sx = np.repeat(t_rel, 2)[1:]
+                sy = np.repeat(y_plot, 2)[:-1]
+                self.curve_sync_emg.setData(sx, sy)
 
     def closeEvent(self, event) -> None:
         if self.timer:
@@ -749,6 +772,12 @@ def run() -> None:
         tmsi_thread.stop()
         stm32_thread.join(timeout=2)
         tmsi_thread.join(timeout=2)
+        
+        # Final SDK cleanup
+        try:
+            LegacyDevice.cleanup()
+        except:
+            pass
         print("[MAIN] Done.")
 
 if __name__ == "__main__":
