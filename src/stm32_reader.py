@@ -6,10 +6,10 @@ High-performance, thread-safe acquisition for the STM32F401 sketch
 (STM32_all_in_python.ino). Captures:
 
 - Dual BNO085 UART-RVC IMU (yaw, pitch, roll, accel x/y/z per sensor)
-- 3x3 button matrix (keys_mask, keys_rise, keys_fall)
+- 3x4 button matrix (keys_mask, keys_rise, keys_fall)
 - PRBS-15 trigger state (prbs_tick, prbs_level)
 
-Protocol: 115200 baud, 500 Hz CSV, 21 columns.
+Protocol: 921600 baud, 500 Hz Binary (67-byte packets) or CSV.
 Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
         yaw2,pitch2,roll2,ax2,ay2,az2,
         keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level,in_mark
