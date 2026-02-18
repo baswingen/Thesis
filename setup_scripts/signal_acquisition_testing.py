@@ -36,10 +36,10 @@ except ImportError:
 # CONFIG – edit these to tune duration and PRBS sync (no CLI)
 # -----------------------------------------------------------------------------
 DURATION_S: Optional[float] = None  # Run indefinitely until window closed
-PRBS_CORRELATION_WINDOW_S: float = 1  # Search range ±8s (accounting for overlap ratio)
-PRBS_UPDATE_INTERVAL_S: float = 0.05   # Update every 1s
+PRBS_CORRELATION_WINDOW_S: float = 1  # Search range (chips = rate × window)
+PRBS_UPDATE_INTERVAL_S: float = 0.1   # Update every 500 ms
 PRBS_CHIP_RATE_HZ: float = 100.0  # Must match STM32 firmware (100 Hz chip rate)
-PRBS_VIZ_WINDOW_S: float = 2.0  # Sliding window width in seconds for the plot
+PRBS_VIZ_WINDOW_S: float = 1  # Sliding window width in seconds for the plot
 STM32_PORT: Optional[str] = None # Auto-detect
 STM32_BAUD: int = 921600
 EMG_CONNECTION_TYPE: str = "usb"
@@ -92,26 +92,54 @@ class RawTMSiThread(threading.Thread):
 
     def run(self):
         try:
-            print("[TMSi] Discovering devices...")
-            # Ensure fresh start
-            try: LegacyDevice.cleanup()
-            except: pass
+            # 1. Discover devices with retries
+            MAX_DISCOVERY_RETRIES = 5
+            self.device = None
             
-            devices = LegacyDevice.discover("usb")
-            valid_devices = [d for d in devices if d._device_name and len(d._device_name) > 5 and "-" not in d._device_name[4:]]
-            
-            if not valid_devices:
+            for attempt in range(MAX_DISCOVERY_RETRIES):
+                print(f"[TMSi] Discovery attempt {attempt + 1}/{MAX_DISCOVERY_RETRIES}...")
+                
+                # Ensure fresh start
+                try: LegacyDevice.cleanup()
+                except Exception: pass
+                
+                devices = LegacyDevice.discover("usb")
+                
+                # Filter for "real" names. 
+                # "USB -" is a placeholder indicating the device is present but not fully ready.
+                valid_devices = [d for d in devices if d._device_name and len(d._device_name) > 5 and "-" not in d._device_name[4:]]
+                
+                if valid_devices:
+                    self.device = valid_devices[0]
+                    break
+                
                 if devices:
-                    print(f"[TMSi] WARNING: Found {len(devices)} devices but none seem valid: {[d._device_name for d in devices]}")
-                    # Fallback to first if we have to, but maybe it's the "USB -" one
-                    self.device = devices[0]
+                    print(f"[TMSi] Found {len(devices)} device(s), but names seem invalid (e.g. '{devices[0]._device_name}'). Device might be booting.")
                 else:
-                    raise RuntimeError("No TMSi devices found")
-            else:
-                self.device = valid_devices[0]
+                    print("[TMSi] No devices found.")
+                
+                if attempt < MAX_DISCOVERY_RETRIES - 1:
+                    time.sleep(2.0) # Wait for device to stabilize
+            
+            if not self.device:
+                raise RuntimeError("Failed to find a valid TMSi device after multiple attempts.")
 
-            print(f"[TMSi] Opening {self.device._device_name}...")
-            self.device.open()
+            # 2. Open device with retries
+            MAX_OPEN_RETRIES = 3
+            opened = False
+            for attempt in range(MAX_OPEN_RETRIES):
+                try:
+                    print(f"[TMSi] Opening {self.device._device_name} (attempt {attempt + 1})...")
+                    self.device.open()
+                    opened = True
+                    break
+                except Exception as e:
+                    print(f"[TMSi] Open failed: {e}")
+                    if attempt < MAX_OPEN_RETRIES - 1:
+                        time.sleep(1.5)
+            
+            if not opened:
+                raise RuntimeError(f"Failed to open device {self.device._device_name} after {MAX_OPEN_RETRIES} attempts.")
             
             # Identify TRIG channel (usually 'Dig' or 'STATUS')
             self.channels = [ch.get_channel_name() for ch in self.device.get_device_channels()]
@@ -142,8 +170,10 @@ class RawTMSiThread(threading.Thread):
                     
                     # Feed estimator
                     if self.estimator is not None and self.trig_idx != -1:
-                        # Feed timestamps (approximated from host clock and sample rate)
-                        # More raw: just use current PC time for the chunk
+                        # Timestamps are approximated from host clock + uniform
+                        # spacing.  USB chunk arrival has 1-10 ms jitter, which
+                        # propagates into the delay estimate.  A hardware-
+                        # timestamped source would remove this limitation.
                         dt = 1.0 / self.sample_rate
                         t_arr = now - (len(samples) - 1 - np.arange(len(samples))) * dt
                         trig_vals = samples[:, self.trig_idx]
@@ -164,10 +194,10 @@ class RawTMSiThread(threading.Thread):
         self.running = False
         if self.measurement:
             try: self.measurement.stop()
-            except: pass
+            except Exception: pass
         if self.device:
             try: self.device.close()
-            except: pass
+            except Exception: pass
 
 
 class RawSTM32Thread(threading.Thread):
@@ -180,7 +210,8 @@ class RawSTM32Thread(threading.Thread):
         self.running = False
         self.error: Optional[str] = None
         self.sample_count = 0
-        self._history = deque(maxlen=5000) # For visualization snapshot
+        # Scale history to ~6× the viz window to allow comfortable scrollback
+        self._history = deque(maxlen=int(PRBS_CHIP_RATE_HZ * PRBS_VIZ_WINDOW_S * 6) + 1000)
         self._lock = threading.Lock()
 
     def run(self):
@@ -188,31 +219,64 @@ class RawSTM32Thread(threading.Thread):
             self.error = "pyserial not installed"
             return
             
-        try:
-            print(f"[STM32] Opening {self.port} at {self.baud}...")
-            ser = serial.Serial(self.port, self.baud, timeout=0.1)
-            self.running = True
-            
-            buffer = bytearray()
-            while self.running:
-                chunk = ser.read(1024)
+        self.running = True
+        buffer = bytearray()
+        ser = None
+        last_rx = time.perf_counter()
+
+        while self.running:
+            # Reconnection logic if ser is None or closed
+            if ser is None or not ser.is_open:
+                try:
+                    if ser is not None:
+                        try:
+                            ser.close()
+                        except Exception:
+                            pass
+                    
+                    print(f"[STM32] Connecting to {self.port} at {self.baud}...")
+                    ser = serial.Serial(self.port, self.baud, timeout=0.1)
+                    buffer.clear()
+                    last_rx = time.perf_counter()
+                    print(f"[STM32] Connected to {self.port}")
+                except Exception as e:
+                    self.error = f"Connection failed: {e}"
+                    time.sleep(1.0)
+                    continue
+
+            # Stall detection
+            if time.perf_counter() - last_rx > 3.0:
+                print("[STM32] Stall detected (>3s no data), reconnecting...")
+                try:
+                    ser.close()
+                except Exception:
+                    pass
+                ser = None
+                continue
+
+            try:
+                # Read data
+                chunk = ser.read(ser.in_waiting or 1)
                 if not chunk:
+                    time.sleep(0.001)
                     continue
                 
+                last_rx = time.perf_counter()
                 buffer.extend(chunk)
                 
                 # Sync logic
                 while len(buffer) >= BIN_PACKET_SIZE:
                     # Look for sync marker 0xAA 0x55
                     idx = -1
-                    for i in range(len(buffer) - 1):
-                        if buffer[i] == BIN_SYNC1 and buffer[i+1] == BIN_SYNC2:
-                            idx = i
-                            break
+                    # Optimization: use bytearray.find
+                    idx = buffer.find(bytes([BIN_SYNC1, BIN_SYNC2]))
                     
                     if idx == -1:
                         # No sync found, keep last byte in case it's 0xAA
-                        buffer = buffer[-1:]
+                        if len(buffer) > 0 and buffer[-1] == BIN_SYNC1:
+                            buffer = buffer[-1:]
+                        else:
+                            buffer.clear()
                         break
                     
                     if idx > 0:
@@ -224,13 +288,24 @@ class RawSTM32Thread(threading.Thread):
                     
                     # Parse packet
                     packet = buffer[:BIN_PACKET_SIZE]
+                    
+                    # Simple checksum validation (if implemented in firmware)
+                    # XOR of bytes 2 to size-2 (matching src/stm32_reader.py logic)
+                    cs = 0
+                    for b in packet[2:-1]:
+                        cs ^= b
+                    
+                    if cs != packet[-1]:
+                        # Checksum failed, skip the sync and continue
+                        buffer = buffer[2:]
+                        continue
+
+                    # Valid packet, consume from buffer
                     buffer = buffer[BIN_PACKET_SIZE:]
                     
                     try:
                         vals = struct.unpack(BIN_FORMAT, packet)
                         # t_ms is at index 2
-                        # prbs_tick is at index 19
-                        # prbs_bits (level) is at index 20 (bit 0)
                         sample = SampleSTM32(
                             t_ms=float(vals[2]),
                             imu1_ok=(vals[3] & 1),
@@ -249,7 +324,7 @@ class RawSTM32Thread(threading.Thread):
                         
                         with self._lock:
                             self._history.append((pc_time, sample))
-                        self.sample_count += 1
+                            self.sample_count += 1
                         
                         if self.estimator:
                             self.estimator.add_stm32_samples([sample])
@@ -258,13 +333,17 @@ class RawSTM32Thread(threading.Thread):
                         print(f"[STM32] Parse error: {e}")
                         continue
                         
-        except Exception as e:
-            self.error = str(e)
-            print(f"[STM32] Error: {e}")
-        finally:
-            self.stop()
-            if 'ser' in locals() and ser.is_open:
+            except (serial.SerialException, OSError) as e:
+                print(f"[STM32] Serial error: {e}")
+                ser = None # Trigger reconnection
+                time.sleep(1.0)
+                
+        # Final cleanup
+        if ser is not None:
+            try:
                 ser.close()
+            except Exception:
+                pass
 
     def get_snapshot(self, n=5000):
         with self._lock:
@@ -273,6 +352,7 @@ class RawSTM32Thread(threading.Thread):
             count = min(len(data), n)
             subset = data[-count:]
             return {
+                # t_sec: STM32 boot-relative time (millis()/1000), NOT PC wall time.
                 "t_sec": np.array([s.t_ms / 1000.0 for t, s in subset]),
                 "pc_time": np.array([t for t, s in subset]),
                 "prbs_level": np.array([s.prbs_lvl for t, s in subset])
@@ -283,6 +363,53 @@ class RawSTM32Thread(threading.Thread):
 
 
 # Removed _build_config – initialization now inline in run()
+
+
+def _extract_trig_binary(
+    v_raw: np.ndarray, is_status: bool, trig_bit: Optional[int]
+) -> np.ndarray:
+    """Convert raw TRIG values to binary 0/1 array.
+
+    Shared helper used by both the raw EMG plot and the
+    synchronized overlay, avoiding duplicated logic.
+    """
+    if is_status and trig_bit is not None:
+        return ((v_raw.astype(np.int64) >> trig_bit) & 1).astype(np.float64)
+    lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
+    thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
+    return (v_raw > thr).astype(np.float64)
+
+
+class _SyncWorker(threading.Thread):
+    """Persistent background thread for PRBS cross-correlation updates.
+
+    Replaces the previous pattern of spawning a new daemon thread every
+    sync-tick (up to 20 Hz).  A single long-lived thread waits on an
+    event and runs the estimator update when triggered.
+    """
+
+    def __init__(self, estimator: SyncDelayEstimator):
+        super().__init__(name="PRBS-Sync-Worker", daemon=True)
+        self.estimator = estimator
+        self._trigger = threading.Event()
+        self._running = True
+
+    def trigger(self) -> None:
+        """Signal the worker to attempt a sync update."""
+        self._trigger.set()
+
+    def stop(self) -> None:
+        self._running = False
+        self._trigger.set()  # unblock wait()
+
+    def run(self) -> None:
+        while self._running:
+            self._trigger.wait()
+            self._trigger.clear()
+            if not self._running:
+                break
+            if self.estimator.should_update():
+                self.estimator.update()
 
 
 class PRBSVisualizationWindow(QtWidgets.QWidget):
@@ -335,12 +462,14 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         layout.addWidget(self.graphics_layout)
 
         # Plot 1: STM32 PRBS
-        self.plot_stm32 = self.graphics_layout.addPlot(row=0, col=0, title="STM32 PRBS (500 Hz)")
+        self.plot_stm32 = self.graphics_layout.addPlot(row=0, col=0, title="STM32 PRBS (Raw)")
         self.plot_stm32.setLabel("left", "Level")
         self.plot_stm32.setLabel("bottom", "Time", units="s")
         self.plot_stm32.setYRange(-1.2, 1.2)
         self.plot_stm32.showGrid(x=True, y=True, alpha=0.3)
-        self.curve_stm32 = self.plot_stm32.plot(pen=pg.mkPen(color="#2ecc71", width=2))
+        self.curve_stm32 = self.plot_stm32.plot(
+            pen=pg.mkPen("#2ecc71", width=2), stepMode=True
+        )
 
         # Plot 2: EMG TRIG
         self.plot_emg = self.graphics_layout.addPlot(row=1, col=0, title="Porti7 TRIG (EMG)")
@@ -348,7 +477,9 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.plot_emg.setLabel("bottom", "Time", units="s")
         self.plot_emg.setYRange(-1.2, 1.2)
         self.plot_emg.showGrid(x=True, y=True, alpha=0.3)
-        self.curve_emg = self.plot_emg.plot(pen=pg.mkPen(color="#3498db", width=2))
+        self.curve_emg = self.plot_emg.plot(
+            pen=pg.mkPen("#3498db", width=2), stepMode=True
+        )
 
         # Plot 3: Cross-Correlation Delay (ms)
         self.plot_delay = self.graphics_layout.addPlot(
@@ -396,11 +527,10 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.plot_synced.setYRange(-0.3, 1.5)
         self.plot_synced.showGrid(x=True, y=True, alpha=0.3)
         self.curve_sync_stm32 = self.plot_synced.plot(
-            pen=pg.mkPen(color="#2ecc71", width=2), name="STM32"
+            pen=pg.mkPen("#2ecc71", width=2), stepMode=True, name="STM32"
         )
         self.curve_sync_emg = self.plot_synced.plot(
-            pen=pg.mkPen(color="#3498db", width=2, style=QtCore.Qt.PenStyle.DashLine),
-            name="EMG (shifted)"
+            pen=pg.mkPen("#3498db", width=2), stepMode=True, name="EMG (shifted)"
         )
         self.plot_synced.addLegend(offset=(10, 10))
 
@@ -410,9 +540,10 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.plot_conf.setXLink(self.plot_stm32)
         self.plot_synced.setXLink(self.plot_stm32)
 
-        for curve in [self.curve_stm32, self.curve_emg, self.curve_delay,
-                      self.curve_raw_delay, self.curve_conf,
-                      self.curve_sync_stm32, self.curve_sync_emg]:
+        # Only apply clipToView to non-stepMode curves.
+        # stepMode curves require len(x) == len(y)+1; pyqtgraph's view-range
+        # clipping can break that invariant and cause a crash.
+        for curve in [self.curve_delay, self.curve_raw_delay, self.curve_conf]:
             curve.setClipToView(True)
 
         # Visualization update timer (~30 fps)
@@ -420,7 +551,11 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.timer.timeout.connect(self._on_viz_tick)
         self.timer.start(33)
 
-        # Sync estimator update timer (runs cross-correlation periodically)
+        # Persistent sync worker (replaces thread-per-tick pattern)
+        self._sync_worker = _SyncWorker(estimator)
+        self._sync_worker.start()
+
+        # Sync estimator update timer (triggers the persistent worker)
         sync_interval_ms = int(PRBS_UPDATE_INTERVAL_S * 1000)
         self.sync_timer = QtCore.QTimer()
         self.sync_timer.timeout.connect(self._on_sync_tick)
@@ -440,40 +575,42 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 self.close()
 
     def _on_sync_tick(self) -> None:
-        """Trigger a cross-correlation update on the SyncDelayEstimator."""
+        """Trigger a cross-correlation update via the persistent worker."""
         if self.estimator is None:
             return
 
-        prev_count = self.estimator._update_count
-        # Run update in background thread
-        if self.estimator.should_update():
-            threading.Thread(
-                target=self.estimator.update,
-                name="PRBS-Sync",
-                daemon=True,
-            ).start()
+        self._sync_worker.trigger()
 
         # Log update attempt diagnostics
         if VERBOSE:
             elapsed = time.perf_counter() - self.start_time
-            ready = self.estimator._is_ready()
-            locked = self.estimator._update_guard.locked()
-            n_emg = len(self.estimator._rolling_emg_chips)
-            n_stm = len(self.estimator._rolling_stm32_chips)
+            n_emg = self.estimator.emg_buf_len
+            n_stm = self.estimator.stm32_buf_len
+            updates = self.estimator._update_count
             print(
-                f"[SYNC-TICK] t={elapsed:.1f}s  ready={ready}  "
-                f"guard_locked={locked}  emg_chips={n_emg}  "
-                f"stm32_chips={n_stm}  updates={prev_count}"
+                f"[SYNC-TICK] t={elapsed:.1f}s  "
+                f"emg_chips={n_emg}  stm32_chips={n_stm}  "
+                f"updates={updates}"
             )
 
     def _on_viz_tick(self) -> None:
         """Update PRBS signal plots and cross-correlation plots."""
-        self._update_prbs_plots()
+        # Capture snapshot data ONCE per tick so all plots share the same
+        # time reference and data — prevents ~10ms window shift between plots.
+        now = time.perf_counter()
+        n_samples_stm32 = int(self.prbs_window_s * 550)
+        stm32_snap = self.stm32_thread.get_snapshot(n=n_samples_stm32)
+
+        emg_chunks = None
+        if self.estimator is not None:
+            emg_chunks = self.estimator.get_emg_trig_snapshot()
+
+        self._update_prbs_plots(now, stm32_snap, emg_chunks)
         self._update_sync_plots()
-        self._update_synced_plot()
+        self._update_synced_plot(now, stm32_snap, emg_chunks)
 
         # Update status
-        elapsed = time.perf_counter() - self.start_time
+        elapsed = now - self.start_time
         
         stm32_info = "STM32: --"
         if self.stm32_thread is not None:
@@ -507,19 +644,10 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             self._last_debug_s = int(elapsed / 2)
             print(f"[DEBUG] {stm32_info} | {emg_info} | {sync_info}")
 
-    def _update_prbs_plots(self) -> None:
+    def _update_prbs_plots(self, now: float, stm32_snap: dict, emg_chunks) -> None:
         """Fetch latest data and update curves."""
         try:
-            # We want to show the last N seconds of data.
-            # We can get this from threads and estimator.
-            
-            elapsed = time.perf_counter() - self.start_time
-            now = time.perf_counter()
-            
             # --- STM32 Data ---
-            n_samples_stm32 = int(self.prbs_window_s * 550) 
-            stm32_snap = self.stm32_thread.get_snapshot(n=n_samples_stm32)
-            
             if stm32_snap and "t_sec" in stm32_snap and len(stm32_snap["t_sec"]) > 0:
                 t_host = stm32_snap.get("pc_time", None)
                 prbs_lvl = stm32_snap.get("prbs_level", None) 
@@ -531,44 +659,34 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                     
                     if len(t_plot) > 1:
                         t_rel = t_plot - self.start_time
-                        # Manual step mode: repeat points to create horizontal and vertical segments
-                        # t0, t1, t1, t2, t2, t3...
-                        # y0, y0, y1, y1, y2, y2...
-                        sx = np.repeat(t_rel, 2)[1:]
-                        sy = np.repeat(y_plot, 2)[:-1]
-                        self.curve_stm32.setData(sx, sy)
+                        # Pad frame for stepMode (len(x) = len(y) + 1)
+                        if len(t_rel) > 1:
+                            dt = t_rel[-1] - t_rel[-2]
+                            t_padded = np.append(t_rel, t_rel[-1] + dt)
+                            self.curve_stm32.setData(t_padded, y_plot)
             
             # --- EMG Data ---
-            if self.estimator is not None:
-                with self.estimator._lock:
-                    chunks = list(self.estimator._emg_trig_buf)
+            if emg_chunks:
+                t_raw = np.concatenate([c[0] for c in emg_chunks])
+                v_raw = np.concatenate([c[1] for c in emg_chunks])
                 
-                if chunks:
-                    t_raw = np.concatenate([c[0] for c in chunks])
-                    v_raw = np.concatenate([c[1] for c in chunks])
-                    
-                    is_status = getattr(self.estimator, "_trig_is_status", True)
-                    trig_bit = getattr(self.estimator, "_detected_trig_bit", None)
-                    
-                    if is_status and trig_bit is not None:
-                        y_plot = ((v_raw.astype(np.int64) >> trig_bit) & 1).astype(np.float64)
-                    else:
-                        lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
-                        thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
-                        y_plot = (v_raw > thr).astype(np.float64)
-                    
-                    mask = t_raw > (now - self.prbs_window_s)
-                    t_plot = t_raw[mask]
-                    y_plot = y_plot[mask]
-                    
-                    if len(t_plot) > 1:
-                        t_rel = t_plot - self.start_time
-                        sx = np.repeat(t_rel, 2)[1:]
-                        sy = np.repeat(y_plot, 2)[:-1]
-                        self.curve_emg.setData(sx, sy)
+                is_status = getattr(self.estimator, "_trig_is_status", True)
+                trig_bit = getattr(self.estimator, "_detected_trig_bit", None)
+                y_plot = _extract_trig_binary(v_raw, is_status, trig_bit)
+                
+                mask = t_raw > (now - self.prbs_window_s)
+                t_plot = t_raw[mask]
+                y_plot = y_plot[mask]
+                
+                if len(t_plot) > 1:
+                    t_rel = t_plot - self.start_time
+                    # Pad frame for stepMode (len(x) = len(y) + 1)
+                    if len(t_rel) > 1:
+                        dt = t_rel[-1] - t_rel[-2]
+                        t_padded = np.append(t_rel, t_rel[-1] + dt)
+                        self.curve_emg.setData(t_padded, y_plot)
 
             # Update X Range to latest time
-            # Relative time
             current_rel = now - self.start_time
             self.plot_stm32.setXRange(max(0, current_rel - self.prbs_window_s), current_rel + 0.5)
 
@@ -610,21 +728,18 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             arr = np.array(self._confidence_history)
             self.curve_conf.setData(arr[:, 0], arr[:, 1])
 
-    def _update_synced_plot(self) -> None:
+    def _update_synced_plot(self, now: float, stm32_snap: dict, emg_chunks) -> None:
         """Update the synchronized overlay plot with delay-corrected EMG."""
         if self.estimator is None:
             return
 
-        # Get current delay in seconds
+        # Use Kalman-smoothed delay — more reliable than single-update RAW
         delay_ms = self.estimator.get_delay_ms()
+        self.plot_synced.setTitle(f"Synchronized Overlay (Kalman delay: {delay_ms:.1f} ms)")
+             
         delay_s = delay_ms / 1000.0
 
-        # --- STM32 Data ---
-        n_samples_stm32 = int(self.prbs_window_s * 550)
-        stm32_snap = self.stm32_thread.get_snapshot(n=n_samples_stm32)
-        
-        now = time.perf_counter()
-
+        # --- STM32 Data (same snapshot as raw plot) ---
         if stm32_snap and "t_sec" in stm32_snap:
             t_host = stm32_snap.get("pc_time", None)
             prbs_lvl = stm32_snap.get("prbs_level", None)
@@ -636,31 +751,34 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 
                 if len(t_plot) > 1:
                     t_stm32_rel = t_plot - self.start_time
-                    sx = np.repeat(t_stm32_rel, 2)[1:]
-                    sy = np.repeat(y_plot, 2)[:-1]
-                    self.curve_sync_stm32.setData(sx, sy)
+                    # Pad for stepMode
+                    if len(t_stm32_rel) > 1:
+                        dt = t_stm32_rel[-1] - t_stm32_rel[-2]
+                        t_padded = np.append(t_stm32_rel, t_stm32_rel[-1] + dt)
+                        self.curve_sync_stm32.setData(t_padded, y_plot)
 
-        # --- EMG Data ---
-        with self.estimator._lock:
-            chunks = list(self.estimator._emg_trig_buf)
-        
-        if chunks:
-            t_raw = np.concatenate([c[0] for c in chunks])
-            v_raw = np.concatenate([c[1] for c in chunks])
+        # --- EMG Data (same chunks as raw plot) ---
+        if emg_chunks:
+            t_raw = np.concatenate([c[0] for c in emg_chunks])
+            v_raw = np.concatenate([c[1] for c in emg_chunks])
             
-            lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
-            thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
-            y_plot = (v_raw > thr).astype(np.float64)
+            is_status = getattr(self.estimator, "_trig_is_status", True)
+            trig_bit = getattr(self.estimator, "_detected_trig_bit", None)
+            y_plot = _extract_trig_binary(v_raw, is_status, trig_bit)
             
             mask = t_raw > (now - self.prbs_window_s)
             t_plot = t_raw[mask]
             y_plot = y_plot[mask]
             
             if len(t_plot) > 1:
+                # No group-delay correction: we use raw sample timestamps, not downsampled chips
                 t_rel = (t_plot - delay_s) - self.start_time
-                sx = np.repeat(t_rel, 2)[1:]
-                sy = np.repeat(y_plot, 2)[:-1]
-                self.curve_sync_emg.setData(sx, sy)
+                
+                # Pad for stepMode
+                if len(t_rel) > 1:
+                    dt = t_rel[-1] - t_rel[-2]
+                    t_padded = np.append(t_rel, t_rel[-1] + dt)
+                    self.curve_sync_emg.setData(t_padded, y_plot)
 
     def closeEvent(self, event) -> None:
         if self.timer:
@@ -669,6 +787,8 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             self.sync_timer.stop()
         if self.duration_timer:
             self.duration_timer.stop()
+        if hasattr(self, '_sync_worker'):
+            self._sync_worker.stop()
         event.accept()
 
 
@@ -679,6 +799,9 @@ def run() -> None:
         sys.exit(1)
     if not _TMSI_AVAILABLE:
         print("\nERROR: TMSi SDK not available. Cannot run acquisition.")
+        sys.exit(1)
+    if serial is None:
+        print("\nERROR: pyserial is required. Install with: pip install pyserial")
         sys.exit(1)
 
     print("=" * 60)
@@ -776,7 +899,7 @@ def run() -> None:
         # Final SDK cleanup
         try:
             LegacyDevice.cleanup()
-        except:
+        except Exception:
             pass
         print("[MAIN] Done.")
 

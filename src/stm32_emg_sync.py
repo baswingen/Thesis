@@ -151,16 +151,42 @@ def cross_correlate_fullstream(
     signal_a: np.ndarray,
     signal_b: np.ndarray,
     min_overlap_ratio: float = MIN_OVERLAP_RATIO,
-) -> Tuple[int, float, np.ndarray, np.ndarray, int]:
-    """Cross-correlate two chip streams. Returns (lag, peak, corr, lags, overlap_at_peak)."""
+) -> Tuple[int, float, np.ndarray, np.ndarray, int, float]:
+    """Cross-correlate two chip streams. Returns (lag, peak, corr, lags, overlap_at_peak, refined_lag)."""
     return _cross_correlate_impl(signal_a, signal_b, min_overlap_ratio)
+
+
+def _parabolic_interpolation(
+    corr: np.ndarray, peak_idx: int, lags: np.ndarray
+) -> float:
+    """Refine integer peak location using parabolic (3-point) interpolation.
+
+    Fits a parabola through the correlation values at (peak_idx-1, peak_idx, peak_idx+1)
+    and returns the sub-sample lag of the parabola vertex.
+    Falls back to the integer lag if the peak is at the array boundary.
+    """
+    if peak_idx <= 0 or peak_idx >= len(corr) - 1:
+        return float(lags[peak_idx])
+
+    alpha = float(np.abs(corr[peak_idx - 1]))
+    beta = float(np.abs(corr[peak_idx]))
+    gamma = float(np.abs(corr[peak_idx + 1]))
+
+    denom = alpha - 2.0 * beta + gamma
+    if abs(denom) < 1e-12:
+        return float(lags[peak_idx])
+
+    delta = 0.5 * (alpha - gamma) / denom
+    # Clamp to ±0.5 chips (parabola vertex must stay within the 3-point window)
+    delta = max(-0.5, min(0.5, delta))
+    return float(lags[peak_idx]) + delta
 
 
 def _cross_correlate_impl(
     signal_a: np.ndarray,
     signal_b: np.ndarray,
     min_overlap_ratio: float = MIN_OVERLAP_RATIO,
-) -> Tuple[int, float, np.ndarray, np.ndarray, int]:
+) -> Tuple[int, float, np.ndarray, np.ndarray, int, float]:
     M, N = len(signal_a), len(signal_b)
     a = 2.0 * signal_a - 1.0
     b = 2.0 * signal_b - 1.0
@@ -186,7 +212,8 @@ def _cross_correlate_impl(
     lag = int(lags[peak_idx])
     peak = float(corr[peak_idx])
     overlap_at_peak = int(overlap[peak_idx])
-    return lag, peak, corr, lags, overlap_at_peak
+    refined_lag = _parabolic_interpolation(corr, peak_idx, lags)
+    return lag, peak, corr, lags, overlap_at_peak, refined_lag
 
 
 def sliding_window_lag_series(
@@ -196,7 +223,7 @@ def sliding_window_lag_series(
     step_chips: int,
     min_overlap_ratio: float = MIN_OVERLAP_RATIO,
     chip_rate_hz: float = CHIP_RATE_HZ,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Compute lag estimate over sliding windows."""
     n = min(len(signal_a), len(signal_b))
     if n < window_chips or window_chips <= 0:
@@ -213,16 +240,18 @@ def sliding_window_lag_series(
 
     centers_s = []
     lags = []
+    refined_lags = []
     peaks = []
     overlaps = []
     for s in starts:
         a_win = signal_a[s : s + window_chips]
         b_win = signal_b[s : s + window_chips]
-        lag, peak, _, _, overlap = _cross_correlate_impl(
+        lag, peak, _, _, overlap, refined_lag = _cross_correlate_impl(
             a_win, b_win, min_overlap_ratio=min_overlap_ratio
         )
         centers_s.append((s + 0.5 * window_chips) / chip_rate_hz)
         lags.append(lag)
+        refined_lags.append(refined_lag)
         peaks.append(peak)
         overlaps.append(overlap)
 
@@ -231,6 +260,7 @@ def sliding_window_lag_series(
         np.asarray(lags, dtype=np.int64),
         np.asarray(peaks, dtype=np.float64),
         np.asarray(overlaps, dtype=np.int64),
+        np.asarray(refined_lags, dtype=np.float64),
     )
 
 
@@ -274,7 +304,7 @@ def compute_sync_delay_signal(
     sync_window_chips = min(n_common, int(round(sync_window_s * chip_rate_hz)))
     sync_step_chips = max(1, int(round(sync_step_s * chip_rate_hz)))
 
-    lag_t_s, lag_series_chips, peak_series, overlap_series = sliding_window_lag_series(
+    lag_t_s, lag_series_chips, peak_series, overlap_series, refined_lag_series = sliding_window_lag_series(
         emg_sync,
         stm32_sync,
         window_chips=sync_window_chips,
@@ -290,12 +320,14 @@ def compute_sync_delay_signal(
     selected_idx = (
         np.where(strong_mask)[0] if np.any(strong_mask) else np.arange(len(lag_series_chips))
     )
-    lag_chips = int(np.round(np.median(lag_series_chips[selected_idx])))
+    # Use sub-chip refined lags for higher precision
+    refined_median = float(np.median(refined_lag_series[selected_idx]))
+    lag_chips = int(np.round(refined_median))
     representative_i = int(
-        selected_idx[np.argmin(np.abs(lag_series_chips[selected_idx] - lag_chips))]
+        selected_idx[np.argmin(np.abs(refined_lag_series[selected_idx] - refined_median))]
     )
     corr_peak = float(peak_series[representative_i])
-    lag_ms = lag_chips / chip_rate_hz * 1000.0
+    lag_ms = refined_median / chip_rate_hz * 1000.0
     polarity = "inverted" if corr_peak < 0 else "normal"
     confidence = min(1.0, abs(corr_peak) * 1.2)
 
@@ -397,6 +429,8 @@ class SyncDelayEstimator:
         self._emg_accumulator = 0.0  # fractional sample phase for DDA extraction
         self._last_stm32_tick: Optional[int] = None
         self._max_rolling_chips = int(chip_rate_hz * 60)  # ~60 s history
+        self._max_raw_chunks = 1000  # cap _emg_trig_buf independently of update()
+        self._max_stm32_samples = 5000  # cap _stm32_samples independently of update()
         self._detected_trig_bit: Optional[int] = None  # auto-detected STATUS bit
         self._lag_history_chips = deque(maxlen=7)
         self._min_confidence_for_update = 0.05  # lowered from 0.15; Kalman R/confidence handles weak peaks
@@ -420,13 +454,28 @@ class SyncDelayEstimator:
         """Feed EMG TRIG chunk (per-sample timestamps and raw TRIG values)."""
         with self._lock:
             self._emg_trig_buf.append((timestamps.copy(), samples.copy()))
+            # Cap independently of update() to prevent OOM if sync never converges
+            if len(self._emg_trig_buf) > self._max_raw_chunks:
+                self._emg_trig_buf = self._emg_trig_buf[-self._max_raw_chunks:]
             self._append_emg_chips(samples)
 
     def add_stm32_samples(self, samples: List) -> None:
         """Feed STM32 samples (list of SampleSTM32)."""
         with self._lock:
             self._stm32_samples.extend(samples)
+            # Cap independently of update() to prevent OOM if sync never converges
+            if len(self._stm32_samples) > self._max_stm32_samples:
+                self._stm32_samples = self._stm32_samples[-self._max_stm32_samples:]
             self._append_stm32_chips(samples)
+
+    def get_emg_trig_snapshot(self) -> List[Tuple[np.ndarray, np.ndarray]]:
+        """Return a shallow copy of the EMG TRIG buffer for visualization.
+
+        Each element is (timestamps, raw_samples).  The numpy arrays are
+        shared — callers must not mutate them in-place.
+        """
+        with self._lock:
+            return list(self._emg_trig_buf)
 
     # ------------------------------------------------------------------
     # Incremental chip extraction (called under _lock by add_* methods)
@@ -652,7 +701,7 @@ class SyncDelayEstimator:
 
         # ---- robust lag measurement from a short sliding-window series ----
         try:
-            _, lag_series, peak_series, _ = sliding_window_lag_series(
+            _, lag_series, peak_series, _, refined_lag_series = sliding_window_lag_series(
                 emg_recent,
                 stm32_recent,
                 window_chips=window_chips,
@@ -671,19 +720,22 @@ class SyncDelayEstimator:
         strong_mask = np.abs(peak_series) >= 0.10
         idx = np.where(strong_mask)[0] if np.any(strong_mask) else np.arange(len(lag_series))
         lag_candidates = lag_series[idx]
+        refined_candidates = refined_lag_series[idx]
         peak_candidates = peak_series[idx]
 
-        measured_lag_chips = int(np.round(np.median(lag_candidates)))
-        representative_i = int(idx[np.argmin(np.abs(lag_candidates - measured_lag_chips))])
+        # Use sub-chip refined lags for higher precision
+        refined_median = float(np.median(refined_candidates))
+        measured_lag_chips = int(np.round(refined_median))
+        representative_i = int(idx[np.argmin(np.abs(refined_candidates - refined_median))])
         measured_peak = float(peak_series[representative_i])
-        measured_ms = measured_lag_chips / self.chip_rate_hz * 1000.0
+        measured_ms = refined_median / self.chip_rate_hz * 1000.0
 
         # Confidence combines representative-window quality and lag consistency.
-        lag_std = float(np.std(lag_candidates)) if len(lag_candidates) > 1 else 0.0
+        lag_std = float(np.std(refined_candidates)) if len(refined_candidates) > 1 else 0.0
         consistency = 1.0 / (1.0 + lag_std)
         confidence = min(1.0, abs(measured_peak) * 1.2 * consistency)
         print(
-            f"[SYNC-DBG] corr: lag={measured_lag_chips} chips ({measured_ms:.1f} ms), "
+            f"[SYNC-DBG] corr: lag={refined_median:.2f} chips ({measured_ms:.1f} ms), "
             f"peak={measured_peak:.3f}, lag_std={lag_std:.2f}, "
             f"consistency={consistency:.3f}, confidence={confidence:.3f}, "
             f"n_windows={len(lag_series)}, n_strong={len(idx)}"
@@ -734,7 +786,7 @@ class SyncDelayEstimator:
             self._last_update_time = t
             self._update_count += 1
             self._last_result = SyncDelayResult(
-                delay_ms=measured_ms,
+                delay_ms=float(measured_ms),
                 delay_chips=int(measured_lag_chips),
                 correlation_peak=float(measured_peak),
                 confidence=confidence,

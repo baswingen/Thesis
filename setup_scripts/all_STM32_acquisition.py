@@ -6,8 +6,8 @@ High-performance, thread-safe acquisition for the STM32F401 sketch
 (STM32_all_in_python.ino).  Captures:
 
 - Dual BNO085 UART-RVC IMU (yaw, pitch, roll, accel x/y/z per sensor)
-- 3x3 button matrix (keys_mask, keys_rise, keys_fall)
-- PRBS-15 trigger state (prbs_tick, prbs_level)
+- 3x4 button matrix (keys_mask, keys_rise, keys_fall)
+- PRBS-15 trigger state (prbs_tick, prbs_level, in_mark)
 
 Architecture
 ------------
@@ -19,10 +19,10 @@ O(1) via ``get_snapshot()``.
 PRBS data is stored as a ±1 float stream (``prbs_signal``) ready for
 cross-correlation with the ``SynchronizationEngine`` in ``src.prbs_sync``.
 
-Protocol: 115200 baud, 500 Hz CSV, 21 columns.
-Header: t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
-        yaw2,pitch2,roll2,ax2,ay2,az2,
-        keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level
+Protocol: 921600 baud, 500 Hz Binary (67-byte packets) or CSV.
+Header (CSV): t_ms,imu1_ok,imu2_ok,yaw1,pitch1,roll1,ax1,ay1,az1,
+               yaw2,pitch2,roll2,ax2,ay2,az2,
+               keys_mask,keys_rise,keys_fall,prbs_tick,prbs_level,in_mark
 
 Usage (standalone):
   python all_STM32_acquisition.py [--port PORT] [--baud BAUD] [--csv FILE]
@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import csv
 import math
+import struct
 import sys
 import threading
 import time
@@ -68,17 +69,24 @@ HEADER_NAMES: List[str] = [
     "yaw1", "pitch1", "roll1", "ax1", "ay1", "az1",
     "yaw2", "pitch2", "roll2", "ax2", "ay2", "az2",
     "keys_mask", "keys_rise", "keys_fall",
-    "prbs_tick", "prbs_level",
+    "prbs_tick", "prbs_level", "in_mark",
 ]
 
 NUM_COLUMNS = len(HEADER_NAMES)  # 21
+
+# Binary Protocol Constants
+BIN_SYNC1 = 0xAA
+BIN_SYNC2 = 0x55
+BIN_PACKET_SIZE = 67
+# Format: sync1(B), sync2(B), t_ms(I), imu_ok(B), imu1(6f), imu2(6f), keys(3H), prbs_tick(I), prbs_bits(B), cs(B)
+BIN_FORMAT = "<BB I B 6f 6f 3H I B B"
 
 # Column indices (avoid magic numbers everywhere)
 _COL = {name: idx for idx, name in enumerate(HEADER_NAMES)}
 
 # Columns that are integer-typed
 _INT_COLS = {"imu1_ok", "imu2_ok", "keys_mask", "keys_rise", "keys_fall",
-             "prbs_tick", "prbs_level"}
+             "prbs_tick", "prbs_level", "in_mark"}
 
 # Default ring-buffer capacity (seconds * Hz)
 DEFAULT_CAPACITY = 60 * 500  # 60 s at 500 Hz
@@ -111,6 +119,7 @@ class SampleSTM32:
     keys_fall: int
     prbs_tick: int
     prbs_lvl: int
+    in_mark: int
 
 
 # ============================================================================
@@ -141,7 +150,7 @@ def _fast_int(s: str) -> int:
 
 
 def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
-    """Parse one CSV line (20 columns) -> SampleSTM32 or None."""
+    """Parse one CSV line (20-21 columns) -> SampleSTM32 or None."""
     line = line.strip()
     if not line:
         return None
@@ -153,8 +162,10 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
                 or line.startswith("t_ms,") or line.startswith("Columns:")):
             return None
     parts = line.split(",")
-    if len(parts) != NUM_COLUMNS:
+    if len(parts) not in (NUM_COLUMNS, NUM_COLUMNS - 1):
         return None
+    # Support legacy 20-column format
+    in_mark = _fast_int(parts[20]) if len(parts) >= NUM_COLUMNS else 0
     try:
         return SampleSTM32(
             t_ms=_fast_float(parts[0]),
@@ -177,6 +188,7 @@ def parse_line_stm32(line: str) -> Optional[SampleSTM32]:
             keys_fall=_fast_int(parts[17]),
             prbs_tick=_fast_int(parts[18]),
             prbs_lvl=_fast_int(parts[19]),
+            in_mark=in_mark,
         )
     except (ValueError, IndexError):
         return None
@@ -249,12 +261,14 @@ class STM32Reader:
         capacity: int = DEFAULT_CAPACITY,
         on_sample: Optional[Callable[[SampleSTM32], None]] = None,
         verbose: bool = True,
+        binary_mode: bool = True,
     ):
         self.port = port
         self.baud = baud
         self.capacity = capacity
         self.on_sample = on_sample
         self.verbose = verbose
+        self.binary_mode = binary_mode
 
         # Ring buffers – one per column + prbs_signal (±1)
         self.buffers: Dict[str, RingBuffer] = {
@@ -271,6 +285,7 @@ class STM32Reader:
         self.sample_count = 0
         self.parse_fail_count = 0
         self._start_pc: float = 0.0
+        self._time_offset: Optional[float] = None  # To map t_ms to host time
 
         # Thread plumbing
         self._ser: Optional[serial.Serial] = None
@@ -352,6 +367,9 @@ class STM32Reader:
         assert ser is not None
         last_rx = time.perf_counter()
 
+        # Buffer for binary mode
+        bin_buf = bytearray()
+
         while not self._stop_event.is_set():
             # Stall detection
             if time.perf_counter() - last_rx > 3.0:
@@ -360,6 +378,7 @@ class STM32Reader:
                 try:
                     ser = self._reopen_serial()
                     self._ser = ser
+                    bin_buf.clear()
                 except Exception as e:
                     if self.verbose:
                         print(f"[STM32Reader] reconnect failed: {e}")
@@ -369,69 +388,154 @@ class STM32Reader:
                 continue
 
             try:
-                raw = ser.readline()
+                if self.binary_mode:
+                    chunk = None
+                    if ser.in_waiting > 0:
+                        chunk = ser.read(ser.in_waiting)
+                        if chunk:
+                            bin_buf.extend(chunk)
+                            last_rx = time.perf_counter()
+                    
+                    # Process as many packets as possible
+                    while len(bin_buf) >= BIN_PACKET_SIZE:
+                        # Find sync
+                        sync_pos = bin_buf.find(bytes([BIN_SYNC1, BIN_SYNC2]))
+                        if sync_pos == -1:
+                            if bin_buf and bin_buf[-1] == BIN_SYNC1:
+                                del bin_buf[:-1]
+                            else:
+                                bin_buf.clear()
+                            break
+                        
+                        if sync_pos > 0:
+                            del bin_buf[:sync_pos]
+                        
+                        if len(bin_buf) < BIN_PACKET_SIZE:
+                            break
+                        
+                        packet_data = bin_buf[:BIN_PACKET_SIZE]
+                        
+                        # Validate checksum (XOR of bytes 2 to size-2)
+                        cs = 0
+                        for b in packet_data[2:-1]:
+                            cs ^= b
+                        
+                        if cs != packet_data[-1]:
+                            del bin_buf[:2]  # Skip past the failed sync
+                            self.parse_fail_count += 1
+                            continue
+                        
+                        try:
+                            sample = self._parse_binary_packet(packet_data)
+                            if sample:
+                                self._push_sample(sample)
+                        except Exception:
+                            self.parse_fail_count += 1
+                        
+                        del bin_buf[:BIN_PACKET_SIZE]
+                    
+                    if not chunk:
+                        time.sleep(0.001)
+                    continue
+
+                else:
+                    # Legacy CSV mode
+                    raw = ser.readline()
+                    if not raw:
+                        continue
+                    try:
+                        line = raw.decode("ascii", errors="ignore")
+                    except Exception:
+                        continue
+                    
+                    sample = parse_line_stm32(line)
+                    if sample:
+                        self._push_sample(sample)
+                        last_rx = time.perf_counter()
+                    else:
+                        self.parse_fail_count += 1
+
             except serial.SerialException as e:
                 if self.verbose:
                     print(f"[STM32Reader] serial error: {e}")
                 try:
                     ser = self._reopen_serial()
                     self._ser = ser
+                    bin_buf.clear()
                 except Exception:
                     time.sleep(1.0)
                 continue
 
-            if not raw:
-                continue
+    def _parse_binary_packet(self, data: bytes) -> Optional[SampleSTM32]:
+        """Unpack 67-byte binary packet into SampleSTM32."""
+        try:
+            # Format: <BB I B 6f 6f 3H I B B
+            # 0:s1, 1:s2, 2:t_ms, 3:imu_ok, 4-9:imu1, 10-15:imu2, 16:mask, 17:rise, 18:fall, 19:tick, 20:bits, 21:cs
+            vals = struct.unpack(BIN_FORMAT, data)
+            
+            return SampleSTM32(
+                t_ms=float(vals[2]),
+                imu1_ok=(vals[3] & 1),
+                imu2_ok=((vals[3] >> 1) & 1),
+                yaw1=vals[4], pitch1=vals[5], roll1=vals[6], ax1=vals[7], ay1=vals[8], az1=vals[9],
+                yaw2=vals[10], pitch2=vals[11], roll2=vals[12], ax2=vals[13], ay2=vals[14], az2=vals[15],
+                keys_mask=int(vals[16]),
+                keys_rise=int(vals[17]),
+                keys_fall=int(vals[18]),
+                prbs_tick=int(vals[19]),
+                prbs_lvl=(vals[20] & 1),
+                in_mark=((vals[20] >> 1) & 1)
+            )
+        except Exception:
+            return None
 
+    def _push_sample(self, sample: SampleSTM32) -> None:
+        """Atomic push to ring buffers and trigger callback."""
+        pc_now = time.perf_counter()
+        t_sec = sample.t_ms / 1000.0
+
+        if self._time_offset is None:
+            self._time_offset = pc_now - t_sec
+        
+        # Mapped host time
+        mapped_time = t_sec + self._time_offset
+
+        self.sample_count += 1
+        self.latest = sample
+
+        with self._lock:
+            b = self.buffers
+            b["t_ms"].push(sample.t_ms)
+            b["t_sec"].push(t_sec)
+            b["pc_time"].push(mapped_time)
+            b["imu1_ok"].push(float(sample.imu1_ok))
+            b["imu2_ok"].push(float(sample.imu2_ok))
+            b["yaw1"].push(sample.yaw1)
+            b["pitch1"].push(sample.pitch1)
+            b["roll1"].push(sample.roll1)
+            b["ax1"].push(sample.ax1)
+            b["ay1"].push(sample.ay1)
+            b["az1"].push(sample.az1)
+            b["yaw2"].push(sample.yaw2)
+            b["pitch2"].push(sample.pitch2)
+            b["roll2"].push(sample.roll2)
+            b["ax2"].push(sample.ax2)
+            b["ay2"].push(sample.ay2)
+            b["az2"].push(sample.az2)
+            b["keys_mask"].push(float(sample.keys_mask))
+            b["keys_rise"].push(float(sample.keys_rise))
+            b["keys_fall"].push(float(sample.keys_fall))
+            b["prbs_tick"].push(float(sample.prbs_tick))
+            b["prbs_level"].push(float(sample.prbs_lvl))
+            b["in_mark"].push(float(sample.in_mark))
+            # ±1 for PRBS synchronization engine
+            b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
+
+        if self.on_sample is not None:
             try:
-                line = raw.decode("ascii", errors="ignore")
+                self.on_sample(sample)
             except Exception:
-                continue
-
-            sample = parse_line_stm32(line)
-            if sample is None:
-                self.parse_fail_count += 1
-                continue
-
-            pc_now = time.perf_counter()
-            last_rx = pc_now
-            self.sample_count += 1
-            self.latest = sample
-
-            # Push into ring buffers (lock-free for single-writer is safe,
-            # but we lock briefly so get_snapshot sees a consistent cursor)
-            with self._lock:
-                b = self.buffers
-                b["t_ms"].push(sample.t_ms)
-                b["t_sec"].push(sample.t_ms / 1000.0)
-                b["pc_time"].push(pc_now)
-                b["imu1_ok"].push(float(sample.imu1_ok))
-                b["imu2_ok"].push(float(sample.imu2_ok))
-                b["yaw1"].push(sample.yaw1)
-                b["pitch1"].push(sample.pitch1)
-                b["roll1"].push(sample.roll1)
-                b["ax1"].push(sample.ax1)
-                b["ay1"].push(sample.ay1)
-                b["az1"].push(sample.az1)
-                b["yaw2"].push(sample.yaw2)
-                b["pitch2"].push(sample.pitch2)
-                b["roll2"].push(sample.roll2)
-                b["ax2"].push(sample.ax2)
-                b["ay2"].push(sample.ay2)
-                b["az2"].push(sample.az2)
-                b["keys_mask"].push(float(sample.keys_mask))
-                b["keys_rise"].push(float(sample.keys_rise))
-                b["keys_fall"].push(float(sample.keys_fall))
-                b["prbs_tick"].push(float(sample.prbs_tick))
-                b["prbs_level"].push(float(sample.prbs_lvl))
-                # ±1 for PRBS synchronization engine
-                b["prbs_signal"].push(1.0 if sample.prbs_lvl else -1.0)
-
-            if self.on_sample is not None:
-                try:
-                    self.on_sample(sample)
-                except Exception:
-                    pass
+                pass
 
 
 # ============================================================================
@@ -457,7 +561,7 @@ class CSVLogger:
             s.yaw1, s.pitch1, s.roll1, s.ax1, s.ay1, s.az1,
             s.yaw2, s.pitch2, s.roll2, s.ax2, s.ay2, s.az2,
             s.keys_mask, s.keys_rise, s.keys_fall,
-            s.prbs_tick, s.prbs_lvl,
+            s.prbs_tick, s.prbs_lvl, s.in_mark,
         ])
         self.count += 1
         if self.count % 100 == 0:
@@ -485,6 +589,8 @@ def main() -> None:
     parser.add_argument("--baud", type=int, default=921600)
     parser.add_argument("--csv", type=str, default=None)
     parser.add_argument("--duration", type=float, default=None)
+    parser.add_argument("--binary", action="store_true", default=True)
+    parser.add_argument("--no-binary", action="store_false", dest="binary")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
 
@@ -501,6 +607,7 @@ def main() -> None:
         port=port, baud=args.baud,
         on_sample=_on_sample,
         verbose=not quiet,
+        binary_mode=args.binary,
     )
     reader.start()
     start = time.time()
@@ -521,7 +628,8 @@ def main() -> None:
                 if s:
                     print(f"  samples={reader.sample_count}  rate={rate:.0f} Hz  "
                           f"t_ms={s.t_ms:.0f}  keys={s.keys_mask}  "
-                          f"prbs_tick={s.prbs_tick}  prbs_lvl={s.prbs_lvl}")
+                          f"prbs_tick={s.prbs_tick}  prbs_lvl={s.prbs_lvl}  "
+                          f"mark={s.in_mark}")
     except KeyboardInterrupt:
         if not quiet:
             print("\nInterrupted.")
