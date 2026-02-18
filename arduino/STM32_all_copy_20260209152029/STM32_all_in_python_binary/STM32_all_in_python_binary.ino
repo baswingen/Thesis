@@ -125,9 +125,9 @@ static void imuInit() {
 // ========================= MATRIX CONFIG ===========================
 #if ENABLE_MATRIX
 const uint8_t ROWS = 3;
-const uint8_t COLS = 3;
+const uint8_t COLS = 4;
 const uint8_t rowPins[ROWS] = { PA0, PA1, PA4 };
-const uint8_t colPins[COLS] = { PB0, PB1, PB10 };
+const uint8_t colPins[COLS] = { PB0, PB1, PB10, PA5 };
 static const uint32_t MATRIX_SCAN_US   = 2000;
 static const uint8_t  DEBOUNCE_SAMPLES = 4;
 static uint16_t rawState = 0;
