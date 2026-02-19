@@ -50,6 +50,7 @@ except ImportError:
 IMU1_AXIS_MAP = (1, 2, 3) 
 IMU2_AXIS_MAP = (1, 2, 3)
 INVERT_ACCEL = False
+ACCEL_PLOT_Y_RANGE = (-20, 20) 
 
 # ============================================================================
 # QUATERNION MATH
@@ -92,14 +93,13 @@ def euler_to_quat(roll_deg, pitch_deg, yaw_deg):
     return np.array([w, x, yq, z])
 
 def rotate_vector(v, q):
-    """Rotate vector v by quaternion q [w, x, y, z]"""
-    # q * v * q_conj
-    # v is treated as [0, vx, vy, vz]
-    # Simple Rodrigues or just quat mul
-    # For vis, we usually just let OpenGL handle rotation of the frame
-    # But for the accel vector which is in body frame, if we parent it to the body, 
-    # it rotates with body automatically.
-    pass 
+    """Rotate vector v by quaternion q [w, x, y, z] using standard formula."""
+    w, x, y, z = q
+    qv = np.array([x, y, z])
+    # v' = v + 2*q_w*(q_v x v) + 2*(q_v x (q_v x v))
+    cross1 = np.cross(qv, v)
+    cross2 = np.cross(qv, cross1)
+    return v + 2 * w * cross1 + 2 * cross2
 
 # ============================================================================
 # 3D VISUALIZATION OBJECTS
@@ -163,7 +163,7 @@ def create_colored_cube():
 
 class ImuVisualizer:
     """Represents a single IMU in 3D space."""
-    def __init__(self, view, position=(0,0,0), label_text="IMU"):
+    def __init__(self, view, position=(0,0,0), label_text="IMU", has_rod=False, rod_length=2.0):
         self.view = view
         
         # Container
@@ -180,11 +180,25 @@ class ImuVisualizer:
         # Local Axes
         self.axes = gl.GLAxisItem(size=QtGui.QVector3D(1.5, 1.5, 1.5))
         self.axes.setParentItem(self.container)
+
+        # Rod (Optional)
+        # Rod (Optional)
+        if has_rod:
+            # Rod represented by a gray rectangular beam
+            # Origin at (0,0,0) in local coords, length along +X (points forward to next joint)
+            rod_length_val = rod_length
+            rod_w = 0.15 # Width (Y)
+            rod_h = 0.05 # Height (Z)
+            self.rod = gl.GLBoxItem(size=QtGui.QVector3D(rod_length_val, rod_w, rod_h), color=(0.4, 0.4, 0.45, 1.0))
+            # Extend from 0 to rod_length_val, centered on Y and Z
+            self.rod.translate(0, -rod_w/2, -rod_h/2)
+            self.rod.setParentItem(self.container)
         
-    def update(self, q):
+    def update(self, q, pos=None):
         """
         Update orientation.
         q: [w, x, y, z] quaternion
+        pos: optional [x, y, z] position override
         """
         w, x, y, z = q
         angle = 2 * np.arccos(np.clip(w, -1.0, 1.0))
@@ -195,7 +209,10 @@ class ImuVisualizer:
             ax, ay, az = x/s, y/s, z/s
             
         self.container.resetTransform()
-        self.container.translate(*self.base_pos)
+        if pos is not None:
+            self.container.translate(*pos)
+        else:
+            self.container.translate(*self.base_pos)
         self.container.rotate(np.degrees(angle), ax, ay, az)
 
 
@@ -306,7 +323,7 @@ class DualIMUWindow(QtWidgets.QMainWindow):
             p = pg.PlotWidget()
             p.setBackground('#2c3e50')
             p.showGrid(x=False, y=True, alpha=0.3)
-            p.setYRange(-2, 2)
+            p.setYRange(*ACCEL_PLOT_Y_RANGE)
             p.getAxis('left').setPen('#7f8c8d')
             p.getAxis('bottom').setPen('#7f8c8d')
             p.getAxis('left').setTextPen('#7f8c8d')
@@ -354,9 +371,15 @@ class DualIMUWindow(QtWidgets.QMainWindow):
         # World Reference (Grid + Global Axes)
         self.add_world_reference()
         
+        # Arm Geometry
+        self.UPPER_ARM_LEN = 2.5
+        self.LOWER_ARM_LEN = 2.5
+
         # IMU Objects
-        self.imu1 = ImuVisualizer(self.view, position=(-1.5, 0, 0), label_text="IMU 1")
-        self.imu2 = ImuVisualizer(self.view, position=( 1.5, 0, 0), label_text="IMU 2")
+        # IMU 1: Upper Arm (Shoulder -> Elbow)
+        self.imu1 = ImuVisualizer(self.view, position=(0, 0, 0), label_text="IMU 1 (Upper)", has_rod=True, rod_length=self.UPPER_ARM_LEN)
+        # IMU 2: Lower Arm (Elbow -> Wrist)
+        self.imu2 = ImuVisualizer(self.view, position=(self.UPPER_ARM_LEN, 0, 0), label_text="IMU 2 (Lower)", has_rod=True, rod_length=self.LOWER_ARM_LEN)
         
         # Data
         self.reader = STM32Reader(port=port, baud=baud, verbose=True, binary_mode=True)
@@ -459,7 +482,14 @@ class DualIMUWindow(QtWidgets.QMainWindow):
         
         # Update 3D
         self.imu1.update(q1)
-        self.imu2.update(q2)
+
+        # Forward Kinematics:
+        # Elbow is at end of Upper Arm (IMU 1)
+        # elbow_pos = shoulder_pos + rotate(upper_arm_vec, q1)
+        elbow_pos = rotate_vector(np.array([self.UPPER_ARM_LEN, 0, 0]), q1)
+        
+        # Update IMU 2 (Lower Arm) at Elbow Position
+        self.imu2.update(q2, pos=elbow_pos)
         
         # Update Plots
         if is_new:
