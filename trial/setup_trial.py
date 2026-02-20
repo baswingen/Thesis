@@ -17,6 +17,7 @@ Usage:
 
 import sys
 import io
+import random
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
@@ -101,70 +102,92 @@ IMU_CONFIG = {
 # TRIAL PROTOCOL CONFIGURATION
 # =============================================================================
 
-# Trial exercises (keyboard-controlled)
-# Each exercise is a dictionary with:
-#   - name: Exercise name (used in file names)
-#   - duration: Duration in seconds
-#   - instruction: Text displayed to participant
-#   - rest_after: Rest period after exercise (seconds)
-#   - repetitions: Number of times to repeat (default: 1)
+# Button Matrix Configuration
+BUTTON_MATRIX_CONFIG = {
+    'objects': ['1kg', '2kg', '4kg', '6kg'],
+    'iterations': 100,
+    # Keys 0-11 map to A1-C4 representing the 3x4 grid
+    'grid_rows': ['A', 'B', 'C'],
+    'grid_cols': ['1', '2', '3', '4'],
+    'timeout_per_movement': 15.0,  # Max time before recording it as a failed or skipped movement
+}
 
-TRIAL_EXERCISES = [
-    {
-        'name': 'Baseline_Rest',
-        'duration': 10.0,
-        'instruction': 'Relax your muscles completely.\nKeep your hand in a neutral position.',
-        'rest_after': 2.0,
-        'repetitions': 1,
-    },
-    {
-        'name': 'Wrist_Flexion',
-        'duration': 5.0,
-        'instruction': 'Slowly flex your wrist (bend hand downward).\nHold the position.',
-        'rest_after': 3.0,
-        'repetitions': 3,
-    },
-    {
-        'name': 'Wrist_Extension',
-        'duration': 5.0,
-        'instruction': 'Slowly extend your wrist (bend hand upward).\nHold the position.',
-        'rest_after': 3.0,
-        'repetitions': 3,
-    },
-    {
-        'name': 'Hand_Grip',
-        'duration': 5.0,
-        'instruction': 'Close your hand into a fist.\nGrip with moderate force.',
-        'rest_after': 3.0,
-        'repetitions': 3,
-    },
-    {
-        'name': 'Hand_Open',
-        'duration': 5.0,
-        'instruction': 'Fully extend all fingers.\nSpread fingers apart.',
-        'rest_after': 3.0,
-        'repetitions': 3,
-    },
-    {
-        'name': 'Pronation',
-        'duration': 5.0,
-        'instruction': 'Rotate your forearm (palm down).\nHold the position.',
-        'rest_after': 3.0,
-        'repetitions': 3,
-    },
-    {
-        'name': 'Supination',
-        'duration': 5.0,
-        'instruction': 'Rotate your forearm (palm up).\nHold the position.',
-        'rest_after': 3.0,
-        'repetitions': 3,
-    },
-]
+def generate_button_matrix_sequence() -> List[Dict]:
+    """
+    Generate a sequence of randomized instructions for the button matrix protocol.
+    Guarantees that multiple objects will not overlap on the same grid coordinate.
+    """
+    objects = BUTTON_MATRIX_CONFIG['objects']
+    grid_rows = BUTTON_MATRIX_CONFIG['grid_rows']
+    grid_cols = BUTTON_MATRIX_CONFIG['grid_cols']
+    iterations = BUTTON_MATRIX_CONFIG['iterations']
+    timeout = BUTTON_MATRIX_CONFIG['timeout_per_movement']
+    
+    all_positions = [f'{r}{c}' for r in grid_rows for c in grid_cols]
+    pos_to_idx = {pos: i for i, pos in enumerate(all_positions)}
+    
+    exercises = []
+    
+    # 1. Initial placement
+    available_positions = list(all_positions)
+    random.shuffle(available_positions)
+    
+    current_state = {}
+    
+    for obj in objects:
+        pos = available_positions.pop()
+        current_state[obj] = pos
+        idx = pos_to_idx[pos]
+        
+        exercises.append({
+            'name': f'Init_{obj}_{pos}',
+            'target_label': pos,
+            'target_button_idx': idx,
+            'object_id': obj,
+            'display_name': f'Setup: Place {obj}',
+            'instruction': f'Place the {obj} object on {pos}.',
+            'duration': timeout,
+            'rest_after': 1.0,
+            'repetitions': 1,
+            'advance_on': 'button_press'
+        })
+        
+    # 2. Random movements
+    for i in range(iterations):
+        # Pick random object
+        obj = random.choice(objects)
+        
+        # Pick random empty position
+        occupied = set(current_state.values())
+        empty_positions = [p for p in all_positions if p not in occupied]
+        target_pos = random.choice(empty_positions)
+        
+        # Capture origin before updating
+        origin_pos = current_state[obj]
+        origin_idx = pos_to_idx[origin_pos]
+        
+        # Update state
+        current_state[obj] = target_pos
+        idx = pos_to_idx[target_pos]
+        
+        exercises.append({
+            'name': f'Move_{i+1}_{obj}_{target_pos}',
+            'target_label': target_pos,
+            'target_button_idx': idx,
+            'origin_label': origin_pos,
+            'origin_button_idx': origin_idx,
+            'object_id': obj,
+            'display_name': f'Move {obj}',
+            'instruction': f'Move the {obj} object from {origin_pos} to {target_pos}.',
+            'duration': timeout,
+            'rest_after': 0.5,
+            'repetitions': 1,
+            'advance_on': 'button_press'
+        })
+        
+    return exercises
 
-# Protocol selection
-# Options: 'basic', 'mvc_calibration', 'custom'
-# 'custom' uses TRIAL_EXERCISES defined above
-PROTOCOL_NAME = 'custom'
+TRIAL_EXERCISES = generate_button_matrix_sequence()
 
 # =============================================================================
 # DATA PREPROCESSING CONFIGURATION
@@ -378,7 +401,7 @@ def print_config_summary():
     print(f"       Channels: {len(EMG_CONFIG['raw_channels'])} raw channels")
     print(f"  IMU: {'Enabled' if SYNC_CONFIG['enable_imu'] else 'Disabled'}")
     print(f"       Auto-calibrate: {IMU_CONFIG['auto_calibrate_on_start']}")
-    print(f"\nProtocol: {PROTOCOL_NAME}")
+    print(f"\nProtocol: Button Matrix")
     print(f"  Exercises: {len(TRIAL_EXERCISES)}")
     total_duration = sum(ex['duration'] + ex.get('rest_after', 0) for ex in TRIAL_EXERCISES)
     print(f"  Estimated duration: {total_duration:.1f} seconds ({total_duration/60:.1f} minutes)")

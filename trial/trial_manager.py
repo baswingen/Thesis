@@ -24,18 +24,29 @@ import sys
 from . import setup_trial
 from .trial_gui import TrialGUI, TrialState
 from .data_storage import TrialDataStorage
-from .trial_protocols import get_protocol, expand_protocol, validate_protocol
 
 # Import source modules
 try:
     from src.synchronized_acquisition import SynchronizedAcquisition
     from src.emg_processing import EMGPreprocessor
     from src.dummy_acquisition import DummyAcquisition
+    from src.stm32_reader import STM32Reader
+    from src.stm32_emg_sync import SyncDelayEstimator
+    from src.arduino_connection import find_arduino_port
 except ImportError:
     print("⚠ Warning: Could not import src modules. Mock mode will be used.")
     SynchronizedAcquisition = None
     EMGPreprocessor = None
     DummyAcquisition = None
+    STM32Reader = None
+    SyncDelayEstimator = None
+
+def _extract_trig_binary(v_raw: np.ndarray, is_status: bool, trig_bit: Optional[int]) -> np.ndarray:
+    if is_status and trig_bit is not None:
+        return ((v_raw.astype(np.int64) >> trig_bit) & 1).astype(np.float64)
+    lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
+    thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
+    return (v_raw > thr).astype(np.float64)
 
 
 # =============================================================================
@@ -81,7 +92,7 @@ class TrialManager:
         
         # Protocol
         self.protocol = self._load_protocol()
-        self.expanded_protocol = expand_protocol(self.protocol)
+        self.expanded_protocol = self._expand_protocol(self.protocol)
         
         # Data buffers for current trial
         self.emg_buffer_times = []
@@ -92,6 +103,8 @@ class TrialManager:
         
         # Devices
         self.acquisition = None
+        self.stm32 = None
+        self.estimator = None
         self.preprocessor = None
         self.storage = None
         self.gui = None
@@ -135,14 +148,26 @@ class TrialManager:
     
     def _load_protocol(self) -> List[Dict[str, Any]]:
         """Load trial protocol."""
-        if self.config.PROTOCOL_NAME == 'custom':
-            protocol = self.config.TRIAL_EXERCISES
-        else:
-            protocol = get_protocol(self.config.PROTOCOL_NAME)
-        
-        validate_protocol(protocol)
-        return protocol
-    
+        return self.config.TRIAL_EXERCISES
+
+    def _expand_protocol(self, protocol: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Expand protocol by repeating exercises according to 'repetitions' field.
+        """
+        expanded = []
+        for exercise in protocol:
+            repetitions = exercise.get('repetitions', 1)
+            for rep in range(repetitions):
+                ex_copy = exercise.copy()
+                ex_copy['repetition'] = rep + 1
+                ex_copy['total_repetitions'] = repetitions
+                if repetitions > 1:
+                    ex_copy['display_name'] = f"{exercise.get('display_name', exercise.get('name', ''))} (Rep {rep + 1}/{repetitions})"
+                else:
+                    ex_copy['display_name'] = exercise.get('display_name', exercise.get('name', ''))
+                expanded.append(ex_copy)
+        return expanded
+
     def initialize(self):
         """Initialize all components."""
         print("\n" + "="*70)
@@ -210,6 +235,22 @@ class TrialManager:
                     print("  Using REAL hardware signals")
                     print("  Connecting to devices (this may take up to 30 seconds)...")
                     
+                    if STM32Reader is not None:
+                        try:
+                            stm32_port = self.config.SYNC_CONFIG.get('stm32_port', None)
+                            if not stm32_port and not sys.platform.startswith('win'):
+                                stm32_port = find_arduino_port(preferred_substr="usbmodem")
+                                
+                            if stm32_port:
+                                self.stm32 = STM32Reader(
+                                    port=stm32_port,
+                                    baud=921600
+                                )
+                                self.stm32.start()
+                                print("  ✓ STM32 Reader started")
+                        except Exception as e:
+                            print(f"  ✗ STM32 Reader failed to start: {e}")
+                    
                     # Reduce timeout for faster failure if hardware not connected
                     sync_config = self.config.get_sync_config()
                     # Override timeout if too long
@@ -224,6 +265,26 @@ class TrialManager:
                 
                 print("  Starting acquisition threads...")
                 self.acquisition.start(ready_timeout_s=30.0)  # Reduced timeout
+                
+                if self.stm32 and SyncDelayEstimator is not None:
+                    try:
+                        emg_sr = float(self.config.EMG_CONFIG.get('sample_rate', 2048))
+                        self.estimator = SyncDelayEstimator(
+                            emg_sample_rate=emg_sr,
+                            sync_window_s=0.5,
+                            sync_step_s=0.1
+                        )
+                        # Tell estimator about trig flags
+                        self.estimator._trig_is_status = True
+                        self.estimator._detected_trig_bit = 0
+                        
+                        def on_stm32(sample):
+                            self.estimator.add_stm32_samples([sample])
+                        self.stm32.on_sample = on_stm32
+                        
+                        print("  ✓ SyncDelayEstimator started")
+                    except Exception as e:
+                        print(f"  ✗ Estimator failed to start: {e}")
                 
                 # Check for errors
                 if hasattr(self.acquisition, 'errors') and self.acquisition.errors:
@@ -437,7 +498,7 @@ class TrialManager:
         # Just close; cleanup will stop acquisition and cancel callbacks.
         self.running = False
         try:
-            self.gui.close()
+            self.gui.request_close.emit()
         except Exception:
             pass
     
@@ -472,8 +533,8 @@ class TrialManager:
         self.gui.set_exercise(exercise['display_name'], f"Starting in {remaining}...")
         
         # Schedule next countdown step
-        callback_id = self.gui.root.after(1000, lambda: self._countdown_step(remaining - 1))
-        self.scheduled_callbacks.append(callback_id)
+        timer = self.gui.schedule_task(1000, lambda: self._countdown_step(remaining - 1))
+        self.scheduled_callbacks.append(timer)
     
     def _begin_recording(self):
         """Begin recording after countdown."""
@@ -500,8 +561,8 @@ class TrialManager:
         
         # Schedule auto-stop
         duration = exercise['duration']
-        callback_id = self.gui.root.after(int(duration * 1000), self._stop_trial)
-        self.scheduled_callbacks.append(callback_id)
+        timer = self.gui.schedule_task(int(duration * 1000), self._stop_trial)
+        self.scheduled_callbacks.append(timer)
     
     def _stop_trial(self):
         """Stop recording and save trial."""
@@ -525,7 +586,8 @@ class TrialManager:
                 print("✓ Trial saved successfully")
                 
                 # Schedule GUI updates in main thread
-                self.gui.root.after(0, self._after_save_success)
+                # PyQt can use QTimer.singleShot for deferred execution on the main thread
+                self.gui.schedule_task(0, self._after_save_success)
                 
             except Exception as e:
                 print(f"✗ Error saving trial: {e}")
@@ -533,7 +595,7 @@ class TrialManager:
                 traceback.print_exc()
                 
                 # Schedule error dialog in main thread
-                self.gui.root.after(0, lambda: self._after_save_error(e))
+                self.gui.schedule_task(0, lambda e_in=e: self._after_save_error(e_in))
         
         # Start save thread
         save_thread = threading.Thread(target=save_and_continue, daemon=True)
@@ -545,7 +607,7 @@ class TrialManager:
         if self._quit_after_save:
             self.running = False
             try:
-                self.gui.close()
+                self.gui.request_close.emit()
             except Exception:
                 pass
             return
@@ -569,8 +631,8 @@ class TrialManager:
                 def end_rest():
                     self._update_gui_for_current_trial()
                 
-                callback_id = self.gui.root.after(int(rest_duration * 1000), end_rest)
-                self.scheduled_callbacks.append(callback_id)
+                timer = self.gui.schedule_task(int(rest_duration * 1000), end_rest)
+                self.scheduled_callbacks.append(timer)
             else:
                 self._update_gui_for_current_trial()
         else:
@@ -591,7 +653,7 @@ class TrialManager:
         if self._quit_after_save:
             self.running = False
             try:
-                self.gui.close()
+                self.gui.request_close.emit()
             except Exception:
                 pass
             return
@@ -837,6 +899,15 @@ class TrialManager:
             emg_signal = chunk.data['pairs']
         else:
             return
+            
+        if self.estimator is not None and not self.mock_mode:
+            try:
+                # pass status channel to estimator
+                if 'raw' in chunk.data:
+                    trig_vals = chunk.data['raw'][:, -1]
+                    self.estimator.add_emg_trig_chunk(chunk.sample_t, trig_vals)
+            except Exception:
+                pass
         
         # Buffer for recording
         if self.recording_data:
@@ -853,8 +924,8 @@ class TrialManager:
                 self._pending_emg_plot = (chunk.sample_t, emg_signal)
                 if not self._emg_plot_update_scheduled:
                     self._emg_plot_update_scheduled = True
-                    callback_id = self.gui.root.after(0, self._flush_emg_plot_update)
-                    self.scheduled_callbacks.append(callback_id)
+                    timer = self.gui.schedule_task(0, self._flush_emg_plot_update)
+                    self.scheduled_callbacks.append(timer)
             except Exception as e:
                 # GUI may be closed, ignore
                 pass
@@ -890,15 +961,15 @@ class TrialManager:
                 self._pending_imu_plot = (ts, accel, gyro)
                 if not self._imu_plot_update_scheduled:
                     self._imu_plot_update_scheduled = True
-                    callback_id = self.gui.root.after(0, self._flush_imu_plot_update)
-                    self.scheduled_callbacks.append(callback_id)
+                    timer = self.gui.schedule_task(0, self._flush_imu_plot_update)
+                    self.scheduled_callbacks.append(timer)
 
                 # Coalesce IMU health updates too (IMU1/IMU2 online/zero stream)
                 self._pending_imu_health = getattr(sample.reading, "health", None)
                 if not self._imu_health_update_scheduled:
                     self._imu_health_update_scheduled = True
-                    callback_id = self.gui.root.after(0, self._flush_imu_health_update)
-                    self.scheduled_callbacks.append(callback_id)
+                    timer = self.gui.schedule_task(0, self._flush_imu_health_update)
+                    self.scheduled_callbacks.append(timer)
             except Exception as e:
                 # GUI may be closed, ignore
                 pass
@@ -1012,8 +1083,15 @@ class TrialManager:
             if len(self.emg_buffer_raw) > 0:
                 last_chunk = self.emg_buffer_raw[-1]
                 rms = np.sqrt(np.mean(last_chunk**2))
+                
+                # Check variance for simple health flags
+                variances = np.var(last_chunk, axis=0)
+                health_flags = [bool(variances[i] > 1e-6) for i in range(min(8, len(variances)))]
+                while len(health_flags) < 8:
+                    health_flags.append(False)
             else:
                 rms = 0.0
+                health_flags = [False] * 8
         
         if self.gui and hasattr(self.gui, 'update_signal_quality'):
             try:
@@ -1025,13 +1103,19 @@ class TrialManager:
             except Exception as e:
                 # GUI may be closed, ignore
                 pass
+                
+        if self.gui and hasattr(self.gui, 'update_emg_health'):
+            try:
+                self.gui.update_emg_health(health_flags)
+            except Exception:
+                pass
 
     def _manager_update_tick(self):
         """
-        Periodic manager-driven GUI updates (runs on Tk main thread).
-        IMPORTANT: Tkinter widgets must only be touched from the main thread.
+        Periodic manager-driven GUI updates (runs on Qt main thread).
+        IMPORTANT: UI widgets must only be touched from the main thread.
         """
-        if not self.running or not self.gui or not self.gui.root:
+        if not self.running or not self.gui:
             return
         try:
             if self.state == TrialState.RECORDING:
@@ -1051,27 +1135,68 @@ class TrialManager:
             # Never let periodic GUI update crash the app
             pass
 
+        # === UPDATE PRBS AND BUTTON MATRIX ===
         try:
-            callback_id = self.gui.root.after(self._manager_update_interval_ms, self._manager_update_tick)
-            self.scheduled_callbacks.append(callback_id)
+            if self.gui and hasattr(self.gui, 'update_stm32_data') and self.stm32 is not None:
+                n_samples_stm32 = int(5.0 * 550) # 5 sec window
+                stm32_snap = self.stm32.get_snapshot(n=n_samples_stm32)
+                
+                emg_chunks = None
+                if self.estimator is not None:
+                    # Run background sync update periodically
+                    now = time.perf_counter()
+                    if self.estimator.should_update(now):
+                        self.estimator.update(now)
+                        
+                    emg_chunks = self.estimator.get_emg_trig_snapshot()
+                    
+                    res = self.estimator._last_result
+                    if res is not None:
+                        delay = self.estimator._current_delay_ms
+                        conf = res.confidence
+                        self.gui.update_sync_data(now, delay, conf)
+                        
+                if stm32_snap and "t_sec" in stm32_snap:
+                    keys_mask = stm32_snap["keys_mask"][-1] if len(stm32_snap["keys_mask"]) > 0 else 0
+                    self.gui.update_stm32_data(
+                        stm32_snap["pc_time"],
+                        stm32_snap["prbs_level"],
+                        keys_mask
+                    )
+                    
+                if emg_chunks:
+                    t_raw = np.concatenate([c[0] for c in emg_chunks])
+                    v_raw = np.concatenate([c[1] for c in emg_chunks])
+                    
+                    is_status = getattr(self.estimator, "_trig_is_status", True)
+                    trig_bit = getattr(self.estimator, "_detected_trig_bit", None)
+                    y_plot = _extract_trig_binary(v_raw, is_status, trig_bit)
+                    self.gui.update_emg_prbs_data(t_raw, y_plot)
+        except Exception:
+            pass
+
+        try:
+            timer = self.gui.schedule_task(self._manager_update_interval_ms, self._manager_update_tick)
+            self.scheduled_callbacks.append(timer)
         except Exception:
             # GUI may be closing
             pass
     
-    def run(self):
+    def run(self, app):
         """Run the trial manager (blocking)."""
         self.running = True
-        # Schedule periodic manager updates on the Tk main thread
-        if self.gui and self.gui.root:
+        # Schedule periodic manager updates on the GUI main thread
+        if self.gui:
             try:
-                callback_id = self.gui.root.after(self._manager_update_interval_ms, self._manager_update_tick)
-                self.scheduled_callbacks.append(callback_id)
+                timer = self.gui.schedule_task(self._manager_update_interval_ms, self._manager_update_tick)
+                self.scheduled_callbacks.append(timer)
             except Exception:
                 pass
         
-        # Run GUI (blocking)
+        # Show GUI and run the Qt event loop (blocking)
         try:
-            self.gui.run()
+            self.gui.show()
+            app.exec()
         except KeyboardInterrupt:
             print("\n\nInterrupted by user")
         finally:
@@ -1084,14 +1209,20 @@ class TrialManager:
         self.running = False
         self.recording_data = False
         
-        # Cancel all scheduled callbacks
-        if self.gui and self.gui.root:
-            for callback_id in self.scheduled_callbacks:
+        # Cancel all scheduled PyQt timers
+        if self.gui:
+            for timer in self.scheduled_callbacks:
                 try:
-                    self.gui.root.after_cancel(callback_id)
+                    timer.stop()
                 except:
                     pass
             self.scheduled_callbacks.clear()
+            
+        if self.stm32:
+            try:
+                self.stm32.stop()
+            except:
+                pass
         
         # Stop acquisition
         if self.acquisition:
@@ -1127,12 +1258,16 @@ def main():
     # Check for mock mode flag
     mock_mode = '--mock' in sys.argv or '--test' in sys.argv
     
+    # Initialize QApplication before any PyQt6 widgets are constructed
+    from PyQt6 import QtWidgets
+    app = QtWidgets.QApplication(sys.argv)
+    
     # Create and initialize manager
     manager = TrialManager(mock_mode=mock_mode)
     
     try:
         manager.initialize()
-        manager.run()
+        manager.run(app)
     
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
