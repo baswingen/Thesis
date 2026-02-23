@@ -444,6 +444,7 @@ class TrialGUI(QtWidgets.QMainWindow):
         self.vb_conf.setXLink(self.plot_delay)
         self.plot_delay.getAxis('right').setLabel('Confidence (0-1)')
         self.plot_delay.getAxis('right').setPen('#f1c40f')
+        self.vb_conf.setYRange(0, 1.0)  # Fixed range 0-1
         self.curve_conf = pg.PlotCurveItem(pen=pg.mkPen('#f1c40f', width=2), name="Confidence")
         self.vb_conf.addItem(self.curve_conf)
         
@@ -690,7 +691,7 @@ class TrialGUI(QtWidgets.QMainWindow):
             rel_t = timestamps - self.start_time
             self.prbs_time_stm32.extend(rel_t)
             self.prbs_data_stm32.extend(prbs_level)
-            self.button_mask = button_mask
+            self.button_mask = int(button_mask)
 
     def update_emg_prbs_data(self, timestamps: np.ndarray, prbs_level: np.ndarray):
         with self.update_lock:

@@ -19,34 +19,435 @@ from typing import Dict, List, Optional, Any
 from collections import deque
 import threading
 import sys
+import struct
 
 # Import trial modules
 from . import setup_trial
 from .trial_gui import TrialGUI, TrialState
 from .data_storage import TrialDataStorage
 
+try:
+    import serial
+except ImportError:
+    serial = None
+
 # Import source modules
 try:
-    from src.synchronized_acquisition import SynchronizedAcquisition
     from src.emg_processing import EMGPreprocessor
     from src.dummy_acquisition import DummyAcquisition
-    from src.stm32_reader import STM32Reader
     from src.stm32_emg_sync import SyncDelayEstimator
-    from src.arduino_connection import find_arduino_port
+    from src.stm32_reader import SampleSTM32, BIN_FORMAT, BIN_PACKET_SIZE, BIN_SYNC1, BIN_SYNC2
+    # find_arduino_port will be imported locally if needed
 except ImportError:
-    print("⚠ Warning: Could not import src modules. Mock mode will be used.")
-    SynchronizedAcquisition = None
+    print("\u26a0 Warning: Could not import src modules. Mock mode will be used.")
     EMGPreprocessor = None
     DummyAcquisition = None
-    STM32Reader = None
     SyncDelayEstimator = None
+    SampleSTM32 = BIN_FORMAT = BIN_PACKET_SIZE = BIN_SYNC1 = BIN_SYNC2 = None
+
+try:
+    from TMSiSDK.device.devices.legacy.legacy_device import LegacyDevice
+    from TMSiSDK.device.devices.legacy.measurements.signal_measurement import SignalMeasurement
+    _TMSI_AVAILABLE = True
+except ImportError:
+    LegacyDevice = None
+    SignalMeasurement = None
+    _TMSI_AVAILABLE = False
 
 def _extract_trig_binary(v_raw: np.ndarray, is_status: bool, trig_bit: Optional[int]) -> np.ndarray:
     if is_status and trig_bit is not None:
-        return ((v_raw.astype(np.int64) >> trig_bit) & 1).astype(np.float64)
+        # nan_to_num prevents RuntimeWarning: invalid value encountered in cast
+        v_clean = np.nan_to_num(v_raw, nan=0)
+        return ((v_clean.astype(np.int64) >> trig_bit) & 1).astype(np.float64)
     lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
     thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
     return (v_raw > thr).astype(np.float64)
+
+
+def _stm32_to_imu_sample(stm_sample):
+    """
+    Convert a SampleSTM32 (dual BNO085 via binary protocol) into a duck-typed
+    object that matches the IMUSample API used by _on_imu_sample().
+
+    SampleSTM32 fields used:
+        t_ms        - Arduino millis() timestamp
+        yaw1/pitch1/roll1 - IMU1 Euler angles in degrees (from BNO085 RVC)
+        ax1/ay1/az1       - IMU1 acceleration in m/s²
+        yaw2/pitch2/roll2 - IMU2 Euler angles in degrees
+        ax2/ay2/az2       - IMU2 acceleration in m/s²
+        imu1_ok / imu2_ok - health flags
+    """
+    from types import SimpleNamespace
+
+    try:
+        t = time.perf_counter()
+
+        # Acceleration in m/s² (already in correct units from STM32 firmware)
+        accel1 = np.array([stm_sample.ax1, stm_sample.ay1, stm_sample.az1], dtype=float)
+        accel2 = np.array([stm_sample.ax2, stm_sample.ay2, stm_sample.az2], dtype=float)
+
+        # Gyro not available in BNO085 RVC mode — use zeros
+        gyro1 = np.zeros(3, dtype=float)
+        gyro2 = np.zeros(3, dtype=float)
+
+        # Euler angles (yaw, pitch, roll) in degrees from BNO085 RVC
+        euler1 = (float(stm_sample.yaw1), float(stm_sample.pitch1), float(stm_sample.roll1))
+        euler2 = (float(stm_sample.yaw2), float(stm_sample.pitch2), float(stm_sample.roll2))
+
+        # Health derived from ok flags
+        health = SimpleNamespace(
+            imu1_online=bool(stm_sample.imu1_ok),
+            imu2_online=bool(stm_sample.imu2_ok),
+            imu1_zero_data=False,
+            imu2_zero_data=False,
+        )
+
+        reading = SimpleNamespace(
+            accel1=accel1,
+            gyro1=gyro1,
+            accel2=accel2,
+            gyro2=gyro2,
+            quat1=None,
+            quat2=None,
+            euler1=euler1,
+            euler2=euler2,
+            ok1=bool(stm_sample.imu1_ok),
+            ok2=bool(stm_sample.imu2_ok),
+            health=health,
+            t_us=int(stm_sample.t_ms * 1000),
+            seq=0,
+        )
+
+        return SimpleNamespace(t=t, reading=reading, t_hardware_s=stm_sample.t_ms / 1000.0)
+
+    except Exception:
+        return None
+
+
+# =============================================================================
+# TRIAL TMSI THREAD  (mirrors RawTMSiThread in signal_acquisition_testing.py)
+# =============================================================================
+
+class TrialTMSiThread(threading.Thread):
+    """
+    Robust Porti7 acquisition thread with retry + 'USB -' filtering.
+    Mirrors the RawTMSiThread pattern from signal_acquisition_testing.py.
+
+    Delivers EMGChunk-like SimpleNamespace objects to `on_emg` callback:
+        chunk.t            - midpoint timestamp (perf_counter)
+        chunk.sample_t     - per-sample timestamps (np.ndarray)
+        chunk.data['raw']  - raw samples (n_samples x n_channels)
+    """
+
+    MAX_DISCOVERY_RETRIES = 5
+    MAX_OPEN_RETRIES = 3
+
+    def __init__(
+        self,
+        sample_rate: int = 2048,
+        raw_channels: Optional[List[int]] = None,
+        estimator=None,
+        on_emg=None,
+    ):
+        super().__init__(name="TrialTMSiThread", daemon=True)
+        self.sample_rate = sample_rate
+        self.raw_channels = raw_channels  # None = keep all channels
+        self.estimator = estimator
+        self.on_emg = on_emg
+        self.running = False
+        self.error: Optional[str] = None
+        self.channels: List[str] = []
+        self.trig_idx: int = -1
+        self.estimated_rate_hz: float = 0.0
+        self._device = None
+        self._measurement = None
+
+    def run(self):
+        from types import SimpleNamespace
+        if not _TMSI_AVAILABLE:
+            self.error = "TMSi SDK not available"
+            print("[TMSi] SDK not available")
+            return
+        try:
+            # --- 1. Discover with retries, filtering 'USB -' placeholders ---
+            self._device = None
+            for attempt in range(self.MAX_DISCOVERY_RETRIES):
+                print(f"[TMSi] Discovery attempt {attempt + 1}/{self.MAX_DISCOVERY_RETRIES}...")
+                try:
+                    LegacyDevice.cleanup()
+                except Exception:
+                    pass
+                devices = LegacyDevice.discover("usb")
+                valid = [
+                    d for d in devices
+                    if d._device_name and len(d._device_name) > 5
+                    and "-" not in d._device_name[4:]
+                ]
+                if valid:
+                    self._device = valid[0]
+                    break
+                if devices:
+                    print(f"[TMSi] Found {len(devices)} device(s) but name invalid "
+                          f"(e.g. '{devices[0]._device_name}'). Retrying...")
+                else:
+                    print("[TMSi] No devices found. Retrying...")
+                if attempt < self.MAX_DISCOVERY_RETRIES - 1:
+                    time.sleep(2.0)
+
+            if not self._device:
+                raise RuntimeError("Failed to find a valid TMSi device after "
+                                   f"{self.MAX_DISCOVERY_RETRIES} attempts.")
+
+            # --- 2. Open with retries ---
+            opened = False
+            for attempt in range(self.MAX_OPEN_RETRIES):
+                try:
+                    print(f"[TMSi] Opening {self._device._device_name} "
+                          f"(attempt {attempt + 1})...")
+                    self._device.open()
+                    opened = True
+                    break
+                except Exception as e:
+                    print(f"[TMSi] Open failed: {e}")
+                    if attempt < self.MAX_OPEN_RETRIES - 1:
+                        time.sleep(1.5)
+            if not opened:
+                raise RuntimeError(f"Failed to open {self._device._device_name}")
+
+            # --- 3. Find channels ---
+            self.channels = [
+                ch.get_channel_name() for ch in self._device.get_device_channels()
+            ]
+            for i, name in enumerate(self.channels):
+                if name.lower() in ("dig", "status", "trig"):
+                    self.trig_idx = i
+                    break
+            if self.trig_idx == -1:
+                print("[TMSi] WARNING: trigger channel not found in:", self.channels)
+            else:
+                print(f"[TMSi] Trigger channel: '{self.channels[self.trig_idx]}'")
+
+            # --- 4. Start measurement ---
+            self._measurement = SignalMeasurement(self._device)
+            self._measurement.set_sample_rate(self.sample_rate)
+            self._measurement.start()
+            self.running = True
+            print(f"[TMSi] Acquisition started @ {self.sample_rate} Hz")
+
+            dt = 1.0 / self.sample_rate
+            last_print = time.perf_counter()
+            count = 0
+
+            while self.running:
+                samples = self._measurement.get_samples(blocking=True)
+                if samples is None or len(samples) == 0:
+                    continue
+
+                now = time.perf_counter()
+                n = len(samples)
+                count += n
+
+                # Per-sample timestamps (uniform spacing anchored to receive time)
+                t_arr = now - (n - 1 - np.arange(n)) * dt
+
+                # Feed PRBS estimator (last channel = trigger if available)
+                if self.estimator is not None and self.trig_idx != -1:
+                    try:
+                        trig_vals = samples[:, self.trig_idx]
+                        self.estimator.add_emg_trig_chunk(t_arr, trig_vals)
+                    except Exception:
+                        pass
+
+                # Select channels
+                if self.raw_channels:
+                    raw = samples[:, self.raw_channels]
+                else:
+                    raw = samples
+
+                # Deliver EMGChunk-compatible SimpleNamespace
+                if self.on_emg:
+                    try:
+                        chunk = SimpleNamespace(
+                            t=float(t_arr[n // 2]),
+                            sample_t=t_arr,
+                            data={'raw': raw},
+                            counter_raw_last=None,
+                        )
+                        self.on_emg(chunk)
+                    except Exception:
+                        pass
+
+                # Rate tracking (1s smoothing)
+                if now - last_print >= 1.0:
+                    self.estimated_rate_hz = count / (now - last_print)
+                    count = 0
+                    last_print = now
+
+        except Exception as e:
+            self.error = str(e)
+            print(f"[TMSi] Error: {e}")
+        finally:
+            self.stop()
+
+    def stop(self):
+        """Stop acquisition (mirrors RawTMSiThread.stop())."""
+        self.running = False
+        if self._measurement:
+            try:
+                self._measurement.stop()
+            except Exception:
+                pass
+        if self._device:
+            try:
+                self._device.close()
+            except Exception:
+                pass
+
+
+class TrialSTM32Thread(threading.Thread):
+    """Direct binary acquisition from STM32, ported from signal_acquisition_testing.py."""
+    def __init__(self, port: str, baud: int = 921600, estimator=None, on_sample=None):
+        super().__init__(name="TrialSTM32Thread", daemon=True)
+        self.port = port
+        self.baud = baud
+        self.estimator = estimator
+        self.on_sample = on_sample
+        self.running = False
+        self.error: Optional[str] = None
+        self.sample_count = 0
+        self.snapshot_buffer = deque(maxlen=int(5.0 * 550)) # 5 seconds at ~550 Hz
+
+    def run(self):
+        if serial is None:
+            self.error = "pyserial not installed"
+            return
+            
+        self.running = True
+        buffer = bytearray()
+        ser = None
+        last_rx = time.perf_counter()
+
+        while self.running:
+            if ser is None or not ser.is_open:
+                try:
+                    if ser is not None:
+                        try: ser.close()
+                        except Exception: pass
+                    
+                    print(f"[STM32] Connecting to {self.port} at {self.baud}...")
+                    ser = serial.Serial(self.port, self.baud, timeout=0.1)
+                    buffer.clear()
+                    last_rx = time.perf_counter()
+                    print(f"[STM32] Connected to {self.port}")
+                except Exception as e:
+                    self.error = f"Connection failed: {e}"
+                    time.sleep(1.0)
+                    continue
+
+            if time.perf_counter() - last_rx > 3.0:
+                print("[STM32] Stall detected (>3s no data), reconnecting...")
+                try: ser.close()
+                except Exception: pass
+                ser = None
+                continue
+
+            try:
+                chunk = ser.read(ser.in_waiting or 1)
+                if not chunk:
+                    time.sleep(0.001)
+                    continue
+                
+                last_rx = time.perf_counter()
+                buffer.extend(chunk)
+                
+                while len(buffer) >= BIN_PACKET_SIZE:
+                    idx = buffer.find(bytes([BIN_SYNC1, BIN_SYNC2]))
+                    if idx == -1:
+                        if len(buffer) > 0 and buffer[-1] == BIN_SYNC1:
+                            buffer = buffer[-1:]
+                        else:
+                            buffer.clear()
+                        break
+                    
+                    if idx > 0:
+                        buffer = buffer[idx:]
+                    if len(buffer) < BIN_PACKET_SIZE:
+                        break
+                    
+                    packet = buffer[:BIN_PACKET_SIZE]
+                    cs = 0
+                    for b in packet[2:-1]:
+                        cs ^= b
+                    
+                    if cs != packet[-1]:
+                        buffer = buffer[2:]
+                        continue
+
+                    buffer = buffer[BIN_PACKET_SIZE:]
+                    
+                    try:
+                        vals = struct.unpack(BIN_FORMAT, packet)
+                        sample = SampleSTM32(
+                            t_ms=float(vals[2]),
+                            imu1_ok=(vals[3] & 1),
+                            imu2_ok=((vals[3] >> 1) & 1),
+                            yaw1=vals[4], pitch1=vals[5], roll1=vals[6], ax1=vals[7], ay1=vals[8], az1=vals[9],
+                            yaw2=vals[10], pitch2=vals[11], roll2=vals[12], ax2=vals[13], ay2=vals[14], az2=vals[15],
+                            keys_mask=int(vals[16]),
+                            keys_rise=int(vals[17]),
+                            keys_fall=int(vals[18]),
+                            prbs_tick=int(vals[19]),
+                            prbs_lvl=(vals[20] & 1),
+                            in_mark=((vals[20] >> 1) & 1)
+                        )
+                        
+                        self.sample_count += 1
+                        
+                        # Add to snapshot buffer
+                        self.snapshot_buffer.append({
+                            "pc_time": time.perf_counter(),
+                            "t_ms": sample.t_ms,
+                            "prbs_level": sample.prbs_lvl,
+                            "keys_mask": sample.keys_mask,
+                            "imu1_ok": sample.imu1_ok,
+                            "imu2_ok": sample.imu2_ok,
+                        })
+
+                        if self.estimator:
+                            self.estimator.add_stm32_samples([sample])
+                        
+                        if self.on_sample:
+                            self.on_sample(sample)
+                            
+                    except Exception as e:
+                        print(f"[STM32] Parse error: {e}")
+                        continue
+                        
+            except (serial.SerialException, OSError) as e:
+                print(f"[STM32] Serial error: {e}")
+                ser = None
+                time.sleep(1.0)
+                
+        if ser is not None:
+            try: ser.close()
+            except Exception: pass
+
+    def stop(self):
+        self.running = False
+
+    def get_snapshot(self) -> Dict[str, np.ndarray]:
+        """Returns a dictionary of numpy arrays for the current snapshot buffer."""
+        if not self.snapshot_buffer:
+            return {}
+        
+        # Convert deque of dicts to dict of lists, then to dict of numpy arrays
+        snapshot_dict = {key: [d[key] for d in self.snapshot_buffer] for key in self.snapshot_buffer[0]}
+        
+        # Convert lists to numpy arrays
+        for key, value in snapshot_dict.items():
+            snapshot_dict[key] = np.array(value)
+        
+        return snapshot_dict
 
 
 # =============================================================================
@@ -75,7 +476,7 @@ class TrialManager:
         """
         # Configuration
         self.config = config_module or setup_trial
-        self.mock_mode = mock_mode or (SynchronizedAcquisition is None)
+        self.mock_mode = mock_mode or (not _TMSI_AVAILABLE and DummyAcquisition is not None)
         
         if self.mock_mode:
             print("⚠ Running in MOCK MODE (no hardware required)")
@@ -102,8 +503,9 @@ class TrialManager:
         self.imu_buffer_data = []
         
         # Devices
-        self.acquisition = None
-        self.stm32 = None
+        self.acquisition = None   # DummyAcquisition (mock mode only)
+        self._tmsi_thread = None  # TrialTMSiThread (real hardware)
+        self._stm32_thread = None # TrialSTM32Thread (real hardware)
         self.estimator = None
         self.preprocessor = None
         self.storage = None
@@ -126,7 +528,7 @@ class TrialManager:
         self.scheduled_callbacks = []  # Track all scheduled callbacks for cleanup
         # Tkinter is NOT thread-safe: all GUI updates must run on main thread.
         # We therefore schedule periodic manager updates via root.after().
-        self._manager_update_interval_ms = 100
+        self._manager_update_interval_ms = 33 # Faster update for smoother plots
         # Throttle plot updates: acquisition callbacks can fire very frequently.
         # We coalesce updates so Tk doesn't get flooded with after_idle callbacks.
         self._pending_emg_plot = None  # (timestamps, data)
@@ -135,6 +537,10 @@ class TrialManager:
         self._imu_plot_update_scheduled = False
         self._pending_imu_health = None
         self._imu_health_update_scheduled = False
+        self._last_emg_rate_t = time.perf_counter()
+        self._emg_samples_since_rate = 0
+        self._last_imu_rate_t = time.perf_counter()
+        self._imu_samples_since_rate = 0
 
         # Quit coordination
         # If quit is requested while recording/saving, we finish saving the current trial first.
@@ -210,88 +616,87 @@ class TrialManager:
         self.gui.set_state(TrialState.IDLE)
         self.gui.set_trial_info(0, len(self.expanded_protocol))
         
-        if not self.mock_mode:
-            # Initialize acquisition
-            print("\n✓ Initializing acquisition system...")
+        # Initialize acquisition
+        print("\n✓ Initializing acquisition system...")
+        use_dummy = self.config.SYNC_CONFIG.get('use_dummy_signals', False) or self.mock_mode
+
+        if use_dummy:
+            # Initialize with dummy acquisition
+            print("  Using DUMMY signals (simulated)")
+            self.acquisition = DummyAcquisition(
+                emg_sample_rate=self.config.EMG_CONFIG.get('sample_rate', 2048),
+                imu_sample_rate=200,
+                emg_channels=len(self.config.EMG_CONFIG.get('raw_channels', [0, 1, 2, 3])),
+                emg_amplitude=self.config.SYNC_CONFIG.get('dummy_emg_amplitude', 50.0),
+                emg_noise_level=self.config.SYNC_CONFIG.get('dummy_emg_noise_level', 5.0),
+                imu_motion=self.config.SYNC_CONFIG.get('dummy_imu_motion', True),
+                on_emg=self._on_emg_chunk,
+                on_imu=self._on_imu_sample
+            )
+            self.acquisition.start()
+        else:
+            # Try real hardware acquisition
             try:
-                # Check if dummy signals are enabled
-                use_dummy = self.config.SYNC_CONFIG.get('use_dummy_signals', False)
+                # Use real hardware acquisition
+                print("  Using REAL hardware signals")
+                print("  Connecting to devices (this may take up to 30 seconds)...")
                 
-                if use_dummy and DummyAcquisition is not None:
-                    # Use dummy acquisition
-                    print("  Using DUMMY signals (simulated)")
-                    self.acquisition = DummyAcquisition(
-                        emg_sample_rate=self.config.EMG_CONFIG.get('sample_rate', 2048),
-                        imu_sample_rate=200,
-                        emg_channels=len(self.config.EMG_CONFIG.get('raw_channels', [0, 1, 2, 3])),
-                        emg_amplitude=self.config.SYNC_CONFIG.get('dummy_emg_amplitude', 50.0),
-                        emg_noise_level=self.config.SYNC_CONFIG.get('dummy_emg_noise_level', 5.0),
-                        imu_motion=self.config.SYNC_CONFIG.get('dummy_imu_motion', True),
-                        on_emg=self._on_emg_chunk,
-                        on_imu=self._on_imu_sample
-                    )
-                else:
-                    # Use real hardware acquisition
-                    print("  Using REAL hardware signals")
-                    print("  Connecting to devices (this may take up to 30 seconds)...")
-                    
-                    if STM32Reader is not None:
-                        try:
-                            stm32_port = self.config.SYNC_CONFIG.get('stm32_port', None)
-                            if not stm32_port and not sys.platform.startswith('win'):
-                                stm32_port = find_arduino_port(preferred_substr="usbmodem")
-                                
-                            if stm32_port:
-                                self.stm32 = STM32Reader(
-                                    port=stm32_port,
-                                    baud=921600
-                                )
-                                self.stm32.start()
-                                print("  ✓ STM32 Reader started")
-                        except Exception as e:
-                            print(f"  ✗ STM32 Reader failed to start: {e}")
-                    
-                    # Reduce timeout for faster failure if hardware not connected
-                    sync_config = self.config.get_sync_config()
-                    # Override timeout if too long
-                    if sync_config.imu.imu_config.timeout > 2.0:
-                        sync_config.imu.imu_config.timeout = 2.0
-                    
-                    self.acquisition = SynchronizedAcquisition(
-                        config=sync_config,
-                        on_emg=self._on_emg_chunk,
-                        on_imu=self._on_imu_sample
-                    )
+                # --- STM32 (IMU/PRBS) thread ---
+                from src.arduino_connection import find_arduino_port
+                stm32_port = self.config.SYNC_CONFIG.get('stm32_port')
+                if not stm32_port and find_arduino_port:
+                    stm32_port = find_arduino_port()
                 
-                print("  Starting acquisition threads...")
-                self.acquisition.start(ready_timeout_s=30.0)  # Reduced timeout
-                
-                if self.stm32 and SyncDelayEstimator is not None:
+                if not stm32_port:
+                    raise RuntimeError("STM32 port not found (and not set in SYNC_CONFIG)")
+
+                # --- PRBS Sync Estimator (created before TMSi thread so both can share it) ---
+                if SyncDelayEstimator is not None:
                     try:
                         emg_sr = float(self.config.EMG_CONFIG.get('sample_rate', 2048))
                         self.estimator = SyncDelayEstimator(
                             emg_sample_rate=emg_sr,
                             sync_window_s=0.5,
-                            sync_step_s=0.1
+                            sync_step_s=0.1,
                         )
-                        # Tell estimator about trig flags
                         self.estimator._trig_is_status = True
                         self.estimator._detected_trig_bit = 0
-                        
-                        def on_stm32(sample):
-                            self.estimator.add_stm32_samples([sample])
-                        self.stm32.on_sample = on_stm32
-                        
-                        print("  ✓ SyncDelayEstimator started")
+                        print("  \u2713 SyncDelayEstimator started")
                     except Exception as e:
-                        print(f"  ✗ Estimator failed to start: {e}")
-                
-                # Check for errors
-                if hasattr(self.acquisition, 'errors') and self.acquisition.errors:
-                    error_msgs = [str(e) for e in self.acquisition.errors]
-                    raise RuntimeError(f"Acquisition errors: {'; '.join(error_msgs)}")
-                
-                print("  ✓ Acquisition started successfully")
+                        print(f"  \u2717 Estimator failed to start: {e}")
+
+                self._stm32_thread = TrialSTM32Thread(
+                    port=stm32_port,
+                    baud=921600,
+                    estimator=self.estimator,
+                    on_sample=self._on_stm32_sample
+                )
+                self._stm32_thread.start()
+                print(f"  \u2713 STM32 Reader thread started on {stm32_port}")
+
+                # --- TMSi (Porti7) EMG thread with retry + USB-placeholder filter ---
+                self._tmsi_thread = TrialTMSiThread(
+                    sample_rate=self.config.EMG_CONFIG.get('sample_rate', 2048),
+                    raw_channels=self.config.EMG_CONFIG.get('raw_channels', None),
+                    estimator=self.estimator,
+                    on_emg=self._on_emg_chunk,
+                )
+                self._tmsi_thread.start()
+
+                # Wait up to 30 s for TMSi to either connect or fail hard
+                ready_timeout = self.config.SYNC_CONFIG.get('ready_timeout_s', 30.0)
+                t0 = time.perf_counter()
+                while not self._tmsi_thread.running and not self._tmsi_thread.error:
+                    if time.perf_counter() - t0 > ready_timeout:
+                        break
+                    time.sleep(0.2)
+
+                if self._tmsi_thread.error:
+                    raise RuntimeError(f"TMSi thread: {self._tmsi_thread.error}")
+
+                print("  \u2713 TMSi EMG thread started")
+                print("  \u2713 Acquisition started successfully")
+
                 
             except TimeoutError as e:
                 print(f"  ✗ Hardware connection timeout: {e}")
@@ -880,16 +1285,15 @@ class TrialManager:
         """Callback for EMG data chunks."""
         # Update statistics
         self.stats['emg_samples_received'] += len(chunk.sample_t)
+        self._emg_samples_since_rate += len(chunk.sample_t)
         
-        if self.stats['last_emg_time'] is not None:
-            dt = chunk.t - self.stats['last_emg_time']
-            if dt > 0:
-                rate = len(chunk.sample_t) / dt
-                # Exponential moving average
-                alpha = 0.1
-                self.stats['emg_sample_rate_measured'] = (
-                    alpha * rate + (1 - alpha) * self.stats['emg_sample_rate_measured']
-                )
+        now = time.perf_counter()
+        dt = now - self._last_emg_rate_t
+        if dt >= 1.0:
+            self.stats['emg_sample_rate_measured'] = self._emg_samples_since_rate / dt
+            self._emg_samples_since_rate = 0
+            self._last_emg_rate_t = now
+            
         self.stats['last_emg_time'] = chunk.t
         
         # Extract EMG signal
@@ -918,7 +1322,7 @@ class TrialManager:
                 self.emg_buffer_raw.append(emg_signal)
         
         # Update GUI plots (downsample for performance)
-        if len(chunk.sample_t) > 0 and self.gui and self.gui.root:
+        if len(chunk.sample_t) > 0 and self.gui:
             try:
                 # Coalesce EMG plot updates: keep only latest chunk and schedule one GUI update.
                 self._pending_emg_plot = (chunk.sample_t, emg_signal)
@@ -934,15 +1338,15 @@ class TrialManager:
         """Callback for IMU samples."""
         # Update statistics
         self.stats['imu_samples_received'] += 1
+        self._imu_samples_since_rate += 1
         
-        if self.stats['last_imu_time'] is not None:
-            dt = sample.t - self.stats['last_imu_time']
-            if dt > 0:
-                rate = 1.0 / dt
-                alpha = 0.1
-                self.stats['imu_sample_rate_measured'] = (
-                    alpha * rate + (1 - alpha) * self.stats['imu_sample_rate_measured']
-                )
+        now = time.perf_counter()
+        dt = now - self._last_imu_rate_t
+        if dt >= 1.0:
+            self.stats['imu_sample_rate_measured'] = self._imu_samples_since_rate / dt
+            self._imu_samples_since_rate = 0
+            self._last_imu_rate_t = now
+            
         self.stats['last_imu_time'] = sample.t
         
         # Buffer for recording
@@ -952,7 +1356,7 @@ class TrialManager:
                 self.imu_buffer_data.append(sample)
         
         # Update GUI plots
-        if self.gui and self.gui.root:
+        if self.gui:
             try:
                 # Coalesce IMU plot updates: keep only latest sample and schedule one GUI update.
                 ts = np.array([sample.t])
@@ -973,6 +1377,16 @@ class TrialManager:
             except Exception as e:
                 # GUI may be closed, ignore
                 pass
+
+    def _on_stm32_sample(self, sample):
+        """Callback for STM32 samples (PRBS + IMU)."""
+        # Bridge BNO085 orientation/accel into IMU pipeline
+        try:
+            imu_sample = _stm32_to_imu_sample(sample)
+            if imu_sample is not None:
+                self._on_imu_sample(imu_sample)
+        except Exception:
+            pass
 
     def _flush_emg_plot_update(self):
         """Run a coalesced EMG plot update (main thread)."""
@@ -1137,9 +1551,8 @@ class TrialManager:
 
         # === UPDATE PRBS AND BUTTON MATRIX ===
         try:
-            if self.gui and hasattr(self.gui, 'update_stm32_data') and self.stm32 is not None:
-                n_samples_stm32 = int(5.0 * 550) # 5 sec window
-                stm32_snap = self.stm32.get_snapshot(n=n_samples_stm32)
+            if self.gui and hasattr(self.gui, 'update_stm32_data') and self._stm32_thread is not None:
+                stm32_snap = self._stm32_thread.get_snapshot()
                 
                 emg_chunks = None
                 if self.estimator is not None:
@@ -1156,12 +1569,12 @@ class TrialManager:
                         conf = res.confidence
                         self.gui.update_sync_data(now, delay, conf)
                         
-                if stm32_snap and "t_sec" in stm32_snap:
+                if stm32_snap and "pc_time" in stm32_snap:
                     keys_mask = stm32_snap["keys_mask"][-1] if len(stm32_snap["keys_mask"]) > 0 else 0
                     self.gui.update_stm32_data(
                         stm32_snap["pc_time"],
                         stm32_snap["prbs_level"],
-                        keys_mask
+                        int(keys_mask)
                     )
                     
                 if emg_chunks:
@@ -1218,17 +1631,34 @@ class TrialManager:
                     pass
             self.scheduled_callbacks.clear()
             
-        if self.stm32:
+        # Stop TMSi thread (real hardware)
+        if self._tmsi_thread is not None:
             try:
-                self.stm32.stop()
-            except:
+                self._tmsi_thread.stop()
+                self._tmsi_thread.join(timeout=3)
+                print("✓ TMSi thread stopped")
+            except Exception as e:
+                print(f"⚠ Error stopping TMSi thread: {e}")
+            try:
+                if LegacyDevice is not None:
+                    LegacyDevice.cleanup()
+            except Exception:
                 pass
+
+        # Stop STM32
+        if self._stm32_thread is not None:
+            try:
+                self._stm32_thread.stop()
+                self._stm32_thread.join(timeout=2)
+                print("✓ STM32 thread stopped")
+            except Exception as e:
+                print(f"⚠ Error stopping STM32 thread: {e}")
         
-        # Stop acquisition
+        # Stop dummy acquisition (mock mode)
         if self.acquisition:
             try:
                 self.acquisition.stop()
-                print("✓ Acquisition stopped")
+                print("✓ Dummy acquisition stopped")
             except Exception as e:
                 print(f"⚠ Error stopping acquisition: {e}")
         

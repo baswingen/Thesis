@@ -272,23 +272,19 @@ GUI_CONFIG = {
 # =============================================================================
 
 SYNC_CONFIG = {
-    # Enable devices
-    'enable_emg': True,
-    'enable_imu': True,
-    
-    # Dummy signal mode (for testing without hardware)
-    'use_dummy_signals': False,  # Set to True to use simulated signals
-    'dummy_emg_amplitude': 50.0,  # Microvolts, peak amplitude
-    'dummy_emg_noise_level': 5.0,  # Microvolts, noise amplitude
-    'dummy_imu_motion': True,  # Add simulated motion to IMU
-    
-    # Buffer sizes
-    'emg_buffer_max_chunks': 10000,
-    'imu_buffer_max_samples': 200000,
-    
-    # Timing
-    'ready_timeout_s': 30.0,  # Timeout for device initialization
-    'poll_interval_s': 0.01,   # EMG polling interval
+    # STM32 port for PRBS + dual BNO085 IMU
+    # None = auto-detect (uses Arduino VID / chip description heuristics)
+    # Set explicitly if auto-detect picks the wrong port, e.g. 'COM5'
+    'stm32_port': None,
+
+    # Dummy/mock mode (used when hardware is not connected)
+    'use_dummy_signals': False,
+    'dummy_emg_amplitude': 50.0,   # µV peak amplitude
+    'dummy_emg_noise_level': 5.0,  # µV noise
+    'dummy_imu_motion': True,
+
+    # How long to wait for TMSi to connect (seconds)
+    'ready_timeout_s': 30.0,
 }
 
 # =============================================================================
@@ -396,10 +392,10 @@ def print_config_summary():
         print(f"     EMG noise: {SYNC_CONFIG.get('dummy_emg_noise_level', 5.0)} µV")
         print(f"     IMU motion: {SYNC_CONFIG.get('dummy_imu_motion', True)}")
     
-    print(f"  EMG: {'Enabled' if SYNC_CONFIG['enable_emg'] else 'Disabled'}")
+    print(f"  EMG: Enabled")
     print(f"       Sample rate: {EMG_CONFIG['sample_rate']} Hz")
     print(f"       Channels: {len(EMG_CONFIG['raw_channels'])} raw channels")
-    print(f"  IMU: {'Enabled' if SYNC_CONFIG['enable_imu'] else 'Disabled'}")
+    print(f"  IMU: Enabled (via STM32)")
     print(f"       Auto-calibrate: {IMU_CONFIG['auto_calibrate_on_start']}")
     print(f"\nProtocol: Button Matrix")
     print(f"  Exercises: {len(TRIAL_EXERCISES)}")
@@ -456,35 +452,10 @@ def get_imu_config():
     )
 
 
-def get_sync_config():
-    """
-    Get synchronization configuration.
-    
-    Returns:
-        SyncConfig object
-    """
-    from src.synchronized_acquisition import SyncConfig, IMUSyncConfig, EMGSyncConfig
-    
-    imu_sync_cfg = IMUSyncConfig(
-        imu_config=get_imu_config(),
-        calibration_samples=IMU_CONFIG['calibration_samples'],
-        buffer_max_samples=SYNC_CONFIG['imu_buffer_max_samples'],
-    )
-    
-    emg_sync_cfg = EMGSyncConfig(
-        connection_type=EMG_CONFIG['connection_type'],
-        sample_rate=EMG_CONFIG['sample_rate'],
-        selection=get_emg_selection(),
-        poll_interval_s=SYNC_CONFIG['poll_interval_s'],
-        buffer_max_chunks=SYNC_CONFIG['emg_buffer_max_chunks'],
-    )
-    
-    return SyncConfig(
-        enable_imu=SYNC_CONFIG['enable_imu'],
-        enable_emg=SYNC_CONFIG['enable_emg'],
-        imu=imu_sync_cfg,
-        emg=emg_sync_cfg,
-    )
+
+# (get_sync_config removed — trial_manager.py now drives TMSi and STM32
+# directly via TrialTMSiThread and STM32Reader; SynchronizedAcquisition
+# is no longer used.)
 
 
 # Run validation when module is imported

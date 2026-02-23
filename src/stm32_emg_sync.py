@@ -525,7 +525,9 @@ class SyncDelayEstimator:
 
         # Extract binary signal
         if self._detected_trig_bit is not None:
-             raw_bits = ((raw.astype(np.int64) >> self._detected_trig_bit) & 1).astype(np.float64)
+             # nan_to_num prevents RuntimeWarning: invalid value encountered in cast
+             raw_clean = np.nan_to_num(raw, nan=0)
+             raw_bits = ((raw_clean.astype(np.int64) >> self._detected_trig_bit) & 1).astype(np.float64)
         else:
              lo, hi = np.nanmin(raw), np.nanmax(raw)
              thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5

@@ -789,7 +789,7 @@ class IMUDevice:
         Returns:
             True if connection successful
         """
-        port = self.config.port or find_arduino_port(preferred_substr="usbmodem", verbose=True)
+        port = self.config.port or find_arduino_port(verbose=True)
         if not port:
             raise RuntimeError("No serial port found. Please specify port in config.")
         
