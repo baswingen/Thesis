@@ -454,19 +454,23 @@ class SyncDelayEstimator:
         """Feed EMG TRIG chunk (per-sample timestamps and raw TRIG values)."""
         with self._lock:
             self._emg_trig_buf.append((timestamps.copy(), samples.copy()))
-            # Cap independently of update() to prevent OOM if sync never converges
             if len(self._emg_trig_buf) > self._max_raw_chunks:
                 self._emg_trig_buf = self._emg_trig_buf[-self._max_raw_chunks:]
-            self._append_emg_chips(samples)
 
     def add_stm32_samples(self, samples: List) -> None:
         """Feed STM32 samples (list of SampleSTM32)."""
+        import time
+        now = time.perf_counter()
+        dt = 0.002
+        new_items = []
+        for i, s in enumerate(samples):
+            t = now - (len(samples) - 1 - i) * dt
+            new_items.append((t, s))
+
         with self._lock:
-            self._stm32_samples.extend(samples)
-            # Cap independently of update() to prevent OOM if sync never converges
+            self._stm32_samples.extend(new_items)
             if len(self._stm32_samples) > self._max_stm32_samples:
                 self._stm32_samples = self._stm32_samples[-self._max_stm32_samples:]
-            self._append_stm32_chips(samples)
 
     def get_emg_trig_snapshot(self) -> List[Tuple[np.ndarray, np.ndarray]]:
         """Return a shallow copy of the EMG TRIG buffer for visualization.
@@ -619,21 +623,16 @@ class SyncDelayEstimator:
         return trig_raw, stm32, samples_per_chip
 
     def _is_ready(self, now: Optional[float] = None) -> bool:
-        """Check whether enough data / time has elapsed for an update.
-
-        Uses rolling chip-buffer lengths (exact chip counts) instead of
-        raw-buffer size estimates.
-        """
         import time
-
         t = now if now is not None else time.perf_counter()
         if self._last_update_time == 0.0:
-            min_chips = int(self.sync_window_s * self.chip_rate_hz * 0.5)
             with self._lock:
-                return (
-                    len(self._rolling_emg_chips) >= min_chips
-                    and len(self._rolling_stm32_chips) >= min_chips
-                )
+                if not self._emg_trig_buf or not self._stm32_samples:
+                    return False
+                emg_t0 = self._emg_trig_buf[0][0][0]
+                stm32_t0 = self._stm32_samples[0][0]
+                t0 = max(emg_t0, stm32_t0)
+                return (t - t0) >= (self.sync_window_s * 0.5)
         return (t - self._last_update_time) >= self.update_interval_s
 
     def should_update(self, now: Optional[float] = None) -> bool:
@@ -658,50 +657,96 @@ class SyncDelayEstimator:
             self._update_guard.release()
 
     def _do_update(self, now: Optional[float] = None) -> bool:
-        """Correlate the rolling chip buffers and run the Kalman update.
-
-        Uses the pre-built rolling chip arrays (leader) so the Kalman
-        filter (follower) never touches raw sample buffers.  Total cost:
-        one cross-correlation on ~100 chips + 2x2 matrix math ≈ µs.
-        """
         import time
-
         t = now if now is not None else time.perf_counter()
         if not self._is_ready(t):
-            print(f"[SYNC-DBG] _do_update: not ready (last_update={self._last_update_time:.1f}, dt={t - self._last_update_time:.2f}s, interval={self.update_interval_s}s)")
             return False
 
-        # ---- snapshot rolling chip buffers (cheap copy under lock) ----
         with self._lock:
-            emg_chips = self._rolling_emg_chips.copy()
-            stm32_chips = self._rolling_stm32_chips.copy()
+            if not self._emg_trig_buf or not self._stm32_samples:
+                return False
+            emg_history = list(self._emg_trig_buf)
+            stm32_history = list(self._stm32_samples)
+            trig_is_status = self._trig_is_status
+            trig_bit = self._detected_trig_bit
 
-        # Use a larger trailing span so we can estimate lag from multiple windows
-        # (closer to offline robustness) while still running in real time.
-        analysis_span_chips = min(
-            int(2.0 * self.sync_window_s * self.chip_rate_hz),
-            len(emg_chips),
-            len(stm32_chips),
-        )
-        if analysis_span_chips < 20:
-            print(f"[SYNC-DBG] _do_update: too few chips (span={analysis_span_chips})")
+        if trig_is_status and trig_bit is None:
+            raw_concat = np.concatenate([c[1] for c in emg_history])
+            if len(raw_concat) > 100:
+                self._detected_trig_bit = self._detect_trig_bit(raw_concat)
+                trig_bit = self._detected_trig_bit
+
+        span_s = 2.0 * self.sync_window_s
+        start_t = t - span_s
+        end_t = t
+        
+        n_bins = int(np.ceil((end_t - start_t) * self.chip_rate_hz))
+        if n_bins < 20:
             return False
 
-        emg_recent = emg_chips[-analysis_span_chips:]
-        stm32_recent = stm32_chips[-analysis_span_chips:]
+        # Extract STM32
+        stm32_win = np.zeros(n_bins, dtype=np.float64)
+        stm32_counts = np.zeros(n_bins, dtype=np.float64)
+        for (pc_time, s) in stm32_history:
+            if start_t <= pc_time <= end_t:
+                idx = int((pc_time - start_t) * self.chip_rate_hz)
+                if 0 <= idx < n_bins:
+                    stm32_win[idx] += s.prbs_lvl
+                    stm32_counts[idx] += 1
+        
+        mask = stm32_counts > 0
+        if not np.any(mask): return False
+        stm32_win[mask] = stm32_win[mask] / stm32_counts[mask]
+        stm32_recent = np.where(stm32_win > 0.5, 1.0, 0.0)
+        
+        last_val = 0.0
+        for i in range(n_bins):
+            if stm32_counts[i] == 0:
+                stm32_recent[i] = last_val
+            else:
+                last_val = stm32_recent[i]
 
-        window_chips = min(
-            int(self.sync_window_s * self.chip_rate_hz),
-            len(emg_recent),
-            len(stm32_recent),
-        )
-        if window_chips < 20:
-            print(f"[SYNC-DBG] _do_update: window too small ({window_chips})")
-            return False
+        # Extract EMG
+        emg_win = np.zeros(n_bins, dtype=np.float64)
+        emg_counts = np.zeros(n_bins, dtype=np.float64)
+        
+        for (t_arr, v_raw) in emg_history:
+            if trig_bit is not None:
+                y_bin = ((np.nan_to_num(v_raw, nan=0).astype(np.int64) >> trig_bit) & 1).astype(np.float64)
+            else:
+                lo, hi = np.nanmin(v_raw), np.nanmax(v_raw)
+                thr = (lo + hi) / 2.0 if (hi - lo) > 1e-9 else 0.5
+                y_bin = (v_raw > thr).astype(np.float64)
+                
+            mask_t = (t_arr >= start_t) & (t_arr <= end_t)
+            if not np.any(mask_t): continue
+            
+            t_valid = t_arr[mask_t]
+            y_valid = y_bin[mask_t]
+            
+            idxs = ((t_valid - start_t) * self.chip_rate_hz).astype(np.int64)
+            valid_idxs = (idxs >= 0) & (idxs < n_bins)
+            if np.any(valid_idxs):
+                v_idxs = idxs[valid_idxs]
+                v_y = y_valid[valid_idxs]
+                np.add.at(emg_win, v_idxs, v_y)
+                np.add.at(emg_counts, v_idxs, 1.0)
+                
+        mask = emg_counts > 0
+        if not np.any(mask): return False
+        emg_win[mask] = emg_win[mask] / emg_counts[mask]
+        emg_recent = np.where(emg_win > 0.5, 1.0, 0.0)
+        
+        last_val = 0.0
+        for i in range(n_bins):
+            if emg_counts[i] == 0:
+                emg_recent[i] = last_val
+            else:
+                last_val = emg_recent[i]
 
+        window_chips = min(int(self.sync_window_s * self.chip_rate_hz), len(emg_recent), len(stm32_recent))
         step_chips = max(1, int(round(self.sync_step_s * self.chip_rate_hz)))
-
-        # ---- robust lag measurement from a short sliding-window series ----
+        
         try:
             _, lag_series, peak_series, _, refined_lag_series = sliding_window_lag_series(
                 emg_recent,

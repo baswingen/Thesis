@@ -1,138 +1,94 @@
 """
-TMSi Porti7/REFA Signal Acquisition
-====================================
-Signal acquisition script for legacy TMSi devices (Porti7, REFA, REFA Extended).
-Uses the TMSi Python Interface with legacy device support.
+TMSi Porti7/REFA Signal Acquisition (PyQt Version)
+====================================================
+
+High-performance signal acquisition script for legacy TMSi devices 
+(Porti7, REFA, REFA Extended).
+Features:
+- Threaded acquisition pipeline for stable sampling (avoids blocking main thread)
+- PyQtGraph-based real-time visualization
+- Optional digital bandpass filtering using scipy
+- Clean and robust device discovery and connection
 
 Prerequisites:
 - TMSi device connected via USB (or Bluetooth paired)
-- TMSi drivers installed (Windows 10/11 64-bit)
-- TMSiSDK.dll in system PATH or in tmsi-python-interface/TMSiSDK/device/devices/legacy/
+- PyQt6 and pyqtgraph installed (`pip install pyqtgraph PyQt6`)
+- Optional: scipy (`pip install scipy`) for filtering
 """
 
 import sys
 import os
 import time
+import threading
+from collections import deque
+from typing import Optional, List, Tuple
 import numpy as np
 import warnings
-from collections import deque
-from datetime import datetime
-
-# Optional visualization imports
-try:
-    import matplotlib
-    matplotlib.use('TkAgg')  # Use TkAgg backend for better compatibility
-    import matplotlib.pyplot as plt
-    from matplotlib.animation import FuncAnimation
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    MATPLOTLIB_AVAILABLE = False
-    print("Warning: matplotlib not available - visualization disabled")
-
-# Optional filtering imports
-try:
-    from scipy import signal
-    SCIPY_AVAILABLE = True
-except Exception as e:
-    SCIPY_AVAILABLE = False
-    error_type = type(e).__name__
-    print("Warning: scipy not available - filtering disabled")
-    print(f"         Error type: {error_type}")
-    print(f"         Error message: {e}")
-    if "DLL" in str(e) or "dll" in str(e) or "beleid" in str(e) or "policy" in str(e).lower():
-        print("         Note: This appears to be a Windows security policy issue blocking DLL loading.")
-        print("         You may need to adjust Windows Application Control policies or run as administrator.")
-    elif isinstance(e, ImportError):
-        print("         Install with: pip install scipy>=1.11.0")
 
 # Add TMSi Python Interface to path
-tmsi_interface_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tmsi-python-interface')
-if os.path.exists(tmsi_interface_path):
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+tmsi_interface_path = os.path.join(PROJECT_ROOT, 'tmsi-python-interface')
+if os.path.exists(tmsi_interface_path) and tmsi_interface_path not in sys.path:
     sys.path.insert(0, tmsi_interface_path)
 
-# Import TMSi SDK
+try:
+    from PyQt6 import QtWidgets, QtCore, QtGui
+    import pyqtgraph as pg
+    _PYQTGRAPH_AVAILABLE = True
+except ImportError:
+    print("Error: PyQt6 and pyqtgraph are required.")
+    print("Run: pip install PyQt6 pyqtgraph")
+    sys.exit(1)
+
 try:
     from TMSiSDK.tmsi_sdk import TMSiSDK
     from TMSiSDK.device.tmsi_device_enums import DeviceType, DeviceInterfaceType, MeasurementType
     from TMSiSDK.device.devices.legacy.legacy_device import LegacyDevice
+    from TMSiSDK.device.devices.legacy.measurements.signal_measurement import SignalMeasurement
+    _TMSI_AVAILABLE = True
 except ImportError as e:
     print("="*60)
     print("ERROR: TMSi Python Interface not found!")
     print("="*60)
-    print("\nThe TMSi Python Interface needs to be available.")
     print(f"\nImport error: {e}")
-    print("\nMake sure tmsi-python-interface is in the project root.")
-    print("="*60)
-    exit(1)
+    sys.exit(1)
 
-# -----------------------
-# User Settings
-# -----------------------
-TEST_DURATION = 5  # seconds
-INTERFACE_TYPE = DeviceInterfaceType.usb  # or DeviceInterfaceType.bluetooth
-SAMPLE_RATE = None  # Use device default (None) or set specific rate (e.g., 2048)
-REFERENCE_CALCULATION = False  # For EMG differential pairs, this is usually best kept OFF
+# Optional filtering
+try:
+    from scipy import signal
+    _SCIPY_AVAILABLE = True
+except ImportError:
+    _SCIPY_AVAILABLE = False
+    print("Warning: scipy not available - filtering disabled")
 
-# EMG channel configuration (make this consistent!)
-# -------------------------------------------------
-# You said: "channel 1 and 2 being connected to my bicep, and ground to ground".
-# In the TMSi sample matrix, indices are 0-based, so:
-#   - "Channel 1" -> index 0
-#   - "Channel 2" -> index 1
-#
-# Recommended: treat those two channels as a *differential* pair:
-#   EMG(t) = channel_1(t) - channel_2(t)
-#
-# This is robust even if the SDK reports duplicated names (e.g., multiple "ExG")
-# and even if the device does not expose physical port numbers.
 
+# ============================================================================
+# SETTINGS
+# ============================================================================
+DEVICE_INTERFACE = "usb"  # "usb" or "bluetooth"
+SAMPLE_RATE = 2000        # Try to request this sample rate
+
+# EMG channel configuration
 USE_EMG_DIFFERENTIAL_PAIR = True
-# IMPORTANT: Channel numbering can be confusing:
-# - In the numpy `samples` array, channels are 0-based (first channel is index 0).
-# - Humans often refer to channels as 1-based ("channel 1", "channel 2", ...).
-#
-# If you say "electrodes on channel 3 and 4", that usually means:
-#   channel numbers 3 & 4  -> numpy indices 2 & 3
-#
-# Set EMG_PAIR_CHANNELS_ARE_1_BASED=True and then use *channel numbers* below.
 EMG_PAIR_CHANNELS_ARE_1_BASED = True
-EMG_PAIR_POS_CHANNEL = 1   # channel number (if 1-based) OR index (if 0-based)
-EMG_PAIR_NEG_CHANNEL = 2   # channel number (if 1-based) OR index (if 0-based)
+EMG_PAIR_POS_CHANNEL = 1   # Channel number (1-based)
+EMG_PAIR_NEG_CHANNEL = 2   # Channel number (1-based)
 
-# Fallback selection options (used only if USE_EMG_DIFFERENTIAL_PAIR=False)
-EMG_INPUT_PORT = None            # e.g. 17 for "Input 17" (set to None to disable)
-EMG_CHANNEL_NAME = None          # e.g. "Bip1", "ExG1" (overrides EMG_INPUT_PORT if set)
-EMG_CHANNEL_INDEX = None         # e.g. 16 (overrides EMG_CHANNEL_NAME/EMG_INPUT_PORT if set)
+# Filter Settings
+APPLY_BANDPASS_FILTER = True
+BANDPASS_LOW_CUTOFF = 20.0
+BANDPASS_HIGH_CUTOFF = 450.0
+FILTER_ORDER = 4
 
-# Visualization settings
-# ----------------------
-ENABLE_REALTIME_PLOT = True      # Enable live matplotlib plot
-PLOT_WINDOW_SECONDS = 5.0        # Time window to display (seconds)
-APPLY_BANDPASS_FILTER = True     # Apply EMG bandpass filter (20-450 Hz)
-BANDPASS_LOW_CUTOFF = 20.0       # High-pass cutoff (Hz) - removes DC offset/motion artifacts
-BANDPASS_HIGH_CUTOFF = 450.0     # Low-pass cutoff (Hz) - removes high-frequency noise
-FILTER_ORDER = 4                 # Butterworth filter order
-AUTO_SAVE_PLOT = False           # Automatically save plot at end
-PLOT_SAVE_PATH = "emg_plot.png"  # Path to save plot
+PLOT_WINDOW_SECONDS = 5.0
+SMOOTHING_WINDOW_SECONDS = 0.2
 
-# -----------------------
-# Helper Functions
-# -----------------------
+# ============================================================================
+# FILTERING
+# ============================================================================
 class BandpassFilter:
-    """
-    Real-time bandpass filter using scipy's Butterworth filter.
-    Maintains state across calls to avoid edge artifacts.
-    """
+    """Real-time bandpass filter using scipy's Butterworth filter."""
     def __init__(self, lowcut, highcut, fs, order=4):
-        """
-        Initialize bandpass filter.
-        
-        Args:
-            lowcut: Low cutoff frequency (Hz)
-            highcut: High cutoff frequency (Hz)
-            fs: Sample rate (Hz)
-            order: Filter order
-        """
         self.lowcut = lowcut
         self.highcut = highcut
         self.fs = fs
@@ -140,740 +96,367 @@ class BandpassFilter:
         self.sos = None
         self.zi = None
         
-        if SCIPY_AVAILABLE:
-            # Create second-order sections representation
+        if _SCIPY_AVAILABLE:
             nyquist = 0.5 * fs
-            low = lowcut / nyquist
-            high = highcut / nyquist
-            
-            # Ensure cutoffs are valid
-            if low <= 0:
-                low = 0.01
-            if high >= 1:
-                high = 0.99
+            low = max(0.01, lowcut / nyquist)
+            high = min(0.99, highcut / nyquist)
             
             self.sos = signal.butter(order, [low, high], btype='band', output='sos')
-            # Initialize filter state
             self.zi = signal.sosfilt_zi(self.sos)
     
     def filter(self, data):
-        """
-        Apply bandpass filter to data.
-        
-        Args:
-            data: 1D numpy array of samples
-            
-        Returns:
-            Filtered data
-        """
-        if not SCIPY_AVAILABLE or self.sos is None:
+        if not _SCIPY_AVAILABLE or self.sos is None or len(data) == 0:
             return data
-        
-        # Apply filter with state
         filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi)
         return filtered
 
+# ============================================================================
+# ACQUISITION THREAD
+# ============================================================================
+class TMSiAcquisitionThread(threading.Thread):
+    """Background thread handling connection and data reading for TMSi device."""
+    def __init__(self, sample_rate=2000):
+        super().__init__(name="TMSiAcqThread", daemon=True)
+        self.sample_rate = sample_rate
+        self.device: Optional[LegacyDevice] = None
+        self.measurement: Optional[SignalMeasurement] = None
+        self.running = False
+        self.channels_info = []
+        
+        # Buffer passing data to UI. Stores tuples of (t_array, data_array)
+        self.data_queue = deque(maxlen=200) 
+        
+        # Stats
+        self.estimated_rate_hz = 0.0
+        self.sample_count = 0
+        self.error: str = ""
+        self.device_name = ""
 
-# -----------------------
-# Main Script
-# -----------------------
+    def run(self):
+        self.running = True
+        try:
+            # Discovery
+            print("[TMSi] Scanning for Legacy Devices...")
+            devices = LegacyDevice.discover(DEVICE_INTERFACE)
+            valid_devices = [d for d in devices if d._device_name and len(d._device_name) > 5 and "-" not in d._device_name[4:]]
+
+            if not valid_devices:
+                self.error = "No valid TMSi devices found."
+                print(f"[TMSi] {self.error}")
+                self.running = False
+                return
+            
+            self.device = valid_devices[0]
+            self.device_name = self.device._device_name
+            print(f"[TMSi] Opening device: {self.device_name}")
+            
+            self.device.open()
+            print("[TMSi] Device opened successfully.")
+            
+            # Extract channel info for mapping
+            for i, ch in enumerate(self.device.get_device_channels()):
+                try:
+                    cname = ch.get_channel_name()
+                    cunit = ch.get_channel_unit_name()
+                except:
+                    cname = f"CH{i}"
+                    cunit = ""
+                self.channels_info.append({"index": i, "name": cname, "unit": cunit})
+                
+            self.measurement = SignalMeasurement(self.device)
+            self.measurement.set_sample_rate(self.sample_rate)
+            self.measurement.start()
+            
+            actual_sr = self.measurement.get_device_sample_rate()
+            print(f"[TMSi] Measurement started. Rate: {actual_sr} Hz")
+            
+            last_stats_t = time.perf_counter()
+            count_since_last = 0
+            t_offset = 0.0
+            dt = 1.0 / actual_sr if actual_sr > 0 else 0.0005
+            
+            while self.running:
+                try:
+                    # blocking=True so thread yields if no data
+                    samples = self.measurement.get_samples(blocking=True)
+                    
+                    if samples is not None and len(samples) > 0:
+                        n = samples.shape[0]
+                        self.sample_count += n
+                        count_since_last += n
+                        
+                        t_chunk = t_offset + np.arange(n) * dt
+                        t_offset = t_chunk[-1] + dt
+                        
+                        # Offload to UI queue
+                        self.data_queue.append((t_chunk, samples))
+                        
+                        now = time.perf_counter()
+                        if now - last_stats_t > 1.0:
+                            self.estimated_rate_hz = count_since_last / (now - last_stats_t)
+                            count_since_last = 0
+                            last_stats_t = now
+                except Exception as e:
+                    print(f"[TMSi] Warning: get_samples failed: {e}")
+                    time.sleep(0.1)
+
+        except Exception as e:
+            self.error = f"Pipeline Error: {e}"
+            print(f"[TMSi] {self.error}")
+        finally:
+            self.cleanup()
+
+    def cleanup(self):
+        self.running = False
+        if self.measurement:
+            try: self.measurement.stop()
+            except: pass
+        if self.device:
+            try: self.device.close()
+            except: pass
+
+
+# ============================================================================
+# UI APPLICATION
+# ============================================================================
+class EMGWindow(QtWidgets.QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Real-time EMG Acquisition (TMSi)")
+        self.resize(1100, 700)
+        
+        self.setStyleSheet("""
+            QMainWindow { background-color: #2c3e50; }
+            QLabel { color: #ecf0f1; font-family: 'Segoe UI', sans-serif; }
+            QFrame#stats { background-color: #34495e; border-radius: 6px; padding: 10px; }
+        """)
+
+        central = QtWidgets.QWidget()
+        self.setCentralWidget(central)
+        layout = QtWidgets.QHBoxLayout(central)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        # --- Sidebar ---
+        sidebar = QtWidgets.QFrame()
+        sidebar.setFixedWidth(260)
+        side_layout = QtWidgets.QVBoxLayout(sidebar)
+        side_layout.setContentsMargins(0,0,0,0)
+        
+        title = QtWidgets.QLabel("EMG SETUP")
+        title.setStyleSheet("font-weight: bold; font-size: 16px; color: #3498db; margin-bottom: 10px;")
+        side_layout.addWidget(title)
+        
+        self.stats_frame = QtWidgets.QFrame()
+        self.stats_frame.setObjectName("stats")
+        sf_layout = QtWidgets.QVBoxLayout(self.stats_frame)
+        
+        self.lbl_status = QtWidgets.QLabel("Status: Initializing...")
+        self.lbl_status.setStyleSheet("font-weight: bold;")
+        self.lbl_device = QtWidgets.QLabel("Device: --")
+        self.lbl_srate = QtWidgets.QLabel("Rate: -- Hz")
+        self.lbl_samples = QtWidgets.QLabel("Total: 0 samples")
+        self.lbl_ch_info = QtWidgets.QLabel("Config: Pending...")
+        self.lbl_ch_info.setWordWrap(True)
+        self.lbl_ch_info.setStyleSheet("color: #f39c12; font-size: 11px;")
+
+        for w in [self.lbl_status, self.lbl_device, self.lbl_srate, self.lbl_samples, self.lbl_ch_info]:
+            sf_layout.addWidget(w)
+            
+        side_layout.addWidget(self.stats_frame)
+        side_layout.addStretch()
+        
+        layout.addWidget(sidebar)
+        
+        # --- Main Plotting Area ---
+        self.graphics_layout = pg.GraphicsLayoutWidget()
+        layout.addWidget(self.graphics_layout, stretch=1)
+        
+        # Plot 1: Raw
+        self.plot_raw = self.graphics_layout.addPlot(row=0, col=0, title="Raw EMG Signal")
+        self.plot_raw.setLabel("left", "Voltage", units="µV")
+        self.plot_raw.showGrid(x=True, y=True, alpha=0.3)
+        self.curve_raw = self.plot_raw.plot(pen=pg.mkPen('#3498db', width=1.5))
+        
+        # Plot 2: Processed
+        self.plot_filtered = self.graphics_layout.addPlot(row=1, col=0, title="Processed EMG Signal (Bandpass + Rectified + Smoothed)")
+        self.plot_filtered.setLabel("left", "Voltage", units="µV")
+        self.plot_filtered.setLabel("bottom", "Time", units="s")
+        self.plot_filtered.showGrid(x=True, y=True, alpha=0.3)
+        self.curve_filtered = self.plot_filtered.plot(pen=pg.mkPen('#e74c3c', width=1.5))
+        
+        self.plot_filtered.setXLink(self.plot_raw)
+        
+        # --- State ---
+        self.tmsi_thread = TMSiAcquisitionThread(sample_rate=SAMPLE_RATE)
+        self.bpf = None
+        
+        self.pos_idx = -1
+        self.neg_idx = -1
+        self.emg_configured = False
+        
+        # Render buffers
+        max_pts = int(PLOT_WINDOW_SECONDS * SAMPLE_RATE) + 1000
+        self.time_buf = deque(maxlen=max_pts)
+        self.raw_buf = deque(maxlen=max_pts)
+        self.filt_buf = deque(maxlen=max_pts)
+
+        # Timers
+        self.update_timer = QtCore.QTimer()
+        self.update_timer.timeout.connect(self.update_ui)
+        self.update_timer.start(33) # ~30FPS refresh
+
+        # Start acquisition
+        self.tmsi_thread.start()
+
+
+    def configure_emg_channel(self):
+        """Map the configured channel numbers/indices to the actual layout."""
+        if not self.tmsi_thread.channels_info:
+            return False
+            
+        n_ch = len(self.tmsi_thread.channels_info)
+        
+        try:
+            p_raw = int(EMG_PAIR_POS_CHANNEL)
+            n_raw = int(EMG_PAIR_NEG_CHANNEL)
+        except ValueError:
+            self.lbl_ch_info.setText("Config Error: Invalid POS/NEG channels.")
+            return False
+
+        if EMG_PAIR_CHANNELS_ARE_1_BASED:
+            p_idx = p_raw - 1
+            n_idx = n_raw - 1
+        else:
+            p_idx = p_raw
+            n_idx = n_raw
+            
+        if not (0 <= p_idx < n_ch) or not (0 <= n_idx < n_ch):
+            self.lbl_ch_info.setText(f"Config Error: Indices out of range (0-{n_ch-1}).")
+            return False
+            
+        self.pos_idx = p_idx
+        self.neg_idx = n_idx
+        self.emg_configured = True
+        
+        c1 = self.tmsi_thread.channels_info[p_idx]['name']
+        c2 = self.tmsi_thread.channels_info[n_idx]['name']
+        
+        info = f"Sampling: Differential\n+ : [{p_idx}] {c1}\n- : [{n_idx}] {c2}"
+        self.lbl_ch_info.setText(info)
+        
+        if APPLY_BANDPASS_FILTER and _SCIPY_AVAILABLE:
+            sr = self.tmsi_thread.sample_rate # fallback
+            if self.tmsi_thread.measurement:
+                sr = self.tmsi_thread.measurement.get_device_sample_rate()
+            self.bpf = BandpassFilter(BANDPASS_LOW_CUTOFF, BANDPASS_HIGH_CUTOFF, sr, FILTER_ORDER)
+            self.smooth_window_samples = max(1, int(SMOOTHING_WINDOW_SECONDS * sr))
+            self.plot_filtered.setTitle(f"Processed EMG ({BANDPASS_LOW_CUTOFF}-{BANDPASS_HIGH_CUTOFF}Hz BP \u2192 Rectify \u2192 {SMOOTHING_WINDOW_SECONDS}s Smooth)")
+        
+        return True
+
+
+    def update_ui(self):
+        if not self.tmsi_thread.running and not self.tmsi_thread.error:
+            return
+            
+        if self.tmsi_thread.error:
+            self.lbl_status.setText(f"ERROR: {self.tmsi_thread.error}")
+            self.lbl_status.setStyleSheet("color: #e74c3c; font-weight: bold;")
+            return
+            
+        self.lbl_status.setText("Status: Recording")
+        self.lbl_status.setStyleSheet("color: #2ecc71; font-weight: bold;")
+        self.lbl_device.setText(f"Device: {self.tmsi_thread.device_name}")
+        self.lbl_srate.setText(f"Rate: {self.tmsi_thread.estimated_rate_hz:.1f} Hz")
+        self.lbl_samples.setText(f"Total: {self.tmsi_thread.sample_count}")
+        
+        if not self.emg_configured:
+            if not self.configure_emg_channel():
+                return
+                
+        # Drain queue
+        chunks_t = []
+        chunks_v = []
+        
+        while self.tmsi_thread.data_queue:
+            t, chunk = self.tmsi_thread.data_queue.popleft()
+            if len(chunk) > 0 and chunk.shape[1] > max(self.pos_idx, self.neg_idx):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    emg_diff = chunk[:, self.pos_idx] - chunk[:, self.neg_idx]
+                    
+                chunks_t.append(t)
+                chunks_v.append(emg_diff)
+
+        if not chunks_t:
+            return
+            
+        # Concatenate and filter out NaNs
+        t_batch = np.concatenate(chunks_t)
+        v_batch = np.concatenate(chunks_v)
+        
+        valid_mask = ~np.isnan(v_batch)
+        if not np.any(valid_mask):
+            return
+            
+        t_valid = t_batch[valid_mask]
+        v_valid = v_batch[valid_mask]
+        
+        self.time_buf.extend(t_valid)
+        self.raw_buf.extend(v_valid)
+        
+        if self.bpf is not None:
+            v_filt = self.bpf.filter(v_valid)
+            self.filt_buf.extend(v_filt)
+            
+        # Redraw
+        if len(self.time_buf) > 0:
+            t_arr = np.array(self.time_buf)
+            
+            # Use relative time for nicer x-axis
+            t_rel = t_arr - t_arr[0]
+            if t_arr[-1] - t_arr[0] > PLOT_WINDOW_SECONDS:
+                t_rel = t_arr - (t_arr[-1] - PLOT_WINDOW_SECONDS)
+                
+            self.curve_raw.setData(t_rel, np.array(self.raw_buf))
+            self.plot_raw.setXRange(max(0, t_rel[-1] - PLOT_WINDOW_SECONDS), t_rel[-1])
+            
+            if self.bpf is not None and len(self.filt_buf) == len(self.time_buf):
+                # Apply processing to the entire buffer for stability, or just the visible part
+                v_f = np.array(self.filt_buf)
+                
+                # 1. Rectification
+                v_rect = np.abs(v_f)
+                
+                # 2. Smoothing (Moving Average)
+                w = self.smooth_window_samples
+                if len(v_rect) > w:
+                    # Use a fast convolution for SMA
+                    kernel = np.ones(w) / w
+                    v_smooth = np.convolve(v_rect, kernel, mode='same')
+                else:
+                    v_smooth = v_rect
+                    
+                self.curve_filtered.setData(t_rel, v_smooth)
+
+
+    def closeEvent(self, event):
+        self.update_timer.stop()
+        self.tmsi_thread.cleanup()
+        event.accept()
+
+# ============================================================================
+# MAIN
+# ============================================================================
 def main():
-    print("="*60)
-    print("TMSi Porti7/REFA Signal Acquisition")
-    print("="*60)
+    app = QtWidgets.QApplication(sys.argv)
     
-    # Initialize SDK
-    print("\n1. Initializing TMSi SDK...")
-    try:
-        sdk = TMSiSDK()
-    except Exception as e:
-        print(f"ERROR: Failed to initialize SDK: {e}")
-        return
+    # We use a slightly different style from dual_BNO085 but consistent dark theme
+    app.setStyle("Fusion")
     
-    # Discover legacy devices
-    print(f"\n2. Scanning for TMSi legacy devices (Porti7/REFA)...")
-    try:
-        devices, dongles = sdk.discover(DeviceType.legacy, dr_interface=INTERFACE_TYPE)
-        
-        if not devices or len(devices) == 0:
-            print("ERROR: No TMSi legacy devices found!")
-            print("\nCheck:")
-            print("  - Device is powered on")
-            print("  - USB cable is connected (or Bluetooth paired)")
-            print("  - TMSi drivers are installed")
-            print("  - TMSiSDK.dll is available in system PATH or legacy module directory")
-            return
-        
-        print(f"[OK] Found {len(devices)} device(s)")
-        for i, dev in enumerate(devices):
-            try:
-                dev_name = dev.get_device_name()
-                print(f"  [{i}] {dev_name}")
-            except Exception as e:
-                print(f"  [{i}] Device (error getting name: {e})")
-    
-    except Exception as e:
-        print(f"ERROR during device discovery: {e}")
-        import traceback
-        traceback.print_exc()
-        return
-    
-    # Connect to first device
-    print("\n3. Connecting to first device...")
-    try:
-        device = devices[0]
-        device.open()
-        print(f"[OK] Connected to device")
-        
-        # Get device info
-        try:
-            print(f"   Device name: {device.get_device_name()}")
-            print(f"   Serial number: {device.get_device_serial_number()}")
-            print(f"   Number of channels: {device.get_num_channels()}")
-            print(f"   Base sample rate: {device.get_device_base_sample_rate()} Hz")
-            print(f"   Hardware version: {device.get_device_hardware_version()}")
-            print(f"   Software version: {device.get_device_software_version()}")
-            
-            # Display channel information
-            channels = device.get_device_channels()
-            print(f"\n   Channels ({len(channels)}):")
-            
-            # WORKAROUND: Try to fix encoding issue in TMSi legacy_device.py
-            # The library incorrectly decodes UTF-16LE channel names
-            def fix_channel_name(corrupted_name, channel_index):
-                """
-                Fix corrupted UTF-16LE channel names from TMSi legacy device.
-                The TMSi library treats uint16 values as bytes, corrupting UTF-16LE decoding.
-                
-                For Porti7 (38 channels):
-                - Channels 0-15: UNI1-UNI16 (unipolar)
-                - Channels 16-31: BIP1-BIP16 (bipolar inputs 1-16)
-                - Channels 32-35: BIP17-BIP20 (bipolar inputs 17-20)
-                - Channel 36: STATUS
-                - Channel 37: COUNTER
-                """
-                try:
-                    if channel_index < 16:
-                        # Unipolar channels
-                        return f"UNI{channel_index + 1}"
-                    elif channel_index < 36:
-                        # Bipolar channels (BIP1-BIP20)
-                        return f"BIP{channel_index - 15}"
-                    elif channel_index == 36:
-                        return "STATUS"
-                    elif channel_index == 37:
-                        return "COUNTER"
-                    else:
-                        return f"CH{channel_index}"
-                except:
-                    return f"CH{channel_index}"
-            
-            # Fix ALL channels first (before displaying)
-            print(f"   Fixing channel names for encoding issues...")
-            channels_fixed = 0
-            for i, ch in enumerate(channels):
-                try:
-                    ch_name = ch.get_channel_name()
-                    # Check if name has encoding issues (non-ASCII characters)
-                    if any(ord(c) > 127 for c in ch_name):
-                        # Fix the corrupted name
-                        ch_name_fixed = fix_channel_name(ch_name, i)
-                        # Override the channel's internal name
-                        ch._alt_name = ch_name_fixed
-                        ch._def_name = ch_name_fixed
-                        channels_fixed += 1
-                except:
-                    pass
-            
-            if channels_fixed > 0:
-                print(f"   Fixed {channels_fixed} channel names with encoding issues")
-            
-            # Show up to first 32 channels for easier mapping
-            max_preview = min(32, len(channels))
-            for i, ch in enumerate(channels[:max_preview]):
-                try:
-                    ch_name = ch.get_channel_name()
-                    ch_unit = ch.get_channel_unit_name()
-                    # Legacy devices may expose a physical port number/name
-                    ch_port = None
-                    ch_port_name = None
-                    try:
-                        if hasattr(ch, "get_channel_port"):
-                            ch_port = ch.get_channel_port()
-                        if hasattr(ch, "get_channel_port_name"):
-                            ch_port_name = ch.get_channel_port_name()
-                    except Exception:
-                        ch_port = None
-                        ch_port_name = None
-
-                    ch_name_display = f"{ch_name:20s}"
-                    if ch_port is not None and ch_port != -1:
-                        port_str = f"port={int(ch_port):>2d}"
-                        if ch_port_name:
-                            port_str += f" ({ch_port_name})"
-                        print(f"     [{i:3d}] {ch_name_display} - {ch_unit:10s}  {port_str}")
-                    else:
-                        print(f"     [{i:3d}] {ch_name_display} - {ch_unit:10s}")
-                except Exception as e:
-                    print(f"     [{i:3d}] <error reading channel: {e}>")
-            
-            if len(channels) > max_preview:
-                print(f"     ... and {len(channels) - max_preview} more channels:")
-                # Show remaining channels
-                for i in range(max_preview, len(channels)):
-                    try:
-                        ch = channels[i]
-                        ch_name = ch.get_channel_name()
-                        ch_unit = ch.get_channel_unit_name()
-                        ch_port = None
-                        ch_port_name = None
-                        try:
-                            if hasattr(ch, "get_channel_port"):
-                                ch_port = ch.get_channel_port()
-                            if hasattr(ch, "get_channel_port_name"):
-                                ch_port_name = ch.get_channel_port_name()
-                        except Exception:
-                            ch_port = None
-                            ch_port_name = None
-                        ch_name_display = f"{ch_name:20s}"
-                        if ch_port is not None and ch_port != -1:
-                            port_str = f"port={int(ch_port):>2d}"
-                            if ch_port_name:
-                                port_str += f" ({ch_port_name})"
-                            print(f"     [{i:3d}] {ch_name_display} - {ch_unit:10s}  {port_str}")
-                        else:
-                            print(f"     [{i:3d}] {ch_name_display} - {ch_unit:10s}")
-                    except Exception as e:
-                        print(f"     [{i:3d}] <error reading channel: {e}>")
-
-            # Resolve EMG input port / channel
-            selected_channel_index = None
-            selected_channel_name = None
-
-            # Build a simple name -> index map (now with fixed names)
-            name_to_index = {}
-            for i, ch in enumerate(channels):
-                try:
-                    name_to_index[ch.get_channel_name()] = i
-                    name_to_index[ch.get_channel_name().upper()] = i
-                except:
-                    pass
-
-            # 0) Explicit channel index takes precedence (most reliable if names are duplicated)
-            if EMG_CHANNEL_INDEX is not None:
-                try:
-                    idx = int(EMG_CHANNEL_INDEX)
-                    if 0 <= idx < len(channels):
-                        selected_channel_index = idx
-                        selected_channel_name = channels[idx].get_channel_name()
-                        print(f"\n[OK] Using EMG_CHANNEL_INDEX={idx} -> '{selected_channel_name}'")
-                    else:
-                        print(f"\n[!] WARNING: EMG_CHANNEL_INDEX={idx} is out of range (0..{len(channels)-1})")
-                except Exception as e:
-                    print(f"\n[!] WARNING: Could not use EMG_CHANNEL_INDEX={EMG_CHANNEL_INDEX}: {e}")
-
-            # 1) Explicit channel name takes precedence
-            if EMG_CHANNEL_NAME is not None:
-                if EMG_CHANNEL_NAME in name_to_index:
-                    selected_channel_index = name_to_index[EMG_CHANNEL_NAME]
-                    selected_channel_name = EMG_CHANNEL_NAME
-                elif EMG_CHANNEL_NAME.upper() in name_to_index:
-                    selected_channel_index = name_to_index[EMG_CHANNEL_NAME.upper()]
-                    selected_channel_name = channels[selected_channel_index].get_channel_name()
-                else:
-                    print(f"\n[!] WARNING: EMG_CHANNEL_NAME='{EMG_CHANNEL_NAME}' "
-                          f"not found in device channels.")
-
-            # 2) Otherwise, try to find channel from physical input port
-            if selected_channel_index is None and EMG_INPUT_PORT is not None:
-                port_str = str(EMG_INPUT_PORT)
-                target_name = f"BIP{port_str}"
-                
-                # Try direct match with fixed names
-                if target_name in name_to_index:
-                    selected_channel_index = name_to_index[target_name]
-                    selected_channel_name = channels[selected_channel_index].get_channel_name()
-                    print(f"\n[OK] Matched EMG_INPUT_PORT={EMG_INPUT_PORT} to channel '{selected_channel_name}' (index {selected_channel_index})")
-                else:
-                    # Prefer matching on the actual legacy Port field if available
-                    try:
-                        for i, ch in enumerate(channels):
-                            if hasattr(ch, "get_channel_port") and int(ch.get_channel_port()) == int(EMG_INPUT_PORT):
-                                selected_channel_index = i
-                                selected_channel_name = ch.get_channel_name()
-                                port_name = ch.get_channel_port_name() if hasattr(ch, "get_channel_port_name") else ""
-                                print(f"\n[OK] Matched EMG_INPUT_PORT={EMG_INPUT_PORT} to channel '{selected_channel_name}' "
-                                      f"(index {selected_channel_index}, port_name='{port_name}')")
-                                break
-                    except Exception:
-                        pass
-
-                    # Try pattern matching
-                    for i, ch in enumerate(channels):
-                        try:
-                            ch_name = ch.get_channel_name()
-                            upper_name = ch_name.upper()
-                            
-                            # Match BIP17, IN17, etc.
-                            if any(pattern in upper_name for pattern in [f"BIP{port_str}", f"IN{port_str}"]):
-                                selected_channel_index = i
-                                selected_channel_name = ch_name
-                                break
-                        except:
-                            continue
-
-            if selected_channel_index is not None:
-                print("\n   EMG channel configuration:")
-                print(f"     -> Selected channel index: {selected_channel_index}")
-                print(f"     -> Selected channel name : {selected_channel_name}")
-                print("     NOTE: In the data array 'samples', this is column "
-                      f"{selected_channel_index}.")
-            else:
-                print("\n   EMG channel configuration:")
-                print("     No EMG input port/channel was successfully resolved.")
-                print("     You can configure this at the top of the script via "
-                      "EMG_CHANNEL_INDEX, EMG_CHANNEL_NAME, or EMG_INPUT_PORT.")
-            
-        except Exception as e:
-            print(f"   (Device info error: {e})")
-    
-    except Exception as e:
-        print(f"ERROR: Failed to open device: {e}")
-        import traceback
-        traceback.print_exc()
-        return
-    
-    # Create measurement
-    print(f"\n4. Creating signal measurement...")
-    try:
-        measurement = MeasurementType.LEGACY_SIGNAL(device)
-        
-        # Configure measurement
-        if SAMPLE_RATE is not None:
-            measurement.set_sample_rate(SAMPLE_RATE)
-        measurement.set_reference_calculation(REFERENCE_CALCULATION)
-        
-        print(f"[OK] Measurement created")
-        print(f"   Sample rate: {measurement.get_device_sample_rate()} Hz")
-        print(f"   Reference calculation: {'Enabled' if REFERENCE_CALCULATION else 'Disabled'}")
-    
-    except Exception as e:
-        print(f"ERROR: Failed to create measurement: {e}")
-        import traceback
-        traceback.print_exc()
-        device.close()
-        return
-    
-    # Initialize visualization (if enabled)
-    plot_enabled = False
-    fig, axes, lines = None, None, {}
-    emg_data_buffer = None
-    emg_filtered_buffer = None
-    time_buffer = None
-    time_filtered_buffer = None
-    bandpass_filter = None
-
-    def _init_realtime_plot(measurement, selected_desc):
-        """Initialize the plot after we know which channel to display."""
-        nonlocal plot_enabled, fig, axes, lines, emg_data_buffer, emg_filtered_buffer, time_buffer, time_filtered_buffer, bandpass_filter
-
-        if plot_enabled:
-            return
-        if not ENABLE_REALTIME_PLOT:
-            return
-        if not MATPLOTLIB_AVAILABLE:
-            return
-        if not selected_desc:
-            return
-
-        try:
-            print(f"\n4b. Initializing real-time plot...")
-
-            sample_rate = measurement.get_device_sample_rate()
-            buffer_size = int(PLOT_WINDOW_SECONDS * sample_rate)
-
-            # Initialize data buffers
-            emg_data_buffer = deque(maxlen=buffer_size)
-            time_buffer = deque(maxlen=buffer_size)
-
-            if APPLY_BANDPASS_FILTER and SCIPY_AVAILABLE:
-                emg_filtered_buffer = deque(maxlen=buffer_size)
-                time_filtered_buffer = deque(maxlen=buffer_size)
-                bandpass_filter = BandpassFilter(
-                    BANDPASS_LOW_CUTOFF,
-                    BANDPASS_HIGH_CUTOFF,
-                    sample_rate,
-                    FILTER_ORDER
-                )
-                print(f"   Bandpass filter: {BANDPASS_LOW_CUTOFF}-{BANDPASS_HIGH_CUTOFF} Hz, Order {FILTER_ORDER}")
-
-            # Create figure and subplots
-            if APPLY_BANDPASS_FILTER and SCIPY_AVAILABLE:
-                fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
-                axes = [ax1, ax2]
-
-                ax1.set_title(f'Raw EMG Signal - {selected_desc}', fontsize=12, fontweight='bold')
-                ax1.set_ylabel('Amplitude (µV)', fontsize=10)
-                ax1.grid(True, alpha=0.3)
-                line1, = ax1.plot([], [], 'b-', linewidth=0.8, label='Raw')
-                ax1.legend(loc='upper right')
-                lines['raw'] = line1
-
-                ax2.set_title(f'Filtered EMG Signal ({BANDPASS_LOW_CUTOFF}-{BANDPASS_HIGH_CUTOFF} Hz)',
-                              fontsize=12, fontweight='bold')
-                ax2.set_xlabel('Time (s)', fontsize=10)
-                ax2.set_ylabel('Amplitude (µV)', fontsize=10)
-                ax2.grid(True, alpha=0.3)
-                line2, = ax2.plot([], [], 'r-', linewidth=0.8, label='Filtered')
-                ax2.legend(loc='upper right')
-                lines['filtered'] = line2
-            else:
-                fig, ax1 = plt.subplots(1, 1, figsize=(12, 6))
-                axes = [ax1]
-
-                ax1.set_title(f'EMG Signal - {selected_desc} @ {sample_rate} Hz',
-                              fontsize=12, fontweight='bold')
-                ax1.set_xlabel('Time (s)', fontsize=10)
-                ax1.set_ylabel('Amplitude (µV)', fontsize=10)
-                ax1.grid(True, alpha=0.3)
-                line1, = ax1.plot([], [], 'b-', linewidth=0.8, label='EMG')
-                ax1.legend(loc='upper right')
-                lines['raw'] = line1
-
-            plt.tight_layout()
-            plt.ion()
-            plt.show(block=False)
-
-            plot_enabled = True
-            print(f"[OK] Real-time plot initialized")
-            print(f"   Window: {PLOT_WINDOW_SECONDS} seconds")
-            print(f"   Sample rate: {sample_rate} Hz")
-        except Exception as e:
-            print(f"[!] Warning: Could not initialize plot: {e}")
-            plot_enabled = False
-    
-    # Only initialize plot now if we already know the channel; otherwise we will
-    # initialize it lazily after auto-detect selects a channel.
-    if ENABLE_REALTIME_PLOT and not MATPLOTLIB_AVAILABLE:
-        print("\n[!] Real-time plot disabled: matplotlib not available")
-    elif ENABLE_REALTIME_PLOT and selected_channel_index is not None:
-        _init_realtime_plot(measurement, f"idx{selected_channel_index} '{selected_channel_name}'")
-    
-    # Start acquisition
-    print(f"\n5. Starting data acquisition for {TEST_DURATION} seconds...")
-    print("   (Press Ctrl+C to stop early)\n")
-    
-    try:
-        # Start sampling
-        measurement.start()
-        print("[OK] Streaming started\n")
-        
-        start_time = time.time()
-        sample_count = 0
-        read_count = 0
-        plot_time_offset = 0.0
-        
-        # NOTE: selected_channel_index/selected_channel_name were defined
-        # in the device-info block above. If that block failed, they may
-        # not exist; handle this gracefully.
-        try:
-            selected_channel_index
-        except NameError:
-            selected_channel_index = None
-            selected_channel_name = None
-
-        emg_autoselected = False
-        selected_desc = ""
-
-        def _resolve_emg_pair_indices(n_channels=None):
-            """
-            Resolve configured EMG pair into 0-based numpy indices.
-
-            If EMG_PAIR_CHANNELS_ARE_1_BASED=True, treat EMG_PAIR_POS_CHANNEL/NEG_CHANNEL
-            as human channel numbers (1..N) and convert to indices (0..N-1).
-            """
-            try:
-                pos_raw = int(EMG_PAIR_POS_CHANNEL)
-                neg_raw = int(EMG_PAIR_NEG_CHANNEL)
-            except Exception as e:
-                raise ValueError(f"Invalid EMG_PAIR_POS/NEG settings: {e}")
-
-            if EMG_PAIR_CHANNELS_ARE_1_BASED:
-                pos_i = pos_raw - 1
-                neg_i = neg_raw - 1
-            else:
-                pos_i = pos_raw
-                neg_i = neg_raw
-
-            if n_channels is not None:
-                if not (0 <= pos_i < n_channels) or not (0 <= neg_i < n_channels):
-                    raise ValueError(f"EMG pair indices out of range: pos={pos_i}, neg={neg_i}, n_channels={n_channels}")
-
-            return pos_i, neg_i
-
-        # If configured, lock to the differential pair immediately (consistent behavior)
-        if USE_EMG_DIFFERENTIAL_PAIR:
-            try:
-                pos_i, neg_i = _resolve_emg_pair_indices()
-                selected_desc = f"Diff idx{pos_i} - idx{neg_i} (ch{EMG_PAIR_POS_CHANNEL}-ch{EMG_PAIR_NEG_CHANNEL})"
-                _init_realtime_plot(measurement, selected_desc)
-                print(f"[OK] Using EMG differential pair: {selected_desc}")
-            except Exception as e:
-                print(f"[!] Could not set EMG differential pair: {e}")
-                selected_desc = ""
-
-        while (time.time() - start_time) < TEST_DURATION:
-            try:
-                # Read samples from measurement
-                samples = measurement.get_samples(blocking=False)
-                
-                if samples is not None and len(samples) > 0:
-                    read_count += 1
-                    n_samples = samples.shape[0]
-                    sample_count += n_samples
-
-                    # If no channel was configured (and differential mode is off),
-                    # try a one-time auto-detect: pick the uV channel with the
-                    # highest variability (ignores NaNs).
-                    if (not USE_EMG_DIFFERENTIAL_PAIR) and (selected_channel_index is None) and (not emg_autoselected):
-                        try:
-                            with warnings.catch_warnings():
-                                warnings.simplefilter("ignore", RuntimeWarning)
-                                per_ch_std = np.nanstd(samples, axis=0)
-                            candidates = []
-                            for ci, stdv in enumerate(per_ch_std):
-                                try:
-                                    unit = channels[ci].get_channel_unit_name()
-                                except Exception:
-                                    unit = ""
-                                stdv = float(stdv)
-                                # Only consider channels that actually have finite variability.
-                                if not np.isfinite(stdv):
-                                    continue
-                                if unit.lower().endswith("v"):  # uV/mV/V
-                                    candidates.append((stdv, ci))
-                            candidates.sort(key=lambda x: x[0], reverse=True)
-
-                            print("\n[INFO] Auto-detect EMG candidates (highest std, voltage-like units):")
-                            if not candidates:
-                                print("  (No non-NaN voltage-like channels found in this chunk.)")
-                            for rank, (stdv, ci) in enumerate(candidates[:8], start=1):
-                                try:
-                                    nm = channels[ci].get_channel_name()
-                                    un = channels[ci].get_channel_unit_name()
-                                except Exception:
-                                    nm, un = "?", "?"
-                                print(f"  #{rank}: idx={ci:2d}  name='{nm}'  unit='{un}'  std={stdv:.3f}")
-
-                            if candidates:
-                                best_std, best_ci = candidates[0]
-                                selected_channel_index = best_ci
-                                selected_channel_name = channels[best_ci].get_channel_name()
-                                emg_autoselected = True
-                                selected_desc = f"idx{best_ci} '{selected_channel_name}'"
-                                print(f"[OK] Auto-selected EMG channel {selected_desc} based on std={best_std:.3f}\n")
-                                # Now that we know the channel, enable the plot.
-                                _init_realtime_plot(measurement, selected_desc)
-                        except Exception as e:
-                            print(f"\n[!] Auto-detect failed: {e}\n")
-                    
-                    # Print sample info
-                    elapsed = time.time() - start_time
-                    print(f"[{elapsed:6.2f}s] Read #{read_count}: Got {n_samples} samples")
-                    print(f"            Shape: {samples.shape}")
-                    
-                    # Print first sample values (first 5 channels)
-                    num_channels_to_show = min(5, samples.shape[1])
-                    first_sample = samples[0, :num_channels_to_show]
-                    print(f"            First sample (first {num_channels_to_show} channels): {first_sample}")
-
-                    # Compute EMG signal for this chunk (either differential pair or single channel)
-                    emg_chunk = None
-                    if USE_EMG_DIFFERENTIAL_PAIR:
-                        try:
-                            pos_i, neg_i = _resolve_emg_pair_indices(samples.shape[1])
-                            if pos_i < samples.shape[1] and neg_i < samples.shape[1]:
-                                emg_chunk = samples[:, pos_i] - samples[:, neg_i]
-                                emg_value = emg_chunk[0]
-                                print(f"            EMG (diff) first sample: {emg_value}")
-                        except Exception:
-                            emg_chunk = None
-                    else:
-                        if selected_channel_index is not None and selected_channel_index < samples.shape[1]:
-                            emg_chunk = samples[:, selected_channel_index]
-                            emg_value = emg_chunk[0]
-                            print(f"            EMG channel [{selected_channel_index}] "
-                                  f"('{selected_channel_name}') first sample: {emg_value}")
-
-                    if emg_chunk is not None:
-                        try:
-                            with warnings.catch_warnings():
-                                warnings.simplefilter("ignore", RuntimeWarning)
-                                ch_mean = float(np.nanmean(emg_chunk))
-                                ch_std = float(np.nanstd(emg_chunk))
-                            print(f"            EMG stats (chunk): mean={ch_mean:.3f}, std={ch_std:.3f}")
-                        except Exception:
-                            pass
-
-                        # Update plot data if visualization is enabled
-                        if plot_enabled:
-                            try:
-                                # EMG data for plotting (single or differential)
-                                emg_channel_data = emg_chunk
-
-                                # Create time values for this chunk
-                                sample_rate = measurement.get_device_sample_rate()
-                                dt = 1.0 / sample_rate
-                                chunk_times = plot_time_offset + np.arange(n_samples) * dt
-                                plot_time_offset = chunk_times[-1] + dt
-
-                                # Add to raw buffers (skip NaNs)
-                                for t, val in zip(chunk_times, emg_channel_data):
-                                    if not np.isnan(val):
-                                        time_buffer.append(t)
-                                        emg_data_buffer.append(val)
-
-                                # Apply filtering if enabled
-                                if bandpass_filter is not None and len(emg_channel_data) > 0:
-                                    valid_mask = ~np.isnan(emg_channel_data)
-                                    if np.any(valid_mask):
-                                        filtered_chunk = bandpass_filter.filter(emg_channel_data[valid_mask])
-                                        for t, val in zip(chunk_times[valid_mask], filtered_chunk):
-                                            emg_filtered_buffer.append(val)
-                                            time_filtered_buffer.append(t)
-
-                                # Update plot
-                                if len(time_buffer) > 1:
-                                    time_array = np.array(time_buffer)
-                                    raw_array = np.array(emg_data_buffer)
-
-                                    if 'raw' in lines:
-                                        lines['raw'].set_data(time_array, raw_array)
-                                        axes[0].relim()
-                                        axes[0].autoscale_view()
-                                        if time_array[-1] > PLOT_WINDOW_SECONDS:
-                                            axes[0].set_xlim(time_array[-1] - PLOT_WINDOW_SECONDS, time_array[-1])
-
-                                if 'filtered' in lines and emg_filtered_buffer is not None and len(emg_filtered_buffer) > 1:
-                                    tf = np.array(time_filtered_buffer)
-                                    yf = np.array(emg_filtered_buffer)
-                                    if len(tf) == len(yf) and len(tf) > 1:
-                                        lines['filtered'].set_data(tf, yf)
-                                        axes[1].relim()
-                                        axes[1].autoscale_view()
-                                        if tf[-1] > PLOT_WINDOW_SECONDS:
-                                            axes[1].set_xlim(tf[-1] - PLOT_WINDOW_SECONDS, tf[-1])
-
-                                # Redraw (plt.pause tends to work more reliably than flush_events)
-                                fig.canvas.draw_idle()
-                                plt.pause(0.001)
-
-                            except Exception as plot_error:
-                                # Don't crash on plot errors; show periodically
-                                if read_count <= 3 or (read_count % 25 == 0):
-                                    print(f"            [!] Plot update error: {plot_error}")
-                    elif USE_EMG_DIFFERENTIAL_PAIR:
-                        # Most common cause: one of the selected channels is all-NaN (not connected / wrong index)
-                        try:
-                            pos_i, neg_i = _resolve_emg_pair_indices(samples.shape[1])
-                            pos_valid = int(np.sum(~np.isnan(samples[:, pos_i])))
-                            neg_valid = int(np.sum(~np.isnan(samples[:, neg_i])))
-                            print(f"            [!] EMG diff unavailable: valid samples pos_idx={pos_i} -> {pos_valid}/{n_samples}, "
-                                  f"neg_idx={neg_i} -> {neg_valid}/{n_samples}")
-                            if EMG_PAIR_CHANNELS_ARE_1_BASED:
-                                print("            [!] Tip: If you intended numpy indices, set EMG_PAIR_CHANNELS_ARE_1_BASED = False.")
-                                print("            [!] Tip: If you intended channel numbers (1-based), keep it True and set EMG_PAIR_POS/NEG to 3 & 4 etc.")
-                        except Exception:
-                            pass
-                    
-                    # Calculate basic stats
-                    sample_mean = np.nanmean(samples)
-                    sample_std = np.nanstd(samples)
-                    sample_min = np.nanmin(samples)
-                    sample_max = np.nanmax(samples)
-                    print(f"            Mean: {sample_mean:.6f}, Std: {sample_std:.6f}")
-                    print(f"            Range: [{sample_min:.6f}, {sample_max:.6f}]")
-                    print()
-                
-                time.sleep(0.1)  # Small delay to avoid busy-waiting
-                
-            except KeyboardInterrupt:
-                print("\n[!] Interrupted by user")
-                break
-            except Exception as e:
-                print(f"\n[!] Error reading samples: {e}")
-                import traceback
-                traceback.print_exc()
-                break
-        
-        elapsed = time.time() - start_time
-        print(f"\n[OK] Acquisition complete!")
-        print(f"   Duration: {elapsed:.2f} seconds")
-        print(f"   Total reads: {read_count}")
-        print(f"   Total samples: {sample_count}")
-        if sample_count > 0:
-            avg_rate = sample_count / elapsed
-            print(f"   Average rate: {avg_rate:.1f} samples/sec")
-            if measurement.get_device_sample_rate() > 0:
-                expected_rate = measurement.get_device_sample_rate()
-                print(f"   Expected rate: {expected_rate:.1f} Hz")
-                efficiency = (avg_rate / expected_rate) * 100
-                print(f"   Efficiency: {efficiency:.1f}%")
-    
-    except Exception as e:
-        print(f"\nERROR during acquisition: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    finally:
-        # Save plot if enabled
-        if plot_enabled and AUTO_SAVE_PLOT:
-            try:
-                # Add timestamp to filename
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                base, ext = os.path.splitext(PLOT_SAVE_PATH)
-                save_path = f"{base}_{timestamp}{ext}"
-                
-                print(f"\nSaving plot to '{save_path}'...")
-                fig.savefig(save_path, dpi=150, bbox_inches='tight')
-                print(f"[OK] Plot saved successfully")
-            except Exception as e:
-                print(f"[!] Error saving plot: {e}")
-        
-        # Keep plot open briefly if enabled (user can manually save if needed)
-        if plot_enabled and not AUTO_SAVE_PLOT:
-            print("\n[INFO] Plot is still open. Close the plot window to continue,")
-            print("       or manually save it using the matplotlib toolbar.")
-            try:
-                plt.show(block=True)  # Wait for user to close
-            except Exception:
-                pass
-        
-        # Clean shutdown
-        print("\n6. Shutting down...")
-        try:
-            if 'measurement' in locals():
-                measurement.stop()
-                print("[OK] Stopped measurement")
-        except Exception as e:
-            print(f"[!] Error stopping measurement: {e}")
-        
-        try:
-            device.close()
-            print("[OK] Device closed")
-        except Exception as e:
-            print(f"[!] Error closing device: {e}")
-        
-        try:
-            # Clean up legacy device SDK
-            LegacyDevice.cleanup()
-            print("[OK] SDK cleaned up")
-        except Exception as e:
-            print(f"[!] Error cleaning up SDK: {e}")
-    
-    print("\n" + "="*60)
-    print("Test complete!")
-    print("="*60)
+    win = EMGWindow()
+    win.show()
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

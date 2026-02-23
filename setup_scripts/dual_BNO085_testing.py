@@ -1,143 +1,62 @@
 """
-Dual BNO085 UART-RVC IMU Tracking (Binary Protocol)
+Dual BNO085 UART-RVC IMU Tracking - PyQt Version
 ===================================================
 
-Real-time orientation tracking with BNO085 9-DOF IMUs:
+Real-time orientation tracking with BNO085 9-DOF IMUs using PyQtGraph for visualization.
+Features:
 - Binary protocol (921600 baud, 500Hz) via STM32Reader
-- On-device sensor fusion (no calibration needed)
-- Real-time VPython visualization with dice representation
-- CSV data logging
-- Robust auto-reconnect
-
-Hardware Requirements:
-- STM32F401 with dual BNO085 IMUs in UART-RVC mode
-- 921600 baud (High-speed binary)
-- 500 Hz output rate
-- BNO085 configured for UART-RVC (P0 high/bridged)
-
-Coordinate Frame:
-- BNO085 provides absolute orientation (yaw, pitch, roll)
-- 9-DOF fusion combines accel, gyro, and magnetometer
-- No drift, no calibration needed
+- 3D Visualization using OpenGL (Z-up world frame)
+- Schematic World Reference Frame (Grid + Axes)
+- Colored Cube for orientation (Red=+X, Green=+Y, Blue=+Z)
+- Acceleration Vector Visualization
+- Real-time 2D Acceleration Plots
+- CSV data logging (full state and quaternions)
+- Advanced Performance Monitoring
 
 Usage:
-  python dual_BNO085_testing.py [--port PORT] [--baud BAUD] [--csv FILE] [--no-viz]
-
-Examples:
-  python dual_BNO085_testing.py                        # Auto-detect port, with visualization
-  python dual_BNO085_testing.py --port /dev/ttyACM0    # Specific port
-  python dual_BNO085_testing.py --csv data.csv         # Log to CSV file
-  python dual_BNO085_testing.py --no-viz --csv data.csv # CSV only, no visualization
+  python setup_scripts/dual_BNO085_testing.py [--port PORT] [--baud BAUD] [--csv FILE]
 """
 
+import sys
+import argparse
 import time
 import numpy as np
-import sys
 import csv
-import argparse
 from pathlib import Path
 from collections import deque
 from typing import Optional
-from vpython import canvas, box, vector, color, rate, arrow, label, sphere, compound
 
-# Allow running this file directly from anywhere (e.g. via absolute path) while
-# still being able to import the project's top-level `src/` package.
+# Setup import path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-# Import STM32 acquisition module
+# Imports
+from src.stm32_reader import STM32Reader, SampleSTM32
+
 try:
-    from setup_scripts.all_STM32_acquisition import STM32Reader, SampleSTM32
+    from PyQt6 import QtWidgets, QtCore, QtGui
+    import pyqtgraph.opengl as gl
+    import pyqtgraph as pg
 except ImportError:
-    # Fallback if running from root
-    from all_STM32_acquisition import STM32Reader, SampleSTM32
+    print("Error: PyQt6 and pyqtgraph are required.")
+    print("pip install PyQt6 pyqtgraph PyOpenGL")
+    sys.exit(1)
 
 # ============================================================================
-# COMMAND LINE ARGUMENTS
+# SETTINGS
 # ============================================================================
-def parse_args():
-    """Parse command line arguments"""
-    parser = argparse.ArgumentParser(
-        description='Dual BNO085 IMU Tracker with real-time visualization and data logging'
-    )
-    parser.add_argument('--port', type=str, default="auto",
-                        help='Serial port (or "auto" for auto-detect, default: auto)')
-    parser.add_argument('--baud', type=int, default=921600,
-                        help='Serial baud rate (default: 921600)')
-    parser.add_argument('--csv', type=str, default=None,
-                        help='CSV file path for data logging (optional)')
-    parser.add_argument('--no-viz', action='store_true',
-                        help='Disable visualization (CSV logging only)')
-    return parser.parse_args()
-
-args = parse_args()
-
-# ============================================================================
-# USER SETTINGS
-# ============================================================================
-PORT = None if args.port.lower() == "auto" else args.port
-BAUD = args.baud
-
-# Data logging
-CSV_FILE = args.csv
-ENABLE_VISUALIZATION = not args.no_viz
-
-# Visualization
-SHOW_RELATIVE_IMU2_TO_IMU1 = False  # False = absolute, True = relative
-SHOW_AXES = True                     # Show RGB axes on dice
-SHOW_PERFORMANCE_STATS = True        # Show FPS, latency, drift metrics
-
-# Axis remapping (CRITICAL for "dice matches real IMU")
-# -----------------------------------------------------
-# Format: (out_x, out_y, out_z) where each element is ±1..±3 selecting
-# (±in_x, ±in_y, ±in_z). Example:
-#   (1, 2, 3)   -> identity
-#   (1, -2, -3) -> flip Y and Z
-#   (2, -1, 3)  -> swap X/Y and flip new Y
-IMU1_AXIS_MAP = (1, 2, 3)
+# Axis remapping for IMU to match visualization frame
+IMU1_AXIS_MAP = (1, 2, 3) 
 IMU2_AXIS_MAP = (1, 2, 3)
-
-# If your "flat on table" accel Z is negative (common if sensor is mounted
-# component-side-down), set this to True to invert accel vector.
 INVERT_ACCEL = False
+ACCEL_PLOT_Y_RANGE = (-20, 20) 
 
 # ============================================================================
 # QUATERNION MATH
 # ============================================================================
-def quat_mul(q, r):
-    """Quaternion multiplication"""
-    w0, x0, y0, z0 = q
-    w1, x1, y1, z1 = r
-    return np.array([
-        w0*w1 - x0*x1 - y0*y1 - z0*z1,
-        w0*x1 + x0*w1 + y0*z1 - z0*y1,
-        w0*y1 - x0*z1 + y0*w1 + z0*x1,
-        w0*z1 + x0*y1 - y0*x1 + z0*w1
-    ], dtype=float)
-
-def quat_conj(q):
-    """Quaternion conjugate"""
-    return np.array([q[0], -q[1], -q[2], -q[3]], dtype=float)
-
-def quat_norm(q):
-    """Normalize quaternion"""
-    n = np.linalg.norm(q)
-    if n < 1e-10:
-        return np.array([1.0, 0.0, 0.0, 0.0], dtype=float)
-    return q / n
-
-def quat_inv(q):
-    """Quaternion inverse (for unit quaternions)"""
-    return quat_conj(q)
-
-def rotate_vec_by_quat(v, q):
-    """Rotate 3D vector by quaternion"""
-    vq = np.array([0.0, v[0], v[1], v[2]], dtype=float)
-    return quat_mul(quat_mul(q, vq), quat_conj(q))[1:]
-
-def quat_to_euler(q):
-    """Convert quaternion to Euler angles (roll, pitch, yaw) in degrees"""
+def quat_to_euler_deg(q):
+    """Convert quaternion [w, x, y, z] to Euler angles (roll, pitch, yaw) in degrees."""
     w, x, y, z = q
     
     # Roll (x-axis rotation)
@@ -159,30 +78,28 @@ def quat_to_euler(q):
     
     return np.degrees(roll), np.degrees(pitch), np.degrees(yaw)
 
-def euler_to_quat(roll_deg: float, pitch_deg: float, yaw_deg: float) -> np.ndarray:
-    """Convert Euler angles (roll, pitch, yaw) in degrees to unit quaternion [w, x, y, z].
-    Same convention as quat_to_euler (intrinsic ZYX / yaw-pitch-roll)."""
-    r = np.deg2rad(roll_deg)
-    p = np.deg2rad(pitch_deg)
-    y = np.deg2rad(yaw_deg)
-    cr, sr = np.cos(r / 2), np.sin(r / 2)
-    cp, sp = np.cos(p / 2), np.sin(p / 2)
-    cy, sy = np.cos(y / 2), np.sin(y / 2)
-    w = cr * cp * cy + sr * sp * sy
-    x = sr * cp * cy - cr * sp * sy
-    yq = cr * sp * cy + sr * cp * sy
-    z = cr * cp * sy - sr * sp * cy
-    return np.array([w, x, yq, z], dtype=float)
+def euler_to_quat(roll_deg, pitch_deg, yaw_deg):
+    """Convert Euler (deg) to Quaternion [w, x, y, z]"""
+    r = np.radians(roll_deg)
+    p = np.radians(pitch_deg)
+    y = np.radians(yaw_deg)
+    cr, sr = np.cos(r/2), np.sin(r/2)
+    cp, sp = np.cos(p/2), np.sin(p/2)
+    cy, sy = np.cos(y/2), np.sin(y/2)
+    w = cr*cp*cy + sr*sp*sy
+    x = sr*cp*cy - cr*sp*sy
+    yq = cr*sp*cy + sr*cp*sy
+    z = cr*cp*sy - sr*sp*sy
+    return np.array([w, x, yq, z])
 
-def remap_vec(v, mapping):
-    """Remap 3-vector with signed axis mapping tuple."""
-    v = np.asarray(v, dtype=float)
-    out = np.empty(3, dtype=float)
-    for i, a in enumerate(mapping):
-        s = 1.0 if a > 0 else -1.0
-        idx = abs(int(a)) - 1
-        out[i] = s * v[idx]
-    return out
+def rotate_vector(v, q):
+    """Rotate vector v by quaternion q [w, x, y, z] using standard formula."""
+    w, x, y, z = q
+    qv = np.array([x, y, z])
+    # v' = v + 2*q_w*(q_v x v) + 2*(q_v x (q_v x v))
+    cross1 = np.cross(qv, v)
+    cross2 = np.cross(qv, cross1)
+    return v + 2 * w * cross1 + 2 * cross2
 
 # ============================================================================
 # CSV DATA LOGGER
@@ -249,211 +166,6 @@ class CSVLogger:
         self.close()
 
 # ============================================================================
-# COORDINATE FRAME MAPPING
-# ============================================================================
-def imu_to_scene(imu_vec):
-    """
-    Transform IMU coordinate frame to VPython scene frame.
-    
-    IMU frame (component side up):
-      X → forward (dot marking)
-      Y → left
-      Z → up (out of chip)
-    
-    Scene frame:
-      X → right
-      Y → up
-      Z → toward viewer
-    
-    Mapping:
-      scene_x = imu_x
-      scene_y = imu_z (up)
-      scene_z = -imu_y (right-handed)
-    """
-    return vector(float(imu_vec[0]), float(imu_vec[2]), float(-imu_vec[1]))
-
-# ============================================================================
-# VPYTHON VISUALIZATION SETUP
-# ============================================================================
-print("\\n" + "="*60)
-print("Dual BNO085 UART-RVC IMU Tracker")
-print("="*60)
-
-if CSV_FILE:
-    print(f"Data logging: ENABLED → {CSV_FILE}")
-else:
-    print("Data logging: DISABLED")
-
-print(f"Visualization: {'ENABLED' if ENABLE_VISUALIZATION else 'DISABLED'}")
-
-# Initialize visualization if enabled
-scene = None
-if ENABLE_VISUALIZATION:
-    scene = canvas(title="Dual BNO085 IMU Tracker (500Hz UART-RVC)", 
-                   width=1600, height=900,
-                   center=vector(0, 0, 0),
-                   background=color.gray(0.1))
-    
-    scene.forward = vector(-0.3, -0.4, -1)
-    scene.range = 2.5
-else:
-    print("(Headless mode - CSV logging only)")
-    # Create dummy objects for compatibility
-    class DummyObj:
-        def __init__(self):
-            self.pos = None
-            self.axis = None
-            self.up = None
-            self.text = ""
-            self.color = color.white
-
-if ENABLE_VISUALIZATION:
-    # Ground plane
-    ground = box(pos=vector(0, -0.6, 0), 
-                 length=6, height=0.02, width=4, 
-                 color=color.gray(0.3), opacity=0.3)
-    
-    # Grid lines
-    for i in range(-3, 4):
-        box(pos=vector(0, -0.59, i*0.5), length=6, height=0.01, width=0.02, color=color.gray(0.4))
-        box(pos=vector(i*0.5, -0.59, 0), length=0.02, height=0.01, width=4, color=color.gray(0.4))
-    
-    # Dice creation
-    spacing = 1.8
-    dice_size = 0.9
-else:
-    spacing = 1.8
-    dice_size = 0.9
-
-def _pip_uv(n, s):
-    """2D pip layouts for dice faces"""
-    c, a = 0.0, s
-    if n == 1: return [(c, c)]
-    if n == 2: return [(-a, -a), (a, a)]
-    if n == 3: return [(-a, -a), (c, c), (a, a)]
-    if n == 4: return [(-a, -a), (-a, a), (a, -a), (a, a)]
-    if n == 5: return [(-a, -a), (-a, a), (c, c), (a, -a), (a, a)]
-    if n == 6: return [(-a, -a), (-a, c), (-a, a), (a, -a), (a, c), (a, a)]
-    return []
-
-def make_die(pos, size=0.9, body_col=color.white):
-    """Create dice as compound with pips"""
-    half = size / 2.0
-    pip_r = size * 0.085
-    pip_spread = size * 0.22
-    pip_inset = size * 0.03
-    
-    origin = vector(0, 0, 0)
-    parts = [box(pos=origin, length=size, height=size, width=size, 
-                 color=body_col, opacity=1.0)]
-    
-    # Faces: (normal, u_axis, v_axis, number)
-    faces = [
-        (vector(1,0,0), vector(0,1,0), vector(0,0,1), 1),
-        (vector(-1,0,0), vector(0,1,0), vector(0,0,1), 6),
-        (vector(0,1,0), vector(1,0,0), vector(0,0,1), 2),
-        (vector(0,-1,0), vector(1,0,0), vector(0,0,1), 5),
-        (vector(0,0,1), vector(1,0,0), vector(0,1,0), 3),
-        (vector(0,0,-1), vector(1,0,0), vector(0,1,0), 4),
-    ]
-    
-    for nrm, u_axis, v_axis, num in faces:
-        face_center = origin + nrm * (half - pip_inset)
-        for u, v in _pip_uv(num, pip_spread):
-            parts.append(sphere(
-                pos=face_center + u_axis * u + v_axis * v,
-                radius=pip_r, color=color.black, opacity=1.0
-            ))
-    
-    return compound(parts, pos=pos)
-
-if ENABLE_VISUALIZATION:
-    # Create dice
-    body1 = make_die(vector(-spacing, 0, 0), size=dice_size, body_col=color.white)
-    body2 = make_die(vector(spacing, 0, 0), size=dice_size, body_col=color.white)
-    
-    # Labels
-    label1 = label(pos=vector(-spacing, -0.75, 0), text="IMU 1",
-                   height=12, color=color.cyan, box=False, opacity=0)
-    label2 = label(pos=vector(spacing, -0.75, 0), text="IMU 2",
-                   height=12, color=color.orange, box=False, opacity=0)
-    
-    # Axes
-    def make_axes(origin, scale=1.0):
-        ax = arrow(pos=origin, axis=vector(scale, 0, 0), 
-                   color=color.red, shaftwidth=0.04, headwidth=0.08, headlength=0.12)
-        ay = arrow(pos=origin, axis=vector(0, scale, 0), 
-                   color=color.green, shaftwidth=0.04, headwidth=0.08, headlength=0.12)
-        az = arrow(pos=origin, axis=vector(0, 0, scale), 
-                   color=color.blue, shaftwidth=0.04, headwidth=0.08, headlength=0.12)
-        return ax, ay, az
-    
-    if SHOW_AXES:
-        a1x, a1y, a1z = make_axes(body1.pos, scale=1.0)
-        a2x, a2y, a2z = make_axes(body2.pos, scale=1.0)
-    else:
-        a1x = a1y = a1z = a2x = a2y = a2z = None
-    
-    # Status labels
-    status_lab = label(pos=vector(0, 1.8, 0), text="Initializing...", 
-                       box=False, height=16, color=color.white, opacity=0)
-    
-    legend = label(pos=vector(0, -1.5, 0), 
-                   text="IMU axes: X=Red(forward) | Y=Green(left) | Z=Blue(up)", 
-                   box=False, height=10, color=color.gray(0.7), opacity=0)
-    
-    if SHOW_PERFORMANCE_STATS:
-        perf_lab = label(pos=vector(0, 1.4, 0), text="", 
-                         box=False, height=12, color=color.yellow, opacity=0)
-    else:
-        perf_lab = None
-else:
-    # Dummy objects for headless mode
-    body1 = body2 = label1 = label2 = status_lab = legend = perf_lab = DummyObj()
-    a1x = a1y = a1z = a2x = a2y = a2z = None
-
-# ============================================================================
-# INITIALIZE CSV LOGGER
-# ============================================================================
-csv_logger = None
-if CSV_FILE:
-    csv_logger = CSVLogger(CSV_FILE)
-
-# ============================================================================
-# INITIALIZATION - BNO085 (No calibration needed)
-# ============================================================================
-ex = np.array([1.0, 0.0, 0.0])
-ey = np.array([0.0, 1.0, 0.0])
-ez = np.array([0.0, 0.0, 1.0])
-
-print("\\n" + "="*60)
-print("BNO085 MODE - Using raw sensor orientation")
-print("="*60)
-print("  BNO085 has on-device 9-DOF sensor fusion")
-print("  Orientation is absolute (no calibration needed)")
-print("\\nStarting tracking in 2 seconds...")
-print("="*60)
-
-if ENABLE_VISUALIZATION:
-    # Show reference orientation
-    body1.axis = imu_to_scene(ex)
-    body1.up = imu_to_scene(ez)
-    body2.axis = imu_to_scene(ex)
-    body2.up = imu_to_scene(ez)
-    
-    if SHOW_AXES:
-        a1x.pos = body1.pos; a1x.axis = imu_to_scene(ex)
-        a1y.pos = body1.pos; a1y.axis = imu_to_scene(ey)
-        a1z.pos = body1.pos; a1z.axis = imu_to_scene(ez)
-        a2x.pos = body2.pos; a2x.axis = imu_to_scene(ex)
-        a2y.pos = body2.pos; a2y.axis = imu_to_scene(ey)
-        a2z.pos = body2.pos; a2z.axis = imu_to_scene(ez)
-    
-    status_lab.text = "BNO085 MODE\\n\\nStarting in 2 seconds..."
-
-time.sleep(2)
-
-# ============================================================================
 # PERFORMANCE MONITORING
 # ============================================================================
 class PerformanceMonitor:
@@ -463,13 +175,23 @@ class PerformanceMonitor:
         self.packet_count = 0
         self.error_count = 0
         self.start_time = time.time()
+        self.t_last = time.time()
+        self.frames = 0
+        self.fps = 0
     
-    def update(self, frame_time, latency_ms=None):
-        self.frame_times.append(frame_time)
+    def update(self, latency_ms=None):
+        now = time.time()
+        dt = now - self.t_last
+        self.frame_times.append(dt)
+        self.t_last = now
+        self.frames += 1
+        
         if latency_ms is not None:
             self.latencies.append(latency_ms)
-        self.packet_count += 1
-    
+            self.packet_count += 1
+            
+        return self.get_fps()
+            
     def get_fps(self):
         if len(self.frame_times) < 2:
             return 0.0
@@ -484,143 +206,454 @@ class PerformanceMonitor:
         total_expected = (time.time() - self.start_time) * 500  # 500Hz
         if total_expected < 100:
             return 0.0
-        return 100.0 * (1.0 - self.packet_count / total_expected)
+        return 100.0 * max(0.0, 1.0 - self.packet_count / total_expected)
 
-perf_mon = PerformanceMonitor()
 
 # ============================================================================
-# MAIN TRACKING LOOP
+# 3D VISUALIZATION OBJECTS
 # ============================================================================
-python_start_time = time.time()
-frame_start = time.time()
+def create_colored_cube():
+    """
+    Create mesh data for a cube with colored faces.
+    Using Flat UI colors for a nicer look.
+    """
+    verts = []
+    colors = []
+    
+    # Flat UI Palette
+    # Red: #e74c3c / #c0392b
+    # Green: #2ecc71 / #27ae60
+    # Blue: #3498db / #2980b9
+    
+    c_red    = np.array([231, 76, 60, 255]) / 255.0
+    c_red_d  = np.array([192, 57, 43, 255]) / 255.0
+    c_green  = np.array([46, 204, 113, 255]) / 255.0
+    c_green_d= np.array([39, 174, 96, 255]) / 255.0
+    c_blue   = np.array([52, 152, 219, 255]) / 255.0
+    c_blue_d = np.array([41, 128, 185, 255]) / 255.0
+    
+    # Faces: normal, color
+    faces_info = [
+        (np.array([ 1, 0, 0]), c_red),    # +X
+        (np.array([-1, 0, 0]), c_red_d),  # -X
+        (np.array([ 0, 1, 0]), c_green),  # +Y
+        (np.array([ 0,-1, 0]), c_green_d),# -Y
+        (np.array([ 0, 0, 1]), c_blue),   # +Z
+        (np.array([ 0, 0,-1]), c_blue_d), # -Z
+    ]
+    
+    s = 0.5 # Half size
+    
+    for normal, color in faces_info:
+        # Construct basis for face
+        if abs(normal[0]) > 0.9:
+            u, v = np.array([0, 1, 0]), np.array([0, 0, 1])
+        elif abs(normal[1]) > 0.9:
+            u, v = np.array([1, 0, 0]), np.array([0, 0, 1])
+        else:
+            u, v = np.array([1, 0, 0]), np.array([0, 1, 0])
+            
+        c = normal * s
+        p1 = c - u*s - v*s
+        p2 = c + u*s - v*s
+        p3 = c + u*s + v*s
+        p4 = c - u*s + v*s
+        
+        # Triangle 1
+        verts.append(np.array([p1, p2, p3]))
+        colors.append(np.array([color, color, color]))
+        
+        # Triangle 2
+        verts.append(np.array([p1, p3, p4]))
+        colors.append(np.array([color, color, color]))
+            
+    return np.array(verts), np.array(colors)
 
-print("="*60)
-print("TRACKING ACTIVE - Verify coordinate frame:")
-print("  - Tilt IMU forward → Dice tilts forward")
-print("  - Roll IMU right → Dice rolls right")
-print("  - Check raw accel display for validation")
-print("="*60)
+class ImuVisualizer:
+    """Represents a single IMU in 3D space."""
+    def __init__(self, view, position=(0,0,0), label_text="IMU", has_rod=False, rod_length=2.0):
+        self.view = view
+        
+        # Container
+        self.container = gl.GLAxisItem(size=QtGui.QVector3D(0.01, 0.01, 0.01), glOptions='opaque')
+        self.container.translate(*position)
+        self.view.addItem(self.container)
+        self.base_pos = position
 
-# Initialize STM32Reader
-reader = STM32Reader(
-    port=PORT,
-    baud=BAUD,
-    verbose=True,
-    binary_mode=True  # Ensure binary mode is active
-)
-reader.start()
+        # Colored Cube Body
+        verts, colors = create_colored_cube()
+        self.mesh = gl.GLMeshItem(vertexes=verts, vertexColors=colors, smooth=False, shader='balloon', drawEdges=True, edgeColor=(0,0,0,0.5))
+        self.mesh.setParentItem(self.container)
+        
+        # Local Axes
+        self.axes = gl.GLAxisItem(size=QtGui.QVector3D(1.5, 1.5, 1.5))
+        self.axes.setParentItem(self.container)
 
-try:
-    while True:
-        loop_start = time.time()
-        if ENABLE_VISUALIZATION:
-            rate(120)  # VPython refresh rate cap
+        # Rod (Optional)
+        if has_rod:
+            # Rod represented by a gray rectangular beam
+            # Origin at (0,0,0) in local coords, length along +X (points forward to next joint)
+            rod_length_val = rod_length
+            rod_w = 0.15 # Width (Y)
+            rod_h = 0.05 # Height (Z)
+            self.rod = gl.GLBoxItem(size=QtGui.QVector3D(rod_length_val, rod_w, rod_h), color=(0.4, 0.4, 0.45, 1.0))
+            # Extend from 0 to rod_length_val, centered on Y and Z
+            self.rod.translate(0, -rod_w/2, -rod_h/2)
+            self.rod.setParentItem(self.container)
         
-        # Get latest sample from STM32Reader
-        latest_sample: Optional[SampleSTM32] = reader.latest
+    def update(self, q, pos=None):
+        """
+        Update orientation.
+        q: [w, x, y, z] quaternion
+        pos: optional [x, y, z] position override
+        """
+        w, x, y, z = q
+        angle = 2 * np.arccos(np.clip(w, -1.0, 1.0))
+        s = np.sqrt(1 - w*w)
+        if s < 0.001:
+            ax, ay, az = 1, 0, 0
+        else:
+            ax, ay, az = x/s, y/s, z/s
+            
+        self.container.resetTransform()
+        if pos is not None:
+            self.container.translate(*pos)
+        else:
+            self.container.translate(*self.base_pos)
+        self.container.rotate(np.degrees(angle), ax, ay, az)
+
+
+# ============================================================================
+# MAIN WINDOW
+# ============================================================================
+class DualIMUWindow(QtWidgets.QMainWindow):
+    def __init__(self, port, baud, csv_file=None):
+        super().__init__()
+        self.setWindowTitle("STM32 Dual BNO085")
+        self.resize(1000, 700)
         
-        if latest_sample is None:
-            # Wait a bit if no data yet
-            time.sleep(0.01)
-            continue
+        # Styling
+        self.setStyleSheet("""
+            QMainWindow { background-color: #2c3e50; }
+            QLabel { color: #ecf0f1; font-family: 'Segoe UI', sans-serif; }
+            QPushButton { 
+                background-color: #34495e; color: white; border: none; padding: 8px; 
+                border-radius: 4px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #4e6a85; }
+        """)
         
-        # Extract data from SampleSTM32
-        # Note: STM32Reader provides Euler angles directly
-        t_ms = latest_sample.t_ms
+        # Layout
+        central = QtWidgets.QWidget()
+        self.setCentralWidget(central)
+        layout = QtWidgets.QHBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
         
-        # Accelerometer
-        a1 = np.array([latest_sample.ax1, latest_sample.ay1, latest_sample.az1], dtype=float)
-        a2 = np.array([latest_sample.ax2, latest_sample.ay2, latest_sample.az2], dtype=float)
+        # 3D View
+        self.view = gl.GLViewWidget()
+        self.view.setCameraPosition(distance=8, elevation=30, azimuth=45)
+        self.view.setBackgroundColor('#2c3e50') # Match window bg
+        layout.addWidget(self.view, stretch=3)
         
-        # Convert Euler (deg) to Quaternion
-        q1 = euler_to_quat(latest_sample.roll1, latest_sample.pitch1, latest_sample.yaw1)
-        q2 = euler_to_quat(latest_sample.roll2, latest_sample.pitch2, latest_sample.yaw2)
+        # Sidebar
+        sidebar = QtWidgets.QWidget()
+        sidebar.setFixedWidth(280)
+        sidebar.setStyleSheet("background-color: #34495e;") # Slightly lighter than bg
+        side_layout = QtWidgets.QVBoxLayout(sidebar)
+        side_layout.setContentsMargins(15, 15, 15, 15)
+        side_layout.setSpacing(10)
+        layout.addWidget(sidebar, stretch=0)
         
-        # Axis map + optional accel invert (orientation from sensor used as-is)
-        a1 = remap_vec(a1, IMU1_AXIS_MAP)
-        a2 = remap_vec(a2, IMU2_AXIS_MAP)
-        if INVERT_ACCEL:
-            a1 = -a1
-            a2 = -a2
+        # Title
+        title = QtWidgets.QLabel("SYSTEM STATUS")
+        title.setStyleSheet("font-weight: bold; font-size: 14px; color: #3498db; letter-spacing: 1px;")
+        side_layout.addWidget(title)
         
-        # Euler angles from quaternion (for consistency with prev pipeline, though we started with euler)
-        # We can just use the source euler angles directly, but quat_to_euler ensures consistency 
-        # with our coordinate frame transformations if any applied.
-        roll1, pitch1, yaw1 = quat_to_euler(q1)
-        roll2, pitch2, yaw2 = quat_to_euler(q2)
+        # Stats Box
+        self.stats_frame = QtWidgets.QFrame()
+        self.stats_frame.setStyleSheet("background-color: #2c3e50; border-radius: 5px; padding: 10px;")
+        sf_layout = QtWidgets.QVBoxLayout(self.stats_frame)
         
-        # Calculate latency
-        python_time_ms = (time.time() - python_start_time) * 1000
-        latency_ms = python_time_ms - t_ms
+        # Status Lights
+        lights_layout = QtWidgets.QHBoxLayout()
+        def make_light():
+            container = QtWidgets.QWidget()
+            l_lay = QtWidgets.QVBoxLayout(container)
+            l_lay.setContentsMargins(0, 0, 0, 0)
+            l_lay.setSpacing(2)
+            
+            indicator = QtWidgets.QLabel()
+            indicator.setFixedSize(14, 14)
+            indicator.setStyleSheet("background-color: #e74c3c; border-radius: 7px; border: 1px solid #c0392b;")
+            
+            l_lay.addWidget(indicator, alignment=QtCore.Qt.AlignmentFlag.AlignCenter)
+            return container, indicator
+            
+        self.light1_w, self.light1 = make_light()
+        self.light2_w, self.light2 = make_light()
         
-        # Accel magnitudes
-        a1_mag = np.linalg.norm(a1)
-        a2_mag = np.linalg.norm(a2)
+        def add_labeled_light(lay, widget, name):
+            item_lay = QtWidgets.QVBoxLayout()
+            item_lay.addWidget(widget)
+            lbl = QtWidgets.QLabel(name)
+            lbl.setStyleSheet("font-size: 9px; color: #95a5a6; font-weight: bold;")
+            lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            item_lay.addWidget(lbl)
+            lay.addLayout(item_lay)
+            
+        add_labeled_light(lights_layout, self.light1_w, "IMU 1")
+        add_labeled_light(lights_layout, self.light2_w, "IMU 2")
         
-        # Log data if CSV enabled
-        if csv_logger and latest_sample:
-            csv_logger.log_sample(
-                timestamp=time.time(),
-                sample=latest_sample,
-                a1_g=a1, a2_g=a2,
-                q1=q1, q2=q2,
-                euler1=(roll1, pitch1, yaw1),
-                euler2=(roll2, pitch2, yaw2)
-            )
+        sf_layout.addLayout(lights_layout)
+        sf_layout.addSpacing(5)
+
+        self.lbl_stats = QtWidgets.QLabel("Initializing...")
+        self.lbl_stats.setStyleSheet("font-family: 'Consolas', monospace; font-size: 11px; color: #bdc3c7;")
+        sf_layout.addWidget(self.lbl_stats)
+        side_layout.addWidget(self.stats_frame)
         
-        # Update performance monitor
-        frame_time = time.time() - frame_start
-        perf_mon.update(frame_time, latency_ms)
-        frame_start = time.time()
+        # Controls
+        self.btn_reset = QtWidgets.QPushButton("RESET CAMERA VIEW")
+        self.btn_reset.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.btn_reset.clicked.connect(self.reset_view)
+        side_layout.addWidget(self.btn_reset)
         
-        # Visualization updates (only if enabled)
-        if ENABLE_VISUALIZATION:
-            # Relative visualization option
-            if SHOW_RELATIVE_IMU2_TO_IMU1:
-                q1_vis = np.array([1.0, 0.0, 0.0, 0.0])
-                q2_vis = quat_mul(quat_inv(q1), q2)
+        side_layout.addSpacing(10)
+        
+        # Plots
+        lbl_plot = QtWidgets.QLabel("ACCELERATION (g)")
+        lbl_plot.setStyleSheet("font-weight: bold; font-size: 12px; color: #95a5a6; margin-top: 10px;")
+        side_layout.addWidget(lbl_plot)
+        
+        def setup_plot(title):
+            p = pg.PlotWidget()
+            p.setBackground('#2c3e50')
+            p.showGrid(x=False, y=True, alpha=0.3)
+            p.setYRange(*ACCEL_PLOT_Y_RANGE)
+            p.getAxis('left').setPen('#7f8c8d')
+            p.getAxis('bottom').setPen('#7f8c8d')
+            p.getAxis('left').setTextPen('#7f8c8d')
+            p.getAxis('bottom').setStyle(showValues=False)
+            p.setTitle(title, color='#ecf0f1', size='10pt')
+            return p
+            
+        self.plot1 = setup_plot("IMU 1")
+        self.c1x = self.plot1.plot(pen=pg.mkPen('#e74c3c', width=2))
+        self.c1y = self.plot1.plot(pen=pg.mkPen('#2ecc71', width=2))
+        self.c1z = self.plot1.plot(pen=pg.mkPen('#3498db', width=2))
+        side_layout.addWidget(self.plot1)
+        
+        self.plot2 = setup_plot("IMU 2")
+        self.c2x = self.plot2.plot(pen=pg.mkPen('#e74c3c', width=2))
+        self.c2y = self.plot2.plot(pen=pg.mkPen('#2ecc71', width=2))
+        self.c2z = self.plot2.plot(pen=pg.mkPen('#3498db', width=2))
+        side_layout.addWidget(self.plot2)
+        
+        # Legend (Manual)
+        legend_layout = QtWidgets.QHBoxLayout()
+        for col, txt in [('#e74c3c', 'X'), ('#2ecc71', 'Y'), ('#3498db', 'Z')]:
+            l = QtWidgets.QLabel(f"■ {txt}")
+            l.setStyleSheet(f"color: {col}; font-weight: bold; font-size: 10px;")
+            legend_layout.addWidget(l)
+        legend_layout.addStretch()
+        side_layout.addLayout(legend_layout)
+        
+        side_layout.addStretch()
+
+        # Data buffers for plotting
+        self.buf_size = 200
+        self.data_a1 = np.zeros((3, self.buf_size))
+        self.data_a2 = np.zeros((3, self.buf_size))
+
+        # Status Tracking
+        self.last_update_t = time.time()
+        self.last_v1 = None
+        self.last_v2 = None
+        self.freeze_t1 = time.time()
+        self.freeze_t2 = time.time()
+        self.TIMEOUT_SEC = 0.5
+        self.FREEZE_SEC = 1.0
+
+        # World Reference (Grid + Global Axes)
+        self.add_world_reference()
+        
+        # Arm Geometry
+        self.UPPER_ARM_LEN = 2.5
+        self.LOWER_ARM_LEN = 2.5
+
+        # IMU Objects
+        # IMU 1: Upper Arm (Shoulder -> Elbow)
+        self.imu1 = ImuVisualizer(self.view, position=(0, 0, 0), label_text="IMU 1 (Upper)", has_rod=True, rod_length=self.UPPER_ARM_LEN)
+        # IMU 2: Lower Arm (Elbow -> Wrist)
+        self.imu2 = ImuVisualizer(self.view, position=(self.UPPER_ARM_LEN, 0, 0), label_text="IMU 2 (Lower)", has_rod=True, rod_length=self.LOWER_ARM_LEN)
+        
+        # Data
+        self.reader = STM32Reader(port=port, baud=baud, verbose=True, binary_mode=True)
+        self.reader.start()
+        
+        self.csv_logger = None
+        if csv_file:
+            self.csv_logger = CSVLogger(csv_file)
+
+        # Update Timer
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_loop)
+        self.timer.start(16) # ~60 FPS
+        
+        self.perf = PerformanceMonitor()
+        self.python_start_time = time.time()
+
+    def add_world_reference(self):
+        """Add grid and global axes"""
+        # Grid
+        g = gl.GLGridItem()
+        g.setSize(x=20, y=20, z=0)
+        g.setSpacing(x=1, y=1, z=1)
+        self.view.addItem(g)
+        
+        # Global Axes
+        axis = gl.GLAxisItem()
+        axis.setSize(x=1, y=1, z=1)
+        self.view.addItem(axis)
+
+    def reset_view(self):
+        self.view.setCameraPosition(distance=8, elevation=30, azimuth=45)
+
+    def update_loop(self):
+        sample = self.reader.latest
+        now = time.time()
+        
+        # 1. Check for global reader timeout
+        if sample is None or (now - self.last_update_t > self.TIMEOUT_SEC and sample is self.reader.latest):
+            # No data coming in
+            self.light1.setStyleSheet("background-color: #e74c3c; border-radius: 8px;")
+            self.light2.setStyleSheet("background-color: #e74c3c; border-radius: 8px;")
+            self.perf.update(latency_ms=None) # Update FPS only
+            if sample is None: return
+        
+        # Detect if this is a fresh sample
+        is_new = False
+        if hasattr(self, '_last_processed_t') and sample.t_ms != self._last_processed_t:
+            is_new = True
+            self.last_update_t = now
+            self._last_processed_t = sample.t_ms
+        elif not hasattr(self, '_last_processed_t'):
+            self._last_processed_t = sample.t_ms
+            is_new = True
+
+        # Data for IMU1 and IMU2
+        v1 = (sample.roll1, sample.pitch1, sample.yaw1)
+        v2 = (sample.roll2, sample.pitch2, sample.yaw2)
+        
+        # 2. Check for frozen data (exactly the same)
+        if is_new:
+            if v1 != self.last_v1:
+                self.freeze_t1 = now
+                self.last_v1 = v1
+            if v2 != self.last_v2:
+                self.freeze_t2 = now
+                self.last_v2 = v2
+        
+        imu1_stuck = (now - self.freeze_t1) > self.FREEZE_SEC
+        imu2_stuck = (now - self.freeze_t2) > self.FREEZE_SEC
+        
+        # 3. Update Status Lights
+        def set_light(light, active, stuck):
+            if not active or stuck:
+                light.setStyleSheet("background-color: #e74c3c; border-radius: 8px; border: 1px solid #c0392b;")
             else:
-                q1_vis = q1
-                q2_vis = q2
-            
-            # Rotate basis vectors
-            r1x = rotate_vec_by_quat(ex, q1_vis)
-            r1y = rotate_vec_by_quat(ey, q1_vis)
-            r1z = rotate_vec_by_quat(ez, q1_vis)
-            
-            r2x = rotate_vec_by_quat(ex, q2_vis)
-            r2y = rotate_vec_by_quat(ey, q2_vis)
-            r2z = rotate_vec_by_quat(ez, q2_vis)
-            
-            # Update dice orientation
-            body1.axis = imu_to_scene(r1x)
-            body1.up = imu_to_scene(r1z)
-            body2.axis = imu_to_scene(r2x)
-            body2.up = imu_to_scene(r2z)
-            
-            # Update separate axes arrows
-            if SHOW_AXES and a1x:
-                a1x.axis = imu_to_scene(r1x)
-                a1y.axis = imu_to_scene(r1y)
-                a1z.axis = imu_to_scene(r1z)
-                
-                a2x.axis = imu_to_scene(r2x)
-                a2y.axis = imu_to_scene(r2y)
-                a2z.axis = imu_to_scene(r2z)
-            
-            # Update labels
-            if status_lab:
-                status_lab.text = (f"FPS: {perf_mon.get_fps():.1f} | Latency: {perf_mon.get_avg_latency():.1f}ms | Loss: {perf_mon.get_packet_loss_rate():.1f}%\\n"
-                                   f"IMU1: {latest_sample.imu1_ok} | IMU2: {latest_sample.imu2_ok}")
-            
-            if perf_mon.get_packet_loss_rate() > 5.0 and status_lab:
-                status_lab.color = color.red
-            elif status_lab:
-                status_lab.color = color.white
+                light.setStyleSheet("background-color: #2ecc71; border-radius: 8px; border: 1px solid #27ae60;")
 
-except KeyboardInterrupt:
-    print("\\nStopping...")
-finally:
-    reader.stop()
-    if csv_logger:
-        csv_logger.close()
+        set_light(self.light1, sample.imu1_ok, imu1_stuck)
+        set_light(self.light2, sample.imu2_ok, imu2_stuck)
+
+        # Orientation
+        q1 = euler_to_quat(sample.roll1, sample.pitch1, sample.yaw1)
+        q2 = euler_to_quat(sample.roll2, sample.pitch2, sample.yaw2)
+        
+        # Accel
+        a1 = np.array([sample.ax1, sample.ay1, sample.az1])
+        a2 = np.array([sample.ax2, sample.ay2, sample.az2])
+        
+        # Update 3D
+        self.imu1.update(q1)
+
+        # Forward Kinematics:
+        elbow_pos = rotate_vector(np.array([self.UPPER_ARM_LEN, 0, 0]), q1)
+        self.imu2.update(q2, pos=elbow_pos)
+        
+        # Update latency
+        latency_ms = None
+        if is_new:
+            python_time_ms = (now - self.python_start_time) * 1000
+            latency_ms = python_time_ms - sample.t_ms
+
+        # Update FPS, latency, loss
+        fps = self.perf.update(latency_ms)
+        
+        # Update Plots
+        if is_new:
+            self.data_a1 = np.roll(self.data_a1, -1, axis=1)
+            self.data_a1[:, -1] = a1
+            self.data_a2 = np.roll(self.data_a2, -1, axis=1)
+            self.data_a2[:, -1] = a2
+            
+            self.c1x.setData(self.data_a1[0])
+            self.c1y.setData(self.data_a1[1])
+            self.c1z.setData(self.data_a1[2])
+            
+            self.c2x.setData(self.data_a2[0])
+            self.c2y.setData(self.data_a2[1])
+            self.c2z.setData(self.data_a2[2])
+            
+            # Log
+            if self.csv_logger:
+                self.csv_logger.log_sample(
+                    timestamp=now,
+                    sample=sample,
+                    a1_g=a1, a2_g=a2,
+                    q1=q1, q2=q2,
+                    euler1=v1, euler2=v2
+                )
+        
+        # Update UI Stats
+        rate = self.reader.get_sample_rate()
+        txt = (f"FPS: {fps:.1f}\n"
+               f"Packet Rate: {rate:.1f} Hz\n"
+               f"Latency: {self.perf.get_avg_latency():.1f} ms\n"
+               f"Loss: {self.perf.get_packet_loss_rate():.1f} %\n\n"
+               f"IMU 1 (Left):\n"
+               f"  Status: {'OK' if sample.imu1_ok and not imu1_stuck else 'STUCK/OFF'}\n"
+               f"  R:{sample.roll1:5.1f} P:{sample.pitch1:5.1f} Y:{sample.yaw1:5.1f}\n\n"
+               f"IMU 2 (Right):\n"
+               f"  Status: {'OK' if sample.imu2_ok and not imu2_stuck else 'STUCK/OFF'}\n"
+               f"  R:{sample.roll2:5.1f} P:{sample.pitch2:5.1f} Y:{sample.yaw2:5.1f}")
+        self.lbl_stats.setText(txt)
+
+    def closeEvent(self, event):
+        self.reader.stop()
+        if self.csv_logger:
+            self.csv_logger.close()
+        event.accept()
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
+def main():
+    parser = argparse.ArgumentParser(description="PyQt BNO085 Visualizer")
+    parser.add_argument("--port", default="auto")
+    parser.add_argument("--baud", type=int, default=921600)
+    parser.add_argument("--csv", type=str, default=None)
+    args = parser.parse_args()
+    
+    port = None if args.port.lower() == "auto" else args.port
+    
+    app = QtWidgets.QApplication(sys.argv)
+    win = DualIMUWindow(port, args.baud, args.csv)
+    win.show()
+    sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

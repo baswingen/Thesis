@@ -37,8 +37,8 @@ except ImportError:
 # -----------------------------------------------------------------------------
 DURATION_S: Optional[float] = None  # Run indefinitely until window closed
 PRBS_CORRELATION_WINDOW_S: float = 1  # Search range (chips = rate × window)
-PRBS_UPDATE_INTERVAL_S: float = 0.1   # Update every 500 ms
-PRBS_CHIP_RATE_HZ: float = 100.0  # Must match STM32 firmware (100 Hz chip rate)
+PRBS_UPDATE_INTERVAL_S: float = 0.01   # Update every 500 ms
+PRBS_CHIP_RATE_HZ: float = 100  # Must match STM32 firmware (100 Hz chip rate)
 PRBS_VIZ_WINDOW_S: float = 1  # Sliding window width in seconds for the plot
 STM32_PORT: Optional[str] = None # Auto-detect
 STM32_BAUD: int = 921600
@@ -50,8 +50,11 @@ VERBOSE: bool = True
 # PyQtGraph required
 try:
     import pyqtgraph as pg
-    from pyqtgraph.Qt import QtWidgets, QtCore
+    from pyqtgraph.Qt import QtWidgets, QtCore, QtGui
     _PYQTGRAPH_AVAILABLE = True
+    
+    # Global Plot Configuration for consistency with other scripts
+    pg.setConfigOptions(antialias=True, useOpenGL=True)
 except ImportError:
     _PYQTGRAPH_AVAILABLE = False
 
@@ -446,27 +449,64 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self._confidence_history: deque = deque(maxlen=4000)
 
         self.setWindowTitle("PRBS Signal Monitor – STM32 + EMG")
-        self.resize(1100, 950)
-        layout = QtWidgets.QVBoxLayout()
-        self.setLayout(layout)
+        self.resize(1300, 1050)
+        
+        # Premium Styling (matching dual_BNO085_testing.py)
+        self.setStyleSheet("""
+            QMainWindow, QWidget#central { background-color: #2c3e50; }
+            QLabel { color: #ecf0f1; font-family: 'Segoe UI', sans-serif; }
+            QFrame#sidebar { background-color: #34495e; border-left: 1px solid #2c3e50; }
+            QFrame#stats_box { background-color: #2c3e50; border-radius: 6px; padding: 12px; }
+        """)
+        
+        main_layout = QtWidgets.QHBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        self.setLayout(main_layout)
 
-        self.status_label = QtWidgets.QLabel("Acquiring PRBS signals...")
-        self.status_label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.status_label.setStyleSheet(
-            "font-size: 14px; font-weight: bold; padding: 10px; "
-            "background-color: #2c3e50; color: white;"
-        )
-        layout.addWidget(self.status_label)
-
+        # --- Plotting Area (Left) ---
+        plot_container = QtWidgets.QWidget()
+        plot_layout = QtWidgets.QVBoxLayout(plot_container)
+        main_layout.addWidget(plot_container, stretch=4)
+        
         self.graphics_layout = pg.GraphicsLayoutWidget()
-        layout.addWidget(self.graphics_layout)
+        self.graphics_layout.setBackground('#2c3e50')
+        plot_layout.addWidget(self.graphics_layout)
+
+        # --- Sidebar (Right) ---
+        sidebar = QtWidgets.QFrame()
+        sidebar.setObjectName("sidebar")
+        sidebar.setFixedWidth(300)
+        side_layout = QtWidgets.QVBoxLayout(sidebar)
+        side_layout.setContentsMargins(15, 15, 15, 15)
+        side_layout.setSpacing(15)
+        main_layout.addWidget(sidebar)
+
+        title = QtWidgets.QLabel("ACQUISITION STATUS")
+        title.setStyleSheet("font-weight: bold; font-size: 14px; color: #3498db; letter-spacing: 1px;")
+        side_layout.addWidget(title)
+
+        self.stats_box = QtWidgets.QFrame()
+        self.stats_box.setObjectName("stats_box")
+        sf_layout = QtWidgets.QVBoxLayout(self.stats_box)
+        
+        self.lbl_stm32 = QtWidgets.QLabel("STM32: Initializing...")
+        self.lbl_emg = QtWidgets.QLabel("EMG: Initializing...")
+        self.lbl_sync = QtWidgets.QLabel("Sync: Accumulating...")
+        self.lbl_time = QtWidgets.QLabel("Time: 0.0s")
+        
+        for lbl in [self.lbl_stm32, self.lbl_emg, self.lbl_sync, self.lbl_time]:
+            lbl.setStyleSheet("font-family: 'Consolas', monospace; font-size: 11px; color: #bdc3c7;")
+            sf_layout.addWidget(lbl)
+        
+        side_layout.addWidget(self.stats_box)
+        side_layout.addStretch()
 
         # Plot 1: STM32 PRBS
         self.plot_stm32 = self.graphics_layout.addPlot(row=0, col=0, title="STM32 PRBS (Raw)")
         self.plot_stm32.setLabel("left", "Level")
-        self.plot_stm32.setLabel("bottom", "Time", units="s")
         self.plot_stm32.setYRange(-1.2, 1.2)
-        self.plot_stm32.showGrid(x=True, y=True, alpha=0.3)
+        self._style_plot(self.plot_stm32)
         self.curve_stm32 = self.plot_stm32.plot(
             pen=pg.mkPen("#2ecc71", width=2), stepMode=True
         )
@@ -474,9 +514,8 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         # Plot 2: EMG TRIG
         self.plot_emg = self.graphics_layout.addPlot(row=1, col=0, title="Porti7 TRIG (EMG)")
         self.plot_emg.setLabel("left", "Level")
-        self.plot_emg.setLabel("bottom", "Time", units="s")
         self.plot_emg.setYRange(-1.2, 1.2)
-        self.plot_emg.showGrid(x=True, y=True, alpha=0.3)
+        self._style_plot(self.plot_emg)
         self.curve_emg = self.plot_emg.plot(
             pen=pg.mkPen("#3498db", width=2), stepMode=True
         )
@@ -486,8 +525,8 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             row=2, col=0, title="Cross-Correlation Delay"
         )
         self.plot_delay.setLabel("left", "Delay", units="ms")
-        self.plot_delay.setLabel("bottom", "Time", units="s")
-        self.plot_delay.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_delay.setYRange(-150, 150) # Assuming reasonable range
+        self._style_plot(self.plot_delay)
         self.curve_delay = self.plot_delay.plot(
             pen=pg.mkPen(color="#e74c3c", width=2), name="Kalman"
         )
@@ -502,9 +541,8 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             row=3, col=0, title="Correlation Confidence"
         )
         self.plot_conf.setLabel("left", "Confidence")
-        self.plot_conf.setLabel("bottom", "Time", units="s")
         self.plot_conf.setYRange(0, 1.05)
-        self.plot_conf.showGrid(x=True, y=True, alpha=0.3)
+        self._style_plot(self.plot_conf)
         self.curve_conf = self.plot_conf.plot(
             pen=pg.mkPen(color="#f39c12", width=2),
             fillLevel=0,
@@ -523,22 +561,48 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             row=4, col=0, title="Synchronized Overlay (delay-corrected)"
         )
         self.plot_synced.setLabel("left", "Level")
-        self.plot_synced.setLabel("bottom", "Time", units="s")
         self.plot_synced.setYRange(-0.3, 1.5)
-        self.plot_synced.showGrid(x=True, y=True, alpha=0.3)
+        self._style_plot(self.plot_synced)
+        
         self.curve_sync_stm32 = self.plot_synced.plot(
-            pen=pg.mkPen("#2ecc71", width=2), stepMode=True, name="STM32"
+            pen=pg.mkPen(color="#bdc3c7", width=1, style=QtCore.Qt.PenStyle.DotLine), 
+            stepMode=True, name="STM32 (Ref)"
         )
-        self.curve_sync_emg = self.plot_synced.plot(
-            pen=pg.mkPen("#3498db", width=2), stepMode=True, name="EMG (shifted)"
+        self.curve_sync_emg_match = self.plot_synced.plot(
+            pen=pg.mkPen("#2ecc71", width=2.5), stepMode=True, name="EMG (Match)"
+        )
+        self.curve_sync_emg_mismatch = self.plot_synced.plot(
+            pen=pg.mkPen("#e74c3c", width=2.5), stepMode=True, name="EMG (Mismatch)"
         )
         self.plot_synced.addLegend(offset=(10, 10))
+
+        # Plot 6: Unsynchronized Overlay — Raw alignment
+        self.plot_unsynced = self.graphics_layout.addPlot(
+            row=5, col=0, title="Unsynchronized Overlay (raw alignment)"
+        )
+        self.plot_unsynced.setLabel("left", "Level")
+        self.plot_unsynced.setLabel("bottom", "Time", units="s")
+        self.plot_unsynced.setYRange(-0.3, 1.5)
+        self._style_plot(self.plot_unsynced)
+
+        self.curve_unsync_stm32 = self.plot_unsynced.plot(
+            pen=pg.mkPen(color="#bdc3c7", width=1, style=QtCore.Qt.PenStyle.DotLine), 
+            stepMode=True, name="STM32 (Ref)"
+        )
+        self.curve_unsync_emg_match = self.plot_unsynced.plot(
+            pen=pg.mkPen("#2ecc71", width=2.5), stepMode=True, name="EMG (Match)"
+        )
+        self.curve_unsync_emg_mismatch = self.plot_unsynced.plot(
+            pen=pg.mkPen("#e74c3c", width=2.5), stepMode=True, name="EMG (Mismatch)"
+        )
+        self.plot_unsynced.addLegend(offset=(10, 10))
 
         # Link X axes for all plots
         self.plot_emg.setXLink(self.plot_stm32)
         self.plot_delay.setXLink(self.plot_stm32)
         self.plot_conf.setXLink(self.plot_stm32)
         self.plot_synced.setXLink(self.plot_stm32)
+        self.plot_unsynced.setXLink(self.plot_stm32)
 
         # Only apply clipToView to non-stepMode curves.
         # stepMode curves require len(x) == len(y)+1; pyqtgraph's view-range
@@ -593,6 +657,19 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 f"updates={updates}"
             )
 
+    def _style_plot(self, plot_item: pg.PlotItem):
+        """Apply a cleaner, more premium style to the plots."""
+        plot_item.showGrid(x=True, y=True, alpha=0.15)
+        plot_item.getAxis('left').setPen('#7f8c8d')
+        plot_item.getAxis('bottom').setPen('#7f8c8d')
+        plot_item.getAxis('left').setTextPen('#7f8c8d')
+        plot_item.getAxis('bottom').setTextPen('#7f8c8d')
+        # Remove top/right axes
+        plot_item.getAxis('top').setHeight(0)
+        plot_item.getAxis('right').setWidth(0)
+        plot_item.titleLabel.setAttr('color', '#ecf0f1')
+        plot_item.titleLabel.setAttr('size', '10pt')
+
     def _on_viz_tick(self) -> None:
         """Update PRBS signal plots and cross-correlation plots."""
         # Capture snapshot data ONCE per tick so all plots share the same
@@ -607,7 +684,7 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
 
         self._update_prbs_plots(now, stm32_snap, emg_chunks)
         self._update_sync_plots()
-        self._update_synced_plot(now, stm32_snap, emg_chunks)
+        self._update_overlay_plots(now, stm32_snap, emg_chunks)
 
         # Update status
         elapsed = now - self.start_time
@@ -617,6 +694,7 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             n_samples = self.stm32_thread.sample_count
             rate = n_samples / elapsed if elapsed > 0.5 else 0
             stm32_info = f"STM32: {n_samples} ({rate:.0f} Hz)"
+        self.lbl_stm32.setText(stm32_info)
 
         emg_info = "EMG: --"
         sync_info = "Sync: waiting"
@@ -628,16 +706,15 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             if result is not None:
                 delay = self.estimator.get_delay_ms()
                 sync_info = (
-                    f"Delay: {delay:+.1f} ms | "
                     f"Conf: {result.confidence:.2f} | "
-                    f"Updates: {self.estimator._update_count}"
+                    f"Delay: {delay:+.1f} ms"
                 )
             else:
-                sync_info = f"Sync: accumulating ({n_bufs} chips)"
-
-        self.status_label.setText(
-            f"{stm32_info} | {emg_info} | {sync_info} | {elapsed:.0f}s"
-        )
+                sync_info = f"Sync: ({n_bufs} chips)"
+        
+        self.lbl_emg.setText(emg_info)
+        self.lbl_sync.setText(sync_info)
+        self.lbl_time.setText(f"Time: {elapsed:.1f}s")
 
         # DEBUG: Print status every ~2s
         if int(elapsed / 2) > getattr(self, "_last_debug_s", -1):
@@ -728,57 +805,75 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             arr = np.array(self._confidence_history)
             self.curve_conf.setData(arr[:, 0], arr[:, 1])
 
-    def _update_synced_plot(self, now: float, stm32_snap: dict, emg_chunks) -> None:
-        """Update the synchronized overlay plot with delay-corrected EMG."""
+    def _update_overlay_plots(self, now: float, stm32_snap: dict, emg_chunks) -> None:
+        """Update both synchronized and unsynchronized overlay plots.
+        
+        Implements green/red coloring based on overlap with STM32 reference.
+        """
         if self.estimator is None:
             return
 
-        # Use Kalman-smoothed delay — more reliable than single-update RAW
         delay_ms = self.estimator.get_delay_ms()
         self.plot_synced.setTitle(f"Synchronized Overlay (Kalman delay: {delay_ms:.1f} ms)")
-             
         delay_s = delay_ms / 1000.0
 
-        # --- STM32 Data (same snapshot as raw plot) ---
+        # --- Acquire STM32 Reference ---
+        t_stm32_rel = None
+        y_stm32 = None
+        
         if stm32_snap and "t_sec" in stm32_snap:
             t_host = stm32_snap.get("pc_time", None)
             prbs_lvl = stm32_snap.get("prbs_level", None)
-            
             if t_host is not None and prbs_lvl is not None:
                 mask = t_host > (now - self.prbs_window_s)
                 t_plot = t_host[mask]
-                y_plot = prbs_lvl[mask]
-                
+                y_stm32 = prbs_lvl[mask]
                 if len(t_plot) > 1:
                     t_stm32_rel = t_plot - self.start_time
                     # Pad for stepMode
-                    if len(t_stm32_rel) > 1:
-                        dt = t_stm32_rel[-1] - t_stm32_rel[-2]
-                        t_padded = np.append(t_stm32_rel, t_stm32_rel[-1] + dt)
-                        self.curve_sync_stm32.setData(t_padded, y_plot)
+                    dt_stm = t_stm32_rel[-1] - t_stm32_rel[-2]
+                    t_padded_stm = np.append(t_stm32_rel, t_stm32_rel[-1] + dt_stm)
+                    self.curve_sync_stm32.setData(t_padded_stm, y_stm32)
+                    self.curve_unsync_stm32.setData(t_padded_stm, y_stm32)
 
-        # --- EMG Data (same chunks as raw plot) ---
-        if emg_chunks:
+        # --- Acquire and Comparison Logic ---
+        if emg_chunks and y_stm32 is not None and t_stm32_rel is not None:
             t_raw = np.concatenate([c[0] for c in emg_chunks])
             v_raw = np.concatenate([c[1] for c in emg_chunks])
             
             is_status = getattr(self.estimator, "_trig_is_status", True)
             trig_bit = getattr(self.estimator, "_detected_trig_bit", None)
-            y_plot = _extract_trig_binary(v_raw, is_status, trig_bit)
+            y_emg_full = _extract_trig_binary(v_raw, is_status, trig_bit)
             
             mask = t_raw > (now - self.prbs_window_s)
-            t_plot = t_raw[mask]
-            y_plot = y_plot[mask]
+            t_emg_raw = t_raw[mask] - self.start_time
+            y_emg = y_emg_full[mask]
             
-            if len(t_plot) > 1:
-                # No group-delay correction: we use raw sample timestamps, not downsampled chips
-                t_rel = (t_plot - delay_s) - self.start_time
-                
-                # Pad for stepMode
-                if len(t_rel) > 1:
-                    dt = t_rel[-1] - t_rel[-2]
-                    t_padded = np.append(t_rel, t_rel[-1] + dt)
-                    self.curve_sync_emg.setData(t_padded, y_plot)
+            if len(t_emg_raw) > 1:
+                def _process_overlay(t_emg_in, y_emg_in, curve_match, curve_mismatch):
+                    # Comparison: Resample STM32 to EMG timestamps (nearest neighbor)
+                    indices = np.searchsorted(t_stm32_rel, t_emg_in)
+                    indices = np.clip(indices, 0, len(y_stm32) - 1)
+                    y_stm32_resampled = y_stm32[indices]
+                    
+                    matches = (y_emg_in == y_stm32_resampled)
+                    y_match = np.copy(y_emg_in).astype(np.float64)
+                    y_match[~matches] = np.nan
+                    y_mismatch = np.copy(y_emg_in).astype(np.float64)
+                    y_mismatch[matches] = np.nan
+                    
+                    # Pad for stepMode
+                    dt_emg = t_emg_in[-1] - t_emg_in[-2]
+                    t_padded = np.append(t_emg_in, t_emg_in[-1] + dt_emg)
+                    curve_match.setData(t_padded, y_match)
+                    curve_mismatch.setData(t_padded, y_mismatch)
+
+                # 1. Update Sync Overlay
+                t_emg_shifted = t_emg_raw - delay_s
+                _process_overlay(t_emg_shifted, y_emg, self.curve_sync_emg_match, self.curve_sync_emg_mismatch)
+
+                # 2. Update Unsync Overlay
+                _process_overlay(t_emg_raw, y_emg, self.curve_unsync_emg_match, self.curve_unsync_emg_mismatch)
 
     def closeEvent(self, event) -> None:
         if self.timer:
