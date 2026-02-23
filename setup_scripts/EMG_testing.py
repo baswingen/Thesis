@@ -11,7 +11,7 @@ Features:
 - Clean and robust device discovery and connection
 
 Prerequisites:
-- TMSi device connected via USB (or Bluetooth paired)
+- TMSi device connected via USB
 - PyQt6 and pyqtgraph installed (`pip install pyqtgraph PyQt6`)
 - Optional: scipy (`pip install scipy`) for filtering
 """
