@@ -53,6 +53,9 @@ from .stm32_emg_sync import (
 # Native signal acquisition (STM32 + TMSi Porti7 EMG + PRBS sync) — primary module
 from .stm32_reader import STM32Reader, SampleSTM32
 
+# Button matrix visualization module
+from .button_matrix import MatrixWindow, run_matrix_visualization
+
 # Legacy alias: DualIMU is the same as IMUDevice
 DualIMU = IMUDevice
 
@@ -100,4 +103,7 @@ __all__ = [
     # Native signal acquisition
     'STM32Reader',
     'SampleSTM32',
+    # Button Matrix
+    'MatrixWindow',
+    'run_matrix_visualization',
 ]
