@@ -525,7 +525,7 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             row=2, col=0, title="Cross-Correlation Delay"
         )
         self.plot_delay.setLabel("left", "Delay", units="ms")
-        self.plot_delay.setYRange(-150, 150) # Assuming reasonable range
+        self.plot_delay.enableAutoRange(axis='y') # Automatically scale y-axis based on data
         self._style_plot(self.plot_delay)
         self.curve_delay = self.plot_delay.plot(
             pen=pg.mkPen(color="#e74c3c", width=2), name="Kalman"
@@ -682,8 +682,13 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         if self.estimator is not None:
             emg_chunks = self.estimator.get_emg_trig_snapshot()
 
+        # Determine effective_now based on latest data to prevent sync plots from leading raw data
+        effective_now = now
+        if stm32_snap and "pc_time" in stm32_snap and len(stm32_snap["pc_time"]) > 0:
+            effective_now = stm32_snap["pc_time"][-1]
+
         self._update_prbs_plots(now, stm32_snap, emg_chunks)
-        self._update_sync_plots()
+        self._update_sync_plots(effective_now)
         self._update_overlay_plots(now, stm32_snap, emg_chunks)
 
         # Update status
@@ -772,12 +777,12 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                 print(f"[VIZ] PRBS update error: {exc}")
                 self._last_prbs_err = str(exc)
 
-    def _update_sync_plots(self) -> None:
+    def _update_sync_plots(self, effective_now: float) -> None:
         """Read cross-correlation results and update delay / confidence plots."""
         if self.estimator is None:
             return
 
-        elapsed = time.perf_counter() - self.start_time
+        elapsed = effective_now - self.start_time
         result = self.estimator.get_result()
         if result is None:
             return
