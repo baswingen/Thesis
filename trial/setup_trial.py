@@ -181,21 +181,45 @@ class TrialManager:
                 self.logger.append_stm32_data(out)
                 
             # --- EMG Logging ---
-            # TMSiThread does not expose a list history by default, we use the estimator's buffer
-            # since it already cleanly stores (timestamps, samples) arrays
-            with self.estimator._lock:
-                emg_chunks = list(self.estimator._emg_trig_buf)
-                
-            n_emg = len(emg_chunks)
-            if n_emg > emg_idx:
-                new_chunks = emg_chunks[emg_idx:n_emg]
-                emg_idx = n_emg
-                
-                ts_arr = np.concatenate([c[0] for c in new_chunks])
-                dat_arr = np.concatenate([c[1] for c in new_chunks])
-                
-                if len(ts_arr) > 0:
-                    out = np.column_stack((ts_arr, dat_arr)) # t_pc, ch1...chn
+            # Read from tmsi_thread._history which stores full (t_arr, samples_2d) chunks.
+            # EMG columns: t_pc, t_tmsi(=0), ch1..ch32, trig  → 35 columns total
+            # Uses trig_idx to explicitly place the Dig channel as the last (trig) column.
+            with self.tmsi_thread._lock:
+                emg_hist = self.tmsi_thread._history[emg_idx:]
+                emg_idx = len(self.tmsi_thread._history)
+
+            if emg_hist:
+                trig_idx = self.tmsi_thread.trig_idx  # index of Dig channel in raw sample array
+                parts = []
+                for (t_arr, samp) in emg_hist:
+                    n = len(t_arr)
+                    if samp.ndim != 2 or samp.shape[1] == 0:
+                        parts.append(np.zeros((n, 35)))
+                        continue
+
+                    n_ch = samp.shape[1]
+
+                    if trig_idx != -1 and trig_idx < n_ch:
+                        # Non-Dig channels → ch1..ch32
+                        emg_indices = [i for i in range(n_ch) if i != trig_idx][:32]
+                        emg_ch = samp[:, emg_indices]
+                        if emg_ch.shape[1] < 32:
+                            emg_ch = np.hstack((emg_ch, np.zeros((n, 32 - emg_ch.shape[1]))))
+                        trig_ch = samp[:, trig_idx:trig_idx + 1]   # Dig channel → trig col
+                    else:
+                        # Dig not found: take first 32 cols as EMG, zero trig
+                        emg_ch = samp[:, :32]
+                        if emg_ch.shape[1] < 32:
+                            emg_ch = np.hstack((emg_ch, np.zeros((n, 32 - emg_ch.shape[1]))))
+                        trig_ch = np.zeros((n, 1))
+
+                    sig = np.hstack((emg_ch, trig_ch))              # (N, 33)
+                    t_tmsi = np.zeros(n)                            # device time not exposed
+                    row = np.column_stack((t_arr, t_tmsi, sig))     # (N, 35)
+                    parts.append(row)
+
+                if parts:
+                    out = np.vstack(parts)
                     self.logger.append_emg_data(out)
                     
             # --- Sync Logic Trigger / Metrics Logging ---

@@ -1,2 +1,5 @@
 # This file ensures the database directory structure is tracked in git
 # while the actual data files are ignored via .gitignore
+#
+# Tracked utility files in this directory:
+#   hdf5_interpreter.py  – plots all columns of a trial .h5 file
