@@ -25,8 +25,11 @@ from typing import Optional, List, Tuple
 import numpy as np
 import warnings
 
-# Add TMSi Python Interface to path
+# Add project root and TMSi Python Interface to path
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 tmsi_interface_path = os.path.join(PROJECT_ROOT, 'tmsi-python-interface')
 if os.path.exists(tmsi_interface_path) and tmsi_interface_path not in sys.path:
     sys.path.insert(0, tmsi_interface_path)
@@ -56,10 +59,11 @@ except ImportError as e:
 # Optional filtering
 try:
     from scipy import signal
+    from src.emg_processing import EMGProcessor
     _SCIPY_AVAILABLE = True
 except ImportError:
     _SCIPY_AVAILABLE = False
-    print("Warning: scipy not available - filtering disabled")
+    print("Warning: scipy or src.emg_processing not available - filtering disabled")
 
 
 # ============================================================================
@@ -83,32 +87,7 @@ FILTER_ORDER = 4
 PLOT_WINDOW_SECONDS = 5.0
 SMOOTHING_WINDOW_SECONDS = 0.2
 
-# ============================================================================
-# FILTERING
-# ============================================================================
-class BandpassFilter:
-    """Real-time bandpass filter using scipy's Butterworth filter."""
-    def __init__(self, lowcut, highcut, fs, order=4):
-        self.lowcut = lowcut
-        self.highcut = highcut
-        self.fs = fs
-        self.order = order
-        self.sos = None
-        self.zi = None
-        
-        if _SCIPY_AVAILABLE:
-            nyquist = 0.5 * fs
-            low = max(0.01, lowcut / nyquist)
-            high = min(0.99, highcut / nyquist)
-            
-            self.sos = signal.butter(order, [low, high], btype='band', output='sos')
-            self.zi = signal.sosfilt_zi(self.sos)
-    
-    def filter(self, data):
-        if not _SCIPY_AVAILABLE or self.sos is None or len(data) == 0:
-            return data
-        filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi)
-        return filtered
+# Filter settings moved to internal configuration
 
 # ============================================================================
 # ACQUISITION THREAD
@@ -288,7 +267,7 @@ class EMGWindow(QtWidgets.QMainWindow):
         
         # --- State ---
         self.tmsi_thread = TMSiAcquisitionThread(sample_rate=SAMPLE_RATE)
-        self.bpf = None
+        self.processor: Optional[EMGProcessor] = None
         
         self.pos_idx = -1
         self.neg_idx = -1
@@ -344,13 +323,28 @@ class EMGWindow(QtWidgets.QMainWindow):
         info = f"Sampling: Differential\n+ : [{p_idx}] {c1}\n- : [{n_idx}] {c2}"
         self.lbl_ch_info.setText(info)
         
+        # Update Raw Plot Title with channel info
+        self.plot_raw.setTitle(f"Raw EMG: {c1} - {c2}")
+        
         if APPLY_BANDPASS_FILTER and _SCIPY_AVAILABLE:
             sr = self.tmsi_thread.sample_rate # fallback
             if self.tmsi_thread.measurement:
                 sr = self.tmsi_thread.measurement.get_device_sample_rate()
-            self.bpf = BandpassFilter(BANDPASS_LOW_CUTOFF, BANDPASS_HIGH_CUTOFF, sr, FILTER_ORDER)
-            self.smooth_window_samples = max(1, int(SMOOTHING_WINDOW_SECONDS * sr))
-            self.plot_filtered.setTitle(f"Processed EMG ({BANDPASS_LOW_CUTOFF}-{BANDPASS_HIGH_CUTOFF}Hz BP \u2192 Rectify \u2192 {SMOOTHING_WINDOW_SECONDS}s Smooth)")
+            
+            # Use centralized EMGProcessor for filtering and envelope extraction
+            envelope_cutoff = 1.0 / SMOOTHING_WINDOW_SECONDS if SMOOTHING_WINDOW_SECONDS > 0 else 10.0
+            self.processor = EMGProcessor(
+                fs=sr,
+                bandpass_low=BANDPASS_LOW_CUTOFF,
+                bandpass_high=BANDPASS_HIGH_CUTOFF,
+                bandpass_order=FILTER_ORDER,
+                envelope_cutoff=envelope_cutoff
+            )
+            # Premium formatted title reflecting the src.emg_processing pipeline
+            self.plot_filtered.setTitle(
+                f"Processed EMG ({BANDPASS_LOW_CUTOFF}-{BANDPASS_HIGH_CUTOFF}Hz BP "
+                f"\u2192 Rectified \u2192 {envelope_cutoff:.1f}Hz LP Envelope)"
+            )
         
         return True
 
@@ -405,9 +399,9 @@ class EMGWindow(QtWidgets.QMainWindow):
         self.time_buf.extend(t_valid)
         self.raw_buf.extend(v_valid)
         
-        if self.bpf is not None:
-            v_filt = self.bpf.filter(v_valid)
-            self.filt_buf.extend(v_filt)
+        if self.processor is not None:
+            _, envelope = self.processor.process(v_valid, return_envelope=True)
+            self.filt_buf.extend(envelope)
             
         # Redraw
         if len(self.time_buf) > 0:
@@ -421,23 +415,8 @@ class EMGWindow(QtWidgets.QMainWindow):
             self.curve_raw.setData(t_rel, np.array(self.raw_buf))
             self.plot_raw.setXRange(max(0, t_rel[-1] - PLOT_WINDOW_SECONDS), t_rel[-1])
             
-            if self.bpf is not None and len(self.filt_buf) == len(self.time_buf):
-                # Apply processing to the entire buffer for stability, or just the visible part
-                v_f = np.array(self.filt_buf)
-                
-                # 1. Rectification
-                v_rect = np.abs(v_f)
-                
-                # 2. Smoothing (Moving Average)
-                w = self.smooth_window_samples
-                if len(v_rect) > w:
-                    # Use a fast convolution for SMA
-                    kernel = np.ones(w) / w
-                    v_smooth = np.convolve(v_rect, kernel, mode='same')
-                else:
-                    v_smooth = v_rect
-                    
-                self.curve_filtered.setData(t_rel, v_smooth)
+            if self.processor is not None and len(self.filt_buf) == len(self.time_buf):
+                self.curve_filtered.setData(t_rel, np.array(self.filt_buf))
 
 
     def closeEvent(self, event):
