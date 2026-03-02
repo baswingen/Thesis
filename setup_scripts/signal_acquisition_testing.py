@@ -442,6 +442,10 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self._last_emg_len: int = 0
         self._last_emg_hash: int = 0
         self._last_prbs_err: Optional[str] = None
+        
+        # Performance Stats
+        self._synced_match: float = 0.0
+        self._unsynced_match: float = 0.0
 
         # History buffers for delay and confidence time-series (~120 s at 30 fps)
         self._delay_history: deque = deque(maxlen=4000)
@@ -498,8 +502,28 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         for lbl in [self.lbl_stm32, self.lbl_emg, self.lbl_sync, self.lbl_time]:
             lbl.setStyleSheet("font-family: 'Consolas', monospace; font-size: 11px; color: #bdc3c7;")
             sf_layout.addWidget(lbl)
-        
+            
         side_layout.addWidget(self.stats_box)
+        
+        # --- Match Accuracy Box ---
+        side_layout.addSpacing(10)
+        match_title = QtWidgets.QLabel("MATCH ACCURACY (1s Window)")
+        match_title.setStyleSheet("font-weight: bold; font-size: 11px; color: #3498db; letter-spacing: 0.5px;")
+        side_layout.addWidget(match_title)
+        
+        self.match_box = QtWidgets.QFrame()
+        self.match_box.setObjectName("stats_box")
+        mf_layout = QtWidgets.QVBoxLayout(self.match_box)
+        
+        self.lbl_match_synced = QtWidgets.QLabel("Synced: --")
+        self.lbl_match_unsynced = QtWidgets.QLabel("Unsynced: --")
+        self.lbl_sync_gain = QtWidgets.QLabel("Sync Gain: --")
+        
+        for lbl in [self.lbl_match_synced, self.lbl_match_unsynced, self.lbl_sync_gain]:
+            lbl.setStyleSheet("font-family: 'Consolas', monospace; font-size: 11px; color: #bdc3c7;")
+            mf_layout.addWidget(lbl)
+            
+        side_layout.addWidget(self.match_box)
         side_layout.addStretch()
 
         # Plot 1: STM32 PRBS
@@ -522,7 +546,7 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
 
         # Plot 3: Cross-Correlation Delay (ms)
         self.plot_delay = self.graphics_layout.addPlot(
-            row=2, col=0, title="Cross-Correlation Delay"
+            row=2, col=0, title="Cross-Correlation Delay (Raw vs. Kalman)"
         )
         self.plot_delay.setLabel("left", "Delay", units="ms")
         self.plot_delay.enableAutoRange(axis='y') # Automatically scale y-axis based on data
@@ -558,7 +582,7 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
 
         # Plot 5: Synchronized Overlay — EMG shifted by estimated delay
         self.plot_synced = self.graphics_layout.addPlot(
-            row=4, col=0, title="Synchronized Overlay (delay-corrected)"
+            row=4, col=0, title="Synchronized Overlay (Kalman-smoothed)"
         )
         self.plot_synced.setLabel("left", "Level")
         self.plot_synced.setYRange(-0.3, 1.5)
@@ -675,7 +699,8 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         # Capture snapshot data ONCE per tick so all plots share the same
         # time reference and data — prevents ~10ms window shift between plots.
         now = time.perf_counter()
-        n_samples_stm32 = int(self.prbs_window_s * 550)
+        # Increased snapshot size: PRBS_VIZ_WINDOW_S (1s) + 2 seconds for matching history (3s total @ 550Hz)
+        n_samples_stm32 = int((self.prbs_window_s + 2.0) * 550)
         stm32_snap = self.stm32_thread.get_snapshot(n=n_samples_stm32)
 
         emg_chunks = None
@@ -720,6 +745,16 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         self.lbl_emg.setText(emg_info)
         self.lbl_sync.setText(sync_info)
         self.lbl_time.setText(f"Time: {elapsed:.1f}s")
+
+        # Update Match Accuracy Stats
+        self.lbl_match_synced.setText(f"Synced:   {self._synced_match*100:5.1f}%")
+        self.lbl_match_unsynced.setText(f"Unsynced: {self._unsynced_match*100:5.1f}%")
+        gain = self._synced_match - self._unsynced_match
+        self.lbl_sync_gain.setText(f"Gain:     {gain*100:+5.1f}%")
+        if gain > 0.05: # Green for >5% gain
+            self.lbl_sync_gain.setStyleSheet("font-family: 'Consolas', monospace; font-size: 11px; color: #2ecc71; font-weight: bold;")
+        else:
+            self.lbl_sync_gain.setStyleSheet("font-family: 'Consolas', monospace; font-size: 11px; color: #bdc3c7;")
 
         # DEBUG: Print status every ~2s
         if int(elapsed / 2) > getattr(self, "_last_debug_s", -1):
@@ -815,34 +850,43 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
         
         Implements green/red coloring based on overlap with STM32 reference.
         """
-        if self.estimator is None:
-            return
-
         delay_ms = self.estimator.get_delay_ms()
-        self.plot_synced.setTitle(f"Synchronized Overlay (Kalman delay: {delay_ms:.1f} ms)")
+        result = self.estimator.get_result()
+        is_inverted = (result.polarity == "inverted") if result else False
+        
+        pol_str = " (Inverted)" if is_inverted else ""
+        self.plot_synced.setTitle(f"Synchronized Overlay (Kalman-smoothed: {delay_ms:.1f} ms){pol_str}")
         delay_s = delay_ms / 1000.0
 
-        # --- Acquire STM32 Reference ---
-        t_stm32_rel = None
-        y_stm32 = None
+        # --- Acquire STM32 Full Snapshot for Matching, but mask for Plotting ---
+        t_stm32_full_rel = None # All available PC arrival times relative to start
+        y_stm32_full = None     # All available bits
+        
+        t_stm32_plot_rel = None # 1s window for gray reference line
+        y_stm32_plot = None 
         
         if stm32_snap and "t_sec" in stm32_snap:
             t_host = stm32_snap.get("pc_time", None)
             prbs_lvl = stm32_snap.get("prbs_level", None)
             if t_host is not None and prbs_lvl is not None:
+                t_stm32_full_rel = t_host - self.start_time
+                y_stm32_full = prbs_lvl
+                
+                # Mask just the 1s window for the gray background reference line
                 mask = t_host > (now - self.prbs_window_s)
                 t_plot = t_host[mask]
-                y_stm32 = prbs_lvl[mask]
+                y_stm32_plot = prbs_lvl[mask]
+                
                 if len(t_plot) > 1:
-                    t_stm32_rel = t_plot - self.start_time
+                    t_stm32_plot_rel = t_plot - self.start_time
                     # Pad for stepMode
-                    dt_stm = t_stm32_rel[-1] - t_stm32_rel[-2]
-                    t_padded_stm = np.append(t_stm32_rel, t_stm32_rel[-1] + dt_stm)
-                    self.curve_sync_stm32.setData(t_padded_stm, y_stm32)
-                    self.curve_unsync_stm32.setData(t_padded_stm, y_stm32)
+                    dt_stm = t_stm32_plot_rel[-1] - t_stm32_plot_rel[-2]
+                    t_padded_stm = np.append(t_stm32_plot_rel, t_stm32_plot_rel[-1] + dt_stm)
+                    self.curve_sync_stm32.setData(t_padded_stm, y_stm32_plot)
+                    self.curve_unsync_stm32.setData(t_padded_stm, y_stm32_plot)
 
         # --- Acquire and Comparison Logic ---
-        if emg_chunks and y_stm32 is not None and t_stm32_rel is not None:
+        if emg_chunks and y_stm32_full is not None and t_stm32_full_rel is not None:
             t_raw = np.concatenate([c[0] for c in emg_chunks])
             v_raw = np.concatenate([c[1] for c in emg_chunks])
             
@@ -856,12 +900,19 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
             
             if len(t_emg_raw) > 1:
                 def _process_overlay(t_emg_in, y_emg_in, curve_match, curve_mismatch):
-                    # Comparison: Resample STM32 to EMG timestamps (nearest neighbor)
-                    indices = np.searchsorted(t_stm32_rel, t_emg_in)
-                    indices = np.clip(indices, 0, len(y_stm32) - 1)
-                    y_stm32_resampled = y_stm32[indices]
+                    # Comparison: Resample STM32 Full Snapshot to EMG timestamps (nearest neighbor)
+                    indices = np.searchsorted(t_stm32_full_rel, t_emg_in)
+                    indices = np.clip(indices, 0, len(y_stm32_full) - 1)
+                    y_stm32_resampled = y_stm32_full[indices]
                     
-                    matches = (y_emg_in == y_stm32_resampled)
+                    # Account for PRBS inversion (common in hardware trigger isolation)
+                    y_emg_comp = (1.0 - y_emg_in) if is_inverted else y_emg_in
+                    matches = (y_emg_comp == y_stm32_resampled)
+                    
+                    # Filtering: Only use points where the timestamp actually falls within the reference snapshot range
+                    valid_range_mask = (t_emg_in >= t_stm32_full_rel[0]) & (t_emg_in <= t_stm32_full_rel[-1])
+                    valid_matches = matches[valid_range_mask]
+                    
                     y_match = np.copy(y_emg_in).astype(np.float64)
                     y_match[~matches] = np.nan
                     y_mismatch = np.copy(y_emg_in).astype(np.float64)
@@ -872,13 +923,15 @@ class PRBSVisualizationWindow(QtWidgets.QWidget):
                     t_padded = np.append(t_emg_in, t_emg_in[-1] + dt_emg)
                     curve_match.setData(t_padded, y_match)
                     curve_mismatch.setData(t_padded, y_mismatch)
+                    
+                    return np.nanmean(valid_matches) if len(valid_matches) > 0 else 0.0
 
                 # 1. Update Sync Overlay
                 t_emg_shifted = t_emg_raw - delay_s
-                _process_overlay(t_emg_shifted, y_emg, self.curve_sync_emg_match, self.curve_sync_emg_mismatch)
+                self._synced_match = _process_overlay(t_emg_shifted, y_emg, self.curve_sync_emg_match, self.curve_sync_emg_mismatch)
 
                 # 2. Update Unsync Overlay
-                _process_overlay(t_emg_raw, y_emg, self.curve_unsync_emg_match, self.curve_unsync_emg_mismatch)
+                self._unsynced_match = _process_overlay(t_emg_raw, y_emg, self.curve_unsync_emg_match, self.curve_unsync_emg_mismatch)
 
     def closeEvent(self, event) -> None:
         if self.timer:
