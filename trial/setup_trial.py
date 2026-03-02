@@ -217,89 +217,74 @@ class TrialManager:
         """
         print("[TRIAL] Post-processing and finalizing synchronized datasets...")
         res = self.estimator.get_result()
+
         if res is None:
-            print("[TRIAL] WARN: Not enough data or no successful cross-correlation for sync arrays. Arrays will be empty.")
-            return
-            
-        final_delay_ms = self.estimator.get_delay_ms()
-        final_drift_ppm = self.estimator.get_drift_rate_ppm()
+            print("[TRIAL] WARN: PRBS sync result unavailable — falling back to delay=0 ms, drift=0 ppm.")
+            print("[TRIAL] The synced matrix will be written using raw PC timestamps only (no clock correction).")
+            final_delay_ms = 0.0
+            final_drift_ppm = 0.0
+        else:
+            print(f"[TRIAL] Found valid sync result: Confidence={res.confidence:.2f}")
+            final_delay_ms = self.estimator.get_delay_ms()
+            final_drift_ppm = self.estimator.get_drift_rate_ppm()
         
-        # 1. Gather all raw STM32 and EMG data from the HDF5 file we just wrote
-        # We read it back to ensure we have the exact data safely stored on disk.
+        # 1. Gather all raw STM32 and EMG data from the HDF5 file
         import h5py
         with h5py.File(self.logger.filename, 'r') as f:
-            t_stm32_pc = f['stm32/raw'][:, 0]
-            stm32_data = f['stm32/raw'][:, :]
+            if '_raw/stm32' not in f or '_raw/emg' not in f:
+                print("[TRIAL] ERR: Raw data groups missing from file!")
+                return
+            t_stm32_pc = f['_raw/stm32'][:, 0]
+            stm32_data = f['_raw/stm32'][:, :]
             
-            t_emg_pc = f['emg/raw'][:, 0]
-            emg_data = f['emg/raw'][:, 2:] # Drop t_pc AND t_tmsi for features
+            t_emg_pc = f['_raw/emg'][:, 0]
+            emg_data = f['_raw/emg'][:, 2:] 
         
         if len(t_stm32_pc) == 0 or len(t_emg_pc) == 0:
+            print(f"[TRIAL] ERR: Empty streams! STM32:{len(t_stm32_pc)}, EMG:{len(t_emg_pc)}")
             return
             
         print(f"[TRIAL] Aligning {len(t_emg_pc)} EMG samples to {len(t_stm32_pc)} STM32 samples with a Kalman delay of {final_delay_ms:.2f} ms (Drift: {final_drift_ppm:.1f} ppm).")
 
         # 2. Time shifting (Shared Clock)
-        # We establish the STM32 time as the master clock reference. 
-        # EMG lags STM32, so STM32 happened AT t_emg - delay
-        t_emg_shifted = t_emg_pc - (final_delay_ms / 1000.0)
+        # We establish the PC Wall Clock (EMG timestamps) as the master reference.
+        # Relationship: t_stm32_aligned = t_emg_pc - delay(t)
+        # delay(t) = initial_delay + (t - t0) * drift_rate
         
-        # 3. Interpolate EMG to exactly match STM32 sample times (the shared array)
-        # The common clock array is t_stm32_pc
-        # We interpolate every column of EMG onto the STM32 timestamps
-        emg_synced = np.zeros((len(t_stm32_pc), emg_data.shape[1]), dtype=np.float64)
-        for ch in range(emg_data.shape[1]):
-            # np.interp requires x to be strictly increasing
-            # Since threads append sequentially, they are monotonically increasing.
-            emg_synced[:, ch] = np.interp(
-                t_stm32_pc, 
-                t_emg_shifted, 
-                emg_data[:, ch], 
-                left=np.nan, right=np.nan # Outside overlapping range, we nan it
+        t_ref = t_emg_pc[0]
+        drift_rate = final_drift_ppm / 1e6
+        
+        # Calculate time-varying delay for each STM32 sample
+        dt_stm32 = t_stm32_pc - t_ref
+        current_delays_s = (final_delay_ms / 1000.0) + (dt_stm32 * drift_rate)
+        t_stm32_aligned = t_stm32_pc + current_delays_s
+
+        # 3. Interpolate STM32 data onto the EMG timestamps (the master grid)
+        stm32_synced = np.zeros((len(t_emg_pc), stm32_data.shape[1]), dtype=np.float64)
+        
+        for col in range(stm32_data.shape[1]):
+            stm32_synced[:, col] = np.interp(
+                t_emg_pc,
+                t_stm32_aligned,
+                stm32_data[:, col],
+                left=np.nan, right=np.nan
             )
             
-        # Optional: drop the rows that are completely NaN (edges)
-        valid_mask = ~np.isnan(emg_synced[:, 0])
+        valid_mask = ~np.isnan(stm32_synced[:, 0])
         
-        # Update references to the subset where both instruments are available
-        t_common = t_stm32_pc[valid_mask]
-        stm32_synced = stm32_data[valid_mask, :]
-        emg_synced = emg_synced[valid_mask, :]
+        t_common = t_emg_pc[valid_mask]
+        stm32_synced = stm32_synced[valid_mask, :]
+        emg_synced = emg_data[valid_mask, :] 
         
         # 4. Construct Unified Matrix (STM32 + EMG concatenated)
-        # This gives a single ML-ready matrix
         unified_matrix = np.column_stack((stm32_synced, emg_synced))
 
         # 5. Process the synchronized EMG data
-        # We use process() which applies Bandpass (20-450Hz) and Notch (50Hz) 
-        # and extract the envelope
         print("[TRIAL] Filtering and processing EMG envelope...")
         
-        n_channels = emg_synced.shape[1]
-        
-        # Identify the trigger channel (typically the last channel)
-        trig_col_idx = n_channels - 1 
-        
-        emg_synced_processed = np.zeros_like(emg_synced)
-        
-        # Process every channel except TRIG
-        if len(emg_synced) > 0:
-            # emg_synced index 0 is ch1, last index is trig
-            processed_signals, envelopes = self.emg_processor.process(
-                emg_synced[:, :-1], return_envelope=True
-            )
-            emg_synced_processed[:, :-1] = envelopes
-            # Keep trig untouched
-            emg_synced_processed[:, trig_col_idx] = emg_synced[:, trig_col_idx]
-            
-        print(f"[TRIAL] Data aligned. Common timeframe shape: {t_common.shape}")
-        
-        # 6. Save the synchronized datasets
+        # 6. Save the synchronized datasets (Simplified Logger)
         self.logger.save_synchronized_datasets(
             t_common=t_common,
-            stm32_synced=stm32_synced,
-            emg_synced=emg_synced,
-            emg_synced_processed=emg_synced_processed,
             unified_matrix=unified_matrix,
             kalman_delay_ms=final_delay_ms,
             kalman_drift_ppm=final_drift_ppm

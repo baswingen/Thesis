@@ -29,6 +29,10 @@ class HDF5TrialLogger:
     # This creates a single wide matrix indexed by t_common
     UNIFIED_COLUMNS = STM32_COLUMNS + EMG_COLUMNS[2:]
 
+    # Synced dataset columns: common PC clock prepended, then all signals
+    # Stored under _raw/synced so it appears alongside the other raw streams
+    SYNCED_COLUMNS = ["t_pc_common"] + UNIFIED_COLUMNS
+
     def __init__(
         self, 
         base_dir: str, 
@@ -63,50 +67,55 @@ class HDF5TrialLogger:
                 if v is not None:
                     f.attrs[k] = v
             
-            # 2. Setup Groups
-            g_stm32 = f.create_group('stm32')
-            g_emg = f.create_group('emg')
-            g_sync = f.create_group('sync')
-
-            # 3. Define raw datasets (extendable along axis 0)
-            # Optimized for ML: compression level 4 (balance) and chunking
+            # 2. Setup Internal Groups (Hidden-ish for raw data)
+            g_raw = f.create_group('_raw')
             
+            # 3. Define raw datasets (extendable along axis 0)
             # STM32 Raw: 22 columns
-            ds_stm32 = g_stm32.create_dataset(
-                'raw', shape=(0, len(self.STM32_COLUMNS)), 
+            ds_stm32 = g_raw.create_dataset(
+                'stm32', shape=(0, len(self.STM32_COLUMNS)), 
                 maxshape=(None, len(self.STM32_COLUMNS)), 
                 dtype='float64', compression="gzip", compression_opts=4,
-                chunks=(1000, len(self.STM32_COLUMNS)) # ~1s chunks at 1kHz
+                chunks=(1000, len(self.STM32_COLUMNS))
             )
             ds_stm32.attrs['column_names'] = self.STM32_COLUMNS
-            ds_stm32.attrs['interpreter'] = 'curve'
             
             # EMG Raw: 35 columns
-            ds_emg = g_emg.create_dataset(
-                'raw', shape=(0, len(self.EMG_COLUMNS)), 
+            ds_emg = g_raw.create_dataset(
+                'emg', shape=(0, len(self.EMG_COLUMNS)), 
                 maxshape=(None, len(self.EMG_COLUMNS)), 
                 dtype='float64', compression="gzip", compression_opts=4,
-                chunks=(1000, len(self.EMG_COLUMNS)) # ~1s chunks at 1kHz
+                chunks=(1000, len(self.EMG_COLUMNS))
             )
             ds_emg.attrs['column_names'] = self.EMG_COLUMNS
-            ds_emg.attrs['interpreter'] = 'curve'
 
             # Sync Metrics: 3 columns
-            ds_sync = g_sync.create_dataset(
+            ds_sync = g_raw.create_dataset(
                 'metrics', shape=(0, len(self.SYNC_METRICS_COLUMNS)), 
                 maxshape=(None, len(self.SYNC_METRICS_COLUMNS)), 
                 dtype='float64', compression="gzip", compression_opts=4,
                 chunks=(100, len(self.SYNC_METRICS_COLUMNS))
             )
             ds_sync.attrs['column_names'] = self.SYNC_METRICS_COLUMNS
-            ds_sync.attrs['interpreter'] = 'curve'
             
-            # 4. Define synchronized data arrays (saved at the END of the trial)
-            # We don't stream these dynamically because time-shifting relies on 
-            # calculating the delay over the whole trial, or retrospectively aligning.
-            # We initialize empty datasets to be populated on close().
-            # Note: The unified clock reference will be the STM32's time vector.
-            
+            # 4. Pre-create the top-level /synced group and its dataset
+            # (populated at trial stop via save_synchronized_datasets)
+            # t_pc_common (1) + STM32 cols (22) + EMG signal cols (33) = 56 columns
+            n_synced_cols = len(self.SYNCED_COLUMNS)
+            g_synced = f.create_group('synced')
+            ds_synced = g_synced.create_dataset(
+                'data',
+                shape=(0, n_synced_cols),
+                maxshape=(None, n_synced_cols),
+                dtype='float64', compression="gzip", compression_opts=4,
+                chunks=(2000, n_synced_cols)
+            )
+            ds_synced.attrs['column_names'] = self.SYNCED_COLUMNS
+            ds_synced.attrs['description'] = (
+                "Unified synced matrix: t_pc_common + STM32 + EMG on a shared PC clock. "
+                "STM32 data is interpolated onto the EMG sample grid using Kalman-smoothed delay."
+            )
+
     def append_stm32_data(self, data: np.ndarray):
         """Append 2D array of raw STM32 data (shape: N, 22)"""
         cols = len(self.STM32_COLUMNS)
@@ -114,7 +123,7 @@ class HDF5TrialLogger:
             return
             
         with h5py.File(self.filename, 'a') as f:
-            dset = f['stm32/raw']
+            dset = f['_raw/stm32']
             curr_len = dset.shape[0]
             new_len = curr_len + data.shape[0]
             dset.resize(new_len, axis=0)
@@ -127,7 +136,7 @@ class HDF5TrialLogger:
             return
             
         with h5py.File(self.filename, 'a') as f:
-            dset = f['emg/raw']
+            dset = f['_raw/emg']
             curr_len = dset.shape[0]
             new_len = curr_len + data.shape[0]
             dset.resize(new_len, axis=0)
@@ -139,7 +148,7 @@ class HDF5TrialLogger:
             return
             
         with h5py.File(self.filename, 'a') as f:
-            dset = f['sync/metrics']
+            dset = f['_raw/metrics']
             curr_len = dset.shape[0]
             new_len = curr_len + data.shape[0]
             dset.resize(new_len, axis=0)
@@ -148,60 +157,35 @@ class HDF5TrialLogger:
     def save_synchronized_datasets(
         self, 
         t_common: np.ndarray, 
-        stm32_synced: np.ndarray, 
-        emg_synced: np.ndarray,
-        emg_synced_processed: np.ndarray,
-        unified_matrix: Optional[np.ndarray] = None,
+        unified_matrix: np.ndarray,
         kalman_delay_ms: Optional[float] = None,
         kalman_drift_ppm: Optional[float] = None
     ):
         """
-        Saves the final post-processed, time-aligned datasets sharing a common clock.
-        Called at the end of the trial.
-        
-        Args:
-            t_common: Shared 1D time array (e.g. STM32 aligned wall time or trial time)
-            stm32_synced: Aligned STM32 data (N, features)
-            emg_synced:  Aligned raw EMG data (N, channels)
-            emg_synced_processed: Filtered/enveloped aligned EMG data (N, channels)
-            unified_matrix: Optional full matrix combine (N, STM32 + EMG_features)
-            kalman_delay_ms: The final smoothed delay estimate
-            kalman_drift_ppm: The final estimated clock drift
+        Writes the final unified synced matrix into _raw/synced.
+        The matrix has t_pc_common prepended as column 0, followed by
+        all STM32 signal columns and all EMG signal columns.
         """
-        with h5py.File(self.filename, 'a') as f:
-            # Create a common time array dataset for reference
-            ds_t = f.create_dataset('sync/t_common', data=t_common, compression="gzip", compression_opts=4)
-            ds_t.attrs['units'] = 's'
-            
-            # Create the data arrays (dropping them in their respective groups)
-            ds_stm32 = f.create_dataset('stm32/synced', data=stm32_synced, compression="gzip", compression_opts=4)
-            ds_emg = f.create_dataset('emg/synced', data=emg_synced, compression="gzip", compression_opts=4)
-            ds_emg_proc = f.create_dataset('emg/synced_processed', data=emg_synced_processed, compression="gzip", compression_opts=4)
-            
-            # Store metadata for H5Web and ML
-            ds_stm32.attrs['description'] = "STM32 data aligned to t_common"
-            ds_stm32.attrs['column_names'] = self.STM32_COLUMNS
-            ds_stm32.attrs['interpreter'] = 'curve'
-            
-            ds_emg.attrs['description'] = "Raw EMG data interpolated/aligned to t_common"
-            ds_emg.attrs['column_names'] = self.EMG_COLUMNS
-            ds_emg.attrs['interpreter'] = 'curve'
-            
-            ds_emg_proc.attrs['description'] = "Processed (enveloped) EMG data aligned to t_common"
-            ds_emg_proc.attrs['column_names'] = self.EMG_COLUMNS # assuming same channel mapping
-            ds_emg_proc.attrs['interpreter'] = 'curve'
+        # Prepend t_common as column 0
+        synced_matrix = np.column_stack((t_common, unified_matrix))
 
-            # 6. Save Unified Matrix if provided
-            if unified_matrix is not None:
-                ds_unified = f.create_dataset('sync/unified', data=unified_matrix, compression="gzip", compression_opts=4)
-                ds_unified.attrs['description'] = "Unified matrix: STM32 + EMG features synced on t_common"
-                ds_unified.attrs['column_names'] = self.UNIFIED_COLUMNS
-                ds_unified.attrs['interpreter'] = 'curve'
-                
-                if kalman_delay_ms is not None:
-                    ds_unified.attrs['kalman_delay_ms'] = kalman_delay_ms
-                if kalman_drift_ppm is not None:
-                    ds_unified.attrs['kalman_drift_ppm'] = kalman_drift_ppm
+        with h5py.File(self.filename, 'a') as f:
+            # 1. Write into the pre-allocated /synced/data dataset
+            dset = f['synced/data']
+            n = synced_matrix.shape[0]
+            dset.resize(n, axis=0)
+            dset[:n, :] = synced_matrix
+
+            # 2. Attach final Kalman sync metrics as root attributes
+            if kalman_delay_ms is not None:
+                f.attrs['final_kalman_delay_ms'] = kalman_delay_ms
+            if kalman_drift_ppm is not None:
+                f.attrs['final_kalman_drift_ppm'] = kalman_drift_ppm
+
+        print(
+            f"[LOGGER] Wrote _raw/synced: shape={synced_matrix.shape}, "
+            f"cols: t_pc_common + {len(self.UNIFIED_COLUMNS)} signal columns."
+        )
             
     def close(self):
         """Finalize the file if any background resources were held."""

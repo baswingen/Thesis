@@ -92,6 +92,10 @@ class RawTMSiThread(threading.Thread):
         self.channels: List[str] = []
         self.trig_idx: int = -1
         self.estimated_rate_hz: float = 0.0
+        # Full-sample history: list of (t_arr, samples_2d) tuples
+        # Used by the trial logger to persist all channels to HDF5
+        self._history: List[Tuple[np.ndarray, np.ndarray]] = []
+        self._lock = threading.Lock()
 
     def run(self):
         try:
@@ -172,15 +176,21 @@ class RawTMSiThread(threading.Thread):
                     count += len(samples)
                     
                     # Feed estimator
-                    if self.estimator is not None and self.trig_idx != -1:
-                        # Timestamps are approximated from host clock + uniform
-                        # spacing.  USB chunk arrival has 1-10 ms jitter, which
-                        # propagates into the delay estimate.  A hardware-
-                        # timestamped source would remove this limitation.
+                    if self.trig_idx != -1:
                         dt = 1.0 / self.sample_rate
                         t_arr = now - (len(samples) - 1 - np.arange(len(samples))) * dt
-                        trig_vals = samples[:, self.trig_idx]
-                        self.estimator.add_emg_trig_chunk(t_arr, trig_vals)
+                        if self.estimator is not None:
+                            trig_vals = samples[:, self.trig_idx]
+                            self.estimator.add_emg_trig_chunk(t_arr, trig_vals)
+                        # Store full chunk in history for HDF5 logging
+                        with self._lock:
+                            self._history.append((t_arr, samples.copy()))
+                    elif self.estimator is None:
+                        # No trig channel found but still store samples
+                        dt = 1.0 / self.sample_rate
+                        t_arr = now - (len(samples) - 1 - np.arange(len(samples))) * dt
+                        with self._lock:
+                            self._history.append((t_arr, samples.copy()))
                     
                     if now - last_print > 1.0:
                         self.estimated_rate_hz = count / (now - last_print)
