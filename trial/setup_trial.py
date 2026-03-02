@@ -28,10 +28,11 @@ from setup_scripts.signal_acquisition_testing import (
 )
 from trial.hdf5_logger import HDF5TrialLogger
 
-# Try to import PyQt for the GUI status window
+# Try to import PyQt and the dashboard
 try:
     from PyQt6 import QtWidgets, QtCore
     import pyqtgraph as pg
+    from trial.dashboard import TrialDashboard, launch_dashboard
     _QT_AVAILABLE = True
 except ImportError:
     _QT_AVAILABLE = False
@@ -82,6 +83,10 @@ class TrialManager:
             update_interval_s=PRBS_UPDATE_INTERVAL_S,
         )
         self.stm32_thread = RawSTM32Thread(port=get_stm32_port(), baud=STM32_BAUD, estimator=self.estimator)
+        # Fix #2: Replace the capped visualization deque with an unbounded list so
+        # that the absolute-index pointer in _logging_loop never overshoots the
+        # buffer boundary and silently drops data.
+        self.stm32_thread._history = []
         self.tmsi_thread = RawTMSiThread(sample_rate=(EMG_SAMPLE_RATE or 2000), estimator=self.estimator)
         self.sync_worker = _SyncWorker(self.estimator)
         
@@ -157,22 +162,24 @@ class TrialManager:
             time.sleep(0.1) # Poll at ~10Hz
             
             # --- STM32 Logging ---
+            # Fix #1: Only snapshot the *new* slice under the lock instead of
+            # copying the entire history list on every poll.  This is O(new)
+            # rather than O(total), and it holds the lock for a proportionally
+            # shorter time.
             with self.stm32_thread._lock:
-                current_stm32_hist = list(self.stm32_thread._history) # Snapshot
-            
-            n_stm = len(current_stm32_hist)
-            if n_stm > stm32_idx:
-                new_samples = current_stm32_hist[stm32_idx:n_stm]
-                stm32_idx = n_stm
-                
+                new_samples = self.stm32_thread._history[stm32_idx:]
+                n_stm = len(self.stm32_thread._history)
+            stm32_idx = n_stm
+
+            if new_samples:
                 # Format to (N, 22) array
-                # (t_pc, t_stm32, imu1_ok, imu2_ok, yaw1, pitch1, roll1, ax1, ay1, az1, 
-                #  yaw2, pitch2, roll2, ax2, ay2, az2, keys_mask, keys_rise, keys_fall, 
+                # (t_pc, t_stm32, imu1_ok, imu2_ok, yaw1, pitch1, roll1, ax1, ay1, az1,
+                #  yaw2, pitch2, roll2, ax2, ay2, az2, keys_mask, keys_rise, keys_fall,
                 #  prbs_tick, prbs_lvl, in_mark)
                 out = np.zeros((len(new_samples), 22), dtype=np.float64)
                 for i, (t_pc, s) in enumerate(new_samples):
                     out[i] = [
-                        t_pc, s.t_ms, s.imu1_ok, s.imu2_ok, 
+                        t_pc, s.t_ms, s.imu1_ok, s.imu2_ok,
                         s.yaw1, s.pitch1, s.roll1, s.ax1, s.ay1, s.az1,
                         s.yaw2, s.pitch2, s.roll2, s.ax2, s.ay2, s.az2,
                         s.keys_mask, s.keys_rise, s.keys_fall,
@@ -441,16 +448,7 @@ if __name__ == '__main__':
     manager.start()
     
     if not args.headless and _QT_AVAILABLE:
-        app = QtWidgets.QApplication(sys.argv)
-        # Apply dark theme fusion style
-        app.setStyle("Fusion")
-        palette = app.palette()
-        palette.setColor(app.palette().ColorRole.Window, QtCore.Qt.GlobalColor.darkGray)
-        app.setPalette(palette)
-        
-        gui = SimpleTrialStatusWidget(manager)
-        gui.show()
-        app.exec() # Block until window close, which triggers manager.stop()
+        launch_dashboard(manager=manager, n_emg_channels=8)
     else:
         try:
             # Headless loop
