@@ -27,6 +27,7 @@ from setup_scripts.signal_acquisition_testing import (
     EMG_SAMPLE_RATE, VERBOSE, PRBS_UPDATE_INTERVAL_S, PRBS_CORRELATION_WINDOW_S
 )
 from trial.hdf5_logger import HDF5TrialLogger
+from trial.trial_logic import TrialLogic
 
 # Try to import PyQt and the dashboard
 try:
@@ -99,6 +100,17 @@ class TrialManager:
         # Processing setup for synced signals
         self.emg_processor = EMGProcessor(fs=float(EMG_SAMPLE_RATE or 2000), envelope_cutoff=5.0)
         
+        # Trial Logic
+        self.logic = TrialLogic()
+        self.is_recording = False
+        
+        
+    def start_recording(self):
+        """Transitions out of configuration phase into Trial recording."""
+        print("[TRIAL] START RECORDING TRIGGERED")
+        self.is_recording = True
+        self.start_time = time.perf_counter()
+        
     def start(self):
         print(f"\n[TRIAL] Starting Trial {self.trial_num} for Participant {self.participant_id}")
         self._running = True
@@ -124,11 +136,12 @@ class TrialManager:
         # 2. Start Sync Worker
         self.sync_worker.start()
         
-        # 3. Start HDF5 Logger Thread
+        # 3. Start HDF5 Logger Thread (starts capturing data but doesn't write until
+        # self.is_recording is set to True)
         self.start_time = time.perf_counter()
         self._log_thread.start()
         
-        print("[TRIAL] All systems running. Recording...\n")
+        print("[TRIAL] Systems initialized. Waiting for START command...\n")
 
     def stop(self):
         print("\n[TRIAL] Stopping components and saving trial data...")
@@ -161,6 +174,11 @@ class TrialManager:
         while self._running:
             time.sleep(0.1) # Poll at ~10Hz
             
+            # Check trial logic for recording triggers
+            if self.logic.start_recording_flag and not self.is_recording:
+                self.start_recording()
+                self.logic.start_recording_flag = False
+            
             # --- STM32 Logging ---
             # Fix #1: Only snapshot the *new* slice under the lock instead of
             # copying the entire history list on every poll.  This is O(new)
@@ -185,7 +203,10 @@ class TrialManager:
                         s.keys_mask, s.keys_rise, s.keys_fall,
                         s.prbs_tick, s.prbs_lvl, s.in_mark
                     ]
-                self.logger.append_stm32_data(out)
+                
+                # If we are recording, append to HDF5. Otherwise, the data is just discarded from the buffer.
+                if self.is_recording:
+                    self.logger.append_stm32_data(out)
                 
             # --- EMG Logging ---
             # Read from tmsi_thread._history which stores full (t_arr, samples_2d) chunks.
@@ -227,7 +248,8 @@ class TrialManager:
 
                 if parts:
                     out = np.vstack(parts)
-                    self.logger.append_emg_data(out)
+                    if self.is_recording:
+                        self.logger.append_emg_data(out)
                     
             # --- Sync Logic Trigger / Metrics Logging ---
             now = time.perf_counter()
@@ -236,7 +258,7 @@ class TrialManager:
                 self.sync_worker.trigger()
                 
                 res = self.estimator.get_result()
-                if res is not None:
+                if res is not None and self.is_recording:
                     arr = np.array([[now, self.estimator.get_delay_ms(), res.confidence]])
                     self.logger.append_sync_metrics(arr)
 

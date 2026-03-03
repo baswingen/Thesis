@@ -143,6 +143,7 @@ def _led(color: str = RED, size: int = 14) -> QtWidgets.QLabel:
 # ──────────────────────────────────────────────────────────────────────────────
 class _HeaderPanel(QtWidgets.QFrame):
     stopRequested = QtCore.pyqtSignal()
+    startRequested = QtCore.pyqtSignal()
 
     def __init__(self, participant_id: str = "P00", trial_num: int = 0, parent=None):
         super().__init__(parent)
@@ -177,7 +178,18 @@ class _HeaderPanel(QtWidgets.QFrame):
         lay.addWidget(self._lbl_rec)
         lay.addSpacing(20)
 
-        # Right: STOP button
+        # Right: Buttons (Start / Stop)
+        self._btn_start = QtWidgets.QPushButton("▶  START TRIAL")
+        self._btn_start.setStyleSheet(
+            f"background-color: {GREEN}; color: white; font-weight: bold; "
+            f"font-size: 13px; padding: 10px 22px; border-radius: 6px;"
+        )
+        self._btn_start.setCursor(
+            QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        )
+        self._btn_start.clicked.connect(self._on_start_clicked)
+        lay.addWidget(self._btn_start)
+        
         self._btn_stop = QtWidgets.QPushButton("⏹  STOP TRIAL")
         self._btn_stop.setStyleSheet(
             f"background-color: {RED}; color: white; font-weight: bold; "
@@ -189,7 +201,12 @@ class _HeaderPanel(QtWidgets.QFrame):
         self._btn_stop.clicked.connect(self.stopRequested)
         lay.addWidget(self._btn_stop)
 
-    def tick(self):
+    def tick(self, is_recording: bool = False):
+        if not is_recording:
+            self._lbl_time.setText("00:00")
+            self._lbl_rec.setVisible(False)
+            return
+            
         elapsed = time.perf_counter() - self._start_time
         m = int(elapsed) // 60
         s = int(elapsed) % 60
@@ -200,6 +217,10 @@ class _HeaderPanel(QtWidgets.QFrame):
 
     def set_start_time(self, t: float):
         self._start_time = t
+
+    def _on_start_clicked(self):
+        self._btn_start.setVisible(False)
+        self.startRequested.emit()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -295,7 +316,18 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         super().__init__(parent)
         self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
 
-        self._highlight: Optional[tuple] = None  # (row, col) for highlighted button
+        self._highlight_target: Optional[tuple] = None  # (row, col)
+        self._highlight_source: Optional[tuple] = None  # (row, col)
+
+        # To keep track of what's where
+        self._matrix_weights: Dict[tuple, float] = {}
+        self._slot_weights: Dict[int, float] = {}
+        self._total_slots = 8
+
+        # For arrows
+        self._draw_arrow: bool = False
+        self._arrow_start: Optional[QtCore.QPoint] = None
+        self._arrow_end: Optional[QtCore.QPoint] = None
 
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(10, 8, 10, 10)
@@ -314,7 +346,7 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         self._lbl_instruction.setMinimumHeight(50)
         lay.addWidget(self._lbl_instruction)
 
-        # Grid
+        # Matrix Grid
         grid_w = QtWidgets.QWidget()
         self._grid = QtWidgets.QGridLayout(grid_w)
         self._grid.setSpacing(10)
@@ -329,13 +361,33 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
                 lbl = QtWidgets.QLabel(f"{row_letter}{col_number}")
                 lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
                 lbl.setFixedSize(72, 72)
-                lbl.setStyleSheet(self._style(pressed=False, highlighted=False))
+                lbl.setStyleSheet(self._style(pressed=False, hl_source=False, hl_target=False, weight=None))
                 font = QtGui.QFont("Segoe UI", 13)
                 font.setBold(True)
                 lbl.setFont(font)
                 self._grid.addWidget(lbl, r, c)
                 row.append(lbl)
             self._buttons.append(row)
+
+        lay.addSpacing(10)
+
+        # Starting Slots below the matrix
+        slots_w = QtWidgets.QWidget()
+        self._slots_lay = QtWidgets.QHBoxLayout(slots_w)
+        self._slots_lay.setSpacing(5)
+        self._slots_lay.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self._slots_labels: List[QtWidgets.QLabel] = []
+        for i in range(self._total_slots):
+            lbl = QtWidgets.QLabel(f"S{i+1}")
+            lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+            lbl.setFixedSize(50, 50)
+            lbl.setStyleSheet(self._style(pressed=False, hl_source=False, hl_target=False, weight=None, is_slot=True))
+            font = QtGui.QFont("Segoe UI", 10)
+            font.setBold(True)
+            lbl.setFont(font)
+            self._slots_lay.addWidget(lbl)
+            self._slots_labels.append(lbl)
+        lay.addWidget(slots_w)
 
         # Status bar
         self._lbl_status = QtWidgets.QLabel("Waiting…")
@@ -347,33 +399,71 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         lay.addWidget(self._lbl_status)
 
     @staticmethod
-    def _style(pressed: bool, highlighted: bool) -> str:
-        if highlighted and not pressed:
-            return (
-                f"background-color: #2980b9; color: white; "
-                f"border: 2px solid {ACCENT}; border-radius: 10px;"
-            )
-        if pressed:
-            return (
-                f"background-color: {GREEN}; color: white; "
-                f"border: 2px solid {GREEN_D}; border-radius: 10px;"
-            )
+    def _style(pressed: bool, hl_source: bool, hl_target: bool, weight: Optional[float] = None, is_slot: bool = False) -> str:
+        base_color = BG_DARK
+        text_color = TEXT_DIM
+        border_color = BG_MID
+        border_width = 2
+        
+        if weight is not None:
+            # Render as a filled coloured circle for a weight
+            base_color = ACCENT
+            text_color = "white"
+            border_color = "#2980b9"
+            border_radius = "25px" if is_slot else "36px"
+        else:
+            border_radius = "10px"
+
+        if hl_target and not pressed:
+            border_color = ORANGE
+            border_width = 3
+        elif hl_source and not pressed:
+            border_color = GREEN
+            border_width = 3
+
+        if pressed and weight is None:
+            # Pressed down, no weight recognized yet
+            base_color = "#2ecc71"
+            border_color = "#27ae60"
+            text_color = "white"
+
         return (
-            f"background-color: {BG_DARK}; color: {TEXT_DIM}; "
-            f"border: 2px solid {BG_MID}; border-radius: 10px;"
+            f"background-color: {base_color}; color: {text_color}; "
+            f"border: {border_width}px solid {border_color}; border-radius: {border_radius};"
         )
 
     def update_mask(self, keys_mask: int, rate_hz: float = 0.0, sample_count: int = 0):
+        # Update matrix
         for r in range(BUTTON_ROWS):
             for c in range(BUTTON_COLS):
                 idx = r * BUTTON_COLS + c
                 pressed = bool((keys_mask >> idx) & 1)
-                hl = self._highlight == (r, c)
-                new_style = self._style(pressed, hl)
-                # Only call setStyleSheet when state actually changed
+                
+                hl_tgt = self._highlight_target == (r, c)
+                hl_src = self._highlight_source == (r, c)
+                w = self._matrix_weights.get((r, c))
+                
+                new_style = self._style(pressed, hl_src, hl_tgt, weight=w)
                 btn = self._buttons[r][c]
                 if btn.styleSheet() != new_style:
                     btn.setStyleSheet(new_style)
+                
+                desired_text = f"{w}kg" if w is not None else f"{chr(ord('A') + r)}{c + 1}"
+                if btn.text() != desired_text:
+                    btn.setText(desired_text)
+                        
+        # Update styling for slots below
+        for i, lbl in enumerate(self._slots_labels):
+            w = self._slot_weights.get(i)
+            # no physical pressing for slots, they are off-matrix
+            new_style = self._style(pressed=False, hl_source=False, hl_target=False, weight=w, is_slot=True)
+            if lbl.styleSheet() != new_style:
+                lbl.setStyleSheet(new_style)
+            
+            desired_text = f"{w}kg" if w is not None else f"S{i+1}"
+            if lbl.text() != desired_text:
+                lbl.setText(desired_text)
+                
         new_status = (
             f"Rate: {rate_hz:.0f} Hz  |  Mask: 0x{keys_mask:03X}  |  Samples: {sample_count}"
         )
@@ -383,12 +473,89 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
     def set_instruction(self, text: str):
         self._lbl_instruction.setText(text)
 
-    def highlight_button(self, row: int, col: int):
-        """Highlight a specific button (e.g. current stimulus)."""
-        self._highlight = (row, col)
+    def update_weights(self, matrix_weights: Dict[tuple, float], slot_weights: Dict[int, float]):
+        self._matrix_weights = dict(matrix_weights)
+        self._slot_weights = dict(slot_weights)
 
-    def clear_highlight(self):
-        self._highlight = None
+    def set_highlights(self, target: Optional[tuple] = None, source: Optional[tuple] = None, 
+                       source_is_slot: bool = False, source_slot_idx: Optional[int] = None):
+        """Highlight specific buttons for targeting/sourcing and calculate arrow coordinates."""
+        self._highlight_target = target
+        self._highlight_source = source
+
+        self._draw_arrow = False
+        if target is not None and (source is not None or source_is_slot):
+            # Calculate coordinates for the arrow overlay
+            t_btn = self._buttons[target[0]][target[1]]
+            t_rect = t_btn.geometry()
+            t_center = t_rect.center() + self._grid.parentWidget().pos()
+            
+            if source_is_slot and source_slot_idx is not None:
+                s_lbl = self._slots_labels[source_slot_idx]
+                s_rect = s_lbl.geometry()
+                s_center = s_rect.center() + self._slots_lay.parentWidget().pos()
+            elif source is not None:
+                s_btn = self._buttons[source[0]][source[1]]
+                s_rect = s_btn.geometry()
+                s_center = s_rect.center() + self._grid.parentWidget().pos()
+            else:
+                s_center = None
+                
+            if s_center:
+                self._arrow_start = s_center
+                self._arrow_end = t_center
+                self._draw_arrow = True
+                
+        self.update() # trigger paintEvent
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._draw_arrow or not self._arrow_start or not self._arrow_end:
+            return
+            
+        import math
+        painter = QtGui.QPainter()
+        painter.begin(self)
+        try:
+            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+            
+            # Pen setup
+            pen = QtGui.QPen(QtGui.QColor(ACCENT))
+            pen.setWidth(4)
+            pen.setStyle(QtCore.Qt.PenStyle.DashLine)
+            pen.setCapStyle(QtCore.Qt.PenStyle.RoundCap)
+            painter.setPen(pen)
+            
+            start = self._arrow_start
+            end = self._arrow_end
+            
+            # Draw line
+            painter.drawLine(start, end)
+            
+            # Draw arrowhead
+            angle = math.atan2(end.y() - start.y(), end.x() - start.x())
+            arrow_len = 15
+            
+            # Calculate arrow points, slightly offset back from the very center of the target button
+            offset_end = QtCore.QPoint(
+                int(end.x() - 30 * math.cos(angle)),
+                int(end.y() - 30 * math.sin(angle))
+            )
+            
+            p1 = QtCore.QPoint(
+                int(offset_end.x() - arrow_len * math.cos(angle - math.pi / 6)),
+                int(offset_end.y() - arrow_len * math.sin(angle - math.pi / 6))
+            )
+            p2 = QtCore.QPoint(
+                int(offset_end.x() - arrow_len * math.cos(angle + math.pi / 6)),
+                int(offset_end.y() - arrow_len * math.sin(angle + math.pi / 6))
+            )
+            
+            painter.setBrush(QtGui.QColor(ACCENT))
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.drawPolygon(QtGui.QPolygon([offset_end, p1, p2]))
+        finally:
+            painter.end()
 
 
 
@@ -1122,6 +1289,7 @@ class TrialDashboard(QtWidgets.QMainWindow):
         if manager and hasattr(manager, "start_time"):
             self._header.set_start_time(manager.start_time)
         self._header.stopRequested.connect(self._on_stop)
+        self._header.startRequested.connect(self._on_start)
         root_lay.addWidget(self._header)
 
         # ── Body (3 columns) ─────────────────────────────────────────────────
@@ -1186,8 +1354,18 @@ class TrialDashboard(QtWidgets.QMainWindow):
 
         # Blink timer (500 ms for REC indicator)
         self._blink_timer = QtCore.QTimer(self)
-        self._blink_timer.timeout.connect(self._header.tick)
+        self._blink_timer.timeout.connect(self._fast_tick_header)
         self._blink_timer.start(500)
+
+    def _fast_tick_header(self):
+        is_rec = getattr(self._manager, "is_recording", False) if self._manager else False
+        self._header.tick(is_rec)
+
+    def _on_start(self):
+        if self._manager and hasattr(self._manager, "logic"):
+            self._manager.logic.start()
+            if hasattr(self._manager, "start_time"):
+                self._header.set_start_time(self._manager.start_time)
 
     # ── Fast tick (10 Hz) — cheap UI updates ─────────────────────────────────
     def _fast_tick(self):
@@ -1249,11 +1427,50 @@ class TrialDashboard(QtWidgets.QMainWindow):
         self._health_panel.update_tmsi(tmsi_online, self._tmsi_rate)
 
         if latest_sample is not None:
+            # Update trial logic FIRST so standard UI gets latest model state
+            if mgr and hasattr(mgr, "logic"):
+                mgr.logic.update(latest_sample.keys_mask)
+                self._matrix_panel.set_instruction(mgr.logic.get_instruction())
+                
+                # Update weights (what's on the matrix and what's in slots)
+                self._matrix_panel.update_weights(
+                    mgr.logic.matrix_state,
+                    mgr.logic.starting_slots_state
+                )
+                
+                # Fetch highlights and compute arrows
+                hl_target = mgr.logic.get_target_highlight()
+                hl_source = None
+                source_is_slot = False
+                source_idx = None
+                
+                current_state_name = getattr(mgr.logic.state, "name", str(mgr.logic.state))
+                
+                if "PHASE_1_PLACEMENT" in current_state_name:
+                    # In Phase 1, source is a slot
+                    source_is_slot = True
+                    source_idx = mgr.logic.target_slot_idx
+                elif "PHASE_2_MOVEMENTS" in current_state_name:
+                    # In Phase 2, source is on the matrix
+                    if mgr.logic.awaiting_pickup:
+                        hl_source = mgr.logic.source_spot
+                    else:
+                        hl_source = None
+                        
+                self._matrix_panel.set_highlights(
+                    target=hl_target,
+                    source=hl_source,
+                    source_is_slot=source_is_slot,
+                    source_slot_idx=source_idx
+                )
+
+            # Then update matrix masks and redraw
             self._matrix_panel.update_mask(
                 int(latest_sample.keys_mask),
                 rate_hz=self._stm32_rate,
                 sample_count=getattr(mgr.stm32_thread, "sample_count", 0) if mgr else 0,
             )
+            
         # Cache for plot tick
         self._latest_sample = latest_sample
 
@@ -1388,13 +1605,27 @@ def _make_demo_manager():
         participant_id = "DEMO"
         trial_num      = 0
         start_time     = time.perf_counter()
+        is_recording   = False
 
         def stop(self): pass
+        
+        def start_recording(self):
+            self.is_recording = True
+            self.start_time = time.perf_counter()
+            self.logic.start()
 
     mgr = _FakeManager()
     mgr.stm32_thread = _FakeSTM32Thread()
     mgr.tmsi_thread  = _FakeTMSiThread()
     mgr.estimator    = _FakeEstimator()
+    mgr.logic        = trial_logic.TrialLogic() if 'trial_logic' in sys.modules else None
+    
+    # Try importing it nicely for the demo
+    try:
+        from trial.trial_logic import TrialLogic
+        mgr.logic = TrialLogic()
+    except Exception:
+        pass
 
     # Kick off background simulation threads
     t1 = threading.Thread(target=mgr.stm32_thread._simulate, daemon=True)

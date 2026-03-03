@@ -6,7 +6,7 @@ Configuration for the experimental trial, including hardware, participant,
 and trial logic parameters.
 """
 
-from typing import List, Dict
+from typing import List, Dict, Any
 
 # 1. STM32 Hardware Connections
 # Pins as defined in STM32_all_in_python_binary.ino
@@ -46,10 +46,21 @@ PARTICIPANT_CONFIG: Dict[str, str] = {
 }
 
 # 4. Trial Logic Configuration
-TRIAL_LOGIC_CONFIG: Dict[str, str] = {
-    "Movements": "12",
-    "Repetitions": "3",
-    "Interval (s)": "5",
-    "Rest (s)": "10",
+TRIAL_LOGIC_CONFIG: Dict[str, Any] = {
+    "Movements": 15,
     "Mode": "Active Sync",
+}
+
+# 5. Starting Slots (Weights to be moved onto the matrix)
+# The 8 starting slots and their initial weights in kg (None if empty)
+# Adjust these based on the actual physical predefined setup
+STARTING_SLOTS_CONFIG: Dict[str, float | None] = {
+    "Slot 1": 0.5,
+    "Slot 2": 1.0,
+    "Slot 3": 2.0,
+    "Slot 4": 3.0,
+    "Slot 5": 6.0,
+    "Slot 6": None,
+    "Slot 7": None,
+    "Slot 8": None,
 }
