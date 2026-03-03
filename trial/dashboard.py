@@ -745,51 +745,137 @@ class _SyncPanel(QtWidgets.QFrame):
 # ──────────────────────────────────────────────────────────────────────────────
 class _EMGPanel(QtWidgets.QFrame):
     """
-    High-performance EMG visualization (Raw vs Processed Diff Pair).
-    Matches the robust and fast setup from setup_scripts/EMG_testing.py.
+    8-channel configurable EMG visualization (Processed Envelope).
+    Displays 8 separate plots of processed signals.
     """
     def __init__(self, n_channels: int = 8, parent=None):
         super().__init__(parent)
         self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
-
-        self.pos_idx = 0
-        self.neg_idx = 1
+        self.n_channels = n_channels
+        
+        # Default mapping: channels 1-8 (0-7 index)
+        self.channel_indices = list(range(n_channels))
         
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(10, 8, 10, 8)
         lay.setSpacing(4)
-        lay.addWidget(_section_label("EMG Differential (CH1 - CH2)"))
+        
+        # Header with Config Toggle
+        hdr = QtWidgets.QHBoxLayout()
+        hdr.addWidget(_section_label(f"EMG Channels (Processed Envelopes)"))
+        hdr.addStretch()
+        self._btn_config = QtWidgets.QPushButton("⚙ CONFIG")
+        self._btn_config.setFixedSize(70, 24)
+        self._btn_config.setStyleSheet(
+            f"font-size: 10px; font-weight: bold; background-color: {BG_DARK}; color: {ACCENT}; "
+            f"border: 1px solid {BG_LIGHT}; border-radius: 4px;"
+        )
+        self._btn_config.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self._btn_config.clicked.connect(self._toggle_config)
+        hdr.addWidget(self._btn_config)
+        lay.addLayout(hdr)
         lay.addWidget(_divider())
+
+        # Config Area (Hidden by default)
+        self._config_widget = QtWidgets.QWidget()
+        self._config_widget.setVisible(False)
+        config_lay = QtWidgets.QGridLayout(self._config_widget)
+        config_lay.setContentsMargins(0, 5, 0, 5)
+        config_lay.setSpacing(6)
+        
+        self._spinners = []
+        for i in range(n_channels):
+            lbl = QtWidgets.QLabel(f"Plot {i+1} ← CH:")
+            lbl.setStyleSheet(f"font-size: 11px; color: {TEXT_DIM};")
+            spin = QtWidgets.QSpinBox()
+            spin.setRange(0, 64)
+            spin.setValue(self.channel_indices[i])
+            spin.setStyleSheet(
+                f"background: {BG_DARK}; color: {TEXT_MAIN}; border: 1px solid {BG_LIGHT}; "
+                f"border-radius: 3px; padding: 2px; min-width: 40px;"
+            )
+            spin.valueChanged.connect(self._update_indices)
+            config_lay.addWidget(lbl, i // 2, (i % 2) * 2)
+            config_lay.addWidget(spin, i // 2, (i % 2) * 2 + 1)
+            self._spinners.append(spin)
+            
+        # Diagnostic Info Label
+        self._diagnostics_lbl = QtWidgets.QLabel("Detecting TMSi Channels...")
+        self._diagnostics_lbl.setWordWrap(True)
+        self._diagnostics_lbl.setStyleSheet(f"font-size: 9px; color: {TEXT_DIM}; padding-top: 5px;")
+        lay.addWidget(self._config_widget)
+        lay.addWidget(self._diagnostics_lbl)
+        self._diagnostics_lbl.setVisible(False)
 
         # Main Plotting Area
         self.graphics_layout = pg.GraphicsLayoutWidget()
+        self.graphics_layout.setBackground(BG_DARK)
         lay.addWidget(self.graphics_layout, stretch=1)
         
-        # Plot 1: Raw
-        self.plot_raw = self.graphics_layout.addPlot(row=0, col=0, title="Raw EMG Signal")
-        self.plot_raw.setLabel("left", "Voltage", units="µV")
-        self.plot_raw.showGrid(x=True, y=True, alpha=0.3)
-        self.curve_raw = self.plot_raw.plot(pen=pg.mkPen('#3498db', width=1.5))
+        self.plots = []
+        self.curves = []
+        # Distinct colors for better tracking
+        self.colors = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22', '#ecf0f1']
         
-        # Plot 2: Processed
-        self.plot_filtered = self.graphics_layout.addPlot(row=1, col=0, title="Processed EMG Signal")
-        self.plot_filtered.setLabel("left", "Voltage", units="µV")
-        self.plot_filtered.setLabel("bottom", "Time", units="s")
-        self.plot_filtered.showGrid(x=True, y=True, alpha=0.3)
-        self.curve_filtered = self.plot_filtered.plot(pen=pg.mkPen('#e74c3c', width=1.5))
-        
-        self.plot_filtered.setXLink(self.plot_raw)
+        for i in range(n_channels):
+            p = self.graphics_layout.addPlot(row=i, col=0)
+            p.setLabel("left", f"CH{self.channel_indices[i]+1}", size="7pt")
+            p.showGrid(x=True, y=True, alpha=0.1)
+            p.getAxis("bottom").setHeight(0) if i < n_channels - 1 else p.setLabel("bottom", "s", size="8pt")
+            p.getAxis("left").setWidth(35)
+            p.getAxis("left").setTextPen(TEXT_DIM)
+            p.getAxis("bottom").setTextPen(TEXT_DIM)
+            
+            # Remove title to save vertical space
+            p.setTitle(None)
+            
+            curve = p.plot(pen=pg.mkPen(self.colors[i % len(self.colors)], width=1.5))
+            self.plots.append(p)
+            self.curves.append(curve)
+            if i > 0:
+                p.setXLink(self.plots[0])
 
         # Buffers
         self.PLOT_WINDOW_SECONDS = 5.0
         # Assume 2000Hz sampling
-        max_pts = int(self.PLOT_WINDOW_SECONDS * 2000) + 1000
-        self.time_buf = deque(maxlen=max_pts)
-        self.raw_buf = deque(maxlen=max_pts)
-        self.filt_buf = deque(maxlen=max_pts)
+        self.max_pts = int(self.PLOT_WINDOW_SECONDS * 2000) + 1000
+        self.time_buf = deque(maxlen=self.max_pts)
+        self.data_bufs = [deque(maxlen=self.max_pts) for _ in range(n_channels)]
         
         self._emg_idx = 0
         self.processor = None
+        self.t0 = None
+        self.channel_names = []
+
+    def _toggle_config(self):
+        visible = self._config_widget.isVisible()
+        self._config_widget.setVisible(not visible)
+        self._btn_config.setText("⚙ CLOSE" if not visible else "⚙ CONFIG")
+        self._diagnostics_lbl.setVisible(not visible)
+
+    def _update_indices(self):
+        new_indices = [s.value() for s in self._spinners]
+        
+        # Identify which channel changed to avoid global reset spike
+        changed_idx = None
+        for i, (old, new) in enumerate(zip(self.channel_indices, new_indices)):
+            if old != new:
+                changed_idx = i
+                break
+        
+        self.channel_indices = new_indices
+        # Update y-axis labels and reset filters
+        for i, idx in enumerate(self.channel_indices):
+            name = self.channel_names[idx] if idx < len(self.channel_names) else f"CH{idx+1}"
+            self.plots[i].setLabel("left", name, size="7pt")
+            
+        if self.processor and changed_idx is not None:
+            # Per-channel reset to avoid spiking other channels
+            self.processor.reset(channel_idx=changed_idx)
+            # Clear data buffer for the changed channel to avoid visual discontinuity
+            # Must preserve length to match self.time_buf to prevent pyqtgraph crash
+            current_len = len(self.time_buf)
+            self.data_bufs[changed_idx] = deque([0.0] * current_len, maxlen=self.max_pts)
 
     def update(self, manager):
         if manager is None or not hasattr(manager, 'tmsi_thread'):
@@ -797,10 +883,18 @@ class _EMGPanel(QtWidgets.QFrame):
             
         tmsi_thread = manager.tmsi_thread
         
+        # Capture channel names once available
+        if not self.channel_names and hasattr(tmsi_thread, 'channels') and tmsi_thread.channels:
+            self.channel_names = tmsi_thread.channels
+            diag_text = "Available: " + ", ".join([f"[{i}]{n}" for i, n in enumerate(self.channel_names)])
+            self._diagnostics_lbl.setText(diag_text)
+            self._update_indices() # Refresh labels with names
+            
         if self.processor is None and hasattr(manager, 'emg_processor'):
             self.processor = manager.emg_processor
 
         with tmsi_thread._lock:
+            # history holds (t_arr, samples_2d)
             new_chunks = tmsi_thread._history[self._emg_idx:]
             self._emg_idx = len(tmsi_thread._history)
 
@@ -811,47 +905,66 @@ class _EMGPanel(QtWidgets.QFrame):
         chunks_v = []
         
         for t_arr, samp in new_chunks:
-            if samp.ndim != 2 or samp.shape[1] <= max(self.pos_idx, self.neg_idx):
+            if samp.ndim != 2:
                 continue
                 
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                emg_diff = samp[:, self.pos_idx] - samp[:, self.neg_idx]
-                
+            n_samples = samp.shape[0]
+            n_cols = samp.shape[1]
+            
+            # Safe indexing: Extract requested channels or zeros if out of bounds
+            # This prevents the entire panel from skipping chunks if one index is invalid.
+            selected_samp = np.zeros((n_samples, self.n_channels), dtype=np.float32)
+            for i, idx in enumerate(self.channel_indices):
+                if 0 <= idx < n_cols:
+                    selected_samp[:, i] = samp[:, idx]
+                else:
+                    selected_samp[:, i] = 0.0
+            
             chunks_t.append(t_arr)
-            chunks_v.append(emg_diff)
+            chunks_v.append(selected_samp)
 
         if not chunks_t:
             return
 
+        # Concatenate batch
         t_batch = np.concatenate(chunks_t)
-        v_batch = np.concatenate(chunks_v)
+        v_batch = np.concatenate(chunks_v) # (N, 8)
         
-        valid_mask = ~np.isnan(v_batch)
-        if not np.any(valid_mask):
-            return
-            
-        t_valid = t_batch[valid_mask]
-        v_valid = v_batch[valid_mask]
+        if self.t0 is None:
+            self.t0 = t_batch[0]
         
-        self.time_buf.extend(t_valid)
-        self.raw_buf.extend(v_valid)
+        # Append time
+        self.time_buf.extend(t_batch)
         
+        # Process envelopes
         if self.processor is not None:
-            _, envelope = self.processor.process(v_valid, return_envelope=True)
-            self.filt_buf.extend(envelope)
+            # EMGProcessor.process handles 2D (samples, channels)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                _, envelopes = self.processor.process(v_batch, return_envelope=True)
             
+            for i in range(self.n_channels):
+                self.data_bufs[i].extend(envelopes[:, i])
+        else:
+            # Fallback to simple rectification
+            rectified = np.abs(v_batch)
+            for i in range(self.n_channels):
+                self.data_bufs[i].extend(rectified[:, i])
+            
+        # Update curves
         if len(self.time_buf) > 0:
             t_arr = np.array(self.time_buf)
-            t_rel = t_arr - t_arr[0]
-            if t_arr[-1] - t_arr[0] > self.PLOT_WINDOW_SECONDS:
-                t_rel = t_arr - (t_arr[-1] - self.PLOT_WINDOW_SECONDS)
-                
-            self.curve_raw.setData(t_rel, np.array(self.raw_buf))
-            self.plot_raw.setXRange(max(0, t_rel[-1] - self.PLOT_WINDOW_SECONDS), t_rel[-1])
+            t_rel = t_arr - self.t0
             
-            if self.processor is not None and len(self.filt_buf) == len(self.time_buf):
-                self.curve_filtered.setData(t_rel, np.array(self.filt_buf))
+            # The window should be relative to the latest data
+            x_max = t_rel[-1]
+            x_min = max(0, x_max - self.PLOT_WINDOW_SECONDS)
+            
+            for i in range(self.n_channels):
+                self.curves[i].setData(t_rel, np.array(self.data_bufs[i]))
+            
+            self.plots[0].setXRange(x_min, x_max)
+
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1181,7 +1294,7 @@ def _make_demo_manager():
     # Kick off background simulation threads
     t1 = threading.Thread(target=mgr.stm32_thread._simulate, daemon=True)
     t1.start()
-    t2 = threading.Thread(target=mgr.tmsi_thread._simulate, daemon=True)
+    t2 = threading.Thread(target=mgr.tmsi_thread._simulate, args=(32,), daemon=True)
     t2.start()
 
     return mgr

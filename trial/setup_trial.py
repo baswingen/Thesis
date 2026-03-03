@@ -97,7 +97,7 @@ class TrialManager:
         self.start_time = 0.0
         
         # Processing setup for synced signals
-        self.emg_processor = EMGProcessor(fs=float(EMG_SAMPLE_RATE or 2000))
+        self.emg_processor = EMGProcessor(fs=float(EMG_SAMPLE_RATE or 2000), envelope_cutoff=5.0)
         
     def start(self):
         print(f"\n[TRIAL] Starting Trial {self.trial_num} for Participant {self.participant_id}")

@@ -98,39 +98,37 @@ class BandpassFilter:
             expected_shape = (zi_base.shape[0], zi_base.shape[1], n_channels)
 
             if self.zi is None or getattr(self.zi, "shape", None) != expected_shape:
+                zi_base = signal.sosfilt_zi(self.sos)
                 self.zi = np.repeat(zi_base[:, :, np.newaxis], n_channels, axis=2)
+                # Warm initialization: Seed zi with first sample to avoid DC offset spike
+                for ch in range(n_channels):
+                    self.zi[:, :, ch] *= data[0, ch]
 
-            filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi, axis=0)
+            # Protect filter state (zi) from NaNs
+            data_fixed = np.nan_to_num(data, nan=0.0)
+            filtered, self.zi = signal.sosfilt(self.sos, data_fixed, zi=self.zi, axis=0)
             return filtered
         
         # Handle 1D data
         # Initialize zi for 1D if missing or wrong-shaped
         zi_base = signal.sosfilt_zi(self.sos)
         if self.zi is None or getattr(self.zi, "shape", None) != zi_base.shape:
-            self.zi = zi_base.copy()
+            self.zi = zi_base * data[0] if len(data) > 0 else zi_base
         
-        # Handle NaN values
-        if np.any(np.isnan(data)):
-            valid_mask = ~np.isnan(data)
-            if not np.any(valid_mask):
-                return data
-            
-            # Filter only valid data
-            filtered_valid, self.zi = signal.sosfilt(self.sos, data[valid_mask], zi=self.zi)
-            
-            # Reconstruct with NaNs
-            filtered = np.full_like(data, np.nan)
-            filtered[valid_mask] = filtered_valid
-            return filtered
-        
-        # Apply filter with state
-        filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi)
+        # Protect filter state from NaNs
+        data_fixed = np.nan_to_num(data, nan=0.0)
+        filtered, self.zi = signal.sosfilt(self.sos, data_fixed, zi=self.zi)
         return filtered
     
-    def reset(self):
-        """Reset filter state."""
+    def reset(self, channel_idx: Optional[int] = None):
+        """Reset filter state for all channels or a specific one."""
         if SCIPY_AVAILABLE and self.sos is not None:
-            self.zi = signal.sosfilt_zi(self.sos)
+            zi_new = signal.sosfilt_zi(self.sos)
+            if channel_idx is not None and self.zi is not None and self.zi.ndim == 3:
+                if 0 <= channel_idx < self.zi.shape[2]:
+                    self.zi[:, :, channel_idx] = zi_new
+            else:
+                self.zi = None # Re-init on next use
     
     def __repr__(self):
         return f"BandpassFilter({self.lowcut}-{self.highcut}Hz, fs={self.fs}Hz, order={self.order})"
@@ -196,24 +194,34 @@ class NotchFilter:
             expected_shape = (zi_base.shape[0], zi_base.shape[1], n_channels)
             if self.zi is None or getattr(self.zi, "shape", None) != expected_shape:
                 self.zi = np.repeat(zi_base[:, :, np.newaxis], n_channels, axis=2)
+                # Warm initialization
+                for ch in range(n_channels):
+                    self.zi[:, :, ch] *= data[0, ch]
             
-            # Filter each channel
-            filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi, axis=0)
+            # Protect filter state from NaNs
+            data_fixed = np.nan_to_num(data, nan=0.0)
+            filtered, self.zi = signal.sosfilt(self.sos, data_fixed, zi=self.zi, axis=0)
             return filtered
         
         # Handle 1D data
         zi_base = signal.sosfilt_zi(self.sos)
         if self.zi is None or getattr(self.zi, "shape", None) != zi_base.shape:
-            self.zi = zi_base.copy()
+            self.zi = zi_base * data[0] if len(data) > 0 else zi_base
         
-        # Apply filter with state
-        filtered, self.zi = signal.sosfilt(self.sos, data, zi=self.zi)
+        # Protect filter state from NaNs
+        data_fixed = np.nan_to_num(data, nan=0.0)
+        filtered, self.zi = signal.sosfilt(self.sos, data_fixed, zi=self.zi)
         return filtered
     
-    def reset(self):
-        """Reset filter state."""
+    def reset(self, channel_idx: Optional[int] = None):
+        """Reset filter state for all channels or a specific one."""
         if SCIPY_AVAILABLE and self.sos is not None:
-            self.zi = signal.sosfilt_zi(self.sos)
+            zi_new = signal.sosfilt_zi(self.sos)
+            if channel_idx is not None and self.zi is not None and self.zi.ndim == 3:
+                if 0 <= channel_idx < self.zi.shape[2]:
+                    self.zi[:, :, channel_idx] = zi_new
+            else:
+                self.zi = None # Re-init on next use
     
     def __repr__(self):
         return f"NotchFilter({self.freq}Hz, fs={self.fs}Hz, Q={self.quality})"
@@ -284,24 +292,34 @@ class EMGEnvelopeExtractor:
             expected_shape = (zi_base.shape[0], zi_base.shape[1], n_channels)
             if self.zi is None or getattr(self.zi, "shape", None) != expected_shape:
                 self.zi = np.repeat(zi_base[:, :, np.newaxis], n_channels, axis=2)
+                # Warm initialization
+                for ch in range(n_channels):
+                    self.zi[:, :, ch] *= rectified[0, ch]
             
-            # Low-pass filter each channel
-            envelope, self.zi = signal.sosfilt(self.sos, rectified, zi=self.zi, axis=0)
+            # Protect filter state from NaNs
+            rect_fixed = np.nan_to_num(rectified, nan=0.0)
+            envelope, self.zi = signal.sosfilt(self.sos, rect_fixed, zi=self.zi, axis=0)
             return envelope
         
         # Handle 1D data
         zi_base = signal.sosfilt_zi(self.sos)
         if self.zi is None or getattr(self.zi, "shape", None) != zi_base.shape:
-            self.zi = zi_base.copy()
+            self.zi = zi_base * rectified[0] if len(rectified) > 0 else zi_base
         
-        # Low-pass filter
-        envelope, self.zi = signal.sosfilt(self.sos, rectified, zi=self.zi)
+        # Protect filter state from NaNs
+        rect_fixed = np.nan_to_num(rectified, nan=0.0)
+        envelope, self.zi = signal.sosfilt(self.sos, rect_fixed, zi=self.zi)
         return envelope
     
-    def reset(self):
-        """Reset filter state."""
+    def reset(self, channel_idx: Optional[int] = None):
+        """Reset filter state for all channels or a specific one."""
         if SCIPY_AVAILABLE and self.sos is not None:
-            self.zi = signal.sosfilt_zi(self.sos)
+            zi_new = signal.sosfilt_zi(self.sos)
+            if channel_idx is not None and self.zi is not None and self.zi.ndim == 3:
+                if 0 <= channel_idx < self.zi.shape[2]:
+                    self.zi[:, :, channel_idx] = zi_new
+            else:
+                self.zi = None # Re-init on next use
     
     def __repr__(self):
         return f"EMGEnvelopeExtractor(cutoff={self.cutoff}Hz, fs={self.fs}Hz, order={self.order})"
@@ -371,20 +389,24 @@ class EMGProcessor:
         if self.notch is not None:
             filtered = self.notch.filter(filtered)
         
-        # Extract envelope (if configured)
-        if return_envelope and self.envelope_extractor is not None:
-            envelope = self.envelope_extractor.extract(filtered)
+        # Extract envelope (if configured or requested)
+        if return_envelope:
+            if self.envelope_extractor is not None:
+                envelope = self.envelope_extractor.extract(filtered)
+            else:
+                # Fallback: rectified signal if no extractor configured
+                envelope = np.abs(filtered)
             return filtered, envelope
         
         return filtered
     
-    def reset(self):
-        """Reset all filter states."""
-        self.bandpass.reset()
+    def reset(self, channel_idx: Optional[int] = None):
+        """Reset all filter states for all channels or a specific one."""
+        self.bandpass.reset(channel_idx)
         if self.notch is not None:
-            self.notch.reset()
+            self.notch.reset(channel_idx)
         if self.envelope_extractor is not None:
-            self.envelope_extractor.reset()
+            self.envelope_extractor.reset(channel_idx)
     
     def __repr__(self):
         parts = [str(self.bandpass)]
