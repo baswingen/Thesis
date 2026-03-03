@@ -24,6 +24,7 @@ class TrialState(Enum):
     PHASE_2_MOVEMENTS = auto()
     ERROR_WRONG_PICKUP = auto()
     ERROR_WRONG_PLACEMENT = auto()
+    ERROR_MISSING_WEIGHT = auto()
     FINISHED = auto()
 
 
@@ -57,6 +58,12 @@ class TrialLogic:
         # Keep track of which initial slots are empty
         self.starting_slots_state = {i: w for i, w in enumerate(STARTING_SLOTS_CONFIG.values())}
         
+        # Track movement counts per weight value to enable even distribution
+        self.weight_move_counts: Dict[float, int] = {}
+        for w in STARTING_SLOTS_CONFIG.values():
+            if w is not None:
+                self.weight_move_counts[w] = 0
+        
         # Tracking progress
         self.movements_completed = 0
         
@@ -70,7 +77,7 @@ class TrialLogic:
         # Error recovery state
         self.previous_state: Optional[TrialState] = None
         self.expected_recovery_spot: Optional[tuple[int, int]] = None
-        self.error_message: str = ""
+        self.error_weight_tracking: Optional[float] = None
         
         # Mask tracking to detect edge changes
         self.last_keys_mask = 0
@@ -118,6 +125,45 @@ class TrialLogic:
                     
         self.last_keys_mask = keys_mask
         
+        # 1. Continuous Validation: if a spot is supposed to have a weight but the button is NOT pressed, error!
+        # Only validate during active phases (not during an error state)
+        if self.state in (TrialState.PHASE_1_PLACEMENT, TrialState.PHASE_2_MOVEMENTS):
+            for r in range(self.ROWS):
+                for c in range(self.COLS):
+                    spot = (r, c)
+                    # Exclude the current source_spot if we are actively awaiting its pickup
+                    if self.state == TrialState.PHASE_2_MOVEMENTS and self.awaiting_pickup and spot == self.source_spot:
+                        continue
+                        
+                    w = self.matrix_state.get(spot)
+                    idx = r * self.COLS + c
+                    is_pressed = bool((keys_mask >> idx) & 1)
+
+                    if w is not None:
+                        # Should be pressed
+                        if not is_pressed:
+                            # It's lifted!
+                            self.matrix_state[spot] = None
+                            self._trigger_error(
+                                TrialState.ERROR_MISSING_WEIGHT,
+                                f"ERROR: Missing weight ({w}kg) from {chr(ord('A')+r)}{c+1}! Please replace it.",
+                                spot
+                            )
+                            self.error_weight_tracking = w
+                            return # Stop processing edges until fixed
+                    else:
+                        # Should NOT be pressed
+                        if is_pressed:
+                            # Unrecognized extra weight
+                            self._trigger_error(
+                                TrialState.ERROR_WRONG_PLACEMENT,
+                                f"ERROR: Unrecognized weight placed on {chr(ord('A')+r)}{c+1}! Please remove it.",
+                                spot
+                            )
+                            return # Stop processing edges until fixed
+                            
+        # 2. Process edge events (like normal placement/pickup)
+
     def _handle_button_change(self, r: int, c: int, pressed: bool):
         """Process a specific button press or release."""
         spot = (r, c)
@@ -162,6 +208,7 @@ class TrialLogic:
                             f"ERROR: Picked up wrong weight ({err_weight}kg)! Please put it back on {chr(ord('A')+spot[0])}{spot[1]+1}.",
                             spot
                         )
+                        self.error_weight_tracking = err_weight
             else:
                 # We are waiting for it to be placed at target_spot
                 if pressed:
@@ -192,18 +239,24 @@ class TrialLogic:
             # Waiting for them to lift the wrongly placed weight from the incorrect spot
             if not pressed and spot == self.expected_recovery_spot:
                 self._recover_from_error()
+                
+        elif self.state == TrialState.ERROR_MISSING_WEIGHT:
+            # Waiting for them to replace the missing weight to its spot
+            if pressed and spot == self.expected_recovery_spot:
+                self.matrix_state[spot] = self.error_weight_tracking
+                self._recover_from_error()
 
     def _trigger_error(self, error_state: TrialState, msg: str, spot: tuple[int, int]):
         self.previous_state = self.state
         self.state = error_state
         self.expected_recovery_spot = spot
-        if error_state == TrialState.ERROR_WRONG_PICKUP:
-             self.error_weight_tracking = self.target_weight # Not technically right, but tracked above
         self.error_message = msg
+        self.current_instruction_text = msg
         
     def _recover_from_error(self):
         self.state = self.previous_state
         self.expected_recovery_spot = None
+        self.error_weight_tracking = None # Clear tracking after recovery
         # Restore previous instruction implicitly because UI uses get_instruction()
         if self.state == TrialState.PHASE_2_MOVEMENTS:
             if self.awaiting_pickup:
@@ -215,7 +268,7 @@ class TrialLogic:
                 self.current_instruction_text = f"Place the {self.target_weight}kg weight on {chr(ord('A')+tr)}{tc+1}"
         elif self.state == TrialState.PHASE_1_PLACEMENT:
             tr, tc = self.target_spot
-            self.current_instruction_text = f"Initial Setup: Place the {self.target_weight}kg weight on {chr(ord('A')+tr)}{tc+1}"
+            self.current_instruction_text = f"Place the {self.target_weight}kg weight on {chr(ord('A')+tr)}{tc+1}"
 
     def _next_placement(self):
         """Pick the next weight from off-matrix and assign it a random empty spot."""
@@ -246,7 +299,7 @@ class TrialLogic:
         col_letter = chr(ord('A') + tr)
         dest_str = f"{col_letter}{tc + 1}"
         
-        self.current_instruction_text = f"Initial Setup: Place the {self.target_weight}kg weight on {dest_str}"
+        self.current_instruction_text = f"Place the {self.target_weight}kg weight on {dest_str}"
         self.source_spot = None
         self.awaiting_pickup = False
 
@@ -259,8 +312,13 @@ class TrialLogic:
              self._finish_trial()
              return
 
+        # Find the minimum move count among currently available weights
+        min_moves = min(self.weight_move_counts.get(w, 0) for w in occupied_spots.values())
+        candidates = [(pos, w) for pos, w in occupied_spots.items() if self.weight_move_counts.get(w, 0) == min_moves]
+
         # Pick random weight to move
-        self.source_spot, self.target_weight = random.choice(list(occupied_spots.items()))
+        self.source_spot, self.target_weight = random.choice(candidates)
+        self.weight_move_counts[self.target_weight] = self.weight_move_counts.get(self.target_weight, 0) + 1
         
         # Pick random destination
         self.target_spot = random.choice(empty_spots)
@@ -278,3 +336,11 @@ class TrialLogic:
         self.state = TrialState.FINISHED
         self.current_instruction_text = "Trial Complete! Stop Recording."
         self.target_spot = None
+
+    def get_progress_text(self) -> str:
+        """Returns a string like 'Move 3/15' or 'Setup'."""
+        if self.state in (TrialState.CONFIGURING, TrialState.PHASE_1_PLACEMENT):
+            return "Setup"
+        if self.state == TrialState.FINISHED:
+            return "Done"
+        return f"Move {self.movements_completed + 1} / {self.max_movements}"

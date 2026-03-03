@@ -178,6 +178,10 @@ class TrialManager:
             if self.logic.start_recording_flag and not self.is_recording:
                 self.start_recording()
                 self.logic.start_recording_flag = False
+                
+            if getattr(self.logic.state, "name", "") == "FINISHED" and self.is_recording:
+                print("[TRIAL] Trial finished. Stopping recording.")
+                self.is_recording = False
             
             # --- STM32 Logging ---
             # Fix #1: Only snapshot the *new* slice under the lock instead of

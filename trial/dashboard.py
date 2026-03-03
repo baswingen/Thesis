@@ -201,7 +201,13 @@ class _HeaderPanel(QtWidgets.QFrame):
         self._btn_stop.clicked.connect(self.stopRequested)
         lay.addWidget(self._btn_stop)
 
-    def tick(self, is_recording: bool = False):
+    def tick(self, is_recording: bool = False, is_finished: bool = False):
+        if is_finished:
+            self._lbl_rec.setText("● DONE")
+            self._lbl_rec.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {GREEN}; letter-spacing: 2px;")
+            self._lbl_rec.setVisible(True)
+            return
+
         if not is_recording:
             self._lbl_time.setText("00:00")
             self._lbl_rec.setVisible(False)
@@ -306,6 +312,76 @@ class _SensorHealthPanel(QtWidgets.QFrame):
 # ──────────────────────────────────────────────────────────────────────────────
 # Panel: Button Matrix 3×4 + Instruction
 # ──────────────────────────────────────────────────────────────────────────────
+
+class _ArrowOverlay(QtWidgets.QWidget):
+    """Transparent overlay that draws the routing arrow on top of all child widgets."""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.panel = parent
+        
+    def paintEvent(self, event):
+        if not self.panel._draw_arrow or not self.panel._arrow_start or not self.panel._arrow_end:
+            return
+            
+        import math
+        painter = QtGui.QPainter()
+        painter.begin(self)
+        try:
+            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+            
+            # Pen setup with partial transparency
+            c = QtGui.QColor(ACCENT)
+            c.setAlpha(120)  # Reduced opacity
+            pen = QtGui.QPen(c)
+            pen.setWidth(8)  # Slightly thicker to make up for opacity
+            pen.setStyle(QtCore.Qt.PenStyle.DashLine)
+            pen.setCapStyle(QtCore.Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            
+            start = self.panel._arrow_start
+            end = self.panel._arrow_end
+            
+            angle = math.atan2(end.y() - start.y(), end.x() - start.x())
+            
+            # Offset the start so it originates from the edge of the source weight
+            # (Weight radius is roughly 36px)
+            start_offset = 45 
+            offset_start = QtCore.QPoint(
+                int(start.x() + start_offset * math.cos(angle)),
+                int(start.y() + start_offset * math.sin(angle))
+            )
+
+            # Offset the end so it points at the tile, not the center of the tile
+            # (Tile width is 72x72)
+            end_offset = 40
+            offset_end = QtCore.QPoint(
+                int(end.x() - end_offset * math.cos(angle)),
+                int(end.y() - end_offset * math.sin(angle))
+            )
+            
+            # Draw line
+            painter.drawLine(offset_start, offset_end)
+            
+            # Draw arrowhead at the end of the line
+            arrow_len = 22  # Larger arrowhead
+            
+            p1 = QtCore.QPoint(
+                int(offset_end.x() - arrow_len * math.cos(angle - math.pi / 6)),
+                int(offset_end.y() - arrow_len * math.sin(angle - math.pi / 6))
+            )
+            p2 = QtCore.QPoint(
+                int(offset_end.x() - arrow_len * math.cos(angle + math.pi / 6)),
+                int(offset_end.y() - arrow_len * math.sin(angle + math.pi / 6))
+            )
+            
+            painter.setBrush(c)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.drawPolygon(QtGui.QPolygon([offset_end, p1, p2]))
+        finally:
+            painter.end()
+
+
 class _ButtonMatrixPanel(QtWidgets.QFrame):
     """
     3×4 button matrix display. Reads key state from stm32 sample (keys_mask).
@@ -332,10 +408,19 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(10, 8, 10, 10)
         lay.setSpacing(8)
-        lay.addWidget(_section_label("Button Matrix  3×4"))
+        lay.addWidget(_section_label("Participant Guidance"))
         lay.addWidget(_divider())
 
-        # Instruction display
+        # Instruction & Counter display
+        header_lay = QtWidgets.QHBoxLayout()
+        self._lbl_progress = QtWidgets.QLabel("Setup")
+        self._lbl_progress.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self._lbl_progress.setStyleSheet(
+            f"font-size: 16px; font-weight: bold; color: {TEXT_DIM}; "
+            f"background-color: {BG_DARK}; border-radius: 5px; padding: 4px;"
+        )
+        self._lbl_progress.setFixedWidth(120)
+        
         self._lbl_instruction = QtWidgets.QLabel("—")
         self._lbl_instruction.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self._lbl_instruction.setWordWrap(True)
@@ -344,7 +429,10 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
             f"background-color: {BG_DARK}; border-radius: 5px; padding: 8px;"
         )
         self._lbl_instruction.setMinimumHeight(50)
-        lay.addWidget(self._lbl_instruction)
+        
+        header_lay.addWidget(self._lbl_progress)
+        header_lay.addWidget(self._lbl_instruction, stretch=1)
+        lay.addLayout(header_lay)
 
         # Matrix Grid
         grid_w = QtWidgets.QWidget()
@@ -397,31 +485,51 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
             f"font-family: 'Consolas', monospace;"
         )
         lay.addWidget(self._lbl_status)
+        
+        # Transparent foreground overlay for arrows
+        self._arrow_overlay = _ArrowOverlay(self)
+        self._arrow_overlay.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, '_arrow_overlay'):
+            self._arrow_overlay.resize(self.size())
 
     @staticmethod
-    def _style(pressed: bool, hl_source: bool, hl_target: bool, weight: Optional[float] = None, is_slot: bool = False) -> str:
+    def _style(pressed: bool, hl_source: bool, hl_target: bool, is_error: bool = False, weight: Optional[float] = None, is_slot: bool = False) -> str:
         base_color = BG_DARK
         text_color = TEXT_DIM
         border_color = BG_MID
         border_width = 2
         
+        # Determine the shape parameters
         if weight is not None:
             # Render as a filled coloured circle for a weight
             base_color = ACCENT
             text_color = "white"
             border_color = "#2980b9"
             border_radius = "25px" if is_slot else "36px"
+            
+            # Make the source "glow"/stand out if it is the target to be picked up
+            if hl_source:
+                border_color = "#1abc9c" # Bright turquoise
+                border_width = 4
         else:
             border_radius = "10px"
 
-        if hl_target and not pressed:
+        # Overrides based on state
+        if is_error:
+            # Missing or wrongly placed weight
+            border_color = RED
+            border_width = 4
+            if weight is None and not pressed:
+                base_color = "rgba(231, 76, 60, 0.2)" # Light red tint
+                
+        elif hl_target and not pressed and not is_error:
             border_color = ORANGE
             border_width = 3
-        elif hl_source and not pressed:
-            border_color = GREEN
-            border_width = 3
 
-        if pressed and weight is None:
+        if pressed and weight is None and not is_error:
             # Pressed down, no weight recognized yet
             base_color = "#2ecc71"
             border_color = "#27ae60"
@@ -432,7 +540,7 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
             f"border: {border_width}px solid {border_color}; border-radius: {border_radius};"
         )
 
-    def update_mask(self, keys_mask: int, rate_hz: float = 0.0, sample_count: int = 0):
+    def update_mask(self, keys_mask: int, error_spot: Optional[tuple[int, int]] = None, rate_hz: float = 0.0, sample_count: int = 0):
         # Update matrix
         for r in range(BUTTON_ROWS):
             for c in range(BUTTON_COLS):
@@ -441,9 +549,10 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
                 
                 hl_tgt = self._highlight_target == (r, c)
                 hl_src = self._highlight_source == (r, c)
+                is_err = error_spot == (r, c)
                 w = self._matrix_weights.get((r, c))
                 
-                new_style = self._style(pressed, hl_src, hl_tgt, weight=w)
+                new_style = self._style(pressed, hl_src, hl_tgt, is_err, weight=w)
                 btn = self._buttons[r][c]
                 if btn.styleSheet() != new_style:
                     btn.setStyleSheet(new_style)
@@ -455,8 +564,10 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         # Update styling for slots below
         for i, lbl in enumerate(self._slots_labels):
             w = self._slot_weights.get(i)
+            # if the error spot targets this slot index (encoded as -1 for row)
+            is_err = error_spot == (-1, i)
             # no physical pressing for slots, they are off-matrix
-            new_style = self._style(pressed=False, hl_source=False, hl_target=False, weight=w, is_slot=True)
+            new_style = self._style(pressed=False, hl_source=False, hl_target=False, is_error=is_err, weight=w, is_slot=True)
             if lbl.styleSheet() != new_style:
                 lbl.setStyleSheet(new_style)
             
@@ -470,8 +581,20 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         if self._lbl_status.text() != new_status:
             self._lbl_status.setText(new_status)
 
-    def set_instruction(self, text: str):
+    def set_instruction(self, text: str, progress_text: str = ""):
         self._lbl_instruction.setText(text)
+        if "ERROR" in text:
+            self._lbl_instruction.setStyleSheet(
+                f"font-size: 18px; font-weight: bold; color: {RED}; "
+                f"background-color: rgba(231, 76, 60, 0.2); border: 2px solid {RED}; border-radius: 5px; padding: 8px;"
+            )
+        else:
+            self._lbl_instruction.setStyleSheet(
+                f"font-size: 18px; font-weight: bold; color: {TEXT_MAIN}; "
+                f"background-color: {BG_DARK}; border: none; border-radius: 5px; padding: 8px;"
+            )
+        if progress_text:
+            self._lbl_progress.setText(progress_text)
 
     def update_weights(self, matrix_weights: Dict[tuple, float], slot_weights: Dict[int, float]):
         self._matrix_weights = dict(matrix_weights)
@@ -506,56 +629,7 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
                 self._arrow_end = t_center
                 self._draw_arrow = True
                 
-        self.update() # trigger paintEvent
-
-    def paintEvent(self, event):
-        super().paintEvent(event)
-        if not self._draw_arrow or not self._arrow_start or not self._arrow_end:
-            return
-            
-        import math
-        painter = QtGui.QPainter()
-        painter.begin(self)
-        try:
-            painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
-            
-            # Pen setup
-            pen = QtGui.QPen(QtGui.QColor(ACCENT))
-            pen.setWidth(4)
-            pen.setStyle(QtCore.Qt.PenStyle.DashLine)
-            pen.setCapStyle(QtCore.Qt.PenStyle.RoundCap)
-            painter.setPen(pen)
-            
-            start = self._arrow_start
-            end = self._arrow_end
-            
-            # Draw line
-            painter.drawLine(start, end)
-            
-            # Draw arrowhead
-            angle = math.atan2(end.y() - start.y(), end.x() - start.x())
-            arrow_len = 15
-            
-            # Calculate arrow points, slightly offset back from the very center of the target button
-            offset_end = QtCore.QPoint(
-                int(end.x() - 30 * math.cos(angle)),
-                int(end.y() - 30 * math.sin(angle))
-            )
-            
-            p1 = QtCore.QPoint(
-                int(offset_end.x() - arrow_len * math.cos(angle - math.pi / 6)),
-                int(offset_end.y() - arrow_len * math.sin(angle - math.pi / 6))
-            )
-            p2 = QtCore.QPoint(
-                int(offset_end.x() - arrow_len * math.cos(angle + math.pi / 6)),
-                int(offset_end.y() - arrow_len * math.sin(angle + math.pi / 6))
-            )
-            
-            painter.setBrush(QtGui.QColor(ACCENT))
-            painter.setPen(QtCore.Qt.PenStyle.NoPen)
-            painter.drawPolygon(QtGui.QPolygon([offset_end, p1, p2]))
-        finally:
-            painter.end()
+        self._arrow_overlay.update() # trigger paintEvent on the overlay
 
 
 
@@ -1359,7 +1433,10 @@ class TrialDashboard(QtWidgets.QMainWindow):
 
     def _fast_tick_header(self):
         is_rec = getattr(self._manager, "is_recording", False) if self._manager else False
-        self._header.tick(is_rec)
+        is_fin = False
+        if self._manager and hasattr(self._manager, "logic"):
+            is_fin = getattr(self._manager.logic.state, "name", "") == "FINISHED"
+        self._header.tick(is_rec, is_finished=is_fin)
 
     def _on_start(self):
         if self._manager and hasattr(self._manager, "logic"):
@@ -1428,9 +1505,13 @@ class TrialDashboard(QtWidgets.QMainWindow):
 
         if latest_sample is not None:
             # Update trial logic FIRST so standard UI gets latest model state
+            error_spot = None
             if mgr and hasattr(mgr, "logic"):
                 mgr.logic.update(latest_sample.keys_mask)
-                self._matrix_panel.set_instruction(mgr.logic.get_instruction())
+                self._matrix_panel.set_instruction(
+                    mgr.logic.get_instruction(),
+                    mgr.logic.get_progress_text()
+                )
                 
                 # Update weights (what's on the matrix and what's in slots)
                 self._matrix_panel.update_weights(
@@ -1446,7 +1527,11 @@ class TrialDashboard(QtWidgets.QMainWindow):
                 
                 current_state_name = getattr(mgr.logic.state, "name", str(mgr.logic.state))
                 
-                if "PHASE_1_PLACEMENT" in current_state_name:
+                if "ERROR" in current_state_name:
+                    error_spot = mgr.logic.expected_recovery_spot
+                    hl_target = None
+                    hl_source = None
+                elif "PHASE_1_PLACEMENT" in current_state_name:
                     # In Phase 1, source is a slot
                     source_is_slot = True
                     source_idx = mgr.logic.target_slot_idx
@@ -1467,6 +1552,7 @@ class TrialDashboard(QtWidgets.QMainWindow):
             # Then update matrix masks and redraw
             self._matrix_panel.update_mask(
                 int(latest_sample.keys_mask),
+                error_spot=error_spot,
                 rate_hz=self._stm32_rate,
                 sample_count=getattr(mgr.stm32_thread, "sample_count", 0) if mgr else 0,
             )

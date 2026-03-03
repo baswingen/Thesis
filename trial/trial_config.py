@@ -39,7 +39,7 @@ EMG_PLOT_LABELS: List[str] = [
 # 3. Participant Configuration
 PARTICIPANT_CONFIG: Dict[str, str] = {
     "ID": "P01",
-    "Trial": "05",
+    "Trial": "01",
     "Session": "1",
     "Age": "24",
     "Handedness": "Right",
