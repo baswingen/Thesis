@@ -31,6 +31,11 @@ from typing import Optional, List, Any, TYPE_CHECKING
 
 import numpy as np
 
+try:
+    from trial import trial_config
+except ImportError:
+    trial_config = None
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Path setup
 # ──────────────────────────────────────────────────────────────────────────────
@@ -205,39 +210,45 @@ class _SensorHealthPanel(QtWidgets.QFrame):
         super().__init__(parent)
         self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
+
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(10, 8, 10, 8)
-        lay.setSpacing(6)
+        lay.setContentsMargins(10, 6, 10, 6)
+        lay.setSpacing(4)
         lay.addWidget(_section_label("Sensor Health"))
         lay.addWidget(_divider())
 
         grid = QtWidgets.QGridLayout()
-        grid.setSpacing(6)
+        grid.setSpacing(4)
+        grid.setContentsMargins(0, 0, 0, 0)
 
-        def _row(label_text):
-            led = _led(RED)
+        def _cell(label_text):
+            w = QtWidgets.QWidget()
+            l = QtWidgets.QHBoxLayout(w)
+            l.setContentsMargins(0, 0, 0, 0)
+            l.setSpacing(4)
+            led = _led(RED, size=12)
+            lbl = QtWidgets.QLabel(label_text)
+            lbl.setStyleSheet(f"font-size: 10px; color: {TEXT_MAIN};")
             txt = QtWidgets.QLabel("—")
-            txt.setStyleSheet(
-                f"font-family: 'Consolas', monospace; font-size: 11px; color: {TEXT_DIM};"
-            )
-            row_lbl = QtWidgets.QLabel(label_text)
-            row_lbl.setStyleSheet(f"font-size: 11px; color: {TEXT_MAIN};")
-            return led, txt, row_lbl
+            txt.setStyleSheet(f"font-family: 'Consolas'; font-size: 9px; color: {TEXT_DIM};")
+            l.addWidget(led)
+            l.addWidget(lbl)
+            l.addWidget(txt)
+            l.addStretch()
+            return w, led, txt
 
-        self._stm32_led, self._stm32_txt, stm32_lbl = _row("STM32")
-        self._imu1_led,  self._imu1_txt,  imu1_lbl  = _row("IMU 1")
-        self._imu2_led,  self._imu2_txt,  imu2_lbl  = _row("IMU 2")
-        self._tmsi_led,  self._tmsi_txt,  tmsi_lbl  = _row("TMSi EMG")
+        w1, self._stm32_led, self._stm32_txt = _cell("STM32")
+        w2, self._tmsi_led,  self._tmsi_txt  = _cell("EMG")
+        w3, self._imu1_led,  self._imu1_txt  = _cell("IMU 1")
+        w4, self._imu2_led,  self._imu2_txt  = _cell("IMU 2")
 
-        for i, (lbl, led, txt) in enumerate([
-            (stm32_lbl, self._stm32_led, self._stm32_txt),
-            (imu1_lbl,  self._imu1_led,  self._imu1_txt),
-            (imu2_lbl,  self._imu2_led,  self._imu2_txt),
-            (tmsi_lbl,  self._tmsi_led,  self._tmsi_txt),
-        ]):
-            grid.addWidget(lbl, i, 0)
-            grid.addWidget(led, i, 1, QtCore.Qt.AlignmentFlag.AlignCenter)
-            grid.addWidget(txt, i, 2)
+        grid.addWidget(w1, 0, 0)
+        grid.addWidget(w2, 0, 1)
+        grid.addWidget(w3, 1, 0)
+        grid.addWidget(w4, 1, 1)
 
         lay.addLayout(grid)
 
@@ -676,36 +687,41 @@ class _SyncPanel(QtWidgets.QFrame):
         self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
 
         lay = QtWidgets.QVBoxLayout(self)
-        lay.setContentsMargins(10, 8, 10, 8)
-        lay.setSpacing(10)
+        lay.setContentsMargins(10, 6, 10, 6)
+        lay.setSpacing(4)
         lay.addWidget(_section_label("PRBS Synchronization"))
         lay.addWidget(_divider())
 
-        # ── Metric rows (label left, value right) ─────────────────────────────
-        def _metric_row(label_text, default="—"):
-            row = QtWidgets.QHBoxLayout()
+        grid = QtWidgets.QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(8)
+
+        def _metric_box(label_text, default="—"):
+            w = QtWidgets.QWidget()
+            l = QtWidgets.QVBoxLayout(w)
+            l.setContentsMargins(0, 0, 0, 0)
+            l.setSpacing(0)
             lbl = QtWidgets.QLabel(label_text)
-            lbl.setStyleSheet(f"font-size: 11px; color: {TEXT_DIM};")
+            lbl.setStyleSheet(f"font-size: 9px; color: {TEXT_DIM}; text-transform: uppercase;")
             val = QtWidgets.QLabel(default)
             val.setStyleSheet(
-                f"font-family: 'Consolas', monospace; font-size: 13px; "
-                f"color: {TEXT_MAIN}; font-weight: bold;"
+                f"font-family: 'Consolas'; font-size: 12px; color: {TEXT_MAIN}; font-weight: bold;"
             )
-            val.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-            row.addWidget(lbl)
-            row.addStretch()
-            row.addWidget(val)
-            return row, val
+            l.addWidget(lbl)
+            l.addWidget(val)
+            return w, val
 
-        r1, self._lbl_delay   = _metric_row("Kalman Delay")
-        r2, self._lbl_conf    = _metric_row("Confidence")
-        r3, self._lbl_drift   = _metric_row("Clock Drift")
-        r4, self._lbl_updates = _metric_row("PRBS Updates")
+        w1, self._lbl_delay   = _metric_box("Delay")
+        w2, self._lbl_conf    = _metric_box("Conf.")
+        w3, self._lbl_drift   = _metric_box("Drift")
+        w4, self._lbl_updates = _metric_box("Update")
 
-        for row in (r1, r2, r3, r4):
-            lay.addLayout(row)
+        grid.addWidget(w1, 0, 0)
+        grid.addWidget(w2, 0, 1)
+        grid.addWidget(w3, 1, 0)
+        grid.addWidget(w4, 1, 1)
 
-        lay.addStretch()
+        lay.addLayout(grid)
 
 
     def update(self, estimator):
@@ -738,6 +754,84 @@ class _SyncPanel(QtWidgets.QFrame):
             f"color: {conf_color}; font-weight: bold;"
         )
 
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Panel: Trial Configuration (STM32, EMG, Participant, Logic)
+# ──────────────────────────────────────────────────────────────────────────────
+class _TrialConfigurationPanel(QtWidgets.QFrame):
+    """
+    Displays comprehensive trial details from trial_config.py:
+    1. STM32 Pins
+    2. EMG Mapping
+    3. Participant Details
+    4. Trial Logic
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
+        
+        main_lay = QtWidgets.QVBoxLayout(self)
+        main_lay.setContentsMargins(10, 6, 10, 6)
+        main_lay.setSpacing(4)
+        main_lay.addWidget(_section_label("Trial Configuration"))
+        main_lay.addWidget(_divider())
+
+        # Grid for the 4 sections
+        grid = QtWidgets.QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setSpacing(10)
+
+        def _make_section(title, data_dict=None, list_data=None, label_list=None, color=TEXT_MAIN):
+            w = QtWidgets.QWidget()
+            lay = QtWidgets.QVBoxLayout(w)
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(2)
+            lay.addWidget(QtWidgets.QLabel(f"<b>{title.upper()}</b>"))
+            
+            g = QtWidgets.QGridLayout()
+            g.setContentsMargins(0, 0, 0, 0)
+            g.setSpacing(1)
+            
+            if data_dict:
+                for i, (k, v) in enumerate(data_dict.items()):
+                    k_lbl = QtWidgets.QLabel(k)
+                    k_lbl.setStyleSheet(f"font-size: 8px; color: {TEXT_DIM};")
+                    v_lbl = QtWidgets.QLabel(str(v))
+                    v_lbl.setStyleSheet(f"font-size: 8px; color: {color};")
+                    g.addWidget(k_lbl, i, 0)
+                    g.addWidget(v_lbl, i, 1)
+            elif list_data:
+                for i, val in enumerate(list_data):
+                    prefix = f"{label_list[i] if label_list and i < len(label_list) else i+1}:"
+                    p_lbl = QtWidgets.QLabel(prefix)
+                    p_lbl.setStyleSheet(f"font-size: 8px; color: {TEXT_DIM};")
+                    m_lbl = QtWidgets.QLabel(val)
+                    m_lbl.setStyleSheet(f"font-size: 8px; color: {color};")
+                    g.addWidget(p_lbl, i, 0)
+                    g.addWidget(m_lbl, i, 1)
+            
+            lay.addLayout(g)
+            lay.addStretch()
+            return w
+
+        # Fetch config
+        stm32_conns = getattr(trial_config, "STM32_CONNECTIONS", {})
+        emg_conns   = getattr(trial_config, "EMG_CONNECTIONS", [])
+        emg_labels  = getattr(trial_config, "EMG_PLOT_LABELS", [])
+        part_config = getattr(trial_config, "PARTICIPANT_CONFIG", {})
+        logic_config = getattr(trial_config, "TRIAL_LOGIC_CONFIG", {})
+
+        # 1. STM32
+        grid.addWidget(_make_section("STM32", data_dict=stm32_conns, color=TEXT_MAIN), 0, 0)
+        # 2. EMG
+        grid.addWidget(_make_section("EMG", list_data=emg_conns, label_list=emg_labels, color=GREEN), 0, 1)
+        # 3. Participant
+        grid.addWidget(_make_section("Participant", data_dict=part_config, color=ACCENT), 1, 0)
+        # 4. Trial Logic
+        grid.addWidget(_make_section("Trial Logic", data_dict=logic_config, color=ORANGE), 1, 1)
+
+        main_lay.addLayout(grid)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1043,14 +1137,19 @@ class TrialDashboard(QtWidgets.QMainWindow):
         left_lay.setSpacing(8)
 
         self._health_panel = _SensorHealthPanel()
+        self._health_panel.setFixedHeight(75)
         left_lay.addWidget(self._health_panel, stretch=0)
 
         self._imu_panel3d = _IMUPanel3D()
-        left_lay.addWidget(self._imu_panel3d, stretch=1)
+        left_lay.addWidget(self._imu_panel3d, stretch=5)
 
         self._sync_panel = _SyncPanel()
-        self._sync_panel.setFixedHeight(170)
+        self._sync_panel.setFixedHeight(85)
         left_lay.addWidget(self._sync_panel, stretch=0)
+
+        self._connections_panel = _TrialConfigurationPanel()
+        self._connections_panel.setFixedHeight(220)
+        left_lay.addWidget(self._connections_panel, stretch=0)
 
         body_splitter.addWidget(left_col)
 
