@@ -869,9 +869,8 @@ class _EMGPanel(QtWidgets.QFrame):
             name = self.channel_names[idx] if idx < len(self.channel_names) else f"CH{idx+1}"
             self.plots[i].setLabel("left", name, size="7pt")
             
-        if self.processor and changed_idx is not None:
-            # Per-channel reset to avoid spiking other channels
-            self.processor.reset(channel_idx=changed_idx)
+        if changed_idx is not None:
+            self._pending_reset_idx = changed_idx
             # Clear data buffer for the changed channel to avoid visual discontinuity
             # Must preserve length to match self.time_buf to prevent pyqtgraph crash
             current_len = len(self.time_buf)
@@ -932,6 +931,13 @@ class _EMGPanel(QtWidgets.QFrame):
         
         if self.t0 is None:
             self.t0 = t_batch[0]
+            
+        if hasattr(self, '_pending_reset_idx') and self._pending_reset_idx is not None:
+            idx = self._pending_reset_idx
+            self._pending_reset_idx = None
+            if self.processor is not None:
+                # Perform warm initialization using the first sample of the new sequence
+                self.processor.reset(channel_idx=idx, warm_value=float(v_batch[0, idx]))
         
         # Append time
         self.time_buf.extend(t_batch)

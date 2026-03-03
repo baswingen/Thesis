@@ -120,13 +120,13 @@ class BandpassFilter:
         filtered, self.zi = signal.sosfilt(self.sos, data_fixed, zi=self.zi)
         return filtered
     
-    def reset(self, channel_idx: Optional[int] = None):
+    def reset(self, channel_idx: Optional[int] = None, warm_value: float = 0.0):
         """Reset filter state for all channels or a specific one."""
         if SCIPY_AVAILABLE and self.sos is not None:
             zi_new = signal.sosfilt_zi(self.sos)
             if channel_idx is not None and self.zi is not None and self.zi.ndim == 3:
                 if 0 <= channel_idx < self.zi.shape[2]:
-                    self.zi[:, :, channel_idx] = zi_new
+                    self.zi[:, :, channel_idx] = zi_new * warm_value
             else:
                 self.zi = None # Re-init on next use
     
@@ -213,13 +213,13 @@ class NotchFilter:
         filtered, self.zi = signal.sosfilt(self.sos, data_fixed, zi=self.zi)
         return filtered
     
-    def reset(self, channel_idx: Optional[int] = None):
+    def reset(self, channel_idx: Optional[int] = None, warm_value: float = 0.0):
         """Reset filter state for all channels or a specific one."""
         if SCIPY_AVAILABLE and self.sos is not None:
             zi_new = signal.sosfilt_zi(self.sos)
             if channel_idx is not None and self.zi is not None and self.zi.ndim == 3:
                 if 0 <= channel_idx < self.zi.shape[2]:
-                    self.zi[:, :, channel_idx] = zi_new
+                    self.zi[:, :, channel_idx] = zi_new * warm_value
             else:
                 self.zi = None # Re-init on next use
     
@@ -311,13 +311,13 @@ class EMGEnvelopeExtractor:
         envelope, self.zi = signal.sosfilt(self.sos, rect_fixed, zi=self.zi)
         return envelope
     
-    def reset(self, channel_idx: Optional[int] = None):
+    def reset(self, channel_idx: Optional[int] = None, warm_value: float = 0.0):
         """Reset filter state for all channels or a specific one."""
         if SCIPY_AVAILABLE and self.sos is not None:
             zi_new = signal.sosfilt_zi(self.sos)
             if channel_idx is not None and self.zi is not None and self.zi.ndim == 3:
                 if 0 <= channel_idx < self.zi.shape[2]:
-                    self.zi[:, :, channel_idx] = zi_new
+                    self.zi[:, :, channel_idx] = zi_new * abs(warm_value)
             else:
                 self.zi = None # Re-init on next use
     
@@ -400,13 +400,13 @@ class EMGProcessor:
         
         return filtered
     
-    def reset(self, channel_idx: Optional[int] = None):
+    def reset(self, channel_idx: Optional[int] = None, warm_value: float = 0.0):
         """Reset all filter states for all channels or a specific one."""
-        self.bandpass.reset(channel_idx)
+        self.bandpass.reset(channel_idx, warm_value)
         if self.notch is not None:
-            self.notch.reset(channel_idx)
+            self.notch.reset(channel_idx, warm_value)
         if self.envelope_extractor is not None:
-            self.envelope_extractor.reset(channel_idx)
+            self.envelope_extractor.reset(channel_idx, warm_value)
     
     def __repr__(self):
         parts = [str(self.bandpass)]
