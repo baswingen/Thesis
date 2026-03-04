@@ -238,13 +238,16 @@ class HDF5TrialLogger:
                     numeric_events[i] = [state_id, e['weight'], e['src_r'], e['src_c'], e['tgt_r'], e['tgt_c']]
                 
                 # Use searchsorted to find which event is active at each t_common
-                # searchsorted with side='right' finds the index where t_common would be inserted
-                # We subtract 1 to get the index of the latest event *before* t_common
+                # searchsorted with side='right' returns the insertion index
+                # We subtract 1 to get the index of the latest event *before* (or at) t_common
                 idx = np.searchsorted(evt_times, t_common, side='right') - 1
                 
                 # Where idx is < 0, no event had occurred yet. Keep zeroes.
                 valid_mask = idx >= 0
                 idx_clamped = np.maximum(0, idx)
+                
+                # Check bounds
+                idx_clamped = np.minimum(idx_clamped, len(numeric_events) - 1)
                 labels[valid_mask] = numeric_events[idx_clamped[valid_mask]] 
 
         # Prepend t_common as column 0, and append labels at the end

@@ -13,7 +13,7 @@ Run:
 # =============================================================================
 
 # Path to the .h5 file you want to inspect
-FILE = r"database\participant_P00\trial_0_20260302_150111.h5"
+FILE = r"database\participant_P00\trial_0_20260304_102852.h5"
 
 # Dataset path inside the file.
 # Examples:
@@ -26,6 +26,9 @@ DATASET = "synced/data"
 # Name of the column that goes on the X-axis.
 # Set to None to use the row index instead.
 X_COLUMN = "t_pc_common"
+
+# Use relative time (start at 0) or absolute time.
+RELATIVE_TIME = True
 
 # Columns to INCLUDE.  Set to [] (empty list) to include ALL columns.
 # Example: ["yaw1", "pitch1", "roll1", "prbs_lvl"]
@@ -44,6 +47,7 @@ MAX_ROWS = None
 COLS_PER_ROW   = 3      # subplots per row
 FIG_HEIGHT_PER_ROW = 2  # inches per row of subplots
 FIG_WIDTH      = 18     # total figure width in inches
+MAX_VISIBLE_ROWS = 5    # show max N rows at once, scroll for the rest
 STYLE          = "dark_background"   # matplotlib style, e.g. "dark_background", "seaborn-v0_8"
 LINE_ALPHA     = 0.85
 LINE_WIDTH     = 0.8
@@ -57,6 +61,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.widgets import Slider
 import h5py
 
 # Resolve path relative to this script's parent directory
@@ -108,53 +113,132 @@ def plot(data, col_names, x_idx, plot_cols, dataset_path, file_path):
     if n_plots == 0:
         sys.exit("[ERR] No columns to plot after applying INCLUDE/EXCLUDE filters.")
 
-    n_rows_grid = int(np.ceil(n_plots / COLS_PER_ROW))
+    # Determine window size
+    max_cells = MAX_VISIBLE_ROWS * COLS_PER_ROW
+    n_visible_plots = min(n_plots, max_cells)
+    n_rows_visible = int(np.ceil(n_visible_plots / COLS_PER_ROW))
+    
+    total_potential_rows = int(np.ceil(n_plots / COLS_PER_ROW))
 
     plt.style.use(STYLE)
-    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT_PER_ROW * n_rows_grid + 0.8))
+    
+    # Create figure with extra space for slider on the right
+    fig = plt.figure(figsize=(FIG_WIDTH, FIG_HEIGHT_PER_ROW * n_rows_visible + 0.8))
     fig.suptitle(
         f"{Path(file_path).name}  →  {dataset_path}   "
         f"({data.shape[0]} rows × {data.shape[1]} cols)",
-        fontsize=11, color="white" if "dark" in STYLE else "black", y=0.995
+        fontsize=11, color="white" if "dark" in STYLE else "black", y=0.99
     )
 
-    gs = gridspec.GridSpec(n_rows_grid, COLS_PER_ROW, figure=fig,
-                           hspace=0.55, wspace=0.35)
+    # Adjust layout to make room for a vertical slider on the right
+    # GridSpec for subplots
+    gs = gridspec.GridSpec(n_rows_visible, COLS_PER_ROW, figure=fig,
+                           hspace=0.55, wspace=0.3)
+    plt.subplots_adjust(right=0.94)
 
     # Build X axis
     if x_idx is not None:
         x = data[:, x_idx]
         x_label = col_names[x_idx]
-        # Make relative to first value for readability
-        x = x - x[0]
+        if RELATIVE_TIME:
+            # Shift so the first valid value is 0
+            valid_x = x[~np.isnan(x)]
+            if len(valid_x) > 0:
+                x = x - valid_x[0]
+            x_label = f"relative {x_label} [s]"
     else:
         x = np.arange(data.shape[0])
         x_label = "row index"
 
     cmap = plt.colormaps["tab20"].resampled(n_plots)
+    
+    # Store axes and line objects for updating
+    axes = []
+    lines = []
+    titles = []
 
-    for k, (col_idx, col_name) in enumerate(plot_cols):
+    # Shared X-axis
+    base_ax = None
+
+    for k in range(n_visible_plots):
         row_g, col_g = divmod(k, COLS_PER_ROW)
-        ax = fig.add_subplot(gs[row_g, col_g])
-
-        y = data[:, col_idx]
-
-        # Skip all-zero or all-NaN columns (but still draw the axis)
-        if np.all(np.isnan(y)) or (np.nanmax(np.abs(y)) < 1e-12):
-            ax.text(0.5, 0.5, "no data", transform=ax.transAxes,
-                    ha="center", va="center", fontsize=8, alpha=0.5)
-        else:
-            ax.plot(x, y, lw=LINE_WIDTH, alpha=LINE_ALPHA, color=cmap(k))
-
-        ax.set_title(col_name, fontsize=8, pad=3)
+        ax = fig.add_subplot(gs[row_g, col_g], sharex=base_ax)
+        if base_ax is None:
+            base_ax = ax
+            
+        line, = ax.plot([], [], lw=LINE_WIDTH, alpha=LINE_ALPHA)
+        
         ax.set_xlabel(x_label, fontsize=6, labelpad=1)
         ax.tick_params(labelsize=6)
         ax.margins(x=0.01)
+        
+        axes.append(ax)
+        lines.append(line)
+        titles.append(ax.set_title("", fontsize=8, pad=3))
 
-    # Hide unused subplot cells
-    for k in range(n_plots, n_rows_grid * COLS_PER_ROW):
-        row_g, col_g = divmod(k, COLS_PER_ROW)
-        fig.add_subplot(gs[row_g, col_g]).set_visible(False)
+    # Explicitly set X range once (shared by all)
+    if len(x) > 0:
+        valid_x = x[~np.isnan(x)]
+        if len(valid_x) > 0:
+            base_ax.set_xlim(np.min(valid_x), np.max(valid_x))
+
+    # Add slider axis [left, bottom, width, height]
+    ax_slider = plt.axes([0.96, 0.15, 0.015, 0.7], facecolor='#333333' if "dark" in STYLE else '#DDDDDD')
+    
+    # Slider value is the index of the first Row shown
+    slider = Slider(
+        ax_slider, 'Row', 0, max(0, total_potential_rows - MAX_VISIBLE_ROWS), 
+        valinit=0, valstep=1, orientation='vertical'
+    )
+    slider.label.set_visible(False)
+
+    def update_view(val):
+        start_row = int(slider.val)
+        start_plot_idx = start_row * COLS_PER_ROW
+        
+        for i in range(n_visible_plots):
+            plot_idx = start_plot_idx + i
+            ax = axes[i]
+            line = lines[i]
+            
+            if plot_idx < n_plots:
+                col_idx, col_name = plot_cols[plot_idx]
+                y = data[:, col_idx]
+                
+                ax.set_visible(True)
+                line.set_data(x, y)
+                line.set_color(cmap(plot_idx))
+                ax.set_title(col_name, fontsize=8, pad=3)
+                
+                # Rescale Y
+                if not np.all(np.isnan(y)):
+                    ymin, ymax = np.nanmin(y), np.nanmax(y)
+                    if ymin == ymax:
+                        ymin -= 0.1
+                        ymax += 0.1
+                    else:
+                        margin = (ymax - ymin) * 0.05
+                        ymin -= margin
+                        ymax += margin
+                    ax.set_ylim(ymin, ymax)
+            else:
+                ax.set_visible(False)
+        
+        fig.canvas.draw_idle()
+
+    slider.on_changed(update_view)
+    
+    # Initial call to populate data
+    update_view(0)
+
+    # Mouse wheel support
+    def on_scroll(event):
+        if event.button == 'up':
+            slider.set_val(max(slider.valmin, slider.val - 1))
+        elif event.button == 'down':
+            slider.set_val(min(slider.valmax, slider.val + 1))
+
+    fig.canvas.mpl_connect('scroll_event', on_scroll)
 
     plt.show()
 

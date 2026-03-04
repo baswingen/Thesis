@@ -205,7 +205,7 @@ class TrialLogic:
                     self._trigger_error(
                         TrialState.ERROR_WRONG_PLACEMENT,
                         f"ERROR: Placed {self.target_weight}kg in wrong spot! Please remove it.",
-                        spot
+                        spot, t_pc
                     )
             elif not pressed and spot == self.target_spot:
                  # It was removed? Ignore for now, or flag error.

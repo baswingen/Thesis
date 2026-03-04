@@ -1467,6 +1467,8 @@ class TrialDashboard(QtWidgets.QMainWindow):
             # Grab only the last sample — no full list copy
             with t._lock:
                 if t._history:
+                    # _history contains (t_pc, sample) tuples
+                    latest_sample_t_pc = t._history[-1][0]
                     latest_sample = t._history[-1][1]
 
         self._health_panel.update_stm32(stm32_online, self._stm32_rate)
@@ -1507,7 +1509,10 @@ class TrialDashboard(QtWidgets.QMainWindow):
             # Update trial logic FIRST so standard UI gets latest model state
             error_spot = None
             if mgr and hasattr(mgr, "logic"):
-                mgr.logic.update(latest_sample.keys_mask)
+                # We MUST use the PC timestamp here to ensure Event Logs use the 
+                # same base clock as EMG sampling (t_pc_common) for ML step-filling!
+                t_pc_to_use = latest_sample_t_pc if 'latest_sample_t_pc' in locals() else time.perf_counter()
+                mgr.logic.update(latest_sample.keys_mask, t_pc=t_pc_to_use)
                 self._matrix_panel.set_instruction(
                     mgr.logic.get_instruction(),
                     mgr.logic.get_progress_text()
