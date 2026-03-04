@@ -39,7 +39,7 @@ EMG_PLOT_LABELS: List[str] = [
 # 3. Participant Configuration
 PARTICIPANT_CONFIG: Dict[str, str] = {
     "ID": "P01",
-    "Trial": "01",
+    "Trial": "04",
     "Session": "1",
     "Gender": "Male",
     "Age": "25",
@@ -54,7 +54,7 @@ PARTICIPANT_CONFIG: Dict[str, str] = {
 
 # 4. Trial Logic Configuration
 TRIAL_LOGIC_CONFIG: Dict[str, Any] = {
-    "Movements": 10,
+    "Movements": 1000,
     "Number of Weights": 7,
 }
 

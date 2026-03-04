@@ -13,7 +13,7 @@ Run:
 # =============================================================================
 
 # Path to the .h5 file you want to inspect
-FILE = r"database\participant_P00\trial_0_20260304_102852.h5"
+FILE = r"database\participant_P01\trial_1_20260304_144458.h5"
 
 # Dataset path inside the file.
 # Examples:
