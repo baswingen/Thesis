@@ -85,6 +85,19 @@ class HDF5TrialLogger:
             for k, v in self.metadata.items():
                 if v is not None:
                     f.attrs[k] = v
+
+            # Save everything from trial_config.py
+            try:
+                import trial.trial_config as tc
+                import json
+                f.attrs['config_stm32_connections'] = json.dumps(tc.STM32_CONNECTIONS)
+                f.attrs['config_emg_connections'] = json.dumps(tc.EMG_CONNECTIONS)
+                f.attrs['config_emg_plot_labels'] = json.dumps(tc.EMG_PLOT_LABELS)
+                f.attrs['config_participant'] = json.dumps(tc.PARTICIPANT_CONFIG)
+                f.attrs['config_trial_logic'] = json.dumps(tc.TRIAL_LOGIC_CONFIG)
+                f.attrs['config_starting_slots'] = json.dumps(tc.STARTING_SLOTS_CONFIG)
+            except Exception as e:
+                print(f"[LOGGER] Failed to save trial_config metadata: {e}")
             
             # 2. Setup Internal Groups (Hidden-ish for raw data)
             g_raw = f.create_group('_raw')
