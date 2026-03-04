@@ -41,26 +41,33 @@ PARTICIPANT_CONFIG: Dict[str, str] = {
     "ID": "P01",
     "Trial": "01",
     "Session": "1",
-    "Age": "24",
+    "Gender": "Male",
+    "Age": "25",
     "Handedness": "Right",
+    "Total Arm Length [cm]": "82",
+    "Upper Arm Length [cm]": "38",
+    "Forearm Length [cm]": "33",
+    "Hand Length [cm]": "20",
+    "Upper Arm Circumference [cm]": "32",
+    "Fore Arm Circumference [cm]": "28",
 }
 
 # 4. Trial Logic Configuration
 TRIAL_LOGIC_CONFIG: Dict[str, Any] = {
-    "Movements": 15,
-    "Mode": "Active Sync",
+    "Movements": 10,
+    "Number of Weights": 7,
 }
 
 # 5. Starting Slots (Weights to be moved onto the matrix)
 # The 8 starting slots and their initial weights in kg (None if empty)
 # Adjust these based on the actual physical predefined setup
 STARTING_SLOTS_CONFIG: Dict[str, float | None] = {
-    "Slot 1": 0.5,
+    "Slot 1": 0.75,
     "Slot 2": 1.0,
     "Slot 3": 2.0,
-    "Slot 4": 3.0,
-    "Slot 5": 6.0,
-    "Slot 6": None,
-    "Slot 7": None,
+    "Slot 4": 2.25,
+    "Slot 5": 3.0,
+    "Slot 6": 4.25,
+    "Slot 7": 6.0,
     "Slot 8": None,
 }

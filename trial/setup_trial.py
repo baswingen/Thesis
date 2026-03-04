@@ -60,7 +60,16 @@ class TrialManager:
         self.participant_id = participant_id
         self.trial_num = trial_num
         self.duration_s = duration_s
-        self.metadata = metadata or {}
+        # Pull participant config directly from trial_config.py if available
+        try:
+            from trial import trial_config
+            part_cfg = getattr(trial_config, "PARTICIPANT_CONFIG", {})
+            # Merge participant config into metadata (metadata passed to __init__ takes precedence if overlapping)
+            full_metadata = part_cfg.copy()
+            full_metadata.update(metadata or {})
+            self.metadata = full_metadata
+        except ImportError:
+            self.metadata = metadata or {}
         
         # Add technical metadata
         self.metadata.update({

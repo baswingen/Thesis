@@ -31,17 +31,17 @@ from typing import Optional, List, Any, TYPE_CHECKING
 
 import numpy as np
 
-try:
-    from trial import trial_config
-except ImportError:
-    trial_config = None
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Path setup
 # ──────────────────────────────────────────────────────────────────────────────
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+try:
+    from trial import trial_config
+except ImportError:
+    trial_config = None
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Qt / pyqtgraph imports
@@ -398,7 +398,10 @@ class _ButtonMatrixPanel(QtWidgets.QFrame):
         # To keep track of what's where
         self._matrix_weights: Dict[tuple, float] = {}
         self._slot_weights: Dict[int, float] = {}
-        self._total_slots = 8
+        if trial_config is not None and hasattr(trial_config, 'STARTING_SLOTS_CONFIG'):
+            self._total_slots = len(trial_config.STARTING_SLOTS_CONFIG)
+        else:
+            self._total_slots = 8
 
         # For arrows
         self._draw_arrow: bool = False
@@ -1037,18 +1040,18 @@ class _TrialConfigurationPanel(QtWidgets.QFrame):
             if data_dict:
                 for i, (k, v) in enumerate(data_dict.items()):
                     k_lbl = QtWidgets.QLabel(k)
-                    k_lbl.setStyleSheet(f"font-size: 8px; color: {TEXT_DIM};")
+                    k_lbl.setStyleSheet(f"font-size: 9px; color: {TEXT_DIM};")
                     v_lbl = QtWidgets.QLabel(str(v))
-                    v_lbl.setStyleSheet(f"font-size: 8px; color: {color};")
+                    v_lbl.setStyleSheet(f"font-size: 9px; color: {color};")
                     g.addWidget(k_lbl, i, 0)
                     g.addWidget(v_lbl, i, 1)
             elif list_data:
                 for i, val in enumerate(list_data):
                     prefix = f"{label_list[i] if label_list and i < len(label_list) else i+1}:"
                     p_lbl = QtWidgets.QLabel(prefix)
-                    p_lbl.setStyleSheet(f"font-size: 8px; color: {TEXT_DIM};")
+                    p_lbl.setStyleSheet(f"font-size: 9px; color: {TEXT_DIM};")
                     m_lbl = QtWidgets.QLabel(val)
-                    m_lbl.setStyleSheet(f"font-size: 8px; color: {color};")
+                    m_lbl.setStyleSheet(f"font-size: 9px; color: {color};")
                     g.addWidget(p_lbl, i, 0)
                     g.addWidget(m_lbl, i, 1)
             
@@ -1063,16 +1066,24 @@ class _TrialConfigurationPanel(QtWidgets.QFrame):
         part_config = getattr(trial_config, "PARTICIPANT_CONFIG", {})
         logic_config = getattr(trial_config, "TRIAL_LOGIC_CONFIG", {})
 
-        # 1. STM32
-        grid.addWidget(_make_section("STM32", data_dict=stm32_conns, color=TEXT_MAIN), 0, 0)
-        # 2. EMG
-        grid.addWidget(_make_section("EMG", list_data=emg_conns, label_list=emg_labels, color=GREEN), 0, 1)
-        # 3. Participant
+        # Row 0: Technical
+        grid.addWidget(_make_section("EMG", list_data=emg_conns, label_list=emg_labels, color=GREEN), 0, 0)
+        grid.addWidget(_make_section("STM32", data_dict=stm32_conns, color=TEXT_MAIN), 0, 1)
+        
+        # Row 1: Context
         grid.addWidget(_make_section("Participant", data_dict=part_config, color=ACCENT), 1, 0)
-        # 4. Trial Logic
         grid.addWidget(_make_section("Trial Logic", data_dict=logic_config, color=ORANGE), 1, 1)
 
-        main_lay.addLayout(grid)
+        # Wrap grid in a scroll area
+        content_w = QtWidgets.QWidget()
+        content_w.setLayout(grid)
+        
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content_w)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        
+        main_lay.addWidget(scroll)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1383,14 +1394,10 @@ class TrialDashboard(QtWidgets.QMainWindow):
         left_lay.addWidget(self._health_panel, stretch=0)
 
         self._imu_panel3d = _IMUPanel3D()
-        left_lay.addWidget(self._imu_panel3d, stretch=5)
-
-        self._sync_panel = _SyncPanel()
-        self._sync_panel.setFixedHeight(85)
-        left_lay.addWidget(self._sync_panel, stretch=0)
+        left_lay.addWidget(self._imu_panel3d, stretch=3)
 
         self._connections_panel = _TrialConfigurationPanel()
-        self._connections_panel.setFixedHeight(220)
+        self._connections_panel.setFixedHeight(280)
         left_lay.addWidget(self._connections_panel, stretch=0)
 
         body_splitter.addWidget(left_col)
@@ -1403,6 +1410,10 @@ class TrialDashboard(QtWidgets.QMainWindow):
 
         self._matrix_panel = _ButtonMatrixPanel()
         mid_lay.addWidget(self._matrix_panel, stretch=1)
+
+        self._sync_panel = _SyncPanel()
+        self._sync_panel.setFixedHeight(85)
+        mid_lay.addWidget(self._sync_panel, stretch=0)
 
         body_splitter.addWidget(mid_col)
 
@@ -1505,62 +1516,64 @@ class TrialDashboard(QtWidgets.QMainWindow):
             self._tmsi_rate  = getattr(tt, "estimated_rate_hz", self._tmsi_rate)
         self._health_panel.update_tmsi(tmsi_online, self._tmsi_rate)
 
-        if latest_sample is not None:
-            # Update trial logic FIRST so standard UI gets latest model state
-            error_spot = None
-            if mgr and hasattr(mgr, "logic"):
-                # We MUST use the PC timestamp here to ensure Event Logs use the 
-                # same base clock as EMG sampling (t_pc_common) for ML step-filling!
+        self._health_panel.update_tmsi(tmsi_online, self._tmsi_rate)
+
+        # Unconditionally fetch from trial logic so UI initializes correctly before first packet
+        error_spot = None
+        if mgr and hasattr(mgr, "logic"):
+            if latest_sample is not None:
                 t_pc_to_use = latest_sample_t_pc if 'latest_sample_t_pc' in locals() else time.perf_counter()
                 mgr.logic.update(latest_sample.keys_mask, t_pc=t_pc_to_use)
-                self._matrix_panel.set_instruction(
-                    mgr.logic.get_instruction(),
-                    mgr.logic.get_progress_text()
-                )
                 
-                # Update weights (what's on the matrix and what's in slots)
-                self._matrix_panel.update_weights(
-                    mgr.logic.matrix_state,
-                    mgr.logic.starting_slots_state
-                )
-                
-                # Fetch highlights and compute arrows
-                hl_target = mgr.logic.get_target_highlight()
-                hl_source = None
-                source_is_slot = False
-                source_idx = None
-                
-                current_state_name = getattr(mgr.logic.state, "name", str(mgr.logic.state))
-                
-                if "ERROR" in current_state_name:
-                    error_spot = mgr.logic.expected_recovery_spot
-                    hl_target = None
-                    hl_source = None
-                elif "PHASE_1_PLACEMENT" in current_state_name:
-                    # In Phase 1, source is a slot
-                    source_is_slot = True
-                    source_idx = mgr.logic.target_slot_idx
-                elif "PHASE_2_MOVEMENTS" in current_state_name:
-                    # In Phase 2, source is on the matrix
-                    if mgr.logic.awaiting_pickup:
-                        hl_source = mgr.logic.source_spot
-                    else:
-                        hl_source = None
-                        
-                self._matrix_panel.set_highlights(
-                    target=hl_target,
-                    source=hl_source,
-                    source_is_slot=source_is_slot,
-                    source_slot_idx=source_idx
-                )
-
-            # Then update matrix masks and redraw
-            self._matrix_panel.update_mask(
-                int(latest_sample.keys_mask),
-                error_spot=error_spot,
-                rate_hz=self._stm32_rate,
-                sample_count=getattr(mgr.stm32_thread, "sample_count", 0) if mgr else 0,
+            self._matrix_panel.set_instruction(
+                mgr.logic.get_instruction(),
+                mgr.logic.get_progress_text()
             )
+            
+            # Update weights (what's on the matrix and what's in slots)
+            self._matrix_panel.update_weights(
+                mgr.logic.matrix_state,
+                mgr.logic.starting_slots_state
+            )
+            
+            # Fetch highlights and compute arrows
+            hl_target = mgr.logic.get_target_highlight()
+            hl_source = None
+            source_is_slot = False
+            source_idx = None
+            
+            current_state_name = getattr(mgr.logic.state, "name", str(mgr.logic.state))
+            
+            if "ERROR" in current_state_name:
+                error_spot = mgr.logic.expected_recovery_spot
+                hl_target = None
+                hl_source = None
+            elif "PHASE_1_PLACEMENT" in current_state_name:
+                # In Phase 1, source is a slot
+                source_is_slot = True
+                source_idx = mgr.logic.target_slot_idx
+            elif "PHASE_2_MOVEMENTS" in current_state_name:
+                # In Phase 2, source is on the matrix
+                if mgr.logic.awaiting_pickup:
+                    hl_source = mgr.logic.source_spot
+                else:
+                    hl_source = None
+                    
+            self._matrix_panel.set_highlights(
+                target=hl_target,
+                source=hl_source,
+                source_is_slot=source_is_slot,
+                source_slot_idx=source_idx
+            )
+
+        # Ensure matrix visualization is always updated, using 0 for mask if no sample
+        keys_mask = int(latest_sample.keys_mask) if latest_sample is not None else 0
+        self._matrix_panel.update_mask(
+            keys_mask,
+            error_spot=error_spot,
+            rate_hz=self._stm32_rate,
+            sample_count=getattr(mgr.stm32_thread, "sample_count", 0) if mgr else 0,
+        )
             
         # Cache for plot tick
         self._latest_sample = latest_sample
