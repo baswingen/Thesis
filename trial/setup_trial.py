@@ -182,6 +182,12 @@ class TrialManager:
             if getattr(self.logic.state, "name", "") == "FINISHED" and self.is_recording:
                 print("[TRIAL] Trial finished. Stopping recording.")
                 self.is_recording = False
+                
+            # --- Events Logging ---
+            if self.is_recording and hasattr(self.logic, 'events_queue') and self.logic.events_queue:
+                events = self.logic.events_queue.copy()
+                self.logic.events_queue.clear()
+                self.logger.append_events(events)
             
             # --- STM32 Logging ---
             # Fix #1: Only snapshot the *new* slice under the lock instead of

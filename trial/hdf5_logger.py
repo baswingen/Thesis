@@ -23,15 +23,34 @@ class HDF5TrialLogger:
     
     EMG_COLUMNS = ["t_pc", "t_tmsi"] + [f"ch{i}" for i in range(1, 33)] + ["trig"]
     
+    # Sync Metrics: ["t_effective", "delay_ms", "confidence"]
     SYNC_METRICS_COLUMNS = ["t_effective", "delay_ms", "confidence"]
+
+    # Events Columns matching TrialLogic queue
+    EVENT_COLUMNS = ["t_pc", "state", "weight", "src_r", "src_c", "tgt_r", "tgt_c"]
+    
+    # State string mapping to IDs for numerical matrix
+    STATE_MAPPING = {
+        "CONFIGURING": 0,
+        "PHASE_1_PLACEMENT": 1,
+        "PHASE_2_AWAITING_PICKUP": 2,
+        "PHASE_2_AWAITING_PLACEMENT": 3,
+        "ERROR_WRONG_PICKUP": 4,
+        "ERROR_WRONG_PLACEMENT": 5,
+        "ERROR_MISSING_WEIGHT": 6,
+        "FINISHED": 7
+    }
 
     # Unified columns: STM32 data followed by EMG data (excluding EMG's t_pc/t_tmsi)
     # This creates a single wide matrix indexed by t_common
     UNIFIED_COLUMNS = STM32_COLUMNS + EMG_COLUMNS[2:]
+    
+    # ML Label Columns added to the matrix via step-filling
+    LABEL_COLUMNS = ["state_id", "weight", "src_r", "src_c", "tgt_r", "tgt_c"]
 
-    # Synced dataset columns: common PC clock prepended, then all signals
+    # Synced dataset columns: common PC clock prepended, then all signals, then ML labels
     # Stored under _raw/synced so it appears alongside the other raw streams
-    SYNCED_COLUMNS = ["t_pc_common"] + UNIFIED_COLUMNS
+    SYNCED_COLUMNS = ["t_pc_common"] + UNIFIED_COLUMNS + LABEL_COLUMNS
 
     def __init__(
         self, 
@@ -98,6 +117,21 @@ class HDF5TrialLogger:
             )
             ds_sync.attrs['column_names'] = self.SYNC_METRICS_COLUMNS
             
+            # Events: Variable length strings and numerical data
+            # HDF5 string type
+            dt_str = h5py.string_dtype(encoding='utf-8')
+            dt_event = np.dtype([
+                ('t_pc', 'f8'), ('state', dt_str), ('weight', 'f8'),
+                ('src_r', 'i4'), ('src_c', 'i4'), ('tgt_r', 'i4'), ('tgt_c', 'i4')
+            ])
+            ds_event = g_raw.create_dataset(
+                'events', shape=(0,), 
+                maxshape=(None,), 
+                dtype=dt_event, compression="gzip", compression_opts=4,
+                chunks=(100,)
+            )
+            ds_event.attrs['column_names'] = self.EVENT_COLUMNS
+            
             # 4. Pre-create the top-level /synced group and its dataset
             # (populated at trial stop via save_synchronized_datasets)
             # t_pc_common (1) + STM32 cols (22) + EMG signal cols (33) = 56 columns
@@ -154,6 +188,27 @@ class HDF5TrialLogger:
             dset.resize(new_len, axis=0)
             dset[curr_len:new_len, :] = data
 
+    def append_events(self, events: list):
+        """Append a list of event tuples to the logger."""
+        if not events:
+            return
+            
+        # Convert to numpy structured array
+        dt_str = h5py.string_dtype(encoding='utf-8')
+        dt_event = np.dtype([
+            ('t_pc', 'f8'), ('state', dt_str), ('weight', 'f8'),
+            ('src_r', 'i4'), ('src_c', 'i4'), ('tgt_r', 'i4'), ('tgt_c', 'i4')
+        ])
+        
+        arr = np.array(events, dtype=dt_event)
+        
+        with h5py.File(self.filename, 'a') as f:
+            dset = f['_raw/events']
+            curr_len = dset.shape[0]
+            new_len = curr_len + len(arr)
+            dset.resize(new_len, axis=0)
+            dset[curr_len:new_len] = arr
+
     def save_synchronized_datasets(
         self, 
         t_common: np.ndarray, 
@@ -164,10 +219,36 @@ class HDF5TrialLogger:
         """
         Writes the final unified synced matrix into _raw/synced.
         The matrix has t_pc_common prepended as column 0, followed by
-        all STM32 signal columns and all EMG signal columns.
+        all STM32 signal columns, followed by all EMG signal columns, 
+        and lastly step-filled ML label columns.
         """
-        # Prepend t_common as column 0
-        synced_matrix = np.column_stack((t_common, unified_matrix))
+        # Step-fill ML label columns based on events
+        labels = np.zeros((len(t_common), len(self.LABEL_COLUMNS)), dtype=np.float64)
+        
+        with h5py.File(self.filename, 'r') as f:
+            if '_raw/events' in f and f['_raw/events'].shape[0] > 0:
+                events = f['_raw/events'][:]
+                evt_times = events['t_pc']
+                
+                # For each event, map state string to ID
+                numeric_events = np.zeros((len(events), len(self.LABEL_COLUMNS)))
+                for i, e in enumerate(events):
+                    state_str = e['state'].decode('utf-8') if isinstance(e['state'], bytes) else e['state']
+                    state_id = self.STATE_MAPPING.get(state_str, -1)
+                    numeric_events[i] = [state_id, e['weight'], e['src_r'], e['src_c'], e['tgt_r'], e['tgt_c']]
+                
+                # Use searchsorted to find which event is active at each t_common
+                # searchsorted with side='right' finds the index where t_common would be inserted
+                # We subtract 1 to get the index of the latest event *before* t_common
+                idx = np.searchsorted(evt_times, t_common, side='right') - 1
+                
+                # Where idx is < 0, no event had occurred yet. Keep zeroes.
+                valid_mask = idx >= 0
+                idx_clamped = np.maximum(0, idx)
+                labels[valid_mask] = numeric_events[idx_clamped[valid_mask]] 
+
+        # Prepend t_common as column 0, and append labels at the end
+        synced_matrix = np.column_stack((t_common, unified_matrix, labels))
 
         with h5py.File(self.filename, 'a') as f:
             # 1. Write into the pre-allocated /synced/data dataset
