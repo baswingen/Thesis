@@ -1,0 +1,48 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260305_171248
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5']
+Total samples: 438
+Training samples: 350
+Testing samples: 88
+
+--- HYPERPARAMETERS ---
+Model: RBFNN
+Centers: 50
+Gamma: 1.0
+C: 1.0
+Random State: 42
+
+--- EVALUATION METRICS ---
+Accuracy: 0.5000
+
+Classification Report:
+               precision    recall  f1-score   support
+
+         0.75       0.00      0.00      0.00         6
+          1.0       0.00      0.00      0.00         6
+          2.0       0.00      0.00      0.00         6
+         2.25       0.00      0.00      0.00         7
+          3.0       0.00      0.00      0.00         6
+         4.25       0.00      0.00      0.00         6
+          6.0       0.00      0.00      0.00         7
+free_movement       0.50      1.00      0.67        44
+
+     accuracy                           0.50        88
+    macro avg       0.06      0.12      0.08        88
+ weighted avg       0.25      0.50      0.33        88
+
+
+Confusion Matrix:
+Labels order: ['0.75', '1.0', '2.0', '2.25', '3.0', '4.25', '6.0', 'free_movement']
+[[ 0  0  0  0  0  0  0  6]
+ [ 0  0  0  0  0  0  0  6]
+ [ 0  0  0  0  0  0  0  6]
+ [ 0  0  0  0  0  0  0  7]
+ [ 0  0  0  0  0  0  0  6]
+ [ 0  0  0  0  0  0  0  6]
+ [ 0  0  0  0  0  0  0  7]
+ [ 0  0  0  0  0  0  0 44]]

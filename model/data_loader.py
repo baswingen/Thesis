@@ -1,0 +1,135 @@
+import h5py
+import numpy as np
+import pandas as pd
+from pathlib import Path
+from typing import Tuple, List, Optional
+import sys
+import os
+
+from model.feature_extraction import FeatureExtractor
+
+class DataLoader:
+    """
+    DataLoader handles taking segmented HDF5 files, iterating through their segments,
+    extracting features using FeatureExtractor, and preparing the standard X & y arrays
+    for traditional Machine Learning classification algorithms.
+    """
+    def __init__(self, emg_fs: float = 4000.0, imu_fs: float = 4000.0):
+        self.extractor = FeatureExtractor(emg_fs=emg_fs, imu_fs=imu_fs)
+
+    def _decode_cols(self, raw) -> List[str]:
+        return [c.decode() if isinstance(c, bytes) else str(c) for c in raw]
+
+    def load_and_extract_features(self, h5_paths: List[Path]) -> pd.DataFrame:
+        """
+        Iterates over a list of segmented HDF5 files, extracts temporal and spectral 
+        features from the EMG and IMU segments within it, and returns a single DataFrame 
+        containing all features and labels.
+        """
+        all_features = []
+        
+        for path in h5_paths:
+            path = Path(path)
+            if not path.exists():
+                print(f"[WARN] File not found: {path}")
+                continue
+                
+            with h5py.File(path, "r") as f:
+                # Find all segment groups
+                segment_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
+                
+                for key in segment_keys:
+                    grp = f[key]
+                    
+                    # Extract Data
+                    imu = grp["imu"][:] if "imu" in grp else np.empty((0, 0))
+                    emg = grp["emg"][:] if "emg" in grp else np.empty((0, 0))
+
+                    imu_cols = self._decode_cols(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
+                    emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
+
+                    # Run Feature Extraction
+                    features = self.extractor.extract_features(
+                        emg_data=emg, emg_cols=emg_cols,
+                        imu_data=imu, imu_cols=imu_cols
+                    )
+                    
+                    # Add Metadata Attributes to feature row
+                    def _a(name, default=""):
+                        v = grp.attrs.get(name, default)
+                        return v.decode() if isinstance(v, bytes) else v
+                        
+                    # Target labels / stratification parameters
+                    features["label"] = str(_a("label", "unknown"))
+                    features["state"] = str(_a("state", "unknown"))
+                    features["weight"] = float(grp.attrs.get("weight", -1.0))
+                    
+                    # Context elements (if we want to use them for nested cross-validation later)
+                    features["segment_id"] = key
+                    features["trial_file"] = _a("trial_file", "unknown")
+                    features["subject"] = path.stem.split("_")[1] if "participant" in path.stem else "unknown"
+
+                    all_features.append(features)
+
+        if not all_features:
+            print("[WARN] No features were extracted. Check if valid HDF5 file(s) were provided.")
+            return pd.DataFrame()
+
+        df = pd.DataFrame(all_features)
+        
+        # Optionally, handle NaNs that may have appeared due to missing features
+        # (e.g. if a segment randomly lacked IMU data) by filling with 0 or dropping.
+        df.fillna(0, inplace=True) 
+        
+        return df
+
+    def prepare_for_ml(self, df: pd.DataFrame, target_col: str = "label", 
+                       drop_cols: Optional[List[str]] = None) -> Tuple[pd.DataFrame, pd.Series]:
+        """
+        Splits the DataFrame prepared by `load_and_extract_features` into a 
+        feature matrix X and label series y, ready for scikit-learn or similar APIs.
+        """
+        if df.empty:
+            return pd.DataFrame(), pd.Series(dtype=float)
+            
+        if target_col not in df.columns:
+            raise ValueError(f"Target column '{target_col}' not found in dataframe.")
+            
+        y = df[target_col]
+        
+        # Columns that are purely metadata / labels and shouldn't be trained on
+        default_drop = ["label", "state", "weight", "segment_id", "trial_file", "subject"]
+        
+        if drop_cols:
+            default_drop.extend(drop_cols)
+            
+        drop_cols_present = [c for c in default_drop if c in df.columns]
+        
+        X = df.drop(columns=drop_cols_present)
+        
+        return X, y
+
+if __name__ == "__main__":
+    # Example usage / basic test
+    sample_file = Path(__file__).parent.parent / "database" / "segments" / "participant_P01_session_01_segments.h5"
+    
+    if sample_file.exists():
+        print(f"Loading from: {sample_file}")
+        loader = DataLoader()
+        
+        # Extract features
+        df = loader.load_and_extract_features([sample_file])
+        
+        print(f"Extracted features shape: {df.shape}")
+        
+        if not df.empty:
+            # Prepare ML structures
+            X, y = loader.prepare_for_ml(df, target_col="label")
+            print(f"X shape: {X.shape}, y shape: {y.shape}")
+            print("\nClasses present:", y.unique())
+            
+            print("\nSample features subset:")
+            print(X.iloc[0, :5])  # Display 5 features of row 0
+    else:
+        print(f"Could not perform test, sample file {sample_file} not found.")
+
