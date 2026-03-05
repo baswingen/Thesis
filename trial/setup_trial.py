@@ -78,11 +78,14 @@ class TrialManager:
             'prbs_chip_rate_hz': CHIP_RATE_HZ
         })
         
+        # Read session number from PARTICIPANT_CONFIG (default to 1)
+        session_num = int(self.metadata.get("Session", 1))
+
         # Base directory for the database
         self.db_path = str(Path(__file__).parent.parent / 'database')
         
         self.logger = HDF5TrialLogger(
-            self.db_path, participant_id, trial_num, self.metadata
+            self.db_path, participant_id, session_num, trial_num, self.metadata
         )
         
         # Acquisition components

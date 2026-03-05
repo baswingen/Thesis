@@ -56,20 +56,23 @@ class HDF5TrialLogger:
         self, 
         base_dir: str, 
         participant_id: str, 
+        session_num: int | str,
         trial_num: int,
         metadata: Dict[str, Any]
     ):
         self.participant_id = participant_id
+        self.session_num = session_num
         self.trial_num = trial_num
         self.metadata = metadata
         
-        # Setup directories
+        # Setup directories: database/participant_PXX/session_NN/
         self.base_dir = Path(base_dir)
         self.participant_dir = self.base_dir / f"participant_{participant_id}"
-        self.participant_dir.mkdir(parents=True, exist_ok=True)
+        self.session_dir = self.participant_dir / f"session_{int(session_num):02d}"
+        self.session_dir.mkdir(parents=True, exist_ok=True)
         
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        self.filename = self.participant_dir / f"trial_{trial_num}_{timestamp}.h5"
+        self.filename = self.session_dir / f"trial_{trial_num}_{timestamp}.h5"
         
         # Initialize file and dataset structures
         self._init_file()

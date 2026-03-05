@@ -13,7 +13,8 @@ Run:
 # =============================================================================
 
 # Path to the .h5 file you want to inspect
-FILE = r"database\participant_P01\trial_1_20260304_144458.h5"
+# Layout: database/participant_PXX/session_NN/trial_N_TIMESTAMP.h5
+FILE = r"database/participant_P01/session_01/trial_3_20260304_150704.h5"
 
 # Dataset path inside the file.
 # Examples:
@@ -21,7 +22,7 @@ FILE = r"database\participant_P01\trial_1_20260304_144458.h5"
 #   "_raw/emg"       – raw EMG data    (35 cols)
 #   "_raw/metrics"   – sync metrics    (3 cols)
 #   "synced/data"    – full synced matrix (56 cols)
-DATASET = "synced/data"
+DATASET = "synced/emg_processed"
 
 # Name of the column that goes on the X-axis.
 # Set to None to use the row index instead.

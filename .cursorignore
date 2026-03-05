@@ -1,0 +1,63 @@
+# Cursor Ignore File
+# Files and directories listed here will be excluded from AI features like
+# autocomplete, code analysis, and Chat/Composer context
+
+# Sensitive participant data - should never be indexed
+database/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Third-party libraries (too large, not your code)
+tmsi-python-interface/Documentation/
+tmsi-python-interface/measurements/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Large data files (if any)
+*.h5
+*.hdf5
+*.csv
+*.xlsx
+
+# Compiled files
+*.pyc
+*.pyo
