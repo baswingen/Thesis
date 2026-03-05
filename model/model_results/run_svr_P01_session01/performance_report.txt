@@ -1,6 +1,6 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260305_174316
+Run Timestamp: 20260305_175313
 =======================================================
 
 --- DATASET INFO ---
@@ -12,12 +12,12 @@ Testing samples: 88
 --- HYPERPARAMETERS ---
 Model: SVR
 Kernel: rbf
-C: 100.0
-Epsilon: 0.1
+C: 1000.0
+Epsilon: 0.2
 Random State: 42
 
 --- EVALUATION METRICS ---
-Mean Absolute Error: 0.5928
-Mean Squared Error: 0.7698
-Root Mean Squared Error: 0.8774
-R-squared Score: 0.7945
+Mean Absolute Error: 0.3615
+Mean Squared Error: 0.3277
+Root Mean Squared Error: 0.5724
+R-squared Score: 0.9125

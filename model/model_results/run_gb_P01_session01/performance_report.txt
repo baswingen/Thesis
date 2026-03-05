@@ -1,6 +1,6 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260305_174713
+Run Timestamp: 20260305_180330
 =======================================================
 
 --- DATASET INFO ---
@@ -10,14 +10,14 @@ Training samples: 350
 Testing samples: 88
 
 --- HYPERPARAMETERS ---
-Model: SVR
-Kernel: rbf
-C: 1000.0
-Epsilon: 0.2
+Model: GB
+N Estimators: 200
+Learning Rate: 0.05
+Max Depth: 4
 Random State: 42
 
 --- EVALUATION METRICS ---
-Mean Absolute Error: 0.4182
-Mean Squared Error: 0.3513
-Root Mean Squared Error: 0.5927
-R-squared Score: 0.9062
+Mean Absolute Error: 0.4604
+Mean Squared Error: 0.3998
+Root Mean Squared Error: 0.6323
+R-squared Score: 0.8933

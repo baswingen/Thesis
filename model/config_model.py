@@ -30,3 +30,28 @@ SVR_CONFIG = {
     'gamma': 0.001,
     'random_state': 42
 }
+
+# Random Forest Regressor Configuration
+RF_CONFIG = {
+    'n_estimators': 50,
+    'max_depth': 10,
+    'min_samples_split': 2,
+    'random_state': 42
+}
+
+# Gradient Boosting Regressor Configuration
+GB_CONFIG = {
+    'n_estimators': 200,
+    'learning_rate': 0.05,
+    'max_depth': 4,
+    'random_state': 42
+}
+# MLP (Multi-Layer Perceptron) Configuration
+MLP_CONFIG = {
+    'hidden_layers': [256, 128, 64],
+    'dropout_rate': 0.1,
+    'learning_rate': 0.001,
+    'batch_size': 32,
+    'epochs': 100,
+    'random_state': 42
+}

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import matplotlib.pyplot as plt
 from sklearn.svm import SVR
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
@@ -39,9 +40,11 @@ class SVRRegressor:
         self.model.fit(X_scaled, y)
         
     def predict(self, X: pd.DataFrame):
-        """Scale test data based on fitted scaler and return continuous predictions."""
+        """Scale test data based on fitted scaler and return non-negative predictions."""
         X_scaled = self.scaler.transform(X)
-        return self.model.predict(X_scaled)
+        y_pred = self.model.predict(X_scaled)
+        # Weight cannot be negative
+        return np.maximum(0.0, y_pred)
         
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series):
         """
@@ -85,3 +88,34 @@ class SVRRegressor:
         regressor.model = data['model']
         regressor.scaler = data['scaler']
         return regressor
+
+    def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
+        """
+        Creates a 'Predicted vs Actual' scatter plot and saves it to a file.
+        """
+        plt.figure(figsize=(8, 6))
+        
+        # ScatPlot
+        plt.scatter(y_test, y_pred, alpha=0.5, color='royalblue', label='Predictions')
+        
+        # Unity line (Actual = Predicted)
+        min_val = min(y_test.min(), y_pred.min())
+        max_val = max(y_test.max(), y_pred.max())
+        plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')
+        
+        # Metrics annotation
+        r2 = r2_score(y_test, y_pred)
+        mae = mean_absolute_error(y_test, y_pred)
+        plt.text(min_val + 0.1, max_val - 0.5, f"$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg", 
+                 bbox=dict(facecolor='white', alpha=0.8))
+        
+        plt.xlabel("Actual Weight (kg)")
+        plt.ylabel("Predicted Weight (kg)")
+        plt.title(f"SVR: Predicted vs Actual Weight (Kernel: {self.kernel})")
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.legend()
+        
+        save_path = Path(save_path)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"Regression plot saved to {save_path}")

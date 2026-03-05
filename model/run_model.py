@@ -10,10 +10,13 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 sys.path.append(str(Path(__file__).parent.parent))
 
 from model.data_loader import DataLoader
-from model.svm import SVMClassifier
-from model.rbfnn import RBFNNClassifier
-from model.svr import SVRRegressor
-from model.config_model import SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG
+from model.model_archs.svm import SVMClassifier
+from model.model_archs.rbfnn import RBFNNClassifier
+from model.model_archs.svr import SVRRegressor
+from model.model_archs.rf import RFRegressor
+from model.model_archs.gb import GBRegressor
+from model.model_archs.mlp import MLPRegressor
+from model.config_model import SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG
 
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -23,15 +26,15 @@ from sklearn.metrics import (
 ###########################################################
 # CONFIGURATION
 ###########################################################
-# Choose model to train: "svm", "rbfnn", or "svr"
-MODEL_TYPE = "svr" 
+# Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", or "mlp"
+MODEL_TYPE = "mlp" 
 ###########################################################
 
 def main():
     # Define paths
     base_dir = Path(__file__).parent.parent
     segments_dir = base_dir / "database" / "segments"
-    results_dir = base_dir / "model_results"
+    results_dir = base_dir / "model" / "model_results"
     
     # Create results directory if it doesn't exist
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -65,7 +68,7 @@ def main():
     
     # Prepare data for ML
     model_type = MODEL_TYPE.lower()
-    is_regression = (model_type == "svr")
+    is_regression = (model_type in ["svr", "rf", "gb", "mlp"])
     target_col = "weight" if is_regression else "label"
     
     X, y = loader.prepare_for_ml(df, target_col=target_col)
@@ -94,6 +97,15 @@ def main():
     elif model_type == "svr":
         print(f"Training SVR Regressor with config: {SVR_CONFIG}")
         model = SVRRegressor(**SVR_CONFIG)
+    elif model_type == "rf":
+        print(f"Training Random Forest Regressor with config: {RF_CONFIG}")
+        model = RFRegressor(**RF_CONFIG)
+    elif model_type == "gb":
+        print(f"Training Gradient Boosting Regressor with config: {GB_CONFIG}")
+        model = GBRegressor(**GB_CONFIG)
+    elif model_type == "mlp":
+        print(f"Training MLP Regressor with config: {MLP_CONFIG}")
+        model = MLPRegressor(**MLP_CONFIG)
     else:
         print(f"Unknown model type: {model_type}")
         return
@@ -126,6 +138,12 @@ def main():
     model_path = run_dir / f"{model_type}_model.joblib"
     model.save(model_path)
     
+    # Save regression plot if applicable
+    if is_regression:
+        plot_path = run_dir / "regression_plot.png"
+        y_pred = model.predict(X_test)
+        model.plot_results(y_test, y_pred, plot_path)
+    
     # Save detailed performance report
     report_file = run_dir / "performance_report.txt"
     with open(report_file, "w") as f:
@@ -155,6 +173,23 @@ def main():
             f.write(f"Kernel: {model.kernel}\n")
             f.write(f"C: {model.C}\n")
             f.write(f"Epsilon: {model.epsilon}\n")
+            f.write(f"Random State: {model.random_state}\n\n")
+        elif model_type == "rf":
+            f.write(f"N Estimators: {model.n_estimators}\n")
+            f.write(f"Max Depth: {model.max_depth}\n")
+            f.write(f"Min Samples Split: {model.min_samples_split}\n")
+            f.write(f"Random State: {model.random_state}\n\n")
+        elif model_type == "gb":
+            f.write(f"N Estimators: {model.n_estimators}\n")
+            f.write(f"Learning Rate: {model.learning_rate}\n")
+            f.write(f"Max Depth: {model.max_depth}\n")
+            f.write(f"Random State: {model.random_state}\n\n")
+        elif model_type == "mlp":
+            f.write(f"Hidden Layers: {model.hidden_layers}\n")
+            f.write(f"Dropout Rate: {model.dropout_rate}\n")
+            f.write(f"Learning Rate: {model.learning_rate}\n")
+            f.write(f"Batch Size: {model.batch_size}\n")
+            f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         
         f.write("--- EVALUATION METRICS ---\n")
