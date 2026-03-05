@@ -1,0 +1,47 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260305_173351
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5']
+Total samples: 438
+Training samples: 350
+Testing samples: 88
+
+--- HYPERPARAMETERS ---
+Model: SVM
+Kernel: sigmoid
+C: 10.0
+Random State: 42
+
+--- EVALUATION METRICS ---
+Accuracy: 0.7841
+
+Classification Report:
+               precision    recall  f1-score   support
+
+         0.75       0.44      0.67      0.53         6
+          1.0       0.36      0.67      0.47         6
+          2.0       0.75      0.50      0.60         6
+         2.25       0.75      0.86      0.80         7
+          3.0       0.83      0.83      0.83         6
+         4.25       0.67      1.00      0.80         6
+          6.0       1.00      0.71      0.83         7
+free_movement       1.00      0.82      0.90        44
+
+     accuracy                           0.78        88
+    macro avg       0.73      0.76      0.72        88
+ weighted avg       0.85      0.78      0.80        88
+
+
+Confusion Matrix:
+Labels order: ['0.75', '1.0', '2.0', '2.25', '3.0', '4.25', '6.0', 'free_movement']
+[[ 4  2  0  0  0  0  0  0]
+ [ 2  4  0  0  0  0  0  0]
+ [ 1  1  3  1  0  0  0  0]
+ [ 0  0  0  6  1  0  0  0]
+ [ 0  0  1  0  5  0  0  0]
+ [ 0  0  0  0  0  6  0  0]
+ [ 0  0  0  0  0  2  5  0]
+ [ 2  4  0  1  0  1  0 36]]

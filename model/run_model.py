@@ -12,13 +12,19 @@ sys.path.append(str(Path(__file__).parent.parent))
 from model.data_loader import DataLoader
 from model.svm import SVMClassifier
 from model.rbfnn import RBFNNClassifier
-from model.config_model import SVM_CONFIG, RBFNN_CONFIG
+from model.svr import SVRRegressor
+from model.config_model import SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG
+
+from sklearn.metrics import (
+    classification_report, accuracy_score, confusion_matrix,
+    mean_absolute_error, mean_squared_error, r2_score
+)
 
 ###########################################################
 # CONFIGURATION
 ###########################################################
-# Choose model to train: "svm" or "rbfnn"
-MODEL_TYPE = "svm" 
+# Choose model to train: "svm", "rbfnn", or "svr"
+MODEL_TYPE = "svr" 
 ###########################################################
 
 def main():
@@ -58,29 +64,36 @@ def main():
     print(f"Extracted features dataframe shape: {df.shape}")
     
     # Prepare data for ML
-    X, y = loader.prepare_for_ml(df, target_col="label")
-    print(f"Feature matrix (X) shape: {X.shape}")
-    print(f"Label vector (y) shape: {y.shape}")
+    model_type = MODEL_TYPE.lower()
+    is_regression = (model_type == "svr")
+    target_col = "weight" if is_regression else "label"
     
-    if len(y.unique()) < 2:
+    X, y = loader.prepare_for_ml(df, target_col=target_col)
+    print(f"Feature matrix (X) shape: {X.shape}")
+    print(f"Label vector (y) shape: {y.shape} (Target: {target_col})")
+    
+    if not is_regression and len(y.unique()) < 2:
         print("\nLess than 2 classes found in dataset. Ensure your target labels are correct and varied.")
         return
 
     # Train/Test Split
+    stratify = y if not is_regression else None
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+        X, y, test_size=0.2, random_state=42, stratify=stratify
     )
     
     print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
     
     # Initialize and train the selected Model
-    model_type = MODEL_TYPE.lower()
     if model_type == "svm":
         print(f"Training SVM Classifier with config: {SVM_CONFIG}")
         model = SVMClassifier(**SVM_CONFIG)
     elif model_type == "rbfnn":
         print(f"Training RBF Neural Network Classifier with config: {RBFNN_CONFIG}")
         model = RBFNNClassifier(**RBFNN_CONFIG)
+    elif model_type == "svr":
+        print(f"Training SVR Regressor with config: {SVR_CONFIG}")
+        model = SVRRegressor(**SVR_CONFIG)
     else:
         print(f"Unknown model type: {model_type}")
         return
@@ -89,17 +102,25 @@ def main():
     
     # Evaluate model
     print(f"\nEvaluating {model_type.upper()} Model on unseen test set...")
-    y_pred = model.predict(X_test)
-    accuracy = accuracy_score(y_test, y_pred)
-    report_str = classification_report(y_test, y_pred)
-    conf_matrix = confusion_matrix(y_test, y_pred)
-    labels = sorted(y.unique())
     
-    print("=" * 55)
-    print(f"Model Accuracy: {accuracy:.4f}")
-    print("Classification Report:")
-    print(report_str)
-    print("=" * 55)
+    if is_regression:
+        metrics, report_str = model.evaluate(X_test, y_test)
+        print("=" * 55)
+        print("Regression Metrics:")
+        print(report_str)
+        print("=" * 55)
+    else:
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        report_str = classification_report(y_test, y_pred, zero_division=0)
+        conf_matrix = confusion_matrix(y_test, y_pred)
+        labels = sorted(y.unique())
+        
+        print("=" * 55)
+        print(f"Model Accuracy: {accuracy:.4f}")
+        print("Classification Report:")
+        print(report_str)
+        print("=" * 55)
     
     # Save the Model structure
     model_path = run_dir / f"{model_type}_model.joblib"
@@ -130,15 +151,23 @@ def main():
             f.write(f"Gamma: {model.gamma}\n")
             f.write(f"C: {model.C}\n")
             f.write(f"Random State: {model.random_state}\n\n")
+        elif model_type == "svr":
+            f.write(f"Kernel: {model.kernel}\n")
+            f.write(f"C: {model.C}\n")
+            f.write(f"Epsilon: {model.epsilon}\n")
+            f.write(f"Random State: {model.random_state}\n\n")
         
         f.write("--- EVALUATION METRICS ---\n")
-        f.write(f"Accuracy: {accuracy:.4f}\n\n")
-        f.write("Classification Report:\n")
-        f.write(report_str)
-        f.write("\n\nConfusion Matrix:\n")
-        f.write(f"Labels order: {labels}\n")
-        f.write(str(conf_matrix))
-        f.write("\n")
+        if is_regression:
+            f.write(report_str)
+        else:
+            f.write(f"Accuracy: {accuracy:.4f}\n\n")
+            f.write("Classification Report:\n")
+            f.write(report_str)
+            f.write("\n\nConfusion Matrix:\n")
+            f.write(f"Labels order: {labels}\n")
+            f.write(str(conf_matrix))
+            f.write("\n")
         
     print(f"\nPerformance report saved to {report_file}")
 

@@ -23,17 +23,24 @@ class RBFNNClassifier:
                  n_centers: int = RBFNN_CONFIG['n_centers'], 
                  gamma: float = RBFNN_CONFIG['gamma'], 
                  C: float = RBFNN_CONFIG['C'], 
-                 random_state: int = RBFNN_CONFIG['random_state']):
+                 random_state: int = RBFNN_CONFIG['random_state'],
+                 class_weight: str | dict | None = RBFNN_CONFIG.get('class_weight')):
         self.n_centers = n_centers
         self.gamma = gamma
         self.C = C
         self.random_state = random_state
+        self.class_weight = class_weight
         
         self.scaler = StandardScaler()
         self.kmeans = KMeans(n_clusters=self.n_centers, random_state=self.random_state, n_init=10)
         # We use a linear classifier for the output layer. 
-        # C is the inverse of regularization strength, similar to SVM
-        self.output_layer = LogisticRegression(C=self.C, max_iter=1000, random_state=self.random_state)
+        # class_weight handles imbalance by penalizing errors on minority classes more.
+        self.output_layer = LogisticRegression(
+            C=self.C, 
+            max_iter=1000, 
+            random_state=self.random_state,
+            class_weight=self.class_weight
+        )
         
         self.centers_ = None
 
@@ -87,7 +94,8 @@ class RBFNNClassifier:
             'n_centers': self.n_centers,
             'gamma': self.gamma,
             'C': self.C,
-            'random_state': self.random_state
+            'random_state': self.random_state,
+            'class_weight': self.class_weight
         }, filepath)
         print(f"RBFNN Model saved to {filepath}")
         
@@ -99,7 +107,8 @@ class RBFNNClassifier:
             n_centers=data['n_centers'],
             gamma=data['gamma'], 
             C=data['C'],
-            random_state=data['random_state']
+            random_state=data['random_state'],
+            class_weight=data.get('class_weight')
         )
         classifier.scaler = data['scaler']
         classifier.kmeans = data['kmeans']

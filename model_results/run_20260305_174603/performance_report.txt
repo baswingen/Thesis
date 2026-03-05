@@ -1,0 +1,23 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260305_174603
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5']
+Total samples: 438
+Training samples: 350
+Testing samples: 88
+
+--- HYPERPARAMETERS ---
+Model: SVR
+Kernel: rbf
+C: 1000.0
+Epsilon: 0.2
+Random State: 42
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.4182
+Mean Squared Error: 0.3513
+Root Mean Squared Error: 0.5927
+R-squared Score: 0.9062

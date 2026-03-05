@@ -60,9 +60,16 @@ class DataLoader:
                         return v.decode() if isinstance(v, bytes) else v
                         
                     # Target labels / stratification parameters
-                    features["label"] = str(_a("label", "unknown"))
+                    label = str(_a("label", "unknown"))
+                    features["label"] = label
                     features["state"] = str(_a("state", "unknown"))
-                    features["weight"] = float(grp.attrs.get("weight", -1.0))
+                    
+                    # For regression: map 'free_movement' to 0.0kg. 
+                    # Others use the weight recorded in h5 attributes.
+                    if label == "free_movement":
+                        features["weight"] = 0.0
+                    else:
+                        features["weight"] = float(grp.attrs.get("weight", -1.0))
                     
                     # Context elements (if we want to use them for nested cross-validation later)
                     features["segment_id"] = key

@@ -18,12 +18,23 @@ class SVMClassifier:
     def __init__(self, 
                  kernel: str = SVM_CONFIG['kernel'], 
                  C: float = SVM_CONFIG['C'], 
+                 gamma: str | float = SVM_CONFIG.get('gamma', 'scale'),
+                 class_weight: str | dict | None = SVM_CONFIG.get('class_weight'),
                  random_state: int = SVM_CONFIG['random_state']):
         self.kernel = kernel
         self.C = C
+        self.gamma = gamma
+        self.class_weight = class_weight
         self.random_state = random_state
         self.scaler = StandardScaler()
-        self.model = SVC(kernel=self.kernel, C=self.C, random_state=self.random_state, probability=True)
+        self.model = SVC(
+            kernel=self.kernel, 
+            C=self.C, 
+            gamma=self.gamma,
+            class_weight=self.class_weight,
+            random_state=self.random_state, 
+            probability=True
+        )
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
         """Fit the scaler on features and train the SVM."""
