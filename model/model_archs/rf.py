@@ -89,12 +89,18 @@ class RFRegressor:
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
         """
-        Creates a 'Predicted vs Actual' scatter plot and saves it to a file.
+        Creates a 'Predicted vs Actual' box plot and saves it to a file.
         """
         plt.figure(figsize=(8, 6))
         
-        # ScatPlot
-        plt.scatter(y_test, y_pred, alpha=0.5, color='forestgreen', label='Predictions')
+        # Extract unique actual weights and group predictions
+        actual_weights = np.sort(np.unique(y_test))
+        pred_groups = [y_pred[y_test == w] for w in actual_weights]
+        
+        # Create boxplot
+        bp = plt.boxplot(pred_groups, positions=actual_weights, widths=0.4, patch_artist=True)
+        for box in bp['boxes']:
+            box.set(facecolor='lightgreen', alpha=0.7)
         
         # Unity line (Actual = Predicted)
         min_val = min(y_test.min(), y_pred.min())

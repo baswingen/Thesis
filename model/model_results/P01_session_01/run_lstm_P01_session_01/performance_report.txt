@@ -1,6 +1,6 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260306_100050
+Run Timestamp: 20260306_153721
 =======================================================
 
 --- DATASET INFO ---
@@ -9,7 +9,7 @@ Total samples: 438
 Evaluation Mode: 5-Fold Cross-Validation
 
 --- HYPERPARAMETERS ---
-Model: GRU
+Model: LSTM
 Hidden Size: 128
 Num Layers: 2
 Dropout Rate: 0.2
@@ -22,7 +22,7 @@ Random State: 42
 
 --- EVALUATION METRICS ---
 (Averaged over 5 folds)
-MAE: 0.2064 (±0.0199)
-MSE: 0.1191 (±0.0343)
-RMSE: 0.3418 (±0.0482)
-R2: 0.9649 (±0.0105)
+MAE: 0.2196 (±0.0193)
+MSE: 0.1487 (±0.0331)
+RMSE: 0.3830 (±0.0450)
+R2: 0.9563 (±0.0098)

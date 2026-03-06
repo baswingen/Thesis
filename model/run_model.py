@@ -18,9 +18,10 @@ from model.model_archs.rf import RFRegressor
 from model.model_archs.gb import GBRegressor
 from model.model_archs.mlp import MLPRegressor
 from model.model_archs.gru import GRURegressor
+from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, CNN_LSTM_CONFIG, CV_CONFIG
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CV_CONFIG
 )
 
 from sklearn.metrics import (
@@ -31,8 +32,8 @@ from sklearn.metrics import (
 ###########################################################
 # CONFIGURATION
 ###########################################################
-# Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", or "cnn_lstm"
-MODEL_TYPE = "gru" 
+# Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", "lstm", or "cnn_lstm"
+MODEL_TYPE = "cnn_lstm" 
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -66,6 +67,10 @@ def initialize_model(model_type: str):
         print(f"Initializing GRU Regressor with config: {GRU_CONFIG}")
         from model.model_archs.gru import GRURegressor
         return GRURegressor(**GRU_CONFIG)
+    elif model_type == "lstm":
+        print(f"Initializing LSTM Regressor with config: {LSTM_CONFIG}")
+        from model.model_archs.lstm import LSTMRegressor
+        return LSTMRegressor(**LSTM_CONFIG)
     elif model_type == "cnn_lstm":
         print(f"Initializing CNN-LSTM Regressor with config: {CNN_LSTM_CONFIG}")
         from model.model_archs.cnn_lstm import CNNLSTMRegressor
@@ -104,9 +109,14 @@ def main():
     print("Extracting features from HDF5 files. This may take a moment...")
     
     model_type = MODEL_TYPE.lower()
-    if model_type in ["gru", "cnn_lstm"]:
+    if model_type in ["gru", "lstm", "cnn_lstm"]:
         # Choose the right config for window parameters (they are identical in default, but good practice)
-        conf = GRU_CONFIG if model_type == "gru" else CNN_LSTM_CONFIG
+        if model_type == "gru":
+            conf = GRU_CONFIG
+        elif model_type == "lstm":
+            conf = LSTM_CONFIG
+        else:
+            conf = CNN_LSTM_CONFIG
         df = loader.load_and_extract_features(h5_paths, 
                                               window_size_sec=conf.get('window_size_sec', 0.25),
                                               window_step_sec=conf.get('window_step_sec', 0.1))
@@ -121,7 +131,7 @@ def main():
     
     # Prepare data for ML
     # Prepare data for ML
-    is_regression = (model_type in ["svr", "rf", "gb", "mlp", "gru", "cnn_lstm"])
+    is_regression = (model_type in ["svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm"])
     target_col = "weight" if is_regression else "label"
     
     X, y = loader.prepare_for_ml(df, target_col=target_col)
@@ -301,6 +311,16 @@ def main():
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "gru":
+            f.write(f"Hidden Size: {model.hidden_size}\n")
+            f.write(f"Num Layers: {model.num_layers}\n")
+            f.write(f"Dropout Rate: {model.dropout_rate}\n")
+            f.write(f"Learning Rate: {model.learning_rate}\n")
+            f.write(f"Batch Size: {model.batch_size}\n")
+            f.write(f"Epochs: {model.epochs}\n")
+            f.write(f"Window Size (s): {model.window_size_sec}\n")
+            f.write(f"Window Step (s): {model.window_step_sec}\n")
+            f.write(f"Random State: {model.random_state}\n\n")
+        elif model_type == "lstm":
             f.write(f"Hidden Size: {model.hidden_size}\n")
             f.write(f"Num Layers: {model.num_layers}\n")
             f.write(f"Dropout Rate: {model.dropout_rate}\n")

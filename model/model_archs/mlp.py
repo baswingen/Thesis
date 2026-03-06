@@ -170,10 +170,18 @@ class MLPRegressor:
         return regressor
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
-        """Predicted vs Actual scatter plot."""
+        """Predicted vs Actual box plot."""
         plt.figure(figsize=(8, 6))
-        plt.scatter(y_test, y_pred, alpha=0.5, color='royalblue', label='Predictions')
         
+        # Extract unique actual weights and group predictions
+        actual_weights = np.sort(np.unique(y_test))
+        pred_groups = [y_pred[y_test == w] for w in actual_weights]
+        
+        # Create boxplot
+        bp = plt.boxplot(pred_groups, positions=actual_weights, widths=0.4, patch_artist=True)
+        for box in bp['boxes']:
+            box.set(facecolor='royalblue', alpha=0.7)
+            
         min_val = min(y_test.min(), y_pred.min())
         max_val = max(y_test.max(), y_pred.max())
         plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')

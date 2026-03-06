@@ -1,0 +1,28 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260306_171606
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5']
+Total samples: 438
+Evaluation Mode: 5-Fold Cross-Validation
+
+--- HYPERPARAMETERS ---
+Model: GRU
+Hidden Size: 256
+Num Layers: 3
+Dropout Rate: 0.2
+Learning Rate: 0.005
+Batch Size: 64
+Epochs: 100
+Window Size (s): 0.25
+Window Step (s): 0.1
+Random State: 42
+
+--- EVALUATION METRICS ---
+(Averaged over 5 folds)
+MAE: 0.1876 (±0.0055)
+MSE: 0.1257 (±0.0214)
+RMSE: 0.3534 (±0.0293)
+R2: 0.9632 (±0.0054)

@@ -4,7 +4,7 @@ Centralizing these values makes it easier to manage experiments and
 ensures consistency across training and inference scripts.
 """
 
-GLOBAL_RANDOM_STATE = 14
+GLOBAL_RANDOM_STATE = 42
 # Cross-Validation Configuration
 CV_CONFIG = {
     'use_cross_val': True,
@@ -31,10 +31,10 @@ RBFNN_CONFIG = {
 
 # SVR (Support Vector Regression) Configuration
 SVR_CONFIG = {
-    'kernel': 'rbf',
-    'C': 1000.0,
-    'epsilon': 0.2,
-    'gamma': 0.001,
+    'kernel': 'linear',
+    'C': 0.1,
+    'epsilon': 0.1,
+    'gamma': 0.01,
     'random_state': GLOBAL_RANDOM_STATE
 }
 
@@ -65,11 +65,24 @@ MLP_CONFIG = {
 
 # GRU (Gated Recurrent Unit) Configuration
 GRU_CONFIG = {
-    'hidden_size': 128,
-    'num_layers': 2,
+    'hidden_size': 256,
+    'num_layers': 3,
     'dropout_rate': 0.2,
-    'learning_rate': 0.001,
-    'batch_size': 32,
+    'learning_rate': 0.005,
+    'batch_size': 64,
+    'epochs': 100,
+    'window_size_sec': 0.25,
+    'window_step_sec': 0.1,
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
+# LSTM (Long Short-Term Memory) Configuration
+LSTM_CONFIG = {
+    'hidden_size': 256,
+    'num_layers': 3,
+    'dropout_rate': 0.2,
+    'learning_rate': 0.005,
+    'batch_size': 64,
     'epochs': 100,
     'window_size_sec': 0.25,
     'window_step_sec': 0.1,
@@ -78,12 +91,12 @@ GRU_CONFIG = {
 
 # CNN-LSTM Configuration
 CNN_LSTM_CONFIG = {
-    'cnn_filters': 64,
-    'cnn_kernel_size': 3,
+    'cnn_filters': 32,
+    'cnn_kernel_size': 5,
     'lstm_hidden_size': 128,
-    'lstm_num_layers': 2,
-    'dropout_rate': 0.2,
-    'learning_rate': 0.001,
+    'lstm_num_layers': 1,
+    'dropout_rate': 0.3,
+    'learning_rate': 0.005,
     'batch_size': 32,
     'epochs': 100,
     'window_size_sec': 0.25,

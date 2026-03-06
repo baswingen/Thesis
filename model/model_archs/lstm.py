@@ -10,80 +10,66 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-from model.config_model import CNN_LSTM_CONFIG
-from model.model_archs.gru import SequenceDataset, pad_collate_fn  # Reuse dataloader utilities
+from model.config_model import LSTM_CONFIG
 
-class CNNLSTMNetwork(nn.Module):
-    def __init__(self, input_size: int, cnn_filters: int, cnn_kernel_size: int, 
-                 lstm_hidden_size: int, lstm_num_layers: int, dropout_rate: float):
+class SequenceDataset(Dataset):
+    def __init__(self, sequences, labels):
+        # sequences is a list of tensors of shape (seq_len, features)
+        self.sequences = sequences
+        self.labels = labels
+        
+    def __len__(self):
+        return len(self.sequences)
+        
+    def __getitem__(self, idx):
+        return self.sequences[idx], self.labels[idx]
+
+def pad_collate_fn(batch):
+    sequences, labels = zip(*batch)
+    lengths = torch.tensor([len(seq) for seq in sequences])
+    
+    padded_seqs = rnn_utils.pad_sequence(sequences, batch_first=True, padding_value=0.0)
+    labels = torch.stack(labels)
+    
+    return padded_seqs, labels, lengths
+
+class LSTMNetwork(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, num_layers: int, dropout_rate: float):
         super().__init__()
-        
-        # 1D CNN for feature extraction over the sequence
-        # We use padding='same' equivalent (padding = kernel_size // 2) to maintain sequence length
-        padding = cnn_kernel_size // 2
-        self.conv1d = nn.Conv1d(
-            in_channels=input_size, 
-            out_channels=cnn_filters, 
-            kernel_size=cnn_kernel_size, 
-            padding=padding
-        )
-        self.relu = nn.ReLU()
-        
-        # LSTM layer
         self.lstm = nn.LSTM(
-            input_size=cnn_filters, 
-            hidden_size=lstm_hidden_size, 
-            num_layers=lstm_num_layers, 
+            input_size=input_size, 
+            hidden_size=hidden_size, 
+            num_layers=num_layers, 
             batch_first=True, 
-            dropout=dropout_rate if lstm_num_layers > 1 else 0.0
+            dropout=dropout_rate if num_layers > 1 else 0.0
         )
-        self.dropout = nn.Dropout(dropout_rate)
-        self.fc = nn.Linear(lstm_hidden_size, 1)
+        self.fc = nn.Linear(hidden_size, 1)
         
     def forward(self, x, lengths):
-        # x shape: (batch_size, seq_len, input_size)
-        
-        # Conv1d expects (batch_size, channels, seq_len)
-        x_cnn = x.transpose(1, 2)
-        
-        # Apply CNN
-        cnn_out = self.conv1d(x_cnn)
-        cnn_out = self.relu(cnn_out)
-        
-        # Transpose back for LSTM: (batch_size, seq_len, cnn_filters)
-        lstm_input = cnn_out.transpose(1, 2)
-        
         # Pack the sequence to avoid training on padding
-        # Even though CNN processed padding, packing ignores it for the recurrent state
-        packed_x = rnn_utils.pack_padded_sequence(lstm_input, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        packed_x = rnn_utils.pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        packed_out, (h_n, c_n) = self.lstm(packed_x) # h_n is (num_layers, batch, hidden_size)
         
-        packed_out, (hidden, cell) = self.lstm(packed_x) # hidden is (num_layers, batch, hidden_size)
-        
-        # Extract the hidden state from the last LSTM layer
-        last_hidden = hidden[-1] # (batch, hidden_size)
-        last_hidden = self.dropout(last_hidden)
+        # Extract the hidden state from the last layer for each sequence in the batch
+        last_hidden = h_n[-1] # (batch, hidden_size)
         
         out = self.fc(last_hidden)
         return out
 
-class CNNLSTMRegressor:
+class LSTMRegressor:
     def __init__(self, 
-                 cnn_filters: int = CNN_LSTM_CONFIG['cnn_filters'],
-                 cnn_kernel_size: int = CNN_LSTM_CONFIG['cnn_kernel_size'],
-                 lstm_hidden_size: int = CNN_LSTM_CONFIG['lstm_hidden_size'],
-                 lstm_num_layers: int = CNN_LSTM_CONFIG['lstm_num_layers'],
-                 dropout_rate: float = CNN_LSTM_CONFIG['dropout_rate'],
-                 learning_rate: float = CNN_LSTM_CONFIG['learning_rate'],
-                 batch_size: int = CNN_LSTM_CONFIG['batch_size'],
-                 epochs: int = CNN_LSTM_CONFIG['epochs'],
-                 window_size_sec: float = CNN_LSTM_CONFIG['window_size_sec'],
-                 window_step_sec: float = CNN_LSTM_CONFIG['window_step_sec'],
-                 random_state: int = CNN_LSTM_CONFIG['random_state']):
+                 hidden_size: int = LSTM_CONFIG['hidden_size'],
+                 num_layers: int = LSTM_CONFIG['num_layers'],
+                 dropout_rate: float = LSTM_CONFIG['dropout_rate'],
+                 learning_rate: float = LSTM_CONFIG['learning_rate'],
+                 batch_size: int = LSTM_CONFIG['batch_size'],
+                 epochs: int = LSTM_CONFIG['epochs'],
+                 window_size_sec: float = LSTM_CONFIG['window_size_sec'],
+                 window_step_sec: float = LSTM_CONFIG['window_step_sec'],
+                 random_state: int = LSTM_CONFIG['random_state']):
                  
-        self.cnn_filters = cnn_filters
-        self.cnn_kernel_size = cnn_kernel_size
-        self.lstm_hidden_size = lstm_hidden_size
-        self.lstm_num_layers = lstm_num_layers
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
         self.dropout_rate = dropout_rate
         self.learning_rate = learning_rate
         self.batch_size = batch_size
@@ -100,9 +86,12 @@ class CNNLSTMRegressor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
     def _extract_sequences(self, X: pd.DataFrame) -> list:
+        """Extracts sequences from the DataFrame column 'sequence_dicts' if generated by DataLoader."""
         if 'sequence_dicts' not in X.columns:
-            raise ValueError("CNNLSTMRegressor expects DataFrame with 'sequence_dicts' column.")
-        return X['sequence_dicts'].tolist()
+            raise ValueError("LSTMRegressor expects DataFrame with 'sequence_dicts' column generated by data_loader windowed extraction.")
+            
+        sequences = X['sequence_dicts'].tolist()
+        return sequences
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
         sequences = self._extract_sequences(X)
@@ -126,9 +115,7 @@ class CNNLSTMRegressor:
         y_tensor = torch.from_numpy(y.values.astype(np.float32)).unsqueeze(1)
         
         input_dim = len(self.feature_names)
-        self.model = CNNLSTMNetwork(input_dim, self.cnn_filters, self.cnn_kernel_size,
-                                    self.lstm_hidden_size, self.lstm_num_layers, 
-                                    self.dropout_rate).to(self.device)
+        self.model = LSTMNetwork(input_dim, self.hidden_size, self.num_layers, self.dropout_rate).to(self.device)
         
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         criterion = nn.MSELoss()
@@ -150,6 +137,8 @@ class CNNLSTMRegressor:
                 optimizer.step()
                 
                 running_loss += loss.item() * batch_x.size(0)
+                
+            # print(f"Epoch {epoch+1}/{self.epochs} Loss: {running_loss/len(dataset):.4f}")
 
     def predict(self, X: pd.DataFrame):
         if self.model is None:
@@ -163,6 +152,7 @@ class CNNLSTMRegressor:
             scaled_arr = self.scaler.transform(seq_arr).astype(np.float32)
             scaled_seqs.append(torch.from_numpy(scaled_arr))
             
+        # Dummy labels for dataloader
         dummy_y = torch.zeros((len(scaled_seqs), 1))
         dataset = SequenceDataset(scaled_seqs, dummy_y)
         loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate_fn)
@@ -204,10 +194,8 @@ class CNNLSTMRegressor:
             'feature_names': self.feature_names,
             'input_dim': len(self.feature_names),
             'config': {
-                'cnn_filters': self.cnn_filters,
-                'cnn_kernel_size': self.cnn_kernel_size,
-                'lstm_hidden_size': self.lstm_hidden_size,
-                'lstm_num_layers': self.lstm_num_layers,
+                'hidden_size': self.hidden_size,
+                'num_layers': self.num_layers,
                 'dropout_rate': self.dropout_rate,
                 'learning_rate': self.learning_rate,
                 'batch_size': self.batch_size,
@@ -225,12 +213,8 @@ class CNNLSTMRegressor:
         regressor = cls(**state['config'])
         regressor.scaler = state['scaler']
         regressor.feature_names = state['feature_names']
-        regressor.model = CNNLSTMNetwork(state['input_dim'], 
-                                         state['config']['cnn_filters'],
-                                         state['config']['cnn_kernel_size'],
-                                         state['config']['lstm_hidden_size'], 
-                                         state['config']['lstm_num_layers'], 
-                                         state['config']['dropout_rate']).to(regressor.device)
+        regressor.model = LSTMNetwork(state['input_dim'], state['config']['hidden_size'], 
+                                     state['config']['num_layers'], state['config']['dropout_rate']).to(regressor.device)
         regressor.model.load_state_dict(state['model_state'])
         regressor.model.eval()
         return regressor
@@ -246,7 +230,7 @@ class CNNLSTMRegressor:
         bp = plt.boxplot(pred_groups, positions=actual_weights, widths=0.4, patch_artist=True)
         for box in bp['boxes']:
             box.set(facecolor='lightblue', alpha=0.7)
-            
+        
         min_val = min(y_test.min(), y_pred.min())
         max_val = max(y_test.max(), y_pred.max())
         plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')
@@ -258,7 +242,7 @@ class CNNLSTMRegressor:
         
         plt.xlabel("Actual Weight (kg)")
         plt.ylabel("Predicted Weight (kg)")
-        plt.title(f"CNN-LSTM: Predicted vs Actual Weight")
+        plt.title(f"LSTM: Predicted vs Actual Weight")
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
