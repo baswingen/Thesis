@@ -1,23 +1,25 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260305_175313
+Run Timestamp: 20260306_094655
 =======================================================
 
 --- DATASET INFO ---
 Database segments used: ['participant_P01_session_01_segments.h5']
 Total samples: 438
-Training samples: 350
-Testing samples: 88
+Evaluation Mode: 5-Fold Cross-Validation
 
 --- HYPERPARAMETERS ---
-Model: SVR
-Kernel: rbf
-C: 1000.0
-Epsilon: 0.2
+Model: MLP
+Hidden Layers: [256, 128, 64]
+Dropout Rate: 0.1
+Learning Rate: 0.001
+Batch Size: 32
+Epochs: 100
 Random State: 42
 
 --- EVALUATION METRICS ---
-Mean Absolute Error: 0.3615
-Mean Squared Error: 0.3277
-Root Mean Squared Error: 0.5724
-R-squared Score: 0.9125
+(Averaged over 5 folds)
+MAE: 0.3229 (±0.0347)
+MSE: 0.2473 (±0.0367)
+RMSE: 0.4959 (±0.0363)
+R2: 0.9274 (±0.0102)

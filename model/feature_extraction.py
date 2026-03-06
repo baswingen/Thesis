@@ -137,3 +137,32 @@ class FeatureExtractor:
         features.update(self.extract_imu_features(imu_data, imu_cols))
         
         return features
+
+    def extract_features_windowed(self, emg_data: np.ndarray, emg_cols: List[str], 
+                                  imu_data: np.ndarray, imu_cols: List[str], 
+                                  window_size_sec: float, window_step_sec: float) -> List[Dict[str, float]]:
+        """
+        Splits the data into sliding windows and extracts features for each window.
+        Returns a list of feature dictionaries, one for each window.
+        """
+        window_size = int(window_size_sec * self.emg_fs)
+        window_step = int(window_step_sec * self.emg_fs)
+        
+        n_samples = max(emg_data.shape[0] if emg_data.size > 0 else 0, 
+                        imu_data.shape[0] if imu_data.size > 0 else 0)
+        
+        windows_features = []
+        for start in range(0, max(1, n_samples - window_size + 1), window_step):
+            end = start + window_size
+            
+            emg_win = emg_data[start:end] if emg_data.size > 0 else np.empty((0, 0))
+            imu_win = imu_data[start:end] if imu_data.size > 0 else np.empty((0, 0))
+            
+            # Skip windows that are significantly smaller than the window size
+            if (emg_win.shape[0] < window_size // 2) and (imu_win.shape[0] < window_size // 2) and start > 0:
+                continue
+                
+            features = self.extract_features(emg_win, emg_cols, imu_win, imu_cols)
+            windows_features.append(features)
+            
+        return windows_features

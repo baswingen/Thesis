@@ -23,7 +23,7 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from src.emg_processing import BandpassFilter, NotchFilter
+from src.emg_processing import BandpassFilter, NotchFilter, EMGEnvelopeExtractor
 
 def process_emg_data(file_path: str | Path, fs: float = 4000.0, overwrite: bool = True):
     """
@@ -81,9 +81,29 @@ def process_emg_data(file_path: str | Path, fs: float = 4000.0, overwrite: bool 
         
         raw_emg = data[:, emg_col_indices]
         
+        # Filter out channels that are all zeros or all NaNs
+        valid_indices_mask = []
+        for i in range(raw_emg.shape[1]):
+            col_data = raw_emg[:, i]
+            if np.all(np.isnan(col_data)) or np.all(col_data == 0):
+                print(f"Skipping channel {emg_col_names[i]} (all 0/NaN)")
+                valid_indices_mask.append(False)
+            else:
+                valid_indices_mask.append(True)
+        
+        # Update indices and names to process
+        emg_col_indices = [emg_col_indices[i] for i, valid in enumerate(valid_indices_mask) if valid]
+        emg_col_names = [emg_col_names[i] for i, valid in enumerate(valid_indices_mask) if valid]
+        raw_emg = data[:, emg_col_indices]
+        
+        if not emg_col_indices:
+            print("Warning: No valid EMG channels remaining after filtering.")
+            return
+
         # Initialize filters
         bp_filter = BandpassFilter(lowcut=10.0, highcut=500.0, fs=fs, order=4)
         notch_filter = NotchFilter(freq=50.0, fs=fs)
+        envelope_extractor = EMGEnvelopeExtractor(fs=fs, cutoff=10.0)
         
         print("Applying filtering and normalization...")
         processed_emg = np.zeros_like(raw_emg)
@@ -107,8 +127,9 @@ def process_emg_data(file_path: str | Path, fs: float = 4000.0, overwrite: bool 
             channel_data = notch_filter.filter(channel_data)
             notch_filter.reset()
             
-            # 3. Full-wave rectification
-            channel_data = np.abs(channel_data)
+            # 3. Smoothing (Full-wave rectification + Low-pass filter)
+            channel_data = envelope_extractor.extract(channel_data)
+            envelope_extractor.reset()
             
             # 4. Normalization (Peak normalization)
             peak = np.nanmax(channel_data)
@@ -157,7 +178,7 @@ def process_emg_data(file_path: str | Path, fs: float = 4000.0, overwrite: bool 
         
         # We need to save as numpy string array for h5py, or unicode
         out_dset.attrs['column_names'] = [n.encode('utf-8') for n in final_col_names]
-        out_dset.attrs['description'] = "Postprocessed EMG: BP(10-500Hz) -> Notch(50Hz) -> Rectified -> Peak Normalized"
+        out_dset.attrs['description'] = "Postprocessed EMG: BP(10-500Hz) -> Notch(50Hz) -> Smoothed Envelope(10Hz) -> Peak Normalized"
         out_dset.attrs['fs'] = fs
         
         print(f"Processed data saved to {out_dataset_name} successfully.")

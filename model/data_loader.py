@@ -20,11 +20,14 @@ class DataLoader:
     def _decode_cols(self, raw) -> List[str]:
         return [c.decode() if isinstance(c, bytes) else str(c) for c in raw]
 
-    def load_and_extract_features(self, h5_paths: List[Path]) -> pd.DataFrame:
+    def load_and_extract_features(self, h5_paths: List[Path],
+                                  window_size_sec: Optional[float] = None,
+                                  window_step_sec: Optional[float] = None) -> pd.DataFrame:
         """
         Iterates over a list of segmented HDF5 files, extracts temporal and spectral 
         features from the EMG and IMU segments within it, and returns a single DataFrame 
-        containing all features and labels.
+        containing all features and labels. If window parameters are provided, extracts
+        sequences of features over sliding windows.
         """
         all_features = []
         
@@ -49,10 +52,21 @@ class DataLoader:
                     emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
 
                     # Run Feature Extraction
-                    features = self.extractor.extract_features(
-                        emg_data=emg, emg_cols=emg_cols,
-                        imu_data=imu, imu_cols=imu_cols
-                    )
+                    if window_size_sec is not None and window_step_sec is not None:
+                        windows = self.extractor.extract_features_windowed(
+                            emg_data=emg, emg_cols=emg_cols,
+                            imu_data=imu, imu_cols=imu_cols,
+                            window_size_sec=window_size_sec,
+                            window_step_sec=window_step_sec
+                        )
+                        if not windows:
+                            continue  # Skip segment if it's too short for even one window
+                        features = {"sequence_dicts": windows}
+                    else:
+                        features = self.extractor.extract_features(
+                            emg_data=emg, emg_cols=emg_cols,
+                            imu_data=imu, imu_cols=imu_cols
+                        )
                     
                     # Add Metadata Attributes to feature row
                     def _a(name, default=""):
@@ -86,7 +100,8 @@ class DataLoader:
         
         # Optionally, handle NaNs that may have appeared due to missing features
         # (e.g. if a segment randomly lacked IMU data) by filling with 0 or dropping.
-        df.fillna(0, inplace=True) 
+        if "sequence_dicts" not in df.columns:
+            df.fillna(0, inplace=True) 
         
         return df
 

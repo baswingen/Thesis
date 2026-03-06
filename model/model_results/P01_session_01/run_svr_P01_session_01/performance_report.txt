@@ -1,0 +1,23 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260306_094613
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5']
+Total samples: 438
+Evaluation Mode: 5-Fold Cross-Validation
+
+--- HYPERPARAMETERS ---
+Model: SVR
+Kernel: rbf
+C: 1000.0
+Epsilon: 0.2
+Random State: 42
+
+--- EVALUATION METRICS ---
+(Averaged over 5 folds)
+MAE: 0.3403 (±0.0361)
+MSE: 0.2409 (±0.0494)
+RMSE: 0.4885 (±0.0476)
+R2: 0.9291 (±0.0148)
