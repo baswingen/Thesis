@@ -1,0 +1,26 @@
+=======================================================
+ABLATION STUDY REPORT
+Model: LSTM
+Run Timestamp: 20260307_164304
+=======================================================
+
+Evaluation Mode: Cross-Validation
+
+--- Modality: BOTH ---
+MAE: 0.1697
+MSE: 0.1197
+RMSE: 0.3454
+R2: 0.9647
+
+--- Modality: EMG ---
+MAE: 0.2360
+MSE: 0.2430
+RMSE: 0.4841
+R2: 0.9286
+
+--- Modality: IMU ---
+MAE: 0.5779
+MSE: 1.2478
+RMSE: 1.1080
+R2: 0.6318
+

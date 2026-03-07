@@ -78,12 +78,12 @@ GRU_CONFIG = {
 
 # LSTM (Long Short-Term Memory) Configuration
 LSTM_CONFIG = {
-    'hidden_size': 256,
-    'num_layers': 3,
-    'dropout_rate': 0.2,
-    'learning_rate': 0.005,
-    'batch_size': 64,
-    'epochs': 100,
+    'hidden_size': 256,         
+    'num_layers': 3,           
+    'dropout_rate': 0.2,       
+    'learning_rate': 0.005,    
+    'batch_size': 64,          
+    'epochs': 100,             
     'window_size_sec': 0.25,
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE
@@ -100,6 +100,21 @@ CNN_LSTM_CONFIG = {
     'batch_size': 32,
     'epochs': 100,
     'window_size_sec': 0.25,
+    'window_step_sec': 0.1,
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
+# Transformer Configuration
+TRANSFORMER_CONFIG = {
+    'd_model': 32,             # Optimized via sweep
+    'nhead': 4,                # Optimized via sweep
+    'num_layers': 2,           # Optimized via sweep
+    'dim_feedforward': 256,    # Optimized via sweep
+    'dropout_rate': 0.3,       # Optimized via sweep
+    'learning_rate': 0.005,    # Optimized via sweep
+    'batch_size': 64,          # Optimized via sweep
+    'epochs': 100,             # Optimized via sweep
+    'window_size_sec': 0.25,   # Must match extraction window
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE
 }
