@@ -7,7 +7,7 @@ ensures consistency across training and inference scripts.
 GLOBAL_RANDOM_STATE = 42
 # Cross-Validation Configuration
 CV_CONFIG = {
-    'use_cross_val': True,
+    'use_cross_val': False,
     'n_folds': 5
 }
 
@@ -32,9 +32,9 @@ RBFNN_CONFIG = {
 # SVR (Support Vector Regression) Configuration
 SVR_CONFIG = {
     'kernel': 'linear',
-    'C': 0.1,
+    'C': 10.0,
     'epsilon': 0.1,
-    'gamma': 0.01,
+    'gamma': 'scale',
     'random_state': GLOBAL_RANDOM_STATE
 }
 
@@ -60,6 +60,8 @@ MLP_CONFIG = {
     'learning_rate': 0.001,
     'batch_size': 32,
     'epochs': 100,
+    'validation_split': 0.2,
+    'early_stopping_patience': 10,
     'random_state': GLOBAL_RANDOM_STATE
 }
 
@@ -71,6 +73,8 @@ GRU_CONFIG = {
     'learning_rate': 0.005,
     'batch_size': 64,
     'epochs': 100,
+    'validation_split': 0.2,
+    'early_stopping_patience': 10,
     'window_size_sec': 0.25,
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE
@@ -78,12 +82,14 @@ GRU_CONFIG = {
 
 # LSTM (Long Short-Term Memory) Configuration
 LSTM_CONFIG = {
-    'hidden_size': 256,         
+    'hidden_size': 512,         
     'num_layers': 3,           
-    'dropout_rate': 0.2,       
-    'learning_rate': 0.005,    
-    'batch_size': 64,          
-    'epochs': 100,             
+    'dropout_rate': 0.3,       
+    'learning_rate': 0.0005,    
+    'batch_size': 16,          
+    'epochs': 150,             
+    'validation_split': 0.2,
+    'early_stopping_patience': 10,
     'window_size_sec': 0.25,
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE
@@ -99,6 +105,8 @@ CNN_LSTM_CONFIG = {
     'learning_rate': 0.005,
     'batch_size': 32,
     'epochs': 100,
+    'validation_split': 0.2,
+    'early_stopping_patience': 10,
     'window_size_sec': 0.25,
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE
@@ -114,6 +122,8 @@ TRANSFORMER_CONFIG = {
     'learning_rate': 0.005,    # Optimized via sweep
     'batch_size': 64,          # Optimized via sweep
     'epochs': 100,             # Optimized via sweep
+    'validation_split': 0.2,
+    'early_stopping_patience': 10,
     'window_size_sec': 0.25,   # Must match extraction window
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE

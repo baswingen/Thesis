@@ -7,14 +7,14 @@ from datetime import datetime
 from sklearn.model_selection import train_test_split, ParameterSampler
 
 # Add project root to sys.path so 'model' package can be found
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from model.data_loader import DataLoader
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.config_model import CNN_LSTM_CONFIG
 
 def main():
-    base_dir = Path(__file__).parent.parent.parent.parent
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
     segments_dir = base_dir / "database" / "segments"
     results_dir = base_dir / "model" / "model_results"
     
@@ -92,6 +92,8 @@ def main():
             learning_rate=params['learning_rate'],
             batch_size=params['batch_size'],
             epochs=params['epochs'],
+            validation_split=CNN_LSTM_CONFIG.get('validation_split', 0.2),
+            early_stopping_patience=CNN_LSTM_CONFIG.get('early_stopping_patience', 10),
             window_size_sec=window_size_sec,
             window_step_sec=window_step_sec,
             random_state=CNN_LSTM_CONFIG.get('random_state', 42)

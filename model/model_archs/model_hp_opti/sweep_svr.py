@@ -5,14 +5,14 @@ import pandas as pd
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 
 # Add project root to sys.path
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from model.data_loader import DataLoader
 from model.model_archs.svr import SVRRegressor
 from model.config_model import SVR_CONFIG
 
 def main():
-    base_dir = Path(__file__).parent.parent
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
     segments_dir = base_dir / "database" / "segments"
     results_dir = base_dir / "model" / "model_results"
     

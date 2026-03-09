@@ -93,6 +93,8 @@ def main():
             learning_rate=params['learning_rate'],
             batch_size=params['batch_size'],
             epochs=params['epochs'],
+            validation_split=TRANSFORMER_CONFIG.get('validation_split', 0.2),
+            early_stopping_patience=TRANSFORMER_CONFIG.get('early_stopping_patience', 10),
             window_size_sec=window_size_sec,
             window_step_sec=window_step_sec,
             random_state=TRANSFORMER_CONFIG.get('random_state', 42)

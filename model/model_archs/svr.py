@@ -92,34 +92,51 @@ class SVRRegressor:
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
         """
         Creates a 'Predicted vs Actual' box plot and saves it to a file.
+        Positions boxes according to their actual weight values.
         """
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(10, 7))
         
         # Extract unique actual weights and group predictions
         actual_weights = np.sort(np.unique(y_test))
         pred_groups = [y_pred[y_test == w] for w in actual_weights]
         
+        # Use actual values for positions to ensure correct spacing along the axis
+        positions = actual_weights
+        
         # Create boxplot
-        bp = plt.boxplot(pred_groups, positions=actual_weights, widths=0.4, patch_artist=True)
+        # Note: boxplot 'positions' can be any list of floats
+        bp = plt.boxplot(pred_groups, positions=positions, widths=0.15, patch_artist=True, manage_ticks=False)
         for box in bp['boxes']:
             box.set(facecolor='royalblue', alpha=0.7)
         
         # Unity line (Actual = Predicted)
-        min_val = min(y_test.min(), y_pred.min())
-        max_val = max(y_test.max(), y_pred.max())
-        plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')
+        # Since we are using actual values for positions, the diagonal x=y is the perfect prediction line
+        min_val, max_val = -0.5, 7.5
+        plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=1.5, alpha=0.6, label='Perfect Prediction')
+        
+        # Add a light grid for better readability
+        plt.grid(True, linestyle='--', alpha=0.4)
+        
+        # Explicitly set ticks to actual weight values for clarity
+        plt.xticks(actual_weights, [f"{w:.2g}" for w in actual_weights])
         
         # Metrics annotation
         r2 = r2_score(y_test, y_pred)
         mae = mean_absolute_error(y_test, y_pred)
-        plt.text(min_val + 0.1, max_val - 0.5, f"$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg", 
-                 bbox=dict(facecolor='white', alpha=0.8))
+        plt.text(0.05, 0.95, f"$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg", 
+                 transform=plt.gca().transAxes, verticalalignment='top',
+                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='gray'))
         
         plt.xlabel("Actual Weight (kg)")
         plt.ylabel("Predicted Weight (kg)")
-        plt.title(f"SVR: Predicted vs Actual Weight (Kernel: {self.kernel})")
-        plt.grid(True, linestyle='--', alpha=0.7)
-        plt.legend()
+        plt.title(f"SVR Regression Performance (Kernel: {self.kernel}, C={self.C})")
+        
+        # Set symmetric limits for better interpretation of the diagonal
+        plt.xlim(min_val, max_val)
+        plt.ylim(min_val, max_val)
+        
+        plt.legend(loc='lower right')
+        plt.tight_layout()
         
         save_path = Path(save_path)
         plt.savefig(save_path, dpi=300, bbox_inches='tight')

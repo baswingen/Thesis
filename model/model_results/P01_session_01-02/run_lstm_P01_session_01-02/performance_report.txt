@@ -1,0 +1,42 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260309_160603
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5']
+Total samples: 2434
+Evaluation Mode: Single Train/Test Split (80/20)
+Training samples: 1947
+Testing samples: 487
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 256
+Num Layers: 3
+Dropout Rate: 0.2
+Learning Rate: 0.005
+Batch Size: 64
+Epochs: 100
+Window Size (s): 0.25
+Window Step (s): 0.1
+Random State: 42
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.1175
+Mean Squared Error: 0.0633
+Root Mean Squared Error: 0.2515
+R-squared Score: 0.9812
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 244      | 0.0092     | 0.0795    
+0.75 kg      | 35       | 0.0999     | 0.1482    
+1.00 kg      | 35       | 0.2746     | 0.3878    
+2.00 kg      | 34       | 0.3191     | 0.3877    
+2.25 kg      | 35       | 0.2416     | 0.3860    
+3.00 kg      | 35       | 0.3764     | 0.4656    
+4.25 kg      | 34       | 0.1868     | 0.3123    
+6.00 kg      | 35       | 0.0871     | 0.2393    
+

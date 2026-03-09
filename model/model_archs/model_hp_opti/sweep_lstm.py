@@ -32,7 +32,7 @@ def main():
         'epochs': [100, 150]  # Let them train a bit longer
     }
     
-    n_iter = 30  # Increased for a more thorough search
+    n_iter = 15  # Increased for a more thorough search
     
     print(f"Starting LSTM hyperparameter sweep with {n_iter} iterations...")
     print(f"Results will be saved to: {run_dir}\n")
@@ -88,6 +88,8 @@ def main():
             learning_rate=params['learning_rate'],
             batch_size=params['batch_size'],
             epochs=params['epochs'],
+            validation_split=LSTM_CONFIG.get('validation_split', 0.2),
+            early_stopping_patience=LSTM_CONFIG.get('early_stopping_patience', 10),
             window_size_sec=window_size_sec,
             window_step_sec=window_step_sec,
             random_state=LSTM_CONFIG.get('random_state', 42)

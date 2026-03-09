@@ -34,7 +34,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", or "transformer"
-MODEL_TYPE = "lstm" 
+MODEL_TYPE = "svr"
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -83,6 +83,26 @@ def initialize_model(model_type: str):
     else:
         print(f"Unknown model type: {model_type}")
         return None
+
+def calculate_per_weight_metrics(y_true, y_pred):
+    """Calculate MAE and RMSE for each unique weight in y_true."""
+    unique_weights = np.sort(np.unique(y_true))
+    per_weight_results = []
+    
+    for w in unique_weights:
+        mask = (y_true == w)
+        if np.any(mask):
+            w_true = y_true[mask]
+            w_pred = y_pred[mask]
+            mae = mean_absolute_error(w_true, w_pred)
+            rmse = np.sqrt(mean_squared_error(w_true, w_pred))
+            per_weight_results.append({
+                'Weight': f"{w:.2f} kg",
+                'Count': int(np.sum(mask)),
+                'MAE': f"{mae:.4f}",
+                'RMSE': f"{rmse:.4f}"
+            })
+    return per_weight_results
 
 def main():
     # Define paths
@@ -265,6 +285,16 @@ def main():
             y_pred = model.predict(X_test)
             model.plot_results(y_test, y_pred, plot_path)
     
+    
+    # Calculate per-weight statistics for regression
+    per_weight_stats = None
+    if is_regression:
+        if use_cv:
+            per_weight_stats = calculate_per_weight_metrics(y, oof_predictions)
+        else:
+            y_pred_test = model.predict(X_test)
+            per_weight_stats = calculate_per_weight_metrics(y_test, y_pred_test)
+
     # Save detailed performance report
     report_file = run_dir / "performance_report.txt"
     with open(report_file, "w") as f:
@@ -278,10 +308,27 @@ def main():
         f.write(f"Total samples: {len(X)}\n")
         if use_cv:
             f.write(f"Evaluation Mode: {n_folds}-Fold Cross-Validation\n")
+            f.write(f"Final Model Training samples: {getattr(model, 'train_samples', len(X))}\n")
+            if hasattr(model, 'val_samples') and model.val_samples > 0:
+                f.write(f"Final Model Validation samples: {model.val_samples}\n")
         else:
-            f.write(f"Evaluation Mode: Single Train/Test Split (80/20)\n")
-            f.write(f"Training samples: {len(X_train)}\n")
+            # Determine split percentages
+            test_pct = round(len(X_test) / len(X) * 100)
+            train_samples = getattr(model, 'train_samples', len(X_train))
+            val_samples = getattr(model, 'val_samples', 0)
+            
+            if val_samples > 0:
+                train_pct = round(train_samples / len(X) * 100)
+                val_pct = round(val_samples / len(X) * 100)
+                f.write(f"Evaluation Mode: Train/Validation/Test Split ({train_pct}/{val_pct}/{test_pct})\n")
+            else:
+                train_pct = round(train_samples / len(X) * 100)
+                f.write(f"Evaluation Mode: Train/Test Split ({train_pct}/{test_pct})\n")
+            
             f.write(f"Testing samples: {len(X_test)}\n")
+            f.write(f"Training samples: {train_samples}\n")
+            if val_samples > 0:
+                f.write(f"Validation samples: {val_samples}\n")
         f.write("\n")
         
         f.write("--- HYPERPARAMETERS ---\n")
@@ -378,6 +425,14 @@ def main():
                 f.write(str(conf_matrix))
                 f.write("\n")
         
+        if per_weight_stats:
+            f.write("\n--- PER-WEIGHT METRICS ---\n")
+            f.write(f"{'Weight':<12} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
+            f.write("-" * 50 + "\n")
+            for stats in per_weight_stats:
+                f.write(f"{stats['Weight']:<12} | {stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
+            f.write("\n")
+            
     print(f"\nPerformance report saved to {report_file}")
 
 if __name__ == "__main__":

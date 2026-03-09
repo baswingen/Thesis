@@ -1,0 +1,37 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260309_165855
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5']
+Total samples: 2434
+Evaluation Mode: Train/Test Split (80/20)
+Testing samples: 487
+Training samples: 1947
+
+--- HYPERPARAMETERS ---
+Model: SVR
+Kernel: linear
+C: 10.0
+Epsilon: 0.1
+Random State: 42
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.3201
+Mean Squared Error: 0.3032
+Root Mean Squared Error: 0.5506
+R-squared Score: 0.9101
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 244      | 0.1730     | 0.3024    
+0.75 kg      | 35       | 0.2556     | 0.3081    
+1.00 kg      | 35       | 0.3155     | 0.4538    
+2.00 kg      | 34       | 0.3014     | 0.3328    
+2.25 kg      | 35       | 0.5942     | 1.1693    
+3.00 kg      | 35       | 0.4432     | 0.6247    
+4.25 kg      | 34       | 0.6451     | 0.8174    
+6.00 kg      | 35       | 0.7206     | 0.8752    
+

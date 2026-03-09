@@ -4,11 +4,15 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import pandas as pd
 import numpy as np
+import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
+
+# Add project root to sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from model.config_model import MLP_CONFIG
 
@@ -44,6 +48,8 @@ class MLPRegressor:
                  learning_rate: float = MLP_CONFIG['learning_rate'],
                  batch_size: int = MLP_CONFIG['batch_size'],
                  epochs: int = MLP_CONFIG['epochs'],
+                 validation_split: float = MLP_CONFIG.get('validation_split', 0.2),
+                 early_stopping_patience: int = MLP_CONFIG.get('early_stopping_patience', 10),
                  random_state: int = MLP_CONFIG['random_state']):
         
         self.hidden_layers = hidden_layers
@@ -51,7 +57,13 @@ class MLPRegressor:
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.epochs = epochs
+        self.validation_split = validation_split
+        self.early_stopping_patience = early_stopping_patience
         self.random_state = random_state
+        
+        # Split stats
+        self.train_samples = 0
+        self.val_samples = 0
         
         torch.manual_seed(self.random_state)
         
@@ -60,37 +72,91 @@ class MLPRegressor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
-        """Fit the scaler and train the MLP."""
-        X_scaled = self.scaler.fit_transform(X)
-        y_scaled = y.values.reshape(-1, 1).astype(np.float32)
-        X_scaled = X_scaled.astype(np.float32)
+        """Fit the scaler and train the MLP with early stopping."""
+        from sklearn.model_selection import train_test_split
+        from tqdm import tqdm
+        import copy
         
-        # Initialize model
-        self.model = MLP(X_scaled.shape[1], self.hidden_layers, self.dropout_rate).to(self.device)
+        # 1. Split data into train and validation sets
+        stratify = y if isinstance(y.iloc[0], (str, np.integer)) else None # Basic stratify check
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y, test_size=self.validation_split, random_state=self.random_state, stratify=None # No stratify for regression by default
+        )
+        
+        self.train_samples = len(X_train)
+        self.val_samples = len(X_val)
+        
+        # 2. Scale features (fit only on training set)
+        X_train_scaled = self.scaler.fit_transform(X_train).astype(np.float32)
+        X_val_scaled = self.scaler.transform(X_val).astype(np.float32)
+        
+        y_train_arr = y_train.values.reshape(-1, 1).astype(np.float32)
+        y_val_arr = y_val.values.reshape(-1, 1).astype(np.float32)
+        
+        # 3. Initialize model
+        self.model = MLP(X_train_scaled.shape[1], self.hidden_layers, self.dropout_rate).to(self.device)
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         criterion = nn.MSELoss()
         
-        # Prepare DataLoader
-        dataset = TensorDataset(torch.from_numpy(X_scaled), torch.from_numpy(y_scaled))
-        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
+        # 4. Prepare DataLoaders
+        dataset_train = TensorDataset(torch.from_numpy(X_train_scaled), torch.from_numpy(y_train_arr))
+        loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True)
         
-        self.model.train()
-        for epoch in range(self.epochs):
-            running_loss = 0.0
-            for batch_x, batch_y in loader:
-                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+        dataset_val = TensorDataset(torch.from_numpy(X_val_scaled), torch.from_numpy(y_val_arr))
+        loader_val = DataLoader(dataset_val, batch_size=self.batch_size, shuffle=False)
+        
+        # Early stopping tracking
+        best_val_loss = float('inf')
+        patience_counter = 0
+        best_model_weights = copy.deepcopy(self.model.state_dict())
+        
+        # 5. Training loop
+        with tqdm(range(self.epochs), desc="Training MLP", unit="epoch") as pbar:
+            for epoch in pbar:
+                # TRAIN PHASE
+                self.model.train()
+                running_train_loss = 0.0
+                for batch_x, batch_y in loader_train:
+                    batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                    
+                    optimizer.zero_grad()
+                    outputs = self.model(batch_x)
+                    loss = criterion(outputs, batch_y)
+                    loss.backward()
+                    optimizer.step()
+                    
+                    running_train_loss += loss.item() * batch_x.size(0)
                 
-                optimizer.zero_grad()
-                outputs = self.model(batch_x)
-                loss = criterion(outputs, batch_y)
-                loss.backward()
-                optimizer.step()
+                avg_train_loss = running_train_loss / len(dataset_train)
                 
-                running_loss += loss.item() * batch_x.size(0)
+                # VALIDATION PHASE
+                self.model.eval()
+                running_val_loss = 0.0
+                with torch.no_grad():
+                    for batch_x, batch_y in loader_val:
+                        batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                        outputs = self.model(batch_x)
+                        loss = criterion(outputs, batch_y)
+                        running_val_loss += loss.item() * batch_x.size(0)
                 
-            if (epoch + 1) % 10 == 0:
-                epoch_loss = running_loss / len(dataset)
-                # print(f"Epoch [{epoch+1}/{self.epochs}], Loss: {epoch_loss:.4f}")
+                avg_val_loss = running_val_loss / len(dataset_val)
+                pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
+                
+                # EARLY STOPPING CHECK
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    patience_counter = 0
+                    best_model_weights = copy.deepcopy(self.model.state_dict())
+                else:
+                    patience_counter += 1
+                
+                if patience_counter >= self.early_stopping_patience:
+                    print(f"\nEarly stopping triggered at epoch {epoch+1}. Best Val Loss: {best_val_loss:.4f}")
+                    break
+        
+        # Load best weights
+        self.model.load_state_dict(best_model_weights)
+        self.model.eval()
         
     def predict(self, X: pd.DataFrame):
         """Standard scale input and perform inference."""
@@ -146,7 +212,13 @@ class MLPRegressor:
                 'learning_rate': self.learning_rate,
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
+                'validation_split': self.validation_split,
+                'early_stopping_patience': self.early_stopping_patience,
                 'random_state': self.random_state
+            },
+            'split_info': {
+                'train_samples': self.train_samples,
+                'val_samples': self.val_samples
             }
         }
         torch.save(state, filepath)
@@ -167,6 +239,10 @@ class MLPRegressor:
         regressor.model.load_state_dict(state['model_state'])
         regressor.model.eval()
         
+        if 'split_info' in state:
+            regressor.train_samples = state['split_info'].get('train_samples', 0)
+            regressor.val_samples = state['split_info'].get('val_samples', 0)
+            
         return regressor
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):

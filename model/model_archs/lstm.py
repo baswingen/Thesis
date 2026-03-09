@@ -5,10 +5,14 @@ import torch.nn.utils.rnn as rnn_utils
 from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 import numpy as np
+import sys
 from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+# Add project root to sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from model.config_model import LSTM_CONFIG
 
@@ -64,6 +68,8 @@ class LSTMRegressor:
                  learning_rate: float = LSTM_CONFIG['learning_rate'],
                  batch_size: int = LSTM_CONFIG['batch_size'],
                  epochs: int = LSTM_CONFIG['epochs'],
+                 validation_split: float = LSTM_CONFIG.get('validation_split', 0.2),
+                 early_stopping_patience: int = LSTM_CONFIG.get('early_stopping_patience', 10),
                  window_size_sec: float = LSTM_CONFIG['window_size_sec'],
                  window_step_sec: float = LSTM_CONFIG['window_step_sec'],
                  random_state: int = LSTM_CONFIG['random_state']):
@@ -74,9 +80,15 @@ class LSTMRegressor:
         self.learning_rate = learning_rate
         self.batch_size = batch_size
         self.epochs = epochs
+        self.validation_split = validation_split
+        self.early_stopping_patience = early_stopping_patience
         self.window_size_sec = window_size_sec
         self.window_step_sec = window_step_sec
         self.random_state = random_state
+        
+        # Split stats
+        self.train_samples = 0
+        self.val_samples = 0
         
         torch.manual_seed(self.random_state)
         
@@ -94,51 +106,119 @@ class LSTMRegressor:
         return sequences
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
-        sequences = self._extract_sequences(X)
-        self.feature_names = list(sequences[0][0].keys())
+        from sklearn.model_selection import train_test_split
+        from tqdm import tqdm
+        import copy
         
-        # Flatten and scale
-        flat_data = []
-        for seq in sequences:
+        # 1. Split data into train and validation sets
+        stratify = X["label"] if "label" in X.columns else None # Optional if labels are present in X, otherwise None
+        # X and y indices must align
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y, test_size=self.validation_split, random_state=self.random_state, stratify=stratify
+        )
+        
+        # 2. Extract sequences
+        sequences_train = self._extract_sequences(X_train)
+        sequences_val = self._extract_sequences(X_val)
+        self.feature_names = list(sequences_train[0][0].keys())
+        
+        # 3. Flatten train to fit scaler
+        flat_data_train = []
+        for seq in sequences_train:
             seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            flat_data.append(seq_arr)
+            flat_data_train.append(seq_arr)
             
-        all_features = np.vstack(flat_data)
-        self.scaler.fit(all_features)
+        all_features_train = np.vstack(flat_data_train)
+        self.scaler.fit(all_features_train)
         
-        # Reconstruct scaled sequences
-        scaled_seqs = []
-        for arr in flat_data:
+        # 4. Reconstruct scaled train sequences
+        scaled_seqs_train = []
+        for arr in flat_data_train:
             scaled_arr = self.scaler.transform(arr).astype(np.float32)
-            scaled_seqs.append(torch.from_numpy(scaled_arr))
+            scaled_seqs_train.append(torch.from_numpy(scaled_arr))
             
-        y_tensor = torch.from_numpy(y.values.astype(np.float32)).unsqueeze(1)
+        y_tensor_train = torch.from_numpy(y_train.values.astype(np.float32)).unsqueeze(1)
         
+        # 5. Process validation sequences using fitted scaler
+        scaled_seqs_val = []
+        for seq in sequences_val:
+            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
+            scaled_arr = self.scaler.transform(seq_arr).astype(np.float32)
+            scaled_seqs_val.append(torch.from_numpy(scaled_arr))
+            
+        y_tensor_val = torch.from_numpy(y_val.values.astype(np.float32)).unsqueeze(1)
+        
+        self.train_samples = len(X_train)
+        self.val_samples = len(X_val)
+        
+        # 6. Initialize Model and Optimizers
         input_dim = len(self.feature_names)
         self.model = LSTMNetwork(input_dim, self.hidden_size, self.num_layers, self.dropout_rate).to(self.device)
         
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         criterion = nn.MSELoss()
         
-        dataset = SequenceDataset(scaled_seqs, y_tensor)
-        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
+        dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
+        loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
         
-        self.model.train()
-        for epoch in range(self.epochs):
-            running_loss = 0.0
-            for batch_x, batch_y, lengths in loader:
-                batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
-                lengths = lengths.to(self.device)
+        dataset_val = SequenceDataset(scaled_seqs_val, y_tensor_val)
+        loader_val = DataLoader(dataset_val, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate_fn)
+        
+        # Early stopping tracking
+        best_val_loss = float('inf')
+        patience_counter = 0
+        best_model_weights = copy.deepcopy(self.model.state_dict())
+        
+        # Wrap the epoch range with tqdm
+        with tqdm(range(self.epochs), desc="Training LSTM", unit="epoch") as pbar:
+            for epoch in pbar:
+                # TRAIN LOOP
+                self.model.train()
+                running_loss = 0.0
+                for batch_x, batch_y, lengths in loader_train:
+                    batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                    lengths = lengths.to(self.device)
+                    
+                    optimizer.zero_grad()
+                    outputs = self.model(batch_x, lengths)
+                    loss = criterion(outputs, batch_y)
+                    loss.backward()
+                    optimizer.step()
+                    
+                    running_loss += loss.item() * batch_x.size(0)
+                    
+                avg_train_loss = running_loss / len(dataset_train)
                 
-                optimizer.zero_grad()
-                outputs = self.model(batch_x, lengths)
-                loss = criterion(outputs, batch_y)
-                loss.backward()
-                optimizer.step()
+                # VALIDATION LOOP
+                self.model.eval()
+                val_loss = 0.0
+                with torch.no_grad():
+                    for batch_x, batch_y, lengths in loader_val:
+                        batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                        lengths = lengths.to(self.device)
+                        
+                        outputs = self.model(batch_x, lengths)
+                        loss = criterion(outputs, batch_y)
+                        val_loss += loss.item() * batch_x.size(0)
                 
-                running_loss += loss.item() * batch_x.size(0)
+                avg_val_loss = val_loss / len(dataset_val)
+                pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
                 
-            # print(f"Epoch {epoch+1}/{self.epochs} Loss: {running_loss/len(dataset):.4f}")
+                # EARLY STOPPING CHECK
+                if avg_val_loss < best_val_loss:
+                    best_val_loss = avg_val_loss
+                    patience_counter = 0
+                    best_model_weights = copy.deepcopy(self.model.state_dict())
+                else:
+                    patience_counter += 1
+                    
+                if patience_counter >= self.early_stopping_patience:
+                    print(f"\nEarly stopping triggered at epoch {epoch+1}. Best Val Loss: {best_val_loss:.4f}")
+                    break
+                    
+        # Load best weights
+        self.model.load_state_dict(best_model_weights)
+        self.model.eval()
 
     def predict(self, X: pd.DataFrame):
         if self.model is None:
@@ -200,9 +280,15 @@ class LSTMRegressor:
                 'learning_rate': self.learning_rate,
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
+                'validation_split': self.validation_split,
+                'early_stopping_patience': self.early_stopping_patience,
                 'window_size_sec': self.window_size_sec,
                 'window_step_sec': self.window_step_sec,
                 'random_state': self.random_state
+            },
+            'split_info': {
+                'train_samples': self.train_samples,
+                'val_samples': self.val_samples
             }
         }
         torch.save(state, filepath)
@@ -217,6 +303,11 @@ class LSTMRegressor:
                                      state['config']['num_layers'], state['config']['dropout_rate']).to(regressor.device)
         regressor.model.load_state_dict(state['model_state'])
         regressor.model.eval()
+        
+        if 'split_info' in state:
+            regressor.train_samples = state['split_info'].get('train_samples', 0)
+            regressor.val_samples = state['split_info'].get('val_samples', 0)
+            
         return regressor
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
