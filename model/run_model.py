@@ -34,7 +34,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", or "transformer"
-MODEL_TYPE = "svr"
+MODEL_TYPE = "lstm"
 ###########################################################
 
 def initialize_model(model_type: str):

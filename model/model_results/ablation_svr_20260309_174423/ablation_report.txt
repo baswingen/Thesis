@@ -1,0 +1,348 @@
+============================================================
+ABLATION STUDY REPORT
+Model        : SVR
+Run Timestamp: 20260309_174423
+Eval Mode    : Train/Test Split
+Primary Metric: MAE
+============================================================
+
+============================================================
+PHASE 1 — MODALITY ABLATION
+============================================================
+
+  Modality: BOTH
+    MAE: 0.3201
+    MSE: 0.3032
+    RMSE: 0.5506
+    R2: 0.9101
+
+  Modality: EMG
+    MAE: 0.3999
+    MSE: 0.3792
+    RMSE: 0.6158
+    R2: 0.8875
+
+  Modality: IMU
+    MAE: 0.7832
+    MSE: 1.6567
+    RMSE: 1.2871
+    R2: 0.5087
+
+
+============================================================
+PHASE 2 — CHANNEL ABLATION (leave-one-channel-out)
+============================================================
+
+  Baseline (MAE): 0.3201
+
+  Ranked by impact (most → least important):
+  Channel                      ΔMAE     Abs Δ
+  --------------------------------------------
+  ch20                      +0.0319    0.0319
+  ch18                      +0.0162    0.0162
+  ch19                      +0.0146    0.0146
+  ax2                       +0.0140    0.0140
+  ch2                       +0.0104    0.0104
+  pitch1                    +0.0084    0.0084
+  pitch2                    +0.0074    0.0074
+  roll1                     +0.0072    0.0072
+  yaw1                      +0.0063    0.0063
+  ay2                       +0.0059    0.0059
+  ch3                       +0.0053    0.0053
+  ch6                       +0.0046    0.0046
+  ch1                       +0.0042    0.0042
+  ax1                       +0.0032    0.0032
+  az1                       +0.0024    0.0024
+  ch4                       +0.0018    0.0018
+  ch5                       +0.0006    0.0006
+  ch8                       -0.0039   -0.0039
+  az2                       -0.0054   -0.0054
+  ch17                      -0.0054   -0.0054
+  ay1                       -0.0059   -0.0059
+  roll2                     -0.0114   -0.0114
+  ch7                       -0.0121   -0.0121
+  yaw2                      -0.0128   -0.0128
+
+  Full results per channel:
+
+  Channel excluded: ax1
+    MAE: 0.3233
+    MSE: 0.2806
+    RMSE: 0.5297
+    R2: 0.9168
+
+  Channel excluded: ax2
+    MAE: 0.3341
+    MSE: 0.5600
+    RMSE: 0.7484
+    R2: 0.8339
+
+  Channel excluded: ay1
+    MAE: 0.3143
+    MSE: 0.2359
+    RMSE: 0.4857
+    R2: 0.9300
+
+  Channel excluded: ay2
+    MAE: 0.3260
+    MSE: 0.3663
+    RMSE: 0.6052
+    R2: 0.8914
+
+  Channel excluded: az1
+    MAE: 0.3226
+    MSE: 0.3469
+    RMSE: 0.5890
+    R2: 0.8971
+
+  Channel excluded: az2
+    MAE: 0.3147
+    MSE: 0.2561
+    RMSE: 0.5061
+    R2: 0.9240
+
+  Channel excluded: ch1
+    MAE: 0.3243
+    MSE: 0.3957
+    RMSE: 0.6290
+    R2: 0.8827
+
+  Channel excluded: ch17
+    MAE: 0.3147
+    MSE: 0.2801
+    RMSE: 0.5293
+    R2: 0.9169
+
+  Channel excluded: ch18
+    MAE: 0.3363
+    MSE: 0.4220
+    RMSE: 0.6496
+    R2: 0.8748
+
+  Channel excluded: ch19
+    MAE: 0.3347
+    MSE: 0.3660
+    RMSE: 0.6050
+    R2: 0.8915
+
+  Channel excluded: ch2
+    MAE: 0.3305
+    MSE: 0.2928
+    RMSE: 0.5411
+    R2: 0.9132
+
+  Channel excluded: ch20
+    MAE: 0.3520
+    MSE: 0.6189
+    RMSE: 0.7867
+    R2: 0.8165
+
+  Channel excluded: ch3
+    MAE: 0.3255
+    MSE: 0.3923
+    RMSE: 0.6263
+    R2: 0.8837
+
+  Channel excluded: ch4
+    MAE: 0.3219
+    MSE: 0.3593
+    RMSE: 0.5994
+    R2: 0.8934
+
+  Channel excluded: ch5
+    MAE: 0.3207
+    MSE: 0.3290
+    RMSE: 0.5736
+    R2: 0.9024
+
+  Channel excluded: ch6
+    MAE: 0.3247
+    MSE: 0.3634
+    RMSE: 0.6029
+    R2: 0.8922
+
+  Channel excluded: ch7
+    MAE: 0.3080
+    MSE: 0.2282
+    RMSE: 0.4778
+    R2: 0.9323
+
+  Channel excluded: ch8
+    MAE: 0.3163
+    MSE: 0.2775
+    RMSE: 0.5268
+    R2: 0.9177
+
+  Channel excluded: pitch1
+    MAE: 0.3285
+    MSE: 0.4071
+    RMSE: 0.6380
+    R2: 0.8793
+
+  Channel excluded: pitch2
+    MAE: 0.3275
+    MSE: 0.3450
+    RMSE: 0.5874
+    R2: 0.8977
+
+  Channel excluded: roll1
+    MAE: 0.3273
+    MSE: 0.3368
+    RMSE: 0.5803
+    R2: 0.9001
+
+  Channel excluded: roll2
+    MAE: 0.3087
+    MSE: 0.2277
+    RMSE: 0.4772
+    R2: 0.9325
+
+  Channel excluded: yaw1
+    MAE: 0.3264
+    MSE: 0.3044
+    RMSE: 0.5517
+    R2: 0.9097
+
+  Channel excluded: yaw2
+    MAE: 0.3073
+    MSE: 0.2252
+    RMSE: 0.4746
+    R2: 0.9332
+
+============================================================
+PHASE 3 — FEATURE-TYPE ABLATION (leave-one-type-out)
+============================================================
+
+  Baseline (MAE): 0.3201
+
+  Ranked by impact (most → least important):
+  Feature Type                 ΔMAE     Abs Δ
+  --------------------------------------------
+  EMG_MAV                   +0.0282    0.0282
+  EMG_RMS                   +0.0186    0.0186
+  EMG_WL                    +0.0143    0.0143
+  EMG_VAR                   +0.0137    0.0137
+  IMU_Mean                  +0.0125    0.0125
+  IMU_Min                   +0.0106    0.0106
+  EMG_ZC                    +0.0052    0.0052
+  IMU_SMA                   +0.0044    0.0044
+  EMG_Power                 +0.0034    0.0034
+  IMU_Std                   +0.0015    0.0015
+  EMG_MDF                   -0.0000   -0.0000
+  IMU_SpecEnergy            -0.0005   -0.0005
+  EMG_SSC                   -0.0014   -0.0014
+  EMG_MNF                   -0.0027   -0.0027
+  IMU_DomFreq               -0.0028   -0.0028
+  IMU_RMS                   -0.0043   -0.0043
+  IMU_Var                   -0.0054   -0.0054
+  IMU_Max                   -0.0071   -0.0071
+
+  Full results per feature type:
+
+  Feature type excluded: EMG_MAV
+    MAE: 0.3483
+    MSE: 0.5783
+    RMSE: 0.7605
+    R2: 0.8285
+
+  Feature type excluded: EMG_RMS
+    MAE: 0.3387
+    MSE: 0.4880
+    RMSE: 0.6986
+    R2: 0.8553
+
+  Feature type excluded: EMG_WL
+    MAE: 0.3344
+    MSE: 0.3693
+    RMSE: 0.6077
+    R2: 0.8905
+
+  Feature type excluded: EMG_ZC
+    MAE: 0.3253
+    MSE: 0.3489
+    RMSE: 0.5907
+    R2: 0.8965
+
+  Feature type excluded: EMG_SSC
+    MAE: 0.3187
+    MSE: 0.3162
+    RMSE: 0.5623
+    R2: 0.9062
+
+  Feature type excluded: EMG_VAR
+    MAE: 0.3338
+    MSE: 0.5847
+    RMSE: 0.7647
+    R2: 0.8266
+
+  Feature type excluded: EMG_MNF
+    MAE: 0.3174
+    MSE: 0.3379
+    RMSE: 0.5813
+    R2: 0.8998
+
+  Feature type excluded: EMG_MDF
+    MAE: 0.3201
+    MSE: 0.3024
+    RMSE: 0.5499
+    R2: 0.9103
+
+  Feature type excluded: EMG_Power
+    MAE: 0.3236
+    MSE: 0.4030
+    RMSE: 0.6348
+    R2: 0.8805
+
+  Feature type excluded: IMU_Mean
+    MAE: 0.3326
+    MSE: 0.3222
+    RMSE: 0.5677
+    R2: 0.9044
+
+  Feature type excluded: IMU_Var
+    MAE: 0.3147
+    MSE: 0.2395
+    RMSE: 0.4893
+    R2: 0.9290
+
+  Feature type excluded: IMU_Std
+    MAE: 0.3217
+    MSE: 0.2820
+    RMSE: 0.5311
+    R2: 0.9164
+
+  Feature type excluded: IMU_Max
+    MAE: 0.3130
+    MSE: 0.2956
+    RMSE: 0.5437
+    R2: 0.9123
+
+  Feature type excluded: IMU_Min
+    MAE: 0.3307
+    MSE: 0.5417
+    RMSE: 0.7360
+    R2: 0.8393
+
+  Feature type excluded: IMU_RMS
+    MAE: 0.3159
+    MSE: 0.2477
+    RMSE: 0.4977
+    R2: 0.9265
+
+  Feature type excluded: IMU_SMA
+    MAE: 0.3245
+    MSE: 0.3173
+    RMSE: 0.5633
+    R2: 0.9059
+
+  Feature type excluded: IMU_DomFreq
+    MAE: 0.3173
+    MSE: 0.3059
+    RMSE: 0.5531
+    R2: 0.9093
+
+  Feature type excluded: IMU_SpecEnergy
+    MAE: 0.3196
+    MSE: 0.2572
+    RMSE: 0.5071
+    R2: 0.9237

@@ -1,0 +1,186 @@
+============================================================
+ABLATION STUDY REPORT
+Model        : SVR
+Run Timestamp: 20260309_203440
+Eval Mode    : Train/Test Split
+Primary Metric: MAE
+Phases run   : single_channel
+============================================================
+
+============================================================
+CHANNEL ABLATION — single-channel-only
+============================================================
+
+  Ranked by MAE (best performing channel first):
+  Channel                         MAE
+  ------------------------------------
+  ch7                          0.6527
+  ch18                         0.7358
+  ch19                         0.7810
+  ch8                          0.7883
+  ch6                          0.7904
+  ch5                          0.7910
+  ch20                         0.8061
+  ch2                          0.8199
+  ch4                          0.8857
+  ch3                          0.9294
+  ch1                          0.9363
+  az2                          1.0450
+  pitch2                       1.0768
+  ay2                          1.0953
+  ax2                          1.1276
+  ax1                          1.1861
+  yaw1                         1.2010
+  ay1                          1.2025
+  roll2                        1.2159
+  ch17                         1.2199
+  roll1                        1.2414
+  pitch1                       1.2437
+  yaw2                         1.2656
+  az1                          1.2711
+
+  Full results per channel:
+
+  Only: ax1
+    MAE: 1.1861
+    MSE: 3.0709
+    RMSE: 1.7524
+    R2: 0.0893
+
+  Only: ax2
+    MAE: 1.1276
+    MSE: 2.7802
+    RMSE: 1.6674
+    R2: 0.1755
+
+  Only: ay1
+    MAE: 1.2025
+    MSE: 3.3396
+    RMSE: 1.8275
+    R2: 0.0096
+
+  Only: ay2
+    MAE: 1.0953
+    MSE: 2.7483
+    RMSE: 1.6578
+    R2: 0.1849
+
+  Only: az1
+    MAE: 1.2711
+    MSE: 3.4691
+    RMSE: 1.8625
+    R2: -0.0288
+
+  Only: az2
+    MAE: 1.0450
+    MSE: 2.4988
+    RMSE: 1.5808
+    R2: 0.2589
+
+  Only: ch1
+    MAE: 0.9363
+    MSE: 2.0817
+    RMSE: 1.4428
+    R2: 0.3826
+
+  Only: ch17
+    MAE: 1.2199
+    MSE: 3.5088
+    RMSE: 1.8732
+    R2: -0.0406
+
+  Only: ch18
+    MAE: 0.7358
+    MSE: 1.4456
+    RMSE: 1.2023
+    R2: 0.5713
+
+  Only: ch19
+    MAE: 0.7810
+    MSE: 1.5064
+    RMSE: 1.2274
+    R2: 0.5532
+
+  Only: ch2
+    MAE: 0.8199
+    MSE: 1.4886
+    RMSE: 1.2201
+    R2: 0.5585
+
+  Only: ch20
+    MAE: 0.8061
+    MSE: 1.9784
+    RMSE: 1.4065
+    R2: 0.4133
+
+  Only: ch3
+    MAE: 0.9294
+    MSE: 2.0324
+    RMSE: 1.4256
+    R2: 0.3973
+
+  Only: ch4
+    MAE: 0.8857
+    MSE: 1.7681
+    RMSE: 1.3297
+    R2: 0.4756
+
+  Only: ch5
+    MAE: 0.7910
+    MSE: 1.4123
+    RMSE: 1.1884
+    R2: 0.5812
+
+  Only: ch6
+    MAE: 0.7904
+    MSE: 1.3809
+    RMSE: 1.1751
+    R2: 0.5905
+
+  Only: ch7
+    MAE: 0.6527
+    MSE: 0.9933
+    RMSE: 0.9966
+    R2: 0.7054
+
+  Only: ch8
+    MAE: 0.7883
+    MSE: 1.3979
+    RMSE: 1.1823
+    R2: 0.5854
+
+  Only: pitch1
+    MAE: 1.2437
+    MSE: 3.7307
+    RMSE: 1.9315
+    R2: -0.1064
+
+  Only: pitch2
+    MAE: 1.0768
+    MSE: 3.0443
+    RMSE: 1.7448
+    R2: 0.0971
+
+  Only: roll1
+    MAE: 1.2414
+    MSE: 3.8037
+    RMSE: 1.9503
+    R2: -0.1281
+
+  Only: roll2
+    MAE: 1.2159
+    MSE: 3.6054
+    RMSE: 1.8988
+    R2: -0.0693
+
+  Only: yaw1
+    MAE: 1.2010
+    MSE: 3.4473
+    RMSE: 1.8567
+    R2: -0.0224
+
+  Only: yaw2
+    MAE: 1.2656
+    MSE: 3.8063
+    RMSE: 1.9510
+    R2: -0.1288
