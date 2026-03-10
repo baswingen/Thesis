@@ -7,24 +7,24 @@ ensures consistency across training and inference scripts.
 GLOBAL_RANDOM_STATE = 42
 # Cross-Validation Configuration
 CV_CONFIG = {
-    'use_cross_val': False,
+    'use_cross_val': True,
     'n_folds': 5
 }
 
 # SVM Configuration
 SVM_CONFIG = {
-    'kernel': 'sigmoid', # Optimized via sweep
-    'C': 10.0,           # Optimized via sweep
-    'gamma': 0.001,      # Optimized via sweep
+    'kernel': 'sigmoid', 
+    'C': 10.0,           
+    'gamma': 0.1,      
     'class_weight': 'balanced',
     'random_state': GLOBAL_RANDOM_STATE
 }
 
 # RBF Neural Network Configuration
 RBFNN_CONFIG = {
-    'n_centers': 300,    # Optimized via sweep
-    'gamma': 0.001,      # Optimized via sweep
-    'C': 10.0,           # Optimized via sweep
+    'n_centers': 300,    
+    'gamma': 0.001,      
+    'C': 10.0,           
     'random_state': GLOBAL_RANDOM_STATE,
     'class_weight': 'balanced'
 }
@@ -114,17 +114,17 @@ CNN_LSTM_CONFIG = {
 
 # Transformer Configuration
 TRANSFORMER_CONFIG = {
-    'd_model': 32,             # Optimized via sweep
-    'nhead': 4,                # Optimized via sweep
-    'num_layers': 2,           # Optimized via sweep
-    'dim_feedforward': 256,    # Optimized via sweep
-    'dropout_rate': 0.3,       # Optimized via sweep
-    'learning_rate': 0.005,    # Optimized via sweep
-    'batch_size': 64,          # Optimized via sweep
-    'epochs': 100,             # Optimized via sweep
+    'd_model': 32,             
+    'nhead': 4,                
+    'num_layers': 2,           
+    'dim_feedforward': 256,    
+    'dropout_rate': 0.3,       
+    'learning_rate': 0.005,
+    'batch_size': 64,          
+    'epochs': 100,             
     'validation_split': 0.2,
     'early_stopping_patience': 10,
-    'window_size_sec': 0.25,   # Must match extraction window
+    'window_size_sec': 0.25,   
     'window_step_sec': 0.1,
     'random_state': GLOBAL_RANDOM_STATE
 }

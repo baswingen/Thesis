@@ -34,7 +34,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", or "transformer"
-MODEL_TYPE = "lstm"
+MODEL_TYPE = "svr"
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -182,8 +182,8 @@ def main():
         fold_results = []
         oof_predictions = np.zeros(len(X)) if is_regression else None
         
-        # Use df['label'] for stratification even if predicting weight
-        strat_labels = df["label"] if "label" in df.columns else None
+        # Use df['weight'] (cast to str) for stratification
+        strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
         
         for fold, (train_idx, test_idx) in enumerate(skf.split(X, strat_labels), 1):
             print(f"--- Fold {fold}/{n_folds} ---")
@@ -237,8 +237,8 @@ def main():
         
     else:
         # Train/Test Split
-        # Always stratify by labels (classes) if possible, even for regression
-        stratify = df["label"] if "label" in df.columns else None
+        # Always stratify by weight (cast to str) for regression
+        stratify = df["weight"].astype(str) if "weight" in df.columns else None
         
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=7, stratify=stratify
