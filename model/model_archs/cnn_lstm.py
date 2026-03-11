@@ -14,7 +14,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import CNN_LSTM_CONFIG
+from model.config_model import CNN_LSTM_CONFIG, FEATURE_CONFIG
 from model.model_archs.gru import SequenceDataset, pad_collate_fn  # Reuse dataloader utilities
 
 class CNNLSTMNetwork(nn.Module):
@@ -78,12 +78,13 @@ class CNNLSTMRegressor:
                  lstm_num_layers: int = CNN_LSTM_CONFIG['lstm_num_layers'],
                  dropout_rate: float = CNN_LSTM_CONFIG['dropout_rate'],
                  learning_rate: float = CNN_LSTM_CONFIG['learning_rate'],
+                 weight_decay: float = CNN_LSTM_CONFIG.get('weight_decay', 0.0),
                  batch_size: int = CNN_LSTM_CONFIG['batch_size'],
                  epochs: int = CNN_LSTM_CONFIG['epochs'],
                  validation_split: float = CNN_LSTM_CONFIG.get('validation_split', 0.2),
                  early_stopping_patience: int = CNN_LSTM_CONFIG.get('early_stopping_patience', 10),
-                 window_size_sec: float = CNN_LSTM_CONFIG['window_size_sec'],
-                 window_step_sec: float = CNN_LSTM_CONFIG['window_step_sec'],
+                 window_size_sec: float = FEATURE_CONFIG['window_size_sec'],
+                 window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
                  random_state: int = CNN_LSTM_CONFIG['random_state']):
                  
         self.cnn_filters = cnn_filters
@@ -92,6 +93,7 @@ class CNNLSTMRegressor:
         self.lstm_num_layers = lstm_num_layers
         self.dropout_rate = dropout_rate
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
         self.batch_size = batch_size
         self.epochs = epochs
         self.validation_split = validation_split
@@ -109,7 +111,13 @@ class CNNLSTMRegressor:
         self.scaler = StandardScaler()
         self.model = None
         self.feature_names = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
+        print(f"[{self.__class__.__name__}] Using device: {self.device}")
         
     def _extract_sequences(self, X: pd.DataFrame) -> list:
         if 'sequence_dicts' not in X.columns:
@@ -167,7 +175,7 @@ class CNNLSTMRegressor:
                                     self.lstm_hidden_size, self.lstm_num_layers, 
                                     self.dropout_rate).to(self.device)
         
-        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         criterion = nn.MSELoss()
         
         dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
@@ -291,6 +299,7 @@ class CNNLSTMRegressor:
                 'lstm_num_layers': self.lstm_num_layers,
                 'dropout_rate': self.dropout_rate,
                 'learning_rate': self.learning_rate,
+                'weight_decay': self.weight_decay,
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
                 'validation_split': self.validation_split,

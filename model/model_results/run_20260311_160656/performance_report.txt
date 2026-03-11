@@ -1,0 +1,48 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260311_160656
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5']
+Total samples: 2434
+Evaluation Mode: Train/Validation/Test Split (64/16/20)
+Testing samples: 487
+Training samples: 1557
+Validation samples: 390
+
+--- FEATURE CONFIGURATION ---
+Window Size: 0.25s, Step: 0.1s
+Enabled EMG Features: MAV, WL, SSC, VAR, IEMG, Skew, Kurt, Power
+Enabled IMU Features: Mean, Max, Min, SMA, Kurt
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 128
+Num Layers: 2
+Dropout Rate: 0.4
+Learning Rate: 0.005
+Batch Size: 128
+Epochs: 100
+Window Size (s): 0.25
+Window Step (s): 0.1
+Random State: 42
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.1426
+Mean Squared Error: 0.0926
+Root Mean Squared Error: 0.3043
+R-squared Score: 0.9725
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 244      | 0.0193     | 0.0710    
+0.75 kg      | 35       | 0.1831     | 0.2755    
+1.00 kg      | 35       | 0.2593     | 0.3508    
+2.00 kg      | 34       | 0.3420     | 0.4088    
+2.25 kg      | 35       | 0.2027     | 0.2601    
+3.00 kg      | 35       | 0.3607     | 0.4609    
+4.25 kg      | 34       | 0.3657     | 0.7501    
+6.00 kg      | 35       | 0.1564     | 0.2554    
+

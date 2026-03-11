@@ -1,0 +1,12 @@
+======================================================================
+HIGHLY CORRELATED FEATURE TYPES REPORT
+======================================================================
+Correlation metric: Average Spearman rank correlation across overlapping channels
+Threshold: 0.95
+
+Found 0 highly correlated feature type pairs.
+
+Feature Type 1               | Feature Type 2               | Avg Correlation
+--------------------------------------------------------------------------------
+
+Feature TYPES to drop due to redundancy (You can disable these in config_model.py):

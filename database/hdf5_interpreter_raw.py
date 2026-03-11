@@ -22,7 +22,7 @@ FILE = r"database/participant_P01/session_01/trial_3_20260304_150704.h5"
 #   "_raw/emg"       – raw EMG data    (35 cols)
 #   "_raw/metrics"   – sync metrics    (3 cols)
 #   "synced/data"    – full synced matrix (56 cols)
-DATASET = "synced/emg_processed"
+DATASET = "synced/data"
 
 # Name of the column that goes on the X-axis.
 # Set to None to use the row index instead.

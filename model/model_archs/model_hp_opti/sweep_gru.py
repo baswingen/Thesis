@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from model.data_loader import DataLoader
 from model.model_archs.gru import GRURegressor
-from model.config_model import GRU_CONFIG
+from model.config_model import GRU_CONFIG, FEATURE_CONFIG
 
 def main():
     base_dir = Path(__file__).resolve().parent.parent.parent.parent
@@ -45,8 +45,8 @@ def main():
 
     loader = DataLoader()
     print("Extracting features (This only happens once for the sweep)...")
-    window_size_sec = GRU_CONFIG.get('window_size_sec', 0.25)
-    window_step_sec = GRU_CONFIG.get('window_step_sec', 0.1)
+    window_size_sec = FEATURE_CONFIG.get('window_size_sec', 0.25)
+    window_step_sec = FEATURE_CONFIG.get('window_step_sec', 0.1)
     
     df = loader.load_and_extract_features(h5_paths, 
                                           window_size_sec=window_size_sec,

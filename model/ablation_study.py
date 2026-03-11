@@ -13,7 +13,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from model.data_loader import DataLoader
 from model.run_model import initialize_model, MODEL_TYPE
-from model.config_model import CV_CONFIG
+from model.config_model import CV_CONFIG, FEATURE_CONFIG
 
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import accuracy_score
@@ -26,14 +26,19 @@ MODALITIES = ['both', 'emg', 'imu']
 
 # EMG feature-type suffixes (must match what feature_extraction.py produces)
 EMG_FEATURE_TYPES = [
-    'EMG_MAV', 'EMG_RMS', 'EMG_WL', 'EMG_ZC',
-    'EMG_SSC', 'EMG_VAR', 'EMG_MNF', 'EMG_MDF', 'EMG_Power',
+    'EMG_MAV', 'EMG_RMS', 'EMG_WL', 'EMG_ZC', 'EMG_SSC', 'EMG_VAR',
+    'EMG_WAMP', 'EMG_IEMG', 'EMG_LogDet', 'EMG_Skew', 'EMG_Kurt',
+    'EMG_HjMob', 'EMG_HjComp', 'EMG_Myopulse',
+    'EMG_MNF', 'EMG_MDF', 'EMG_Power', 'EMG_SpecEntropy', 'EMG_PeakFreq', 'EMG_BW'
 ]
 
 # IMU feature-type suffixes
 IMU_FEATURE_TYPES = [
     'IMU_Mean', 'IMU_Var', 'IMU_Std', 'IMU_Max', 'IMU_Min',
-    'IMU_RMS', 'IMU_SMA', 'IMU_DomFreq', 'IMU_SpecEnergy',
+    'IMU_RMS', 'IMU_SMA', 'IMU_P2P', 'IMU_IQR', 'IMU_Skew', 'IMU_Kurt',
+    'IMU_Jerk', 'IMU_ZC', 'IMU_Energy',
+    'IMU_DomFreq', 'IMU_SpecEnergy', 'IMU_MNF', 'IMU_MDF', 'IMU_SpecEntropy',
+    'IMU_SVM_Mean', 'IMU_SVM_Std'
 ]
 
 ALL_FEATURE_TYPES = EMG_FEATURE_TYPES + IMU_FEATURE_TYPES
@@ -155,7 +160,7 @@ def exclude_by_patterns(df: pd.DataFrame, patterns: list, is_sequence: bool) -> 
 # Evaluation
 # ---------------------------------------------------------------------------
 
-def run_evaluation(X, y, model_type, is_regression, strat_labels=None, use_cv=False, n_folds=5):
+def run_evaluation(X, y, model_type, strat_labels=None, use_cv=False, n_folds=5):
     """Train and evaluate a model, returning a metrics dict or None on failure."""
     if use_cv:
         skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
@@ -173,20 +178,11 @@ def run_evaluation(X, y, model_type, is_regression, strat_labels=None, use_cv=Fa
 
             model.fit(X_train_fold, y_train_fold)
 
-            if is_regression:
-                metrics, _ = model.evaluate(X_test_fold, y_test_fold)
-                cv_metrics.append(metrics)
-            else:
-                y_pred_fold = model.predict(X_test_fold)
-                acc = accuracy_score(y_test_fold, y_pred_fold)
-                cv_metrics.append({'accuracy': acc})
+            metrics, _ = model.evaluate(X_test_fold, y_test_fold)
+            cv_metrics.append(metrics)
 
-        if is_regression:
-            avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
-            return avg_metrics
-        else:
-            avg_acc = np.mean([m['accuracy'] for m in cv_metrics])
-            return {'accuracy': avg_acc}
+        avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
+        return avg_metrics
 
     else:
         X_train, X_test, y_train, y_test = train_test_split(
@@ -199,21 +195,15 @@ def run_evaluation(X, y, model_type, is_regression, strat_labels=None, use_cv=Fa
 
         model.fit(X_train, y_train)
 
-        if is_regression:
-            metrics, _ = model.evaluate(X_test, y_test)
-            return metrics
-        else:
-            y_pred = model.predict(X_test)
-            accuracy = accuracy_score(y_test, y_pred)
-            return {'accuracy': accuracy}
+        metrics, _ = model.evaluate(X_test, y_test)
+        return metrics
 
 
 # ---------------------------------------------------------------------------
 # Ablation runners
 # ---------------------------------------------------------------------------
 
-def run_modality_ablation(df_raw, loader, model_type, is_regression, is_sequence,
-                           target_col, use_cv, n_folds):
+def run_modality_ablation(df_raw, loader, model_type, is_sequence, target_col, use_cv, n_folds):
     """
     Phase 1 (original): evaluate with all features, EMG only, IMU only.
     Returns dict: {modality: metrics_dict}
@@ -228,7 +218,7 @@ def run_modality_ablation(df_raw, loader, model_type, is_regression, is_sequence
         df_filtered = filter_features(df_raw, modality, is_sequence)
         X, y = loader.prepare_for_ml(df_filtered, target_col=target_col)
         strat_labels = df_filtered["label"] if "label" in df_filtered.columns else None
-        metrics = run_evaluation(X, y, model_type, is_regression, strat_labels, use_cv, n_folds)
+        metrics = run_evaluation(X, y, model_type, strat_labels, use_cv, n_folds)
         results[modality] = metrics
         if metrics:
             for k, v in metrics.items():
@@ -239,8 +229,7 @@ def run_modality_ablation(df_raw, loader, model_type, is_regression, is_sequence
     return results
 
 
-def run_channel_ablation(df_raw, loader, model_type, is_regression, is_sequence,
-                          target_col, use_cv, n_folds, baseline_metrics, primary_metric):
+def run_channel_ablation(df_raw, loader, model_type, is_sequence, target_col, use_cv, n_folds, baseline_metrics, primary_metric):
     """
     Proposition 1 — Leave-one-channel-out ablation.
     For each sensor channel, drops ALL features from that channel and evaluates.
@@ -263,7 +252,7 @@ def run_channel_ablation(df_raw, loader, model_type, is_regression, is_sequence,
 
         X, y    = loader.prepare_for_ml(df_excl, target_col=target_col)
         strat_labels = df_excl["label"] if "label" in df_excl.columns else None
-        metrics = run_evaluation(X, y, model_type, is_regression, strat_labels, use_cv, n_folds)
+        metrics = run_evaluation(X, y, model_type, strat_labels, use_cv, n_folds)
 
         delta = None
         if metrics and base_val is not None:
@@ -284,8 +273,7 @@ def run_channel_ablation(df_raw, loader, model_type, is_regression, is_sequence,
     return results
 
 
-def run_feature_type_ablation(df_raw, loader, model_type, is_regression, is_sequence,
-                               target_col, use_cv, n_folds, baseline_metrics, primary_metric):
+def run_feature_type_ablation(df_raw, loader, model_type, is_sequence, target_col, use_cv, n_folds, baseline_metrics, primary_metric):
     """
     Proposition 2 — Leave-one-feature-type-out ablation.
     For each feature type (e.g. EMG_RMS, IMU_Mean), drops that feature type across all channels.
@@ -308,7 +296,7 @@ def run_feature_type_ablation(df_raw, loader, model_type, is_regression, is_sequ
 
         X, y = loader.prepare_for_ml(df_excl, target_col=target_col)
         strat_labels = df_excl["label"] if "label" in df_excl.columns else None
-        metrics = run_evaluation(X, y, model_type, is_regression, strat_labels, use_cv, n_folds)
+        metrics = run_evaluation(X, y, model_type, strat_labels, use_cv, n_folds)
 
         delta = None
         if metrics and base_val is not None:
@@ -359,8 +347,7 @@ def include_only_channel(df: pd.DataFrame, channel: str, is_sequence: bool) -> p
     return df_filtered
 
 
-def run_single_channel_ablation(df_raw, loader, model_type, is_regression, is_sequence,
-                                 target_col, use_cv, n_folds, primary_metric):
+def run_single_channel_ablation(df_raw, loader, model_type, is_sequence, target_col, use_cv, n_folds, primary_metric):
     """
     Proposition 1b — Single-channel ablation.
     For each sensor channel, trains on ONLY that channel's features.
@@ -381,7 +368,7 @@ def run_single_channel_ablation(df_raw, loader, model_type, is_regression, is_se
 
         X, y = loader.prepare_for_ml(df_only, target_col=target_col)
         strat_labels = df_only["label"] if "label" in df_only.columns else None
-        metrics = run_evaluation(X, y, model_type, is_regression, strat_labels, use_cv, n_folds)
+        metrics = run_evaluation(X, y, model_type, strat_labels, use_cv, n_folds)
 
         rank_val = metrics.get(primary_metric) if metrics else None
         results[ch] = {'metrics': metrics, 'rank_val': rank_val}
@@ -433,14 +420,14 @@ def _rank_by_delta(results_dict, primary_metric, higher_is_worse=True):
 
 
 def write_report(run_dir, model_type, timestamp, use_cv, modes_run,
-                 primary_metric, is_regression,
+                 primary_metric,
                  modality_results=None, channel_leave_results=None,
                  feature_results=None, channel_single_results=None):
     report_file = run_dir / "ablation_report.txt"
 
     # MAE/RMSE: higher after exclusion = worse = item was important
     # R2: lower after exclusion = worse
-    higher_is_worse = is_regression and primary_metric in ('MAE', 'mae', 'RMSE', 'rmse')
+    higher_is_worse = primary_metric in ('MAE', 'mae', 'RMSE', 'rmse')
     # For single-channel: lower MAE = better; lower R2 = worse
     single_lower_is_better = higher_is_worse  # same logic: MAE → lower is better
 
@@ -452,6 +439,16 @@ def write_report(run_dir, model_type, timestamp, use_cv, modes_run,
         f.write(f"Eval Mode    : {'Cross-Validation' if use_cv else 'Train/Test Split'}\n")
         f.write(f"Primary Metric: {primary_metric}\n")
         f.write(f"Phases run   : {', '.join(modes_run)}\n")
+        f.write("\n")
+        
+        f.write("--- FEATURE CONFIGURATION ---\n")
+        f.write(f"Window Size: {FEATURE_CONFIG['window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
+        
+        emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
+        f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")
+        
+        imu_enabled = [k for k, v in FEATURE_CONFIG['imu_features'].items() if v]
+        f.write(f"Enabled IMU Features: {', '.join(imu_enabled)}\n")
         f.write("=" * 60 + "\n")
 
         # ---- Modality
@@ -593,33 +590,18 @@ def main():
 
     model_type    = MODEL_TYPE.lower()
     is_sequence   = model_type in ["gru", "lstm", "cnn_lstm", "transformer"]
-    is_regression = model_type in ["svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"]
 
-    if is_sequence:
-        if model_type == "gru":
-            from model.config_model import GRU_CONFIG as conf
-        elif model_type == "lstm":
-            from model.config_model import LSTM_CONFIG as conf
-        elif model_type == "cnn_lstm":
-            from model.config_model import CNN_LSTM_CONFIG as conf
-        else:
-            from model.config_model import TRANSFORMER_CONFIG as conf
-        df_raw = loader.load_and_extract_features(
-            h5_paths,
-            window_size_sec=conf.get('window_size_sec', 0.25),
-            window_step_sec=conf.get('window_step_sec', 0.1)
-        )
-    else:
-        df_raw = loader.load_and_extract_features(h5_paths)
+    # DataLoader defaults to window properties in FEATURE_CONFIG
+    df_raw = loader.load_and_extract_features(h5_paths)
 
     if df_raw.empty:
         print("Data extraction failed or produced an empty DataFrame.")
         return
 
-    target_col     = "weight" if is_regression else "label"
+    target_col     = "weight"
     use_cv         = CV_CONFIG.get('use_cross_val', False)
     n_folds        = CV_CONFIG.get('n_folds', 5)
-    primary_metric = "MAE" if is_regression else "accuracy"
+    primary_metric = "MAE"
 
     # Dataset overview
     all_cols   = get_all_column_names(df_raw, is_sequence)
@@ -638,7 +620,7 @@ def main():
     # Modality phase — also serves as the baseline for leave-one-out deltas
     if 'modality' in modes or 'leave_channel' in modes or 'leave_feature' in modes:
         modality_results = run_modality_ablation(
-            df_raw, loader, model_type, is_regression, is_sequence,
+            df_raw, loader, model_type, is_sequence,
             target_col, use_cv, n_folds
         )
 
@@ -646,19 +628,19 @@ def main():
 
     if 'leave_channel' in modes:
         channel_leave_results = run_channel_ablation(
-            df_raw, loader, model_type, is_regression, is_sequence,
+            df_raw, loader, model_type, is_sequence,
             target_col, use_cv, n_folds, baseline_metrics, primary_metric
         )
 
     if 'single_channel' in modes:
         channel_single_results = run_single_channel_ablation(
-            df_raw, loader, model_type, is_regression, is_sequence,
+            df_raw, loader, model_type, is_sequence,
             target_col, use_cv, n_folds, primary_metric
         )
 
     if 'leave_feature' in modes:
         feature_results = run_feature_type_ablation(
-            df_raw, loader, model_type, is_regression, is_sequence,
+            df_raw, loader, model_type, is_sequence,
             target_col, use_cv, n_folds, baseline_metrics, primary_metric
         )
 
@@ -670,7 +652,6 @@ def main():
         use_cv=use_cv,
         modes_run=sorted(modes),
         primary_metric=primary_metric,
-        is_regression=is_regression,
         modality_results=modality_results,
         channel_leave_results=channel_leave_results,
         feature_results=feature_results,

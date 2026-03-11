@@ -22,7 +22,7 @@ from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG
 )
 
 from sklearn.metrics import (
@@ -34,7 +34,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", or "transformer"
-MODEL_TYPE = "svr"
+MODEL_TYPE = "lstm"
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -134,21 +134,11 @@ def main():
     print("Extracting features from HDF5 files. This may take a moment...")
     
     model_type = MODEL_TYPE.lower()
-    if model_type in ["gru", "lstm", "cnn_lstm", "transformer"]:
-        # Choose the right config for window parameters (they are identical in default, but good practice)
-        if model_type == "gru":
-            conf = GRU_CONFIG
-        elif model_type == "lstm":
-            conf = LSTM_CONFIG
-        elif model_type == "transformer":
-            conf = TRANSFORMER_CONFIG
-        else:
-            conf = CNN_LSTM_CONFIG
-        df = loader.load_and_extract_features(h5_paths, 
-                                              window_size_sec=conf.get('window_size_sec', 0.25),
-                                              window_step_sec=conf.get('window_step_sec', 0.1))
-    else:
-        df = loader.load_and_extract_features(h5_paths)
+    is_sequence = model_type in ["gru", "lstm", "cnn_lstm", "transformer"]
+    target_col = "weight"
+    
+    # DataLoader defaults to window properties in FEATURE_CONFIG
+    df = loader.load_and_extract_features(h5_paths, is_sequence=is_sequence)
     
     if df.empty:
         print("Data extraction failed or produced an empty DataFrame.")
@@ -157,18 +147,11 @@ def main():
     print(f"Extracted features dataframe shape: {df.shape}")
     
     # Prepare data for ML
-    # Prepare data for ML
-    is_regression = (model_type in ["svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"])
-    target_col = "weight" if is_regression else "label"
     
     X, y = loader.prepare_for_ml(df, target_col=target_col)
     print(f"Feature matrix (X) shape: {X.shape}")
     print(f"Label vector (y) shape: {y.shape} (Target: {target_col})")
     
-    if not is_regression and len(y.unique()) < 2:
-        print("\nLess than 2 classes found in dataset. Ensure your target labels are correct and varied.")
-        return
-
     # Determine if we use Cross-Validation or Single Split
     use_cv = CV_CONFIG.get('use_cross_val', False)
     
@@ -180,7 +163,7 @@ def main():
         
         cv_metrics = []
         fold_results = []
-        oof_predictions = np.zeros(len(X)) if is_regression else None
+        oof_predictions = np.zeros(len(X))
         
         # Use df['weight'] (cast to str) for stratification
         strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
@@ -199,34 +182,22 @@ def main():
             model.fit(X_train_fold, y_train_fold)
             
             # Evaluate
-            if is_regression:
-                metrics, report_str = model.evaluate(X_test_fold, y_test_fold)
-                cv_metrics.append(metrics)
-                fold_results.append(report_str)
-                oof_predictions[test_idx] = model.predict(X_test_fold)
-            else:
-                y_pred_fold = model.predict(X_test_fold)
-                acc = accuracy_score(y_test_fold, y_pred_fold)
-                cv_metrics.append({'accuracy': acc})
-                fold_results.append(classification_report(y_test_fold, y_pred_fold, zero_division=0))
+            metrics, report_str = model.evaluate(X_test_fold, y_test_fold)
+            cv_metrics.append(metrics)
+            fold_results.append(report_str)
+            oof_predictions[test_idx] = model.predict(X_test_fold)
         
         # Aggregate Results
         print("\n" + "=" * 55)
         print(f"CROSS-VALIDATION RESULTS ({n_folds} Folds)")
         
-        if is_regression:
-            avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
-            std_metrics = {k: np.std([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
-            
-            report_str = ""
-            for k in avg_metrics:
-                report_str += f"{k}: {avg_metrics[k]:.4f} (±{std_metrics[k]:.4f})\n"
-            print(report_str)
-        else:
-            avg_acc = np.mean([m['accuracy'] for m in cv_metrics])
-            std_acc = np.std([m['accuracy'] for m in cv_metrics])
-            report_str = f"Average Accuracy: {avg_acc:.4f} (±{std_acc:.4f})\n"
-            print(f"Model Accuracy: {avg_acc:.4f} (±{std_acc:.4f})")
+        avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
+        std_metrics = {k: np.std([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
+        
+        report_str = ""
+        for k in avg_metrics:
+            report_str += f"{k}: {avg_metrics[k]:.4f} (±{std_metrics[k]:.4f})\n"
+        print(report_str)
             
         print("=" * 55)
         
@@ -255,45 +226,32 @@ def main():
         # Evaluate model
         print(f"\nEvaluating {model_type.upper()} Model on unseen test set...")
         
-        if is_regression:
-            metrics, report_str = model.evaluate(X_test, y_test)
-            print("=" * 55)
-            print("Regression Metrics:")
-            print(report_str)
-            print("=" * 55)
-        else:
-            y_pred = model.predict(X_test)
-            accuracy = accuracy_score(y_test, y_pred)
-            report_str = classification_report(y_test, y_pred, zero_division=0)
-            
-            print("=" * 55)
-            print(f"Model Accuracy: {accuracy:.4f}")
-            print("Classification Report:")
-            print(report_str)
-            print("=" * 55)
+        metrics, report_str = model.evaluate(X_test, y_test)
+        print("=" * 55)
+        print("Regression Metrics:")
+        print(report_str)
+        print("=" * 55)
     
     # Save the Model structure
     model_path = run_dir / f"{model_type}_model.joblib"
     model.save(model_path)
     
     # Save regression plot if applicable (use out-of-fold predictions if CV)
-    if is_regression:
-        plot_path = run_dir / "regression_plot.png"
-        if use_cv:
-            model.plot_results(y, oof_predictions, plot_path)
-        else:
-            y_pred = model.predict(X_test)
-            model.plot_results(y_test, y_pred, plot_path)
+    plot_path = run_dir / "regression_plot.png"
+    if use_cv:
+        model.plot_results(y, oof_predictions, plot_path)
+    else:
+        y_pred = model.predict(X_test)
+        model.plot_results(y_test, y_pred, plot_path)
     
     
     # Calculate per-weight statistics for regression
     per_weight_stats = None
-    if is_regression:
-        if use_cv:
-            per_weight_stats = calculate_per_weight_metrics(y, oof_predictions)
-        else:
-            y_pred_test = model.predict(X_test)
-            per_weight_stats = calculate_per_weight_metrics(y_test, y_pred_test)
+    if use_cv:
+        per_weight_stats = calculate_per_weight_metrics(y, oof_predictions)
+    else:
+        y_pred_test = model.predict(X_test)
+        per_weight_stats = calculate_per_weight_metrics(y_test, y_pred_test)
 
     # Save detailed performance report
     report_file = run_dir / "performance_report.txt"
@@ -329,6 +287,16 @@ def main():
             f.write(f"Training samples: {train_samples}\n")
             if val_samples > 0:
                 f.write(f"Validation samples: {val_samples}\n")
+        f.write("\n")
+
+        f.write("--- FEATURE CONFIGURATION ---\n")
+        f.write(f"Window Size: {FEATURE_CONFIG['window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
+        
+        emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
+        f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")
+        
+        imu_enabled = [k for k, v in FEATURE_CONFIG['imu_features'].items() if v]
+        f.write(f"Enabled IMU Features: {', '.join(imu_enabled)}\n")
         f.write("\n")
         
         f.write("--- HYPERPARAMETERS ---\n")
@@ -414,16 +382,7 @@ def main():
             f.write(f"(Averaged over {n_folds} folds)\n")
             f.write(report_str)
         else:
-            if is_regression:
-                f.write(report_str)
-            else:
-                f.write(f"Accuracy: {accuracy:.4f}\n\n")
-                f.write("Classification Report:\n")
-                f.write(report_str)
-                f.write("\n\nConfusion Matrix:\n")
-                f.write(f"Labels order: {labels}\n")
-                f.write(str(conf_matrix))
-                f.write("\n")
+            f.write(report_str)
         
         if per_weight_stats:
             f.write("\n--- PER-WEIGHT METRICS ---\n")

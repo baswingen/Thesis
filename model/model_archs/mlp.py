@@ -46,6 +46,7 @@ class MLPRegressor:
                  hidden_layers: list = MLP_CONFIG['hidden_layers'],
                  dropout_rate: float = MLP_CONFIG['dropout_rate'],
                  learning_rate: float = MLP_CONFIG['learning_rate'],
+                 weight_decay: float = MLP_CONFIG.get('weight_decay', 0.0),
                  batch_size: int = MLP_CONFIG['batch_size'],
                  epochs: int = MLP_CONFIG['epochs'],
                  validation_split: float = MLP_CONFIG.get('validation_split', 0.2),
@@ -55,6 +56,7 @@ class MLPRegressor:
         self.hidden_layers = hidden_layers
         self.dropout_rate = dropout_rate
         self.learning_rate = learning_rate
+        self.weight_decay = weight_decay
         self.batch_size = batch_size
         self.epochs = epochs
         self.validation_split = validation_split
@@ -69,7 +71,13 @@ class MLPRegressor:
         
         self.scaler = StandardScaler()
         self.model = None
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if torch.cuda.is_available():
+            self.device = torch.device("cuda")
+        elif torch.backends.mps.is_available():
+            self.device = torch.device("mps")
+        else:
+            self.device = torch.device("cpu")
+        print(f"[{self.__class__.__name__}] Using device: {self.device}")
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
         """Fit the scaler and train the MLP with early stopping."""
@@ -95,7 +103,7 @@ class MLPRegressor:
         
         # 3. Initialize model
         self.model = MLP(X_train_scaled.shape[1], self.hidden_layers, self.dropout_rate).to(self.device)
-        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
+        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         criterion = nn.MSELoss()
         
         # 4. Prepare DataLoaders
@@ -210,6 +218,7 @@ class MLPRegressor:
             'dropout_rate': self.dropout_rate,
             'config': {
                 'learning_rate': self.learning_rate,
+                'weight_decay': self.weight_decay,
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
                 'validation_split': self.validation_split,

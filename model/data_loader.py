@@ -7,6 +7,7 @@ import sys
 import os
 
 from model.feature_extraction import FeatureExtractor
+from model.config_model import FEATURE_CONFIG
 
 class DataLoader:
     """
@@ -14,13 +15,21 @@ class DataLoader:
     extracting features using FeatureExtractor, and preparing the standard X & y arrays
     for traditional Machine Learning classification algorithms.
     """
-    def __init__(self, emg_fs: float = 4000.0, imu_fs: float = 4000.0):
-        self.extractor = FeatureExtractor(emg_fs=emg_fs, imu_fs=imu_fs)
+    def __init__(self, emg_fs: float = FEATURE_CONFIG['emg_fs'], 
+                 imu_fs: float = FEATURE_CONFIG['imu_fs']):
+        self.extractor = FeatureExtractor(
+            emg_fs=emg_fs, 
+            imu_fs=imu_fs,
+            emg_threshold=FEATURE_CONFIG.get('emg_threshold', 1e-5),
+            emg_features=FEATURE_CONFIG.get('emg_features'),
+            imu_features=FEATURE_CONFIG.get('imu_features')
+        )
 
     def _decode_cols(self, raw) -> List[str]:
         return [c.decode() if isinstance(c, bytes) else str(c) for c in raw]
 
     def load_and_extract_features(self, h5_paths: List[Path],
+                                  is_sequence: bool = True,
                                   window_size_sec: Optional[float] = None,
                                   window_step_sec: Optional[float] = None) -> pd.DataFrame:
         """
@@ -28,7 +37,15 @@ class DataLoader:
         features from the EMG and IMU segments within it, and returns a single DataFrame 
         containing all features and labels. If window parameters are provided, extracts
         sequences of features over sliding windows.
+        
+        Defaults to FEATURE_CONFIG for window properties if not provided.
         """
+        # Fallback to FEATURE_CONFIG if not provided as arguments
+        if window_size_sec is None:
+            window_size_sec = FEATURE_CONFIG.get('window_size_sec')
+        if window_step_sec is None:
+            window_step_sec = FEATURE_CONFIG.get('window_step_sec')
+            
         all_features = []
         
         for path in h5_paths:
@@ -52,7 +69,7 @@ class DataLoader:
                     emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
 
                     # Run Feature Extraction
-                    if window_size_sec is not None and window_step_sec is not None:
+                    if is_sequence and window_size_sec is not None and window_step_sec is not None:
                         windows = self.extractor.extract_features_windowed(
                             emg_data=emg, emg_cols=emg_cols,
                             imu_data=imu, imu_cols=imu_cols,

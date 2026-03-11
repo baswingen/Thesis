@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from model.data_loader import DataLoader
 from model.model_archs.lstm import LSTMRegressor
-from model.config_model import LSTM_CONFIG
+from model.config_model import LSTM_CONFIG, FEATURE_CONFIG
 
 def main():
     base_dir = Path(__file__).resolve().parent.parent.parent.parent
@@ -24,15 +24,15 @@ def main():
     
     # Define Parameter Grid for LSTM
     param_grid = {
-        'hidden_size': [64, 128, 256, 512],
-        'num_layers': [1, 2, 3, 4],
+        'hidden_size': [128, 256, 512, 1024],
+        'num_layers': [2, 4, 6],
         'dropout_rate': [0.1, 0.2, 0.3, 0.4, 0.5],
         'learning_rate': [0.0001, 0.0005, 0.001, 0.005, 0.01],
         'batch_size': [16, 32, 64, 128],
-        'epochs': [100, 150]  # Let them train a bit longer
+        'epochs': [50, 100]  # Let them train a bit longer
     }
     
-    n_iter = 15  # Increased for a more thorough search
+    n_iter = 10  # Increased for a more thorough search
     
     print(f"Starting LSTM hyperparameter sweep with {n_iter} iterations...")
     print(f"Results will be saved to: {run_dir}\n")
@@ -45,8 +45,8 @@ def main():
 
     loader = DataLoader()
     print("Extracting features (This only happens once for the sweep)...")
-    window_size_sec = LSTM_CONFIG.get('window_size_sec', 0.25)
-    window_step_sec = LSTM_CONFIG.get('window_step_sec', 0.1)
+    window_size_sec = FEATURE_CONFIG.get('window_size_sec', 0.25)
+    window_step_sec = FEATURE_CONFIG.get('window_step_sec', 0.1)
     
     df = loader.load_and_extract_features(h5_paths, 
                                           window_size_sec=window_size_sec,

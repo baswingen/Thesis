@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent.parent))
 
 from model.data_loader import DataLoader
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
-from model.config_model import CNN_LSTM_CONFIG
+from model.config_model import CNN_LSTM_CONFIG, FEATURE_CONFIG
 
 def main():
     base_dir = Path(__file__).resolve().parent.parent.parent.parent
@@ -47,8 +47,8 @@ def main():
 
     loader = DataLoader()
     print("Extracting features (This only happens once for the sweep)...")
-    window_size_sec = CNN_LSTM_CONFIG.get('window_size_sec', 0.25)
-    window_step_sec = CNN_LSTM_CONFIG.get('window_step_sec', 0.1)
+    window_size_sec = FEATURE_CONFIG.get('window_size_sec', 0.25)
+    window_step_sec = FEATURE_CONFIG.get('window_step_sec', 0.1)
     
     df = loader.load_and_extract_features(h5_paths, 
                                           window_size_sec=window_size_sec,
