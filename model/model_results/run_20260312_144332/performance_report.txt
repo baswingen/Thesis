@@ -1,15 +1,14 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260312_120849
+Run Timestamp: 20260312_144332
 =======================================================
 
 --- DATASET INFO ---
 Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5']
 Total samples: 2434
-Evaluation Mode: Train/Validation/Test Split (64/16/20)
-Testing samples: 487
-Training samples: 1557
-Validation samples: 390
+Evaluation Mode: 5-Fold Cross-Validation
+Final Model Training samples: 2190
+Final Model Validation samples: 244
 
 --- FEATURE CONFIGURATION ---
 Window Size: 0.25s, Step: 0.1s
@@ -23,27 +22,28 @@ Num Layers: 2
 Dropout Rate: 0.4
 Learning Rate: 0.005
 Batch Size: 128
-Epochs: 100
+Epochs: 150
 Loss Function: MAE
 Window Size (s): 0.25
 Window Step (s): 0.1
-Random State: 42
+Random State: 11
 
 --- EVALUATION METRICS ---
-Mean Absolute Error: 0.1179
-Mean Squared Error: 0.1175
-Root Mean Squared Error: 0.3428
-R-squared Score: 0.9652
+(Averaged over 5 folds)
+MAE: 0.0958 (±0.0085)
+MSE: 0.0856 (±0.0088)
+RMSE: 0.2922 (±0.0148)
+R2: 0.9747 (±0.0026)
 
 --- PER-WEIGHT METRICS ---
 Weight       | Count    | MAE        | RMSE      
 --------------------------------------------------
-0.00 kg      | 244      | 0.0017     | 0.0243    
-0.75 kg      | 35       | 0.1184     | 0.2439    
-1.00 kg      | 35       | 0.3281     | 0.4717    
-2.00 kg      | 34       | 0.3091     | 0.4307    
-2.25 kg      | 35       | 0.1574     | 0.2910    
-3.00 kg      | 35       | 0.1642     | 0.3231    
-4.25 kg      | 34       | 0.3643     | 0.8702    
-6.00 kg      | 35       | 0.2062     | 0.4936    
+0.00 kg      | 1220     | 0.0038     | 0.0245    
+0.75 kg      | 173      | 0.0992     | 0.2059    
+1.00 kg      | 173      | 0.2146     | 0.3824    
+2.00 kg      | 172      | 0.2912     | 0.5051    
+2.25 kg      | 174      | 0.1796     | 0.4175    
+3.00 kg      | 174      | 0.2673     | 0.4864    
+4.25 kg      | 173      | 0.1835     | 0.5103    
+6.00 kg      | 175      | 0.0840     | 0.2880    
 

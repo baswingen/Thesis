@@ -80,7 +80,7 @@ FEATURE_CONFIG = {
 
 # Cross-Validation Configuration
 CV_CONFIG = {
-    'use_cross_val': False,
+    'use_cross_val': True,
     'n_folds': 5
 }
 
@@ -161,9 +161,9 @@ LSTM_CONFIG = {
     'learning_rate': 0.005,
     'weight_decay': 1e-4,
     'batch_size': 128,          
-    'epochs': 1000,             
+    'epochs': 150,             
     'validation_split': 0.1,
-    'early_stopping_patience': 1000,
+    'early_stopping_patience': 50,
     'random_state': GLOBAL_RANDOM_STATE
 }
 
