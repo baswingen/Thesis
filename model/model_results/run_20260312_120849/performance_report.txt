@@ -1,6 +1,6 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260311_154515
+Run Timestamp: 20260312_120849
 =======================================================
 
 --- DATASET INFO ---
@@ -24,25 +24,26 @@ Dropout Rate: 0.4
 Learning Rate: 0.005
 Batch Size: 128
 Epochs: 100
+Loss Function: MAE
 Window Size (s): 0.25
 Window Step (s): 0.1
 Random State: 42
 
 --- EVALUATION METRICS ---
-Mean Absolute Error: 0.1381
-Mean Squared Error: 0.0941
-Root Mean Squared Error: 0.3068
-R-squared Score: 0.9721
+Mean Absolute Error: 0.1179
+Mean Squared Error: 0.1175
+Root Mean Squared Error: 0.3428
+R-squared Score: 0.9652
 
 --- PER-WEIGHT METRICS ---
 Weight       | Count    | MAE        | RMSE      
 --------------------------------------------------
-0.00 kg      | 244      | 0.0080     | 0.0516    
-0.75 kg      | 35       | 0.2070     | 0.2988    
-1.00 kg      | 35       | 0.2749     | 0.3594    
-2.00 kg      | 34       | 0.3097     | 0.3660    
-2.25 kg      | 35       | 0.1914     | 0.2534    
-3.00 kg      | 35       | 0.3518     | 0.4567    
-4.25 kg      | 34       | 0.3401     | 0.7137    
-6.00 kg      | 35       | 0.2093     | 0.4185    
+0.00 kg      | 244      | 0.0017     | 0.0243    
+0.75 kg      | 35       | 0.1184     | 0.2439    
+1.00 kg      | 35       | 0.3281     | 0.4717    
+2.00 kg      | 34       | 0.3091     | 0.4307    
+2.25 kg      | 35       | 0.1574     | 0.2910    
+3.00 kg      | 35       | 0.1642     | 0.3231    
+4.25 kg      | 34       | 0.3643     | 0.8702    
+6.00 kg      | 35       | 0.2062     | 0.4936    
 

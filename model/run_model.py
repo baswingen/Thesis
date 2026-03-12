@@ -244,6 +244,12 @@ def main():
         y_pred = model.predict(X_test)
         model.plot_results(y_test, y_pred, plot_path)
     
+    # Save loss plot if applicable (for deep learning models)
+    if hasattr(model, 'plot_loss'):
+        loss_plot_path = run_dir / "loss_plot.png"
+        model.plot_loss(loss_plot_path)
+        print(f"Loss plot saved to {loss_plot_path}")
+    
     
     # Calculate per-weight statistics for regression
     per_weight_stats = None
@@ -331,6 +337,7 @@ def main():
             f.write(f"Learning Rate: {model.learning_rate}\n")
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
+            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "gru":
             f.write(f"Hidden Size: {model.hidden_size}\n")
@@ -339,6 +346,7 @@ def main():
             f.write(f"Learning Rate: {model.learning_rate}\n")
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
+            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
             f.write(f"Window Size (s): {model.window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
@@ -349,6 +357,7 @@ def main():
             f.write(f"Learning Rate: {model.learning_rate}\n")
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
+            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
             f.write(f"Window Size (s): {model.window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
@@ -361,6 +370,7 @@ def main():
             f.write(f"Learning Rate: {model.learning_rate}\n")
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
+            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
             f.write(f"Window Size (s): {model.window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
@@ -373,6 +383,7 @@ def main():
             f.write(f"Learning Rate: {model.learning_rate}\n")
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
+            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
             f.write(f"Window Size (s): {model.window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")

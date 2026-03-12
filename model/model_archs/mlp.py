@@ -14,7 +14,7 @@ import joblib
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import MLP_CONFIG
+from model.config_model import MLP_CONFIG, GLOBAL_LOSS_FUNCTION
 
 class MLP(nn.Module):
     """
@@ -51,6 +51,7 @@ class MLPRegressor:
                  epochs: int = MLP_CONFIG['epochs'],
                  validation_split: float = MLP_CONFIG.get('validation_split', 0.2),
                  early_stopping_patience: int = MLP_CONFIG.get('early_stopping_patience', 10),
+                 loss_type: str = GLOBAL_LOSS_FUNCTION,
                  random_state: int = MLP_CONFIG['random_state']):
         
         self.hidden_layers = hidden_layers
@@ -61,11 +62,15 @@ class MLPRegressor:
         self.epochs = epochs
         self.validation_split = validation_split
         self.early_stopping_patience = early_stopping_patience
+        self.loss_type = loss_type.lower()
         self.random_state = random_state
         
         # Split stats
         self.train_samples = 0
         self.val_samples = 0
+        
+        # Loss history
+        self.loss_history = {"train": [], "val": []}
         
         torch.manual_seed(self.random_state)
         
@@ -104,7 +109,13 @@ class MLPRegressor:
         # 3. Initialize model
         self.model = MLP(X_train_scaled.shape[1], self.hidden_layers, self.dropout_rate).to(self.device)
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        criterion = nn.MSELoss()
+        
+        if self.loss_type == 'mae':
+            criterion = nn.L1Loss()
+        else:
+            criterion = nn.MSELoss()
+            if self.loss_type != 'mse':
+                print(f"[MLPRegressor] Unknown loss type '{self.loss_type}', defaulting to MSE.")
         
         # 4. Prepare DataLoaders
         dataset_train = TensorDataset(torch.from_numpy(X_train_scaled), torch.from_numpy(y_train_arr))
@@ -149,6 +160,10 @@ class MLPRegressor:
                 
                 avg_val_loss = running_val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
+                
+                # TRACK LOSS
+                self.loss_history["train"].append(avg_train_loss)
+                self.loss_history["val"].append(avg_val_loss)
                 
                 # EARLY STOPPING CHECK
                 if avg_val_loss < best_val_loss:
@@ -221,6 +236,7 @@ class MLPRegressor:
                 'weight_decay': self.weight_decay,
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
+                'loss_type': self.loss_type,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
                 'random_state': self.random_state
@@ -228,7 +244,8 @@ class MLPRegressor:
             'split_info': {
                 'train_samples': self.train_samples,
                 'val_samples': self.val_samples
-            }
+            },
+            'loss_history': self.loss_history
         }
         torch.save(state, filepath)
         # print(f"MLP Model saved to {filepath}")
@@ -251,6 +268,9 @@ class MLPRegressor:
         if 'split_info' in state:
             regressor.train_samples = state['split_info'].get('train_samples', 0)
             regressor.val_samples = state['split_info'].get('val_samples', 0)
+            
+        if 'loss_history' in state:
+            regressor.loss_history = state['loss_history']
             
         return regressor
 
@@ -283,5 +303,24 @@ class MLPRegressor:
         plt.legend()
         
         save_path = Path(save_path)
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+
+    def plot_loss(self, save_path: str | Path):
+        """Plot the training and validation loss history."""
+        if not self.loss_history["train"]:
+            print("No loss history to plot.")
+            return
+            
+        plt.figure(figsize=(8, 6))
+        plt.plot(self.loss_history["train"], label="Train Loss")
+        plt.plot(self.loss_history["val"], label="Val Loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss (MSE)")
+        plt.title(f"MLP: Training and Validation Loss")
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()

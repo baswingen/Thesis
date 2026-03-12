@@ -1,0 +1,497 @@
+============================================================
+ABLATION STUDY REPORT
+Model        : LSTM
+Run Timestamp: 20260311_215116
+Eval Mode    : Train/Test Split
+Primary Metric: MAE
+Phases run   : leave_channel, leave_feature, modality, single_channel
+
+--- FEATURE CONFIGURATION ---
+Window Size: 0.25s, Step: 0.1s
+Enabled EMG Features: MAV, WL, SSC, VAR, IEMG, Skew, Kurt, Power
+Enabled IMU Features: Mean, Max, Min, SMA, Kurt
+============================================================
+
+============================================================
+MODALITY ABLATION (both / emg-only / imu-only)
+============================================================
+
+  Modality: BOTH
+    MAE: 0.1261
+    MSE: 0.0663
+    RMSE: 0.2575
+    R2: 0.9803
+
+  Modality: EMG
+    MAE: 0.2128
+    MSE: 0.1570
+    RMSE: 0.3963
+    R2: 0.9534
+
+  Modality: IMU
+    MAE: 0.4260
+    MSE: 0.5926
+    RMSE: 0.7698
+    R2: 0.8242
+
+
+============================================================
+CHANNEL ABLATION — leave-one-channel-out
+============================================================
+
+  Baseline (MAE): 0.1261
+
+  Ranked by impact (most → least important):
+  Channel                        ΔMAE       |Δ|
+  ----------------------------------------------
+  ch19                        +0.0362    0.0362
+  ay1                         +0.0252    0.0252
+  ch18                        +0.0248    0.0248
+  ch5                         +0.0234    0.0234
+  ch17                        +0.0155    0.0155
+  ch20                        +0.0146    0.0146
+  yaw2                        +0.0144    0.0144
+  ch7                         +0.0141    0.0141
+  ax2                         +0.0095    0.0095
+  ch1                         +0.0092    0.0092
+  az1                         +0.0084    0.0084
+  ay2                         +0.0079    0.0079
+  yaw1                        +0.0073    0.0073
+  ch2                         +0.0072    0.0072
+  ax1                         +0.0056    0.0056
+  ch8                         +0.0036    0.0036
+  pitch2                      +0.0033    0.0033
+  roll2                       +0.0029    0.0029
+  az2                         +0.0016    0.0016
+  roll1                       +0.0006    0.0006
+  pitch1                      +0.0005    0.0005
+  ch4                         -0.0072   -0.0072
+  ch3                         -0.0074   -0.0074
+  ch6                         -0.0106   -0.0106
+
+  Full results per channel:
+
+  Excluded: ax1
+    MAE: 0.1316
+    MSE: 0.0758
+    RMSE: 0.2754
+    R2: 0.9775
+
+  Excluded: ax2
+    MAE: 0.1355
+    MSE: 0.0779
+    RMSE: 0.2790
+    R2: 0.9769
+
+  Excluded: ay1
+    MAE: 0.1512
+    MSE: 0.0913
+    RMSE: 0.3022
+    R2: 0.9729
+
+  Excluded: ay2
+    MAE: 0.1340
+    MSE: 0.0732
+    RMSE: 0.2706
+    R2: 0.9783
+
+  Excluded: az1
+    MAE: 0.1344
+    MSE: 0.0834
+    RMSE: 0.2888
+    R2: 0.9753
+
+  Excluded: az2
+    MAE: 0.1277
+    MSE: 0.0691
+    RMSE: 0.2629
+    R2: 0.9795
+
+  Excluded: ch1
+    MAE: 0.1353
+    MSE: 0.0774
+    RMSE: 0.2781
+    R2: 0.9771
+
+  Excluded: ch17
+    MAE: 0.1416
+    MSE: 0.0802
+    RMSE: 0.2832
+    R2: 0.9762
+
+  Excluded: ch18
+    MAE: 0.1508
+    MSE: 0.0782
+    RMSE: 0.2796
+    R2: 0.9768
+
+  Excluded: ch19
+    MAE: 0.1622
+    MSE: 0.0989
+    RMSE: 0.3146
+    R2: 0.9707
+
+  Excluded: ch2
+    MAE: 0.1332
+    MSE: 0.0820
+    RMSE: 0.2864
+    R2: 0.9757
+
+  Excluded: ch20
+    MAE: 0.1407
+    MSE: 0.0777
+    RMSE: 0.2787
+    R2: 0.9770
+
+  Excluded: ch3
+    MAE: 0.1187
+    MSE: 0.0645
+    RMSE: 0.2539
+    R2: 0.9809
+
+  Excluded: ch4
+    MAE: 0.1189
+    MSE: 0.0703
+    RMSE: 0.2651
+    R2: 0.9792
+
+  Excluded: ch5
+    MAE: 0.1494
+    MSE: 0.0796
+    RMSE: 0.2821
+    R2: 0.9764
+
+  Excluded: ch6
+    MAE: 0.1155
+    MSE: 0.0564
+    RMSE: 0.2376
+    R2: 0.9833
+
+  Excluded: ch7
+    MAE: 0.1401
+    MSE: 0.0809
+    RMSE: 0.2844
+    R2: 0.9760
+
+  Excluded: ch8
+    MAE: 0.1296
+    MSE: 0.0724
+    RMSE: 0.2690
+    R2: 0.9785
+
+  Excluded: pitch1
+    MAE: 0.1265
+    MSE: 0.0789
+    RMSE: 0.2809
+    R2: 0.9766
+
+  Excluded: pitch2
+    MAE: 0.1294
+    MSE: 0.0744
+    RMSE: 0.2728
+    R2: 0.9779
+
+  Excluded: roll1
+    MAE: 0.1267
+    MSE: 0.0722
+    RMSE: 0.2688
+    R2: 0.9786
+
+  Excluded: roll2
+    MAE: 0.1290
+    MSE: 0.0743
+    RMSE: 0.2726
+    R2: 0.9780
+
+  Excluded: yaw1
+    MAE: 0.1333
+    MSE: 0.0692
+    RMSE: 0.2630
+    R2: 0.9795
+
+  Excluded: yaw2
+    MAE: 0.1405
+    MSE: 0.0800
+    RMSE: 0.2829
+    R2: 0.9763
+
+============================================================
+CHANNEL ABLATION — single-channel-only
+============================================================
+
+  Ranked by MAE (best performing channel first):
+  Channel                         MAE
+  ------------------------------------
+  ch18                         0.2888
+  ch7                          0.4018
+  ch20                         0.4219
+  ch6                          0.5081
+  ch8                          0.5121
+  ch19                         0.5122
+  ch5                          0.5887
+  ch2                          0.5961
+  ch4                          0.6028
+  ay2                          0.6895
+  ax2                          0.6913
+  ch1                          0.7137
+  ch3                          0.7480
+  ax1                          0.7957
+  az2                          0.8039
+  ay1                          0.8816
+  az1                          0.9503
+  roll2                        0.9741
+  ch17                         1.0247
+  pitch2                       1.0384
+  pitch1                       1.1257
+  yaw1                         1.1581
+  roll1                        1.1761
+  yaw2                         1.1912
+
+  Full results per channel:
+
+  Only: ax1
+    MAE: 0.7957
+    MSE: 1.5515
+    RMSE: 1.2456
+    R2: 0.5399
+
+  Only: ax2
+    MAE: 0.6913
+    MSE: 1.3527
+    RMSE: 1.1631
+    R2: 0.5988
+
+  Only: ay1
+    MAE: 0.8816
+    MSE: 1.8889
+    RMSE: 1.3744
+    R2: 0.4398
+
+  Only: ay2
+    MAE: 0.6895
+    MSE: 1.2959
+    RMSE: 1.1384
+    R2: 0.6157
+
+  Only: az1
+    MAE: 0.9503
+    MSE: 2.0060
+    RMSE: 1.4163
+    R2: 0.4051
+
+  Only: az2
+    MAE: 0.8039
+    MSE: 1.6129
+    RMSE: 1.2700
+    R2: 0.5217
+
+  Only: ch1
+    MAE: 0.7137
+    MSE: 1.4592
+    RMSE: 1.2080
+    R2: 0.5672
+
+  Only: ch17
+    MAE: 1.0247
+    MSE: 2.3043
+    RMSE: 1.5180
+    R2: 0.3166
+
+  Only: ch18
+    MAE: 0.2888
+    MSE: 0.3289
+    RMSE: 0.5735
+    R2: 0.9025
+
+  Only: ch19
+    MAE: 0.5122
+    MSE: 0.8563
+    RMSE: 0.9254
+    R2: 0.7460
+
+  Only: ch2
+    MAE: 0.5961
+    MSE: 0.9827
+    RMSE: 0.9913
+    R2: 0.7086
+
+  Only: ch20
+    MAE: 0.4219
+    MSE: 0.5852
+    RMSE: 0.7650
+    R2: 0.8265
+
+  Only: ch3
+    MAE: 0.7480
+    MSE: 1.1716
+    RMSE: 1.0824
+    R2: 0.6525
+
+  Only: ch4
+    MAE: 0.6028
+    MSE: 0.9041
+    RMSE: 0.9509
+    R2: 0.7319
+
+  Only: ch5
+    MAE: 0.5887
+    MSE: 0.7799
+    RMSE: 0.8831
+    R2: 0.7687
+
+  Only: ch6
+    MAE: 0.5081
+    MSE: 0.7330
+    RMSE: 0.8562
+    R2: 0.7826
+
+  Only: ch7
+    MAE: 0.4018
+    MSE: 0.5033
+    RMSE: 0.7095
+    R2: 0.8507
+
+  Only: ch8
+    MAE: 0.5121
+    MSE: 0.7217
+    RMSE: 0.8495
+    R2: 0.7860
+
+  Only: pitch1
+    MAE: 1.1257
+    MSE: 2.7461
+    RMSE: 1.6571
+    R2: 0.1856
+
+  Only: pitch2
+    MAE: 1.0384
+    MSE: 2.1218
+    RMSE: 1.4566
+    R2: 0.3707
+
+  Only: roll1
+    MAE: 1.1761
+    MSE: 2.5326
+    RMSE: 1.5914
+    R2: 0.2489
+
+  Only: roll2
+    MAE: 0.9741
+    MSE: 2.2309
+    RMSE: 1.4936
+    R2: 0.3384
+
+  Only: yaw1
+    MAE: 1.1581
+    MSE: 2.6050
+    RMSE: 1.6140
+    R2: 0.2274
+
+  Only: yaw2
+    MAE: 1.1912
+    MSE: 2.7660
+    RMSE: 1.6631
+    R2: 0.1797
+
+============================================================
+FEATURE-TYPE ABLATION — leave-one-type-out
+============================================================
+
+  Baseline (MAE): 0.1261
+
+  Ranked by impact (most → least important):
+  Feature Type                   ΔMAE       |Δ|
+  ----------------------------------------------
+  EMG_IEMG                    +0.0507    0.0507
+  EMG_Skew                    +0.0358    0.0358
+  EMG_WL                      +0.0223    0.0223
+  EMG_MAV                     +0.0120    0.0120
+  IMU_SMA                     +0.0117    0.0117
+  IMU_Mean                    +0.0098    0.0098
+  IMU_Max                     +0.0096    0.0096
+  IMU_Min                     +0.0071    0.0071
+  EMG_Power                   +0.0027    0.0027
+  IMU_Kurt                    -0.0033   -0.0033
+  EMG_VAR                     -0.0035   -0.0035
+  EMG_Kurt                    -0.0112   -0.0112
+  EMG_SSC                     -0.0244   -0.0244
+
+  Full results per feature type:
+
+  Excluded: EMG_MAV
+    MAE: 0.1381
+    MSE: 0.0767
+    RMSE: 0.2770
+    R2: 0.9772
+
+  Excluded: EMG_WL
+    MAE: 0.1484
+    MSE: 0.0758
+    RMSE: 0.2752
+    R2: 0.9775
+
+  Excluded: EMG_SSC
+    MAE: 0.1016
+    MSE: 0.0481
+    RMSE: 0.2194
+    R2: 0.9857
+
+  Excluded: EMG_VAR
+    MAE: 0.1225
+    MSE: 0.0677
+    RMSE: 0.2602
+    R2: 0.9799
+
+  Excluded: EMG_IEMG
+    MAE: 0.1768
+    MSE: 0.1018
+    RMSE: 0.3191
+    R2: 0.9698
+
+  Excluded: EMG_Skew
+    MAE: 0.1619
+    MSE: 0.0860
+    RMSE: 0.2933
+    R2: 0.9745
+
+  Excluded: EMG_Kurt
+    MAE: 0.1149
+    MSE: 0.0562
+    RMSE: 0.2371
+    R2: 0.9833
+
+  Excluded: EMG_Power
+    MAE: 0.1288
+    MSE: 0.0648
+    RMSE: 0.2546
+    R2: 0.9808
+
+  Excluded: IMU_Mean
+    MAE: 0.1358
+    MSE: 0.0757
+    RMSE: 0.2751
+    R2: 0.9776
+
+  Excluded: IMU_Max
+    MAE: 0.1357
+    MSE: 0.0758
+    RMSE: 0.2753
+    R2: 0.9775
+
+  Excluded: IMU_Min
+    MAE: 0.1332
+    MSE: 0.0756
+    RMSE: 0.2749
+    R2: 0.9776
+
+  Excluded: IMU_SMA
+    MAE: 0.1378
+    MSE: 0.0729
+    RMSE: 0.2699
+    R2: 0.9784
+
+  Excluded: IMU_Kurt
+    MAE: 0.1227
+    MSE: 0.0655
+    RMSE: 0.2559
+    R2: 0.9806

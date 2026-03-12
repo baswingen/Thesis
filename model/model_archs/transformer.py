@@ -15,7 +15,7 @@ import math
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import TRANSFORMER_CONFIG, FEATURE_CONFIG
+from model.config_model import TRANSFORMER_CONFIG, FEATURE_CONFIG, GLOBAL_LOSS_FUNCTION
 
 class SequenceDataset(Dataset):
     def __init__(self, sequences, labels):
@@ -129,6 +129,7 @@ class TimeSeriesTransformerRegressor:
                  early_stopping_patience: int = TRANSFORMER_CONFIG.get('early_stopping_patience', 10),
                  window_size_sec: float = FEATURE_CONFIG['window_size_sec'],
                  window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
+                 loss_type: str = GLOBAL_LOSS_FUNCTION,
                  random_state: int = TRANSFORMER_CONFIG['random_state']):
                  
         self.d_model = d_model
@@ -144,7 +145,11 @@ class TimeSeriesTransformerRegressor:
         self.early_stopping_patience = early_stopping_patience
         self.window_size_sec = window_size_sec
         self.window_step_sec = window_step_sec
+        self.loss_type = loss_type.lower()
         self.random_state = random_state
+        
+        # Loss history
+        self.loss_history = {"train": [], "val": []}
         
         # Split stats
         self.train_samples = 0
@@ -227,7 +232,13 @@ class TimeSeriesTransformerRegressor:
         ).to(self.device)
         
         optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        criterion = nn.MSELoss()
+        
+        if self.loss_type == 'mae':
+            criterion = nn.L1Loss()
+        else:
+            criterion = nn.MSELoss()
+            if self.loss_type != 'mse':
+                print(f"[TransformerRegressor] Unknown loss type '{self.loss_type}', defaulting to MSE.")
         
         dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
@@ -274,6 +285,10 @@ class TimeSeriesTransformerRegressor:
                 
                 avg_val_loss = val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
+                
+                # TRACK LOSS
+                self.loss_history["train"].append(avg_train_loss)
+                self.loss_history["val"].append(avg_val_loss)
                 
                 # EARLY STOPPING CHECK
                 if avg_val_loss < best_val_loss:
@@ -353,6 +368,7 @@ class TimeSeriesTransformerRegressor:
                 'weight_decay': self.weight_decay,
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
+                'loss_type': self.loss_type,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
                 'window_size_sec': self.window_size_sec,
@@ -362,7 +378,8 @@ class TimeSeriesTransformerRegressor:
             'split_info': {
                 'train_samples': self.train_samples,
                 'val_samples': self.val_samples
-            }
+            },
+            'loss_history': self.loss_history
         }
         torch.save(state, filepath)
         
@@ -388,6 +405,9 @@ class TimeSeriesTransformerRegressor:
         if 'split_info' in state:
             regressor.train_samples = state['split_info'].get('train_samples', 0)
             regressor.val_samples = state['split_info'].get('val_samples', 0)
+            
+        if 'loss_history' in state:
+            regressor.loss_history = state['loss_history']
             
         return regressor
 
@@ -415,5 +435,23 @@ class TimeSeriesTransformerRegressor:
         plt.title(f"Transformer: Predicted vs Actual Weight")
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend()
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        plt.close()
+
+    def plot_loss(self, save_path: str | Path):
+        if not self.loss_history["train"]:
+            print("No loss history to plot.")
+            return
+            
+        plt.figure(figsize=(8, 6))
+        plt.plot(self.loss_history["train"], label="Train Loss")
+        plt.plot(self.loss_history["val"], label="Val Loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss (MSE)")
+        plt.title(f"Transformer: Training and Validation Loss")
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()

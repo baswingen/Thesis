@@ -4,7 +4,8 @@ Centralizing these values makes it easier to manage experiments and
 ensures consistency across training and inference scripts.
 """
 
-GLOBAL_RANDOM_STATE = 42
+GLOBAL_RANDOM_STATE = 11
+GLOBAL_LOSS_FUNCTION = 'mae'  # Options: 'mse' or 'mae'
 
 ###########################################################
 # FEATURE EXTRACTION CONFIGURATION
@@ -147,7 +148,7 @@ GRU_CONFIG = {
     'weight_decay': 1e-4,
     'batch_size': 64,
     'epochs': 100,
-    'validation_split': 0.2,
+    'validation_split': 0.1,
     'early_stopping_patience': 10,
     'random_state': GLOBAL_RANDOM_STATE
 }
@@ -160,9 +161,9 @@ LSTM_CONFIG = {
     'learning_rate': 0.005,
     'weight_decay': 1e-4,
     'batch_size': 128,          
-    'epochs': 100,             
-    'validation_split': 0.2,
-    'early_stopping_patience': 10,
+    'epochs': 1000,             
+    'validation_split': 0.1,
+    'early_stopping_patience': 1000,
     'random_state': GLOBAL_RANDOM_STATE
 }
 
