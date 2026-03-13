@@ -15,6 +15,7 @@ import joblib
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from model.config_model import MLP_CONFIG, GLOBAL_LOSS_FUNCTION
+from model import plotting_utils
 
 class MLP(nn.Module):
     """
@@ -51,6 +52,8 @@ class MLPRegressor:
                  epochs: int = MLP_CONFIG['epochs'],
                  validation_split: float = MLP_CONFIG.get('validation_split', 0.2),
                  early_stopping_patience: int = MLP_CONFIG.get('early_stopping_patience', 10),
+                 scheduler_patience: int = MLP_CONFIG.get('scheduler_patience', 5),
+                 scheduler_factor: float = MLP_CONFIG.get('scheduler_factor', 0.5),
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  random_state: int = MLP_CONFIG['random_state']):
         
@@ -108,7 +111,8 @@ class MLPRegressor:
         
         # 3. Initialize model
         self.model = MLP(X_train_scaled.shape[1], self.hidden_layers, self.dropout_rate).to(self.device)
-        optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=self.scheduler_patience, factor=self.scheduler_factor)
         
         if self.loss_type == 'mae':
             criterion = nn.L1Loss()
@@ -160,6 +164,9 @@ class MLPRegressor:
                 
                 avg_val_loss = running_val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
+                
+                # Step the scheduler based on validation loss
+                scheduler.step(avg_val_loss)
                 
                 # TRACK LOSS
                 self.loss_history["train"].append(avg_train_loss)
@@ -239,6 +246,8 @@ class MLPRegressor:
                 'loss_type': self.loss_type,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
+                'scheduler_patience': self.scheduler_patience,
+                'scheduler_factor': self.scheduler_factor,
                 'random_state': self.random_state
             },
             'split_info': {
@@ -275,52 +284,7 @@ class MLPRegressor:
         return regressor
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
-        """Predicted vs Actual box plot."""
-        plt.figure(figsize=(8, 6))
-        
-        # Extract unique actual weights and group predictions
-        actual_weights = np.sort(np.unique(y_test))
-        pred_groups = [y_pred[y_test == w] for w in actual_weights]
-        
-        # Create boxplot
-        bp = plt.boxplot(pred_groups, positions=actual_weights, widths=0.4, patch_artist=True)
-        for box in bp['boxes']:
-            box.set(facecolor='royalblue', alpha=0.7)
-            
-        min_val = min(y_test.min(), y_pred.min())
-        max_val = max(y_test.max(), y_pred.max())
-        plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')
-        
-        r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
-        plt.text(min_val + 0.1, max_val - 0.5, f"$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg", 
-                 bbox=dict(facecolor='white', alpha=0.8))
-        
-        plt.xlabel("Actual Weight (kg)")
-        plt.ylabel("Predicted Weight (kg)")
-        plt.title(f"MLP: Predicted vs Actual Weight")
-        plt.grid(True, linestyle='--', alpha=0.7)
-        plt.legend()
-        
-        save_path = Path(save_path)
-        plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        plotting_utils.plot_regression_results(y_test, y_pred, save_path, model_name="MLP")
 
     def plot_loss(self, save_path: str | Path):
-        """Plot the training and validation loss history."""
-        if not self.loss_history["train"]:
-            print("No loss history to plot.")
-            return
-            
-        plt.figure(figsize=(8, 6))
-        plt.plot(self.loss_history["train"], label="Train Loss")
-        plt.plot(self.loss_history["val"], label="Val Loss")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss (MSE)")
-        plt.title(f"MLP: Training and Validation Loss")
-        plt.legend()
-        plt.grid(True, linestyle='--', alpha=0.7)
-        plt.tight_layout()
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        plotting_utils.plot_training_loss(self.loss_history, save_path, model_name="MLP")

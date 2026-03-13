@@ -543,17 +543,34 @@ class SegmentedDataset:
             raise KeyError("'t_pc_common' column not found in synced/data.")
         t_common = synced_data[:, synced_cols.index("t_pc_common")]
 
-        # IMU channels — keep only those present in the dataset
-        imu_indices = []
-        imu_cols_found = []
-        for col in IMU_COLUMNS:
-            if col in synced_cols:
-                imu_indices.append(synced_cols.index(col))
-                imu_cols_found.append(col)
-            else:
-                print(f"[SEGMENTER] WARNING: IMU column '{col}' not found in synced/data, skipped.")
-
-        imu_data = synced_data[:, imu_indices]
+        # ---- IMU: from synced/imu_processed (fallback to synced/data) ----
+        if "synced/imu_processed" in f:
+            ds_imu = f["synced/imu_processed"]
+            raw_imu_cols = list(ds_imu.attrs.get("column_names", []))
+            imu_cols_found = [c.decode() if isinstance(c, (bytes, np.bytes_)) else str(c) for c in raw_imu_cols]
+            
+            # Ignore t_pc_common and t_tmsi from imu_processed to avoid duplicate columns
+            # if we just want pure IMU fields:
+            imu_indices = []
+            final_imu_cols = []
+            for i, c in enumerate(imu_cols_found):
+                if c not in ["t_pc_common", "t_tmsi"]:
+                    imu_indices.append(i)
+                    final_imu_cols.append(c)
+                    
+            imu_data = ds_imu[:, imu_indices]
+            imu_cols_found = final_imu_cols
+        else:
+            print("[SEGMENTER] WARNING: 'synced/imu_processed' not found. Falling back to raw IMU.")
+            imu_indices = []
+            imu_cols_found = []
+            for col in IMU_COLUMNS:
+                if col in synced_cols:
+                    imu_indices.append(synced_cols.index(col))
+                    imu_cols_found.append(col)
+                else:
+                    print(f"[SEGMENTER] WARNING: IMU column '{col}' not found in synced/data, skipped.")
+            imu_data = synced_data[:, imu_indices]
 
         # ---- EMG: from synced/emg_processed ----
         if "synced/emg_processed" not in f:

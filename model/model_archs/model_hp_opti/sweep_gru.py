@@ -29,7 +29,7 @@ def main():
         'dropout_rate': [0.0, 0.1, 0.2, 0.3],
         'learning_rate': [0.0005, 0.001, 0.005],
         'batch_size': [16, 32, 64],
-        'epochs': [50, 100]  # Kept lower for sweep to save time, or 100
+        'weight_decay': [0.0, 1e-5, 1e-4, 1e-3]
     }
     
     n_iter = 10  # Number of random combinations to try
@@ -45,11 +45,13 @@ def main():
 
     loader = DataLoader()
     print("Extracting features (This only happens once for the sweep)...")
-    window_size_sec = FEATURE_CONFIG.get('window_size_sec', 0.25)
+    emg_window_size_sec = FEATURE_CONFIG.get('emg_window_size_sec', 0.2)
+    imu_window_size_sec = FEATURE_CONFIG.get('imu_window_size_sec', 0.25)
     window_step_sec = FEATURE_CONFIG.get('window_step_sec', 0.1)
     
     df = loader.load_and_extract_features(h5_paths, 
-                                          window_size_sec=window_size_sec,
+                                          emg_window_size_sec=emg_window_size_sec,
+                                          imu_window_size_sec=imu_window_size_sec,
                                           window_step_sec=window_step_sec)
     
     if df.empty:
@@ -86,11 +88,13 @@ def main():
             num_layers=params['num_layers'],
             dropout_rate=params['dropout_rate'],
             learning_rate=params['learning_rate'],
+            weight_decay=params['weight_decay'],
             batch_size=params['batch_size'],
-            epochs=params['epochs'],
+            epochs=GRU_CONFIG.get('epochs', 100),
             validation_split=GRU_CONFIG.get('validation_split', 0.2),
             early_stopping_patience=GRU_CONFIG.get('early_stopping_patience', 10),
-            window_size_sec=window_size_sec,
+            emg_window_size_sec=emg_window_size_sec,
+            imu_window_size_sec=imu_window_size_sec,
             window_step_sec=window_step_sec,
             random_state=GRU_CONFIG.get('random_state', 42)
         )

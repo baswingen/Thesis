@@ -1,0 +1,50 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260313_111248
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5']
+Total samples: 2434
+Evaluation Mode: Train/Validation/Test Split (72/8/20)
+Testing samples: 487
+Training samples: 1752
+Validation samples: 195
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.3s, Step: 0.1s
+Enabled EMG Features: MAV, WL, SSC, VAR, IEMG, Skew, Kurt, MNF, MDF, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Var, Std, Max, SMA, P2P, Kurt, DomFreq, SpecEnergy, MNF, MDF, SVM_Mean, SVM_Std
+
+--- HYPERPARAMETERS ---
+Model: GRU
+Hidden Size: 256
+Num Layers: 3
+Dropout Rate: 0.2
+Learning Rate: 0.005
+Batch Size: 64
+Epochs: 100
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.3
+Window Step (s): 0.1
+Random State: 18
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.1697
+Mean Squared Error: 0.0782
+Root Mean Squared Error: 0.2797
+R-squared Score: 0.9769
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 244      | 0.0745     | 0.1066    
+0.75 kg      | 34       | 0.2361     | 0.2840    
+1.00 kg      | 35       | 0.2009     | 0.2886    
+2.00 kg      | 34       | 0.3044     | 0.4148    
+2.25 kg      | 35       | 0.2497     | 0.3480    
+3.00 kg      | 35       | 0.3445     | 0.4445    
+4.25 kg      | 35       | 0.3867     | 0.5399    
+6.00 kg      | 35       | 0.1350     | 0.2658    
+

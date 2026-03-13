@@ -29,7 +29,7 @@ def main():
         'dropout_rate': [0.1, 0.2, 0.3, 0.4, 0.5],
         'learning_rate': [0.0001, 0.0005, 0.001, 0.005, 0.01],
         'batch_size': [16, 32, 64, 128],
-        'epochs': [50, 100]  # Let them train a bit longer
+        'weight_decay': [0.0, 1e-5, 1e-4, 1e-3]
     }
     
     n_iter = 10  # Increased for a more thorough search
@@ -45,11 +45,13 @@ def main():
 
     loader = DataLoader()
     print("Extracting features (This only happens once for the sweep)...")
-    window_size_sec = FEATURE_CONFIG.get('window_size_sec', 0.25)
+    emg_window_size_sec = FEATURE_CONFIG.get('emg_window_size_sec', 0.2)
+    imu_window_size_sec = FEATURE_CONFIG.get('imu_window_size_sec', 0.25)
     window_step_sec = FEATURE_CONFIG.get('window_step_sec', 0.1)
     
     df = loader.load_and_extract_features(h5_paths, 
-                                          window_size_sec=window_size_sec,
+                                          emg_window_size_sec=emg_window_size_sec,
+                                          imu_window_size_sec=imu_window_size_sec,
                                           window_step_sec=window_step_sec)
     
     if df.empty:
@@ -86,11 +88,13 @@ def main():
             num_layers=params['num_layers'],
             dropout_rate=params['dropout_rate'],
             learning_rate=params['learning_rate'],
+            weight_decay=params['weight_decay'],
             batch_size=params['batch_size'],
-            epochs=params['epochs'],
+            epochs=LSTM_CONFIG.get('epochs', 100),
             validation_split=LSTM_CONFIG.get('validation_split', 0.2),
             early_stopping_patience=LSTM_CONFIG.get('early_stopping_patience', 10),
-            window_size_sec=window_size_sec,
+            emg_window_size_sec=emg_window_size_sec,
+            imu_window_size_sec=imu_window_size_sec,
             window_step_sec=window_step_sec,
             random_state=LSTM_CONFIG.get('random_state', 42)
         )

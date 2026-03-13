@@ -8,6 +8,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
 
 from model.config_model import RF_CONFIG
+from model import plotting_utils
 
 class RFRegressor:
     """
@@ -88,38 +89,5 @@ class RFRegressor:
         return regressor
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
-        """
-        Creates a 'Predicted vs Actual' box plot and saves it to a file.
-        """
-        plt.figure(figsize=(8, 6))
-        
-        # Extract unique actual weights and group predictions
-        actual_weights = np.sort(np.unique(y_test))
-        pred_groups = [y_pred[y_test == w] for w in actual_weights]
-        
-        # Create boxplot
-        bp = plt.boxplot(pred_groups, positions=actual_weights, widths=0.4, patch_artist=True)
-        for box in bp['boxes']:
-            box.set(facecolor='lightgreen', alpha=0.7)
-        
-        # Unity line (Actual = Predicted)
-        min_val = min(y_test.min(), y_pred.min())
-        max_val = max(y_test.max(), y_pred.max())
-        plt.plot([min_val, max_val], [min_val, max_val], 'r--', lw=2, label='Perfect Prediction')
-        
-        # Metrics annotation
-        r2 = r2_score(y_test, y_pred)
-        mae = mean_absolute_error(y_test, y_pred)
-        plt.text(min_val + 0.1, max_val - 0.5, f"$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg", 
-                 bbox=dict(facecolor='white', alpha=0.8))
-        
-        plt.xlabel("Actual Weight (kg)")
-        plt.ylabel("Predicted Weight (kg)")
-        plt.title(f"Random Forest: Predicted vs Actual Weight")
-        plt.grid(True, linestyle='--', alpha=0.7)
-        plt.legend()
-        
-        save_path = Path(save_path)
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
+        plotting_utils.plot_regression_results(y_test, y_pred, save_path, model_name="Random Forest")
         print(f"Regression plot saved to {save_path}")

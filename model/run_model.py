@@ -4,12 +4,15 @@ import numpy as np
 import sys
 from pathlib import Path
 from datetime import datetime
+import time
+import torch
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 
 # Add project root to sys.path so 'model' package can be found
 sys.path.append(str(Path(__file__).parent.parent))
 
+from model import performance_utils
 from model.data_loader import DataLoader
 from model.model_archs.svm import SVMClassifier
 from model.model_archs.rbfnn import RBFNNClassifier
@@ -33,8 +36,10 @@ from sklearn.metrics import (
 ###########################################################
 # CONFIGURATION
 ###########################################################
-# Choose model to train: "svm", "rbfnn", "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", or "transformer"
-MODEL_TYPE = "lstm"
+# Choose model to train:
+MODEL_TYPE = "gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+TRAIN_TEST_SPLIT = 0.2
+USE_CROSS_VAL = False
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -149,7 +154,19 @@ def main():
     # Prepare data for ML
     
     X, y = loader.prepare_for_ml(df, target_col=target_col)
-    print(f"Feature matrix (X) shape: {X.shape}")
+    
+    if is_sequence:
+        avg_seq_len = np.mean([len(s) for s in X.iloc[:, 0]])
+        # Access first window of first sequence to get feature count
+        first_seq = X.iloc[0, 0]
+        num_feats_per_window = len(first_seq[0]) if first_seq else 0
+        print(f"Sequence Data Summary:")
+        print(f"  - Total Lifts (Sequences): {len(X)}")
+        print(f"  - Average Windows per Lift: {avg_seq_len:.1f}")
+        print(f"  - Features per Window: {num_feats_per_window}")
+    else:
+        print(f"Feature matrix (X) shape: {X.shape}")
+        
     print(f"Label vector (y) shape: {y.shape} (Target: {target_col})")
     
     # Determine if we use Cross-Validation or Single Split
@@ -179,10 +196,20 @@ def main():
             if model is None: return
             
             # Train
+            start_train = time.perf_counter()
             model.fit(X_train_fold, y_train_fold)
+            train_time = time.perf_counter() - start_train
             
             # Evaluate
+            start_inf = time.perf_counter()
             metrics, report_str = model.evaluate(X_test_fold, y_test_fold)
+            inf_time = time.perf_counter() - start_inf
+            
+            # Store times in metrics for reporting
+            metrics['train_time'] = train_time
+            metrics['inference_time_total'] = inf_time
+            metrics['inference_time_per_sample'] = inf_time / len(X_test_fold)
+            
             cv_metrics.append(metrics)
             fold_results.append(report_str)
             oof_predictions[test_idx] = model.predict(X_test_fold)
@@ -212,7 +239,7 @@ def main():
         stratify = df["weight"].astype(str) if "weight" in df.columns else None
         
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=7, stratify=stratify
+            X, y, test_size=0.2, random_state=42, stratify=stratify
         )
         
         print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
@@ -221,15 +248,28 @@ def main():
         model = initialize_model(model_type)
         if model is None: return
 
+        # Train
+        start_train = time.perf_counter()
         model.fit(X_train, y_train)
+        train_time = time.perf_counter() - start_train
         
         # Evaluate model
         print(f"\nEvaluating {model_type.upper()} Model on unseen test set...")
         
+        start_inf = time.perf_counter()
         metrics, report_str = model.evaluate(X_test, y_test)
+        inf_time = time.perf_counter() - start_inf
+        
+        # Add timing to metrics
+        metrics['train_time'] = train_time
+        metrics['inference_time_total'] = inf_time
+        metrics['inference_time_per_sample'] = inf_time / len(X_test)
+
         print("=" * 55)
         print("Regression Metrics:")
         print(report_str)
+        print(f"Training Time: {train_time:.2f}s")
+        print(f"Inference Time (per sample): {metrics['inference_time_per_sample']*1000:.4f}ms")
         print("=" * 55)
     
     # Save the Model structure
@@ -256,8 +296,8 @@ def main():
     if use_cv:
         per_weight_stats = calculate_per_weight_metrics(y, oof_predictions)
     else:
-        y_pred_test = model.predict(X_test)
-        per_weight_stats = calculate_per_weight_metrics(y_test, y_pred_test)
+        # Reuse y_pred already computed for the regression plot above
+        per_weight_stats = calculate_per_weight_metrics(y_test, y_pred)
 
     # Save detailed performance report
     report_file = run_dir / "performance_report.txt"
@@ -296,7 +336,7 @@ def main():
         f.write("\n")
 
         f.write("--- FEATURE CONFIGURATION ---\n")
-        f.write(f"Window Size: {FEATURE_CONFIG['window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
+        f.write(f"EMG Window Size: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window Size: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
         
         emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
         f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")
@@ -347,7 +387,8 @@ def main():
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"Window Size (s): {model.window_size_sec}\n")
+            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
+            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "lstm":
@@ -358,7 +399,8 @@ def main():
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"Window Size (s): {model.window_size_sec}\n")
+            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
+            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "cnn_lstm":
@@ -371,7 +413,8 @@ def main():
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"Window Size (s): {model.window_size_sec}\n")
+            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
+            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "transformer":
@@ -384,7 +427,8 @@ def main():
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"Window Size (s): {model.window_size_sec}\n")
+            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
+            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
             f.write(f"Window Step (s): {model.window_step_sec}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         
@@ -402,6 +446,45 @@ def main():
             for stats in per_weight_stats:
                 f.write(f"{stats['Weight']:<12} | {stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
             f.write("\n")
+            
+        # Add Compute Metrics
+        f.write("--- COMPUTE & TIMING METRICS ---\n")
+        device_info = performance_utils.get_device_info()
+        f.write(f"Device: {performance_utils.format_device_string(device_info)}\n")
+        
+        if hasattr(model, 'model') and isinstance(model.model, torch.nn.Module):
+            total_params, trainable_params = performance_utils.count_parameters(model.model)
+            # Estimate GFLOPs
+            # For sequence models, we need seq_len
+            seq_len = None
+            if is_sequence:
+                # Try to get avg seq len from previous calculation
+                try:
+                    seq_len = int(avg_seq_len)
+                except:
+                    seq_len = 100 # Fallback
+            
+            gflops_per_sample = performance_utils.estimate_flops(model.model, seq_len=seq_len)
+            f.write(f"Total Parameters: {total_params:,}\n")
+            f.write(f"Trainable Parameters: {trainable_params:,}\n")
+            f.write(f"Estimated Inference GFLOPs (per sample): {gflops_per_sample:.6f}\n")
+            
+            # Training total GFLOPs estimate: GFLOPs * samples * epochs
+            total_train_gflops = gflops_per_sample * getattr(model, 'train_samples', 0) * getattr(model, 'epochs', 1) * 3 # 3x for backward pass approx
+            f.write(f"Estimated Total Training GFLOPs: {total_train_gflops:.4f}\n")
+        else:
+            f.write("Parameter count: N/A (Classical ML)\n")
+            f.write("GFLOPs estimate: N/A (Classical ML)\n")
+
+        if use_cv:
+            avg_train_time = np.mean([m['train_time'] for m in cv_metrics])
+            avg_inf_time_sample = np.mean([m['inference_time_per_sample'] for m in cv_metrics])
+            f.write(f"Avg Training Time: {avg_train_time:.4f}s\n")
+            f.write(f"Avg Inference Time (per sample): {avg_inf_time_sample*1000:.4f}ms\n")
+        else:
+            f.write(f"Training Time: {metrics['train_time']:.4f}s\n")
+            f.write(f"Inference Time (per sample): {metrics['inference_time_per_sample']*1000:.4f}ms\n")
+        f.write("\n")
             
     print(f"\nPerformance report saved to {report_file}")
 

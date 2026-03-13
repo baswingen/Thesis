@@ -1,0 +1,889 @@
+============================================================
+ABLATION STUDY REPORT
+Model        : LSTM
+Run Timestamp: 20260312_165919
+Eval Mode    : Train/Test Split
+Primary Metric: MAE
+Phases run   : leave_channel, leave_feature, modality, single_channel
+
+--- FEATURE CONFIGURATION ---
+Window Size: 0.5s, Step: 0.1s
+Enabled EMG Features: MAV, WL, SSC, VAR, IEMG, Skew, Kurt, Power
+Enabled IMU Features: Mean, Var, Std, Max, Min, SMA, P2P, Kurt, Jerk, DomFreq, SpecEnergy, MNF, MDF, SVM_Mean, SVM_Std
+============================================================
+
+============================================================
+MODALITY ABLATION (both / emg-only / imu-only)
+============================================================
+
+  Modality: BOTH
+    MAE: 0.0979
+    MSE: 0.0612
+    RMSE: 0.2475
+    R2: 0.9818
+
+  Modality: EMG
+    MAE: 0.1728
+    MSE: 0.1397
+    RMSE: 0.3737
+    R2: 0.9586
+
+  Modality: IMU
+    MAE: 0.3003
+    MSE: 0.4182
+    RMSE: 0.6467
+    R2: 0.8760
+
+
+============================================================
+CHANNEL ABLATION — leave-one-channel-out
+============================================================
+
+  Baseline (MAE): 0.0979
+
+  Ranked by impact (most → least important):
+  Channel                        ΔMAE       |Δ|
+  ----------------------------------------------
+  ch20                        +0.0490    0.0490
+  grav_z1                     +0.0334    0.0334
+  ch4                         +0.0332    0.0332
+  ch7                         +0.0322    0.0322
+  sin_yaw_diff                +0.0294    0.0294
+  ch19                        +0.0285    0.0285
+  ch17                        +0.0282    0.0282
+  lin_ay2                     +0.0279    0.0279
+  grav_z2                     +0.0276    0.0276
+  lin_ax_diff                 +0.0267    0.0267
+  ch2                         +0.0261    0.0261
+  cos_yaw1                    +0.0247    0.0247
+  sin_pitch2                  +0.0234    0.0234
+  lin_az1                     +0.0233    0.0233
+  ch18                        +0.0231    0.0231
+  grav_z_diff                 +0.0214    0.0214
+  sin_pitch_diff              +0.0203    0.0203
+  cos_roll1                   +0.0196    0.0196
+  sin_roll2                   +0.0188    0.0188
+  sin_yaw2                    +0.0186    0.0186
+  grav_y1                     +0.0179    0.0179
+  lin_az_diff                 +0.0174    0.0174
+  ch5                         +0.0166    0.0166
+  cos_pitch2                  +0.0164    0.0164
+  grav_y2                     +0.0156    0.0156
+  ch3                         +0.0154    0.0154
+  grav_x2                     +0.0147    0.0147
+  cos_yaw_diff                +0.0147    0.0147
+  grav_x1                     +0.0141    0.0141
+  cos_roll_diff               +0.0140    0.0140
+  grav_x_diff                 +0.0135    0.0135
+  sin_roll1                   +0.0126    0.0126
+  lin_ax1                     +0.0115    0.0115
+  ch8                         +0.0114    0.0114
+  lin_ax2                     +0.0106    0.0106
+  cos_pitch_diff              +0.0087    0.0087
+  sin_pitch1                  +0.0087    0.0087
+  lin_ay1                     +0.0085    0.0085
+  cos_yaw2                    +0.0081    0.0081
+  ch1                         +0.0077    0.0077
+  cos_roll2                   +0.0077    0.0077
+  sin_yaw1                    +0.0063    0.0063
+  grav_y_diff                 +0.0047    0.0047
+  cos_pitch1                  +0.0036    0.0036
+  lin_az2                     -0.0007   -0.0007
+  sin_roll_diff               -0.0013   -0.0013
+  ch6                         -0.0014   -0.0014
+  lin_ay_diff                 -0.0021   -0.0021
+
+  Full results per channel:
+
+  Excluded: ch1
+    MAE: 0.1056
+    MSE: 0.0757
+    RMSE: 0.2751
+    R2: 0.9776
+
+  Excluded: ch17
+    MAE: 0.1261
+    MSE: 0.0907
+    RMSE: 0.3012
+    R2: 0.9731
+
+  Excluded: ch18
+    MAE: 0.1210
+    MSE: 0.1021
+    RMSE: 0.3196
+    R2: 0.9697
+
+  Excluded: ch19
+    MAE: 0.1264
+    MSE: 0.1101
+    RMSE: 0.3318
+    R2: 0.9673
+
+  Excluded: ch2
+    MAE: 0.1240
+    MSE: 0.1019
+    RMSE: 0.3192
+    R2: 0.9698
+
+  Excluded: ch20
+    MAE: 0.1468
+    MSE: 0.1270
+    RMSE: 0.3564
+    R2: 0.9623
+
+  Excluded: ch3
+    MAE: 0.1133
+    MSE: 0.0842
+    RMSE: 0.2901
+    R2: 0.9750
+
+  Excluded: ch4
+    MAE: 0.1311
+    MSE: 0.1222
+    RMSE: 0.3496
+    R2: 0.9637
+
+  Excluded: ch5
+    MAE: 0.1145
+    MSE: 0.0818
+    RMSE: 0.2861
+    R2: 0.9757
+
+  Excluded: ch6
+    MAE: 0.0965
+    MSE: 0.0707
+    RMSE: 0.2659
+    R2: 0.9790
+
+  Excluded: ch7
+    MAE: 0.1301
+    MSE: 0.1120
+    RMSE: 0.3347
+    R2: 0.9668
+
+  Excluded: ch8
+    MAE: 0.1093
+    MSE: 0.0805
+    RMSE: 0.2836
+    R2: 0.9761
+
+  Excluded: cos_pitch1
+    MAE: 0.1015
+    MSE: 0.0716
+    RMSE: 0.2676
+    R2: 0.9788
+
+  Excluded: cos_pitch2
+    MAE: 0.1143
+    MSE: 0.0788
+    RMSE: 0.2808
+    R2: 0.9766
+
+  Excluded: cos_pitch_diff
+    MAE: 0.1066
+    MSE: 0.0981
+    RMSE: 0.3132
+    R2: 0.9709
+
+  Excluded: cos_roll1
+    MAE: 0.1175
+    MSE: 0.0881
+    RMSE: 0.2968
+    R2: 0.9739
+
+  Excluded: cos_roll2
+    MAE: 0.1056
+    MSE: 0.0855
+    RMSE: 0.2924
+    R2: 0.9746
+
+  Excluded: cos_roll_diff
+    MAE: 0.1119
+    MSE: 0.0647
+    RMSE: 0.2543
+    R2: 0.9808
+
+  Excluded: cos_yaw1
+    MAE: 0.1226
+    MSE: 0.0879
+    RMSE: 0.2965
+    R2: 0.9739
+
+  Excluded: cos_yaw2
+    MAE: 0.1060
+    MSE: 0.0750
+    RMSE: 0.2738
+    R2: 0.9778
+
+  Excluded: cos_yaw_diff
+    MAE: 0.1126
+    MSE: 0.0801
+    RMSE: 0.2831
+    R2: 0.9762
+
+  Excluded: grav_x1
+    MAE: 0.1120
+    MSE: 0.0993
+    RMSE: 0.3151
+    R2: 0.9705
+
+  Excluded: grav_x2
+    MAE: 0.1126
+    MSE: 0.0772
+    RMSE: 0.2779
+    R2: 0.9771
+
+  Excluded: grav_x_diff
+    MAE: 0.1114
+    MSE: 0.0821
+    RMSE: 0.2866
+    R2: 0.9756
+
+  Excluded: grav_y1
+    MAE: 0.1158
+    MSE: 0.0938
+    RMSE: 0.3062
+    R2: 0.9722
+
+  Excluded: grav_y2
+    MAE: 0.1135
+    MSE: 0.0653
+    RMSE: 0.2555
+    R2: 0.9806
+
+  Excluded: grav_y_diff
+    MAE: 0.1026
+    MSE: 0.0676
+    RMSE: 0.2600
+    R2: 0.9800
+
+  Excluded: grav_z1
+    MAE: 0.1313
+    MSE: 0.0894
+    RMSE: 0.2990
+    R2: 0.9735
+
+  Excluded: grav_z2
+    MAE: 0.1255
+    MSE: 0.0868
+    RMSE: 0.2947
+    R2: 0.9743
+
+  Excluded: grav_z_diff
+    MAE: 0.1192
+    MSE: 0.0791
+    RMSE: 0.2812
+    R2: 0.9765
+
+  Excluded: lin_ax1
+    MAE: 0.1094
+    MSE: 0.0695
+    RMSE: 0.2636
+    R2: 0.9794
+
+  Excluded: lin_ax2
+    MAE: 0.1085
+    MSE: 0.0877
+    RMSE: 0.2961
+    R2: 0.9740
+
+  Excluded: lin_ax_diff
+    MAE: 0.1246
+    MSE: 0.1025
+    RMSE: 0.3202
+    R2: 0.9696
+
+  Excluded: lin_ay1
+    MAE: 0.1064
+    MSE: 0.0733
+    RMSE: 0.2707
+    R2: 0.9783
+
+  Excluded: lin_ay2
+    MAE: 0.1258
+    MSE: 0.0903
+    RMSE: 0.3005
+    R2: 0.9732
+
+  Excluded: lin_ay_diff
+    MAE: 0.0958
+    MSE: 0.0658
+    RMSE: 0.2565
+    R2: 0.9805
+
+  Excluded: lin_az1
+    MAE: 0.1211
+    MSE: 0.0946
+    RMSE: 0.3075
+    R2: 0.9719
+
+  Excluded: lin_az2
+    MAE: 0.0972
+    MSE: 0.0653
+    RMSE: 0.2556
+    R2: 0.9806
+
+  Excluded: lin_az_diff
+    MAE: 0.1153
+    MSE: 0.0863
+    RMSE: 0.2937
+    R2: 0.9744
+
+  Excluded: sin_pitch1
+    MAE: 0.1066
+    MSE: 0.0800
+    RMSE: 0.2829
+    R2: 0.9763
+
+  Excluded: sin_pitch2
+    MAE: 0.1212
+    MSE: 0.0809
+    RMSE: 0.2845
+    R2: 0.9760
+
+  Excluded: sin_pitch_diff
+    MAE: 0.1182
+    MSE: 0.0825
+    RMSE: 0.2872
+    R2: 0.9755
+
+  Excluded: sin_roll1
+    MAE: 0.1105
+    MSE: 0.0673
+    RMSE: 0.2595
+    R2: 0.9800
+
+  Excluded: sin_roll2
+    MAE: 0.1167
+    MSE: 0.0906
+    RMSE: 0.3010
+    R2: 0.9731
+
+  Excluded: sin_roll_diff
+    MAE: 0.0966
+    MSE: 0.0546
+    RMSE: 0.2337
+    R2: 0.9838
+
+  Excluded: sin_yaw1
+    MAE: 0.1042
+    MSE: 0.0656
+    RMSE: 0.2560
+    R2: 0.9806
+
+  Excluded: sin_yaw2
+    MAE: 0.1165
+    MSE: 0.1008
+    RMSE: 0.3174
+    R2: 0.9701
+
+  Excluded: sin_yaw_diff
+    MAE: 0.1273
+    MSE: 0.1080
+    RMSE: 0.3287
+    R2: 0.9680
+
+============================================================
+CHANNEL ABLATION — single-channel-only
+============================================================
+
+  Ranked by MAE (best performing channel first):
+  Channel                         MAE
+  ------------------------------------
+  ch18                         0.2875
+  ch20                         0.3676
+  ch7                          0.4569
+  ch19                         0.5005
+  ch6                          0.5167
+  ch8                          0.5306
+  ch4                          0.5579
+  ch5                          0.6226
+  lin_ax_diff                  0.6325
+  lin_az_diff                  0.6376
+  ch2                          0.6377
+  lin_ay2                      0.6428
+  lin_ay_diff                  0.6589
+  lin_ax2                      0.6589
+  lin_az2                      0.7054
+  ch3                          0.7208
+  grav_y2                      0.7474
+  grav_y_diff                  0.7633
+  lin_ax1                      0.7756
+  lin_az1                      0.7769
+  ch1                          0.7861
+  lin_ay1                      0.8028
+  sin_pitch2                   0.8166
+  sin_pitch_diff               0.8181
+  grav_x1                      0.8421
+  cos_pitch_diff               0.8510
+  grav_x2                      0.8530
+  cos_pitch2                   0.8631
+  grav_y1                      0.8722
+  grav_z2                      0.8809
+  grav_x_diff                  0.8838
+  cos_roll2                    0.9117
+  grav_z_diff                  0.9145
+  sin_roll2                    0.9326
+  sin_yaw1                     0.9425
+  cos_yaw_diff                 0.9451
+  sin_roll_diff                0.9618
+  cos_yaw2                     0.9637
+  cos_yaw1                     0.9731
+  sin_roll1                    0.9751
+  ch17                         0.9831
+  cos_roll1                    0.9861
+  cos_roll_diff                0.9902
+  sin_yaw_diff                 1.0008
+  sin_yaw2                     1.0022
+  cos_pitch1                   1.0234
+  sin_pitch1                   1.0305
+  grav_z1                      1.0662
+
+  Full results per channel:
+
+  Only: ch1
+    MAE: 0.7861
+    MSE: 1.8553
+    RMSE: 1.3621
+    R2: 0.4498
+
+  Only: ch17
+    MAE: 0.9831
+    MSE: 2.5705
+    RMSE: 1.6033
+    R2: 0.2377
+
+  Only: ch18
+    MAE: 0.2875
+    MSE: 0.4096
+    RMSE: 0.6400
+    R2: 0.8785
+
+  Only: ch19
+    MAE: 0.5005
+    MSE: 0.8982
+    RMSE: 0.9477
+    R2: 0.7336
+
+  Only: ch2
+    MAE: 0.6377
+    MSE: 1.2571
+    RMSE: 1.1212
+    R2: 0.6272
+
+  Only: ch20
+    MAE: 0.3676
+    MSE: 0.5744
+    RMSE: 0.7579
+    R2: 0.8297
+
+  Only: ch3
+    MAE: 0.7208
+    MSE: 1.6202
+    RMSE: 1.2729
+    R2: 0.5195
+
+  Only: ch4
+    MAE: 0.5579
+    MSE: 0.9771
+    RMSE: 0.9885
+    R2: 0.7102
+
+  Only: ch5
+    MAE: 0.6226
+    MSE: 1.1570
+    RMSE: 1.0757
+    R2: 0.6569
+
+  Only: ch6
+    MAE: 0.5167
+    MSE: 0.8443
+    RMSE: 0.9189
+    R2: 0.7496
+
+  Only: ch7
+    MAE: 0.4569
+    MSE: 0.6379
+    RMSE: 0.7987
+    R2: 0.8108
+
+  Only: ch8
+    MAE: 0.5306
+    MSE: 0.8556
+    RMSE: 0.9250
+    R2: 0.7463
+
+  Only: cos_pitch1
+    MAE: 1.0234
+    MSE: 3.0518
+    RMSE: 1.7469
+    R2: 0.0949
+
+  Only: cos_pitch2
+    MAE: 0.8631
+    MSE: 2.4813
+    RMSE: 1.5752
+    R2: 0.2641
+
+  Only: cos_pitch_diff
+    MAE: 0.8510
+    MSE: 2.4825
+    RMSE: 1.5756
+    R2: 0.2638
+
+  Only: cos_roll1
+    MAE: 0.9861
+    MSE: 2.8694
+    RMSE: 1.6939
+    R2: 0.1490
+
+  Only: cos_roll2
+    MAE: 0.9117
+    MSE: 2.4467
+    RMSE: 1.5642
+    R2: 0.2744
+
+  Only: cos_roll_diff
+    MAE: 0.9902
+    MSE: 2.7585
+    RMSE: 1.6609
+    R2: 0.1819
+
+  Only: cos_yaw1
+    MAE: 0.9731
+    MSE: 2.8652
+    RMSE: 1.6927
+    R2: 0.1503
+
+  Only: cos_yaw2
+    MAE: 0.9637
+    MSE: 2.7538
+    RMSE: 1.6595
+    R2: 0.1833
+
+  Only: cos_yaw_diff
+    MAE: 0.9451
+    MSE: 2.5887
+    RMSE: 1.6089
+    R2: 0.2323
+
+  Only: grav_x1
+    MAE: 0.8421
+    MSE: 2.3712
+    RMSE: 1.5399
+    R2: 0.2968
+
+  Only: grav_x2
+    MAE: 0.8530
+    MSE: 2.3150
+    RMSE: 1.5215
+    R2: 0.3134
+
+  Only: grav_x_diff
+    MAE: 0.8838
+    MSE: 2.4304
+    RMSE: 1.5590
+    R2: 0.2792
+
+  Only: grav_y1
+    MAE: 0.8722
+    MSE: 2.3570
+    RMSE: 1.5353
+    R2: 0.3010
+
+  Only: grav_y2
+    MAE: 0.7474
+    MSE: 1.9491
+    RMSE: 1.3961
+    R2: 0.4220
+
+  Only: grav_y_diff
+    MAE: 0.7633
+    MSE: 1.9060
+    RMSE: 1.3806
+    R2: 0.4347
+
+  Only: grav_z1
+    MAE: 1.0662
+    MSE: 2.9644
+    RMSE: 1.7217
+    R2: 0.1209
+
+  Only: grav_z2
+    MAE: 0.8809
+    MSE: 2.4211
+    RMSE: 1.5560
+    R2: 0.2820
+
+  Only: grav_z_diff
+    MAE: 0.9145
+    MSE: 2.4941
+    RMSE: 1.5793
+    R2: 0.2603
+
+  Only: lin_ax1
+    MAE: 0.7756
+    MSE: 2.0477
+    RMSE: 1.4310
+    R2: 0.3927
+
+  Only: lin_ax2
+    MAE: 0.6589
+    MSE: 1.4359
+    RMSE: 1.1983
+    R2: 0.5742
+
+  Only: lin_ax_diff
+    MAE: 0.6325
+    MSE: 1.2498
+    RMSE: 1.1180
+    R2: 0.6293
+
+  Only: lin_ay1
+    MAE: 0.8028
+    MSE: 1.7345
+    RMSE: 1.3170
+    R2: 0.4856
+
+  Only: lin_ay2
+    MAE: 0.6428
+    MSE: 1.5198
+    RMSE: 1.2328
+    R2: 0.5493
+
+  Only: lin_ay_diff
+    MAE: 0.6589
+    MSE: 1.5024
+    RMSE: 1.2257
+    R2: 0.5544
+
+  Only: lin_az1
+    MAE: 0.7769
+    MSE: 1.9137
+    RMSE: 1.3834
+    R2: 0.4325
+
+  Only: lin_az2
+    MAE: 0.7054
+    MSE: 1.5390
+    RMSE: 1.2405
+    R2: 0.5436
+
+  Only: lin_az_diff
+    MAE: 0.6376
+    MSE: 1.3193
+    RMSE: 1.1486
+    R2: 0.6087
+
+  Only: sin_pitch1
+    MAE: 1.0305
+    MSE: 3.0561
+    RMSE: 1.7482
+    R2: 0.0936
+
+  Only: sin_pitch2
+    MAE: 0.8166
+    MSE: 2.2281
+    RMSE: 1.4927
+    R2: 0.3392
+
+  Only: sin_pitch_diff
+    MAE: 0.8181
+    MSE: 2.3350
+    RMSE: 1.5281
+    R2: 0.3075
+
+  Only: sin_roll1
+    MAE: 0.9751
+    MSE: 2.7860
+    RMSE: 1.6691
+    R2: 0.1737
+
+  Only: sin_roll2
+    MAE: 0.9326
+    MSE: 2.6367
+    RMSE: 1.6238
+    R2: 0.2180
+
+  Only: sin_roll_diff
+    MAE: 0.9618
+    MSE: 2.6440
+    RMSE: 1.6260
+    R2: 0.2159
+
+  Only: sin_yaw1
+    MAE: 0.9425
+    MSE: 2.6510
+    RMSE: 1.6282
+    R2: 0.2138
+
+  Only: sin_yaw2
+    MAE: 1.0022
+    MSE: 3.0929
+    RMSE: 1.7587
+    R2: 0.0827
+
+  Only: sin_yaw_diff
+    MAE: 1.0008
+    MSE: 3.0003
+    RMSE: 1.7321
+    R2: 0.1102
+
+============================================================
+FEATURE-TYPE ABLATION — leave-one-type-out
+============================================================
+
+  Baseline (MAE): 0.0979
+
+  Ranked by impact (most → least important):
+  Feature Type                   ΔMAE       |Δ|
+  ----------------------------------------------
+  EMG_Skew                    +0.0433    0.0433
+  EMG_IEMG                    +0.0327    0.0327
+  EMG_Kurt                    +0.0293    0.0293
+  EMG_VAR                     +0.0235    0.0235
+  IMU_MNF                     +0.0222    0.0222
+  IMU_Kurt                    +0.0198    0.0198
+  IMU_DomFreq                 +0.0190    0.0190
+  EMG_MAV                     +0.0179    0.0179
+  IMU_SMA                     +0.0165    0.0165
+  IMU_P2P                     +0.0156    0.0156
+  EMG_WL                      +0.0155    0.0155
+  IMU_Max                     +0.0147    0.0147
+  IMU_SpecEnergy              +0.0128    0.0128
+  EMG_SSC                     +0.0118    0.0118
+  IMU_Std                     +0.0068    0.0068
+  IMU_MDF                     +0.0054    0.0054
+  IMU_Var                     +0.0023    0.0023
+  IMU_Min                     -0.0005   -0.0005
+  IMU_Mean                    -0.0009   -0.0009
+  IMU_Jerk                    -0.0032   -0.0032
+  EMG_Power                   -0.0110   -0.0110
+
+  Full results per feature type:
+
+  Excluded: EMG_MAV
+    MAE: 0.1157
+    MSE: 0.0827
+    RMSE: 0.2875
+    R2: 0.9755
+
+  Excluded: EMG_WL
+    MAE: 0.1133
+    MSE: 0.0935
+    RMSE: 0.3058
+    R2: 0.9723
+
+  Excluded: EMG_SSC
+    MAE: 0.1096
+    MSE: 0.0735
+    RMSE: 0.2712
+    R2: 0.9782
+
+  Excluded: EMG_VAR
+    MAE: 0.1214
+    MSE: 0.1060
+    RMSE: 0.3256
+    R2: 0.9686
+
+  Excluded: EMG_IEMG
+    MAE: 0.1305
+    MSE: 0.0979
+    RMSE: 0.3128
+    R2: 0.9710
+
+  Excluded: EMG_Skew
+    MAE: 0.1411
+    MSE: 0.1002
+    RMSE: 0.3165
+    R2: 0.9703
+
+  Excluded: EMG_Kurt
+    MAE: 0.1272
+    MSE: 0.1218
+    RMSE: 0.3490
+    R2: 0.9639
+
+  Excluded: EMG_Power
+    MAE: 0.0869
+    MSE: 0.0564
+    RMSE: 0.2375
+    R2: 0.9833
+
+  Excluded: IMU_Mean
+    MAE: 0.0970
+    MSE: 0.0585
+    RMSE: 0.2419
+    R2: 0.9826
+
+  Excluded: IMU_Var
+    MAE: 0.1002
+    MSE: 0.0736
+    RMSE: 0.2712
+    R2: 0.9782
+
+  Excluded: IMU_Std
+    MAE: 0.1047
+    MSE: 0.0754
+    RMSE: 0.2746
+    R2: 0.9776
+
+  Excluded: IMU_Max
+    MAE: 0.1126
+    MSE: 0.0781
+    RMSE: 0.2795
+    R2: 0.9768
+
+  Excluded: IMU_Min
+    MAE: 0.0974
+    MSE: 0.0562
+    RMSE: 0.2370
+    R2: 0.9833
+
+  Excluded: IMU_SMA
+    MAE: 0.1144
+    MSE: 0.0660
+    RMSE: 0.2568
+    R2: 0.9804
+
+  Excluded: IMU_P2P
+    MAE: 0.1134
+    MSE: 0.0849
+    RMSE: 0.2914
+    R2: 0.9748
+
+  Excluded: IMU_Kurt
+    MAE: 0.1177
+    MSE: 0.0772
+    RMSE: 0.2778
+    R2: 0.9771
+
+  Excluded: IMU_Jerk
+    MAE: 0.0947
+    MSE: 0.0677
+    RMSE: 0.2602
+    R2: 0.9799
+
+  Excluded: IMU_DomFreq
+    MAE: 0.1169
+    MSE: 0.0925
+    RMSE: 0.3042
+    R2: 0.9726
+
+  Excluded: IMU_SpecEnergy
+    MAE: 0.1107
+    MSE: 0.0556
+    RMSE: 0.2359
+    R2: 0.9835
+
+  Excluded: IMU_MNF
+    MAE: 0.1201
+    MSE: 0.0955
+    RMSE: 0.3091
+    R2: 0.9717
+
+  Excluded: IMU_MDF
+    MAE: 0.1032
+    MSE: 0.0664
+    RMSE: 0.2576
+    R2: 0.9803

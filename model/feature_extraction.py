@@ -3,10 +3,15 @@ import numpy as np
 from scipy import signal, stats
 import pandas as pd
 from typing import Dict, List, Optional, Set, Tuple
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from model.config_model import FEATURE_CONFIG
 
 class FeatureExtractor:
-    def __init__(self, emg_fs: float = 4000.0, imu_fs: float = 4000.0,
-                 emg_threshold: float = 1e-5,
+    def __init__(self, emg_fs: float = 2000,
+                 imu_fs: float = 2000,
+                 emg_threshold: float = FEATURE_CONFIG.get('emg_threshold', 1e-5),
                  emg_features: Optional[Dict[str, bool]] = None,
                  imu_features: Optional[Dict[str, bool]] = None):
         """
@@ -348,29 +353,43 @@ class FeatureExtractor:
 
     def extract_features_windowed(self, emg_data: np.ndarray, emg_cols: List[str], 
                                   imu_data: np.ndarray, imu_cols: List[str], 
-                                  window_size_sec: float, window_step_sec: float) -> List[Dict[str, float]]:
+                                  emg_window_size_sec: float, imu_window_size_sec: float,
+                                  window_step_sec: float) -> List[Dict[str, float]]:
         """
         Splits the data into sliding windows and extracts features for each window.
+        Anchors windows by their end time so that EMG and IMU features end exactly at the same moment.
         Returns a list of feature dictionaries, one for each window.
         """
-        window_size = int(window_size_sec * self.emg_fs)
-        window_step = int(window_step_sec * self.emg_fs)
+        emg_window_size = int(emg_window_size_sec * self.emg_fs)
+        imu_window_size = int(imu_window_size_sec * self.imu_fs)
         
-        n_samples = max(emg_data.shape[0] if emg_data.size > 0 else 0, 
-                        imu_data.shape[0] if imu_data.size > 0 else 0)
+        # Calculate the length of the segment in seconds
+        emg_time_sec = emg_data.shape[0] / self.emg_fs if emg_data.size > 0 else 0
+        imu_time_sec = imu_data.shape[0] / self.imu_fs if imu_data.size > 0 else 0
+        
+        # Use the maximum available time to dictate the segment bounds
+        max_time_sec = max(emg_time_sec, imu_time_sec)
+        
+        # The first window finishes at the longest required window size
+        t_end = max(emg_window_size_sec, imu_window_size_sec)
         
         windows_features = []
-        for start in range(0, max(1, n_samples - window_size + 1), window_step):
-            end = start + window_size
+        
+        while t_end <= max_time_sec + 1e-4:
+            emg_end_idx = int(round(t_end * self.emg_fs))
+            emg_start_idx = max(0, emg_end_idx - emg_window_size)
             
-            emg_win = emg_data[start:end] if emg_data.size > 0 else np.empty((0, 0))
-            imu_win = imu_data[start:end] if imu_data.size > 0 else np.empty((0, 0))
+            imu_end_idx = int(round(t_end * self.imu_fs))
+            imu_start_idx = max(0, imu_end_idx - imu_window_size)
             
-            # Skip windows that are significantly smaller than the window size
-            if (emg_win.shape[0] < window_size // 2) and (imu_win.shape[0] < window_size // 2) and start > 0:
-                continue
+            emg_win = emg_data[emg_start_idx:emg_end_idx] if emg_data.size > 0 else np.empty((0, 0))
+            imu_win = imu_data[imu_start_idx:imu_end_idx] if imu_data.size > 0 else np.empty((0, 0))
+            
+            # Extract features only if we have at least half of the required samples for BOTH modalities
+            if (emg_win.shape[0] >= emg_window_size // 2) and (imu_win.shape[0] >= imu_window_size // 2):
+                features = self.extract_features(emg_win, emg_cols, imu_win, imu_cols)
+                windows_features.append(features)
                 
-            features = self.extract_features(emg_win, emg_cols, imu_win, imu_cols)
-            windows_features.append(features)
+            t_end += window_step_sec
             
         return windows_features
