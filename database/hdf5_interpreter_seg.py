@@ -32,27 +32,50 @@ EXCLUDE_COLUMNS: list[str] = []
 # Set to True to compute seconds from sample index (useful since segments
 # don't all have a t_pc_common stored in the segment file itself).
 X_AS_SECONDS = True
-EMG_FS  = 4000.0   # EMG sample rate — used only when X_AS_SECONDS is True
-IMU_FS  = 4000.0   # IMU sample rate (same grid as EMG)
+EMG_FS  = 2000   # EMG sample rate — used only when X_AS_SECONDS is True
+IMU_FS  = 2000   # IMU sample rate (same grid as EMG)
 
-# EMG channel → muscle name mapping.
-# Channels not listed here are shown with their raw name only.
-CHANNEL_LABELS: dict[str, str] = {
-    # Double-channel muscles (differential pair)
-    "ch1":  "Anterior Deltoid",
-    "ch2":  "Anterior Deltoid",
-    "ch3":  "Lateral Deltoid",
-    "ch4":  "Lateral Deltoid",
-    "ch5":  "Posterior Deltoid",
-    "ch6":  "Posterior Deltoid",
-    "ch7":  "Biceps Brachii",
-    "ch8":  "Biceps Brachii",
-    # Single-channel muscles
-    "ch16": "Triceps Brachii",
-    "ch17": "Brachioradialis",
-    "ch18": "Flexor Carpi Ulnaris (FCU)",
-    "ch19": "Extensor Carpi Radialis (ECR)",
+# EMG channel → muscle name mapping (used for backward compatibility with older segment files)
+# For newer segment files, the column names will already be the muscle names.
+import sys
+from pathlib import Path
+root = Path(__file__).parent.parent
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))
+
+from model.config_model import EMG_CHANNEL_CONFIG
+
+CHANNEL_LABELS: dict[str, str] = {}
+for muscle, channels in EMG_CHANNEL_CONFIG.items():
+    if isinstance(channels, tuple):
+        for ch in channels:
+            CHANNEL_LABELS[ch] = muscle
+    else:
+        CHANNEL_LABELS[channels] = muscle
+
+# IMU mapped names for visualization
+IMU_CHANNEL_LABELS: dict[str, str] = {
+    "ax1": "Accel X (Upper Arm)",
+    "ay1": "Accel Y (Upper Arm)",
+    "az1": "Accel Z (Upper Arm)",
+    "roll_rad1": "Roll (Upper Arm)",
+    "pitch_rad1": "Pitch (Upper Arm)",
+    "yaw_rad1": "Yaw (Upper Arm)",
+    "ax2": "Accel X (Forearm)",
+    "ay2": "Accel Y (Forearm)",
+    "az2": "Accel Z (Forearm)",
+    "roll_rad2": "Roll (Forearm)",
+    "pitch_rad2": "Pitch (Forearm)",
+    "yaw_rad2": "Yaw (Forearm)",
+    "ax_diff": "Rel. Accel X (Elbow)",
+    "ay_diff": "Rel. Accel Y (Elbow)",
+    "az_diff": "Rel. Accel Z (Elbow)",
+    "roll_rad_diff": "Rel. Roll (Elbow)",
+    "pitch_rad_diff": "Rel. Pitch (Elbow)",
+    "yaw_rad_diff": "Rel. Yaw (Elbow)",
 }
+
+CHANNEL_LABELS.update(IMU_CHANNEL_LABELS)
 
 # Plot layout
 COLS_PER_ROW        = 4

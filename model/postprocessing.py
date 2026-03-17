@@ -24,6 +24,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from src.emg_processing import BandpassFilter, NotchFilter, EMGEnvelopeExtractor
+from model.config_model import EMG_CHANNEL_CONFIG
 
 def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwrite: bool = True, channel_peaks: dict = None):
     """
@@ -105,6 +106,52 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
             print("Warning: No valid EMG channels remaining after filtering.")
             return
 
+        # Derive channels according to EMG_CHANNEL_CONFIG
+        derived_emg_data = []
+        derived_emg_names = []
+        
+        for muscle_name, channels in EMG_CHANNEL_CONFIG.items():
+            if isinstance(channels, tuple):
+                ch1, ch2 = channels
+                if ch1 in emg_col_names and ch2 in emg_col_names:
+                    idx1 = emg_col_names.index(ch1)
+                    idx2 = emg_col_names.index(ch2)
+                    diff_signal = raw_emg[:, idx1] - raw_emg[:, idx2]
+                    derived_emg_data.append(diff_signal)
+                    derived_emg_names.append(muscle_name)
+                else:
+                    print(f"Warning: Channels {ch1} or {ch2} for {muscle_name} not found.")
+            else:
+                ch = channels
+                if ch in emg_col_names:
+                    idx = emg_col_names.index(ch)
+                    derived_emg_data.append(raw_emg[:, idx])
+                    derived_emg_names.append(muscle_name)
+                else:
+                    print(f"Warning: Channel {ch} for {muscle_name} not found.")
+                    
+        if not derived_emg_data:
+            print("Warning: No defined EMG channels found after applying configuration.")
+            return
+            
+        raw_emg = np.column_stack(derived_emg_data)
+        emg_col_names = derived_emg_names
+
+        # Estimate original fs from raw data
+        fs_orig = fs_fallback
+        if '_raw/emg' in f:
+            raw_emg_dset = f['_raw/emg']
+            raw_cols = [n.decode('utf-8') if isinstance(n, bytes) else str(n) for n in raw_emg_dset.attrs.get('column_names', [])]
+            if "t_pc" in raw_cols:
+                t_raw_idx = raw_cols.index("t_pc")
+                t_raw = raw_emg_dset[:, t_raw_idx]
+                dt_raw = np.median(np.diff(t_raw))
+                if dt_raw > 0:
+                    fs_orig = 1.0 / dt_raw
+                    print(f"Derived original EMG sampling rate from raw PC clock: {fs_orig:.2f} Hz")
+        else:
+            print(f"Warning: '_raw/emg' not found. Falling back to fs_orig = {fs_orig:.2f} Hz")
+
         # Initialize filters
         bp_filter = BandpassFilter(lowcut=10.0, highcut=500.0, fs=fs, order=4)
         notch_filter = NotchFilter(freq=50.0, fs=fs)
@@ -170,6 +217,7 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
         out_dset.attrs['column_names'] = [n.encode('utf-8') for n in final_col_names]
         out_dset.attrs['description'] = "Postprocessed EMG: BP(10-500Hz) -> Notch(50Hz) -> Smoothed Envelope(10Hz) -> Normalized"
         out_dset.attrs['fs'] = fs
+        out_dset.attrs['fs_orig'] = fs_orig
         out_dset.attrs['normalization'] = "session-level" if channel_peaks else "per-trial"
         
         print(f"Processed data saved to {out_dataset_name} successfully.")
@@ -204,6 +252,8 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
         data = dset_synced[:]
         
         # Calculate robust FS from t_pc_common
+        # The true effective synchronized matrix maps all data to the `t_pc_common` grid.
+        # So effective fs_imu for the matrix is just the sampling rate of the matrix.
         fs_imu = fs_fallback
         if "t_pc_common" in col_names_str:
             idx = col_names_str.index("t_pc_common")
@@ -211,7 +261,22 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
             dt = np.median(np.diff(t_common))
             if dt > 0:
                 fs_imu = 1.0 / dt
-                print(f"Derived effective IMU sampling rate (synced grid): {fs_imu:.2f} Hz")
+                print(f"Derived effective IMU sampling rate (synced matrix): {fs_imu:.2f} Hz")
+
+        # Estimate original fs from raw data
+        fs_imu_orig = fs_fallback
+        if '_raw/stm32' in f:
+            raw_imu_dset = f['_raw/stm32']
+            raw_cols = [n.decode('utf-8') if isinstance(n, bytes) else str(n) for n in raw_imu_dset.attrs.get('column_names', [])]
+            if "t_pc" in raw_cols:
+                t_raw_idx = raw_cols.index("t_pc")
+                t_raw = raw_imu_dset[:, t_raw_idx]
+                dt_raw = np.median(np.diff(t_raw))
+                if dt_raw > 0:
+                    fs_imu_orig = 1.0 / dt_raw
+                    print(f"Derived original IMU sampling rate from raw PC clock: {fs_imu_orig:.2f} Hz")
+        else:
+            print(f"Warning: '_raw/stm32' not found. Falling back to fs_orig = {fs_imu_orig:.2f} Hz")
 
         # Look for IMU channels
         imu_base_names = ['ax', 'ay', 'az', 'roll', 'pitch', 'yaw']
@@ -241,6 +306,16 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
             final_names.append("t_tmsi")
 
         processed_sensors = {}
+        
+        from scipy.signal import butter, filtfilt
+        # Design a zero-phase lowpass filter to smooth the zero-order hold stair-steps
+        # A 15 Hz cutoff clears the steps while preserving human movement frequencies
+        nyq = 0.5 * fs_imu
+        cutoff = 15.0
+        if cutoff >= nyq:
+            cutoff = nyq * 0.99
+        b, a = butter(4, cutoff / nyq, btype='low', analog=False)
+
         for s in [1, 2]:
             if not imu_cols_dict[s]: continue
             
@@ -250,14 +325,22 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
                 if axis in imu_cols_dict[s]:
                     raw_acc = data[:, imu_cols_dict[s][axis]]
                     raw_acc = np.nan_to_num(raw_acc, nan=0.0)
+                    if len(raw_acc) > 18:
+                        raw_acc = filtfilt(b, a, raw_acc)
                     s_data[f'{axis}{s}'] = raw_acc
                     
             # Euler angles: convert degrees → radians (one signal per orientation)
+            # Filter after unwrapping to prevent artifacts on angle crossovers
             for angle in ['roll', 'pitch', 'yaw']:
                 if angle in imu_cols_dict[s]:
                     raw_ang = data[:, imu_cols_dict[s][angle]]
                     raw_ang = np.nan_to_num(raw_ang, nan=0.0)
-                    s_data[f'{angle}_rad{s}'] = np.deg2rad(raw_ang)
+                    rad_ang = np.deg2rad(raw_ang)
+                    if len(rad_ang) > 18:
+                        unwrapped = np.unwrap(rad_ang)
+                        smoothed = filtfilt(b, a, unwrapped)
+                        rad_ang = (smoothed + np.pi) % (2 * np.pi) - np.pi
+                    s_data[f'{angle}_rad{s}'] = rad_ang
                     
             processed_sensors[s] = s_data
             
@@ -297,8 +380,9 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
         )
         
         out_dset.attrs['column_names'] = [n.encode('utf-8') for n in final_names]
-        out_dset.attrs['description'] = "Postprocessed IMU: Raw Accel (ax/ay/az), Euler->Radians, RelDiffs (Imu2-Imu1)"
+        out_dset.attrs['description'] = "Postprocessed IMU: Raw Accel LPF(15Hz), Euler->Radians LPF(15Hz), RelDiffs (Imu2-Imu1)"
         out_dset.attrs['fs'] = fs_imu
+        out_dset.attrs['fs_orig'] = fs_imu_orig
         
         print(f"Processed IMU data saved to {out_dataset_name} successfully.")
         
@@ -333,9 +417,33 @@ def get_session_peaks(session_dir: Path, fs: float = 4000.0) -> dict:
             nt = NotchFilter(50.0, fs_eff)
             env = EMGEnvelopeExtractor(fs_eff, 10.0)
             
-            for idx in emg_indices:
-                name = cols[idx]
-                channel_data = np.nan_to_num(data[:, idx], nan=0.0)
+            raw_emg = data[:, emg_indices]
+            emg_col_names = [cols[i] for i in emg_indices]
+            
+            derived_emg_data = []
+            derived_emg_names = []
+            
+            for muscle_name, channels in EMG_CHANNEL_CONFIG.items():
+                if isinstance(channels, tuple):
+                    ch1, ch2 = channels
+                    if ch1 in emg_col_names and ch2 in emg_col_names:
+                        idx1 = emg_col_names.index(ch1)
+                        idx2 = emg_col_names.index(ch2)
+                        diff_signal = raw_emg[:, idx1] - raw_emg[:, idx2]
+                        derived_emg_data.append(diff_signal)
+                        derived_emg_names.append(muscle_name)
+                else:
+                    ch = channels
+                    if ch in emg_col_names:
+                        idx = emg_col_names.index(ch)
+                        derived_emg_data.append(raw_emg[:, idx])
+                        derived_emg_names.append(muscle_name)
+                        
+            if not derived_emg_data: continue
+            raw_emg_derived = np.column_stack(derived_emg_data)
+            
+            for i, name in enumerate(derived_emg_names):
+                channel_data = np.nan_to_num(raw_emg_derived[:, i], nan=0.0)
                 if np.all(channel_data == 0): continue
                 
                 # Apply envelope extraction
@@ -344,6 +452,7 @@ def get_session_peaks(session_dir: Path, fs: float = 4000.0) -> dict:
                 
                 peak = np.nanmax(processed)
                 session_peaks[name] = max(session_peaks.get(name, 0), peak)
+                
                 
     return session_peaks
 

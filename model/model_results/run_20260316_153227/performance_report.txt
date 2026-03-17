@@ -1,6 +1,6 @@
 =======================================================
 MODEL PERFORMANCE REPORT
-Run Timestamp: 20260313_131100
+Run Timestamp: 20260316_153227
 =======================================================
 
 --- DATASET INFO ---
@@ -54,6 +54,6 @@ Total Parameters: 1,236,737
 Trainable Parameters: 1,236,737
 Estimated Inference GFLOPs (per sample): 0.032127
 Estimated Total Training GFLOPs: 25329.3115
-Training Time: 545.0154s
-Inference Time (per sample): 3.3976ms
+Training Time: 492.9431s
+Inference Time (per sample): 0.8828ms
 

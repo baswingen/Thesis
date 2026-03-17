@@ -71,10 +71,12 @@ class DataLoader:
                     imu_cols = self._decode_cols(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
                     emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
 
-                    # Read dynamic sampling rates if available (stored by postprocessing.py)
+                    # Read dynamic sampling rates if available (stored by postprocessing.py & segmentation.py)
                     # We look at the attributes of the datasets inside the segment
                     fs_emg_eff = grp["emg"].attrs.get("fs", self.extractor.emg_fs) if "emg" in grp else self.extractor.emg_fs
                     fs_imu_eff = grp["imu"].attrs.get("fs", self.extractor.imu_fs) if "imu" in grp else self.extractor.imu_fs
+                    fs_emg_orig = grp["emg"].attrs.get("fs_orig", fs_emg_eff) if "emg" in grp else fs_emg_eff
+                    fs_imu_orig = grp["imu"].attrs.get("fs_orig", fs_imu_eff) if "imu" in grp else fs_imu_eff
                     
                     # Update extractor temporarily for this segment if rates differ
                     orig_emg_fs = self.extractor.emg_fs
@@ -128,6 +130,12 @@ class DataLoader:
                     features["segment_id"] = key
                     features["trial_file"] = _a("trial_file", "unknown")
                     features["subject"] = path.stem.split("_")[1] if "participant" in path.stem else "unknown"
+                    
+                    # Save exact numerical sampling rates for records
+                    features["emg_fs"] = fs_emg_eff
+                    features["emg_fs_orig"] = fs_emg_orig
+                    features["imu_fs"] = fs_imu_eff
+                    features["imu_fs_orig"] = fs_imu_orig
 
                     all_features.append(features)
 
@@ -159,7 +167,8 @@ class DataLoader:
         y = df[target_col]
         
         # Columns that are purely metadata / labels and shouldn't be trained on
-        default_drop = ["label", "state", "weight", "segment_id", "trial_file", "subject"]
+        default_drop = ["label", "state", "weight", "segment_id", "trial_file", "subject", 
+                        "emg_fs", "emg_fs_orig", "imu_fs", "imu_fs_orig"]
         
         if drop_cols:
             default_drop.extend(drop_cols)

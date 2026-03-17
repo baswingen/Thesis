@@ -1,0 +1,59 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260316_155756
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5']
+Total samples: 2434
+Evaluation Mode: Train/Validation/Test Split (72/8/20)
+Testing samples: 487
+Training samples: 1752
+Validation samples: 195
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.3s, Step: 0.1s
+Enabled EMG Features: MAV, WL, SSC, VAR, IEMG, Skew, Kurt, MNF, MDF, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Var, Std, Max, SMA, P2P, Kurt, DomFreq, SpecEnergy, MNF, MDF, SVM_Mean, SVM_Std
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 256
+Num Layers: 3
+Dropout Rate: 0.4
+Learning Rate: 0.005
+Batch Size: 128
+Epochs: 150
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.3
+Window Step (s): 0.1
+Random State: 18
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.1007
+Mean Squared Error: 0.0681
+Root Mean Squared Error: 0.2611
+R-squared Score: 0.9799
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 244      | 0.0065     | 0.0798    
+0.75 kg      | 34       | 0.1696     | 0.2482    
+1.00 kg      | 35       | 0.1531     | 0.2598    
+2.00 kg      | 34       | 0.3504     | 0.4556    
+2.25 kg      | 35       | 0.1548     | 0.2790    
+3.00 kg      | 35       | 0.2363     | 0.3348    
+4.25 kg      | 35       | 0.2967     | 0.6202    
+6.00 kg      | 35       | 0.0093     | 0.0168    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 1,648,897
+Trainable Parameters: 1,648,897
+Estimated Inference GFLOPs (per sample): 0.042836
+Estimated Total Training GFLOPs: 33772.2808
+Training Time: 427.8729s
+Inference Time (per sample): 0.8602ms
+

@@ -8,6 +8,22 @@ GLOBAL_RANDOM_STATE = 18
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
 ###########################################################
+# EMG CHANNEL CONFIGURATION
+###########################################################
+EMG_CHANNEL_CONFIG = {
+    # Double-channel muscles (differential pair)
+    "Anterior Deltoid":  ("ch1", "ch2"),
+    "Lateral Deltoid":   ("ch3", "ch4"),
+    "Posterior Deltoid": ("ch5", "ch6"),
+    "Triceps Brachii":   ("ch7", "ch8"),
+    # Single-channel muscles
+    "Biceps Brachii":    "ch17",
+    "Brachioradialis":   "ch18",
+    "Flexor Carpi Ulnaris (FCU)":  "ch19",
+    "Extensor Carpi Radialis (ECR)": "ch20",
+}
+
+###########################################################
 # FEATURE EXTRACTION CONFIGURATION
 ###########################################################
 FEATURE_CONFIG = {
@@ -74,6 +90,46 @@ FEATURE_CONFIG = {
         'SVM_Mean':   True,    # Signal Vector Magnitude (mean)
         'SVM_Std':    True,    # Signal Vector Magnitude (std)
     },
+}
+
+###########################################################
+# DATA AUGMENTATION CONFIGURATION (LSTM / GRU only)
+###########################################################
+AUGMENTATION_CONFIG = {
+    # Master toggle — set False to disable all augmentation
+    'enabled': False,
+
+    # Probability that any single training sample is augmented (0.0 – 1.0).
+    # Each selected sample produces one additional augmented copy alongside
+    # the original, so the dataset can grow up to 2× when p=1.0.
+    'p': 0.5,
+
+    # Active augmentation methods.  Remove a method name to disable it.
+    # Available: 'noise', 'stretch', 'feature_dropout', 'magnitude_scale', 'mixup'
+    'methods': ['noise', 'stretch', 'feature_dropout'],
+
+    # ── Gaussian noise ────────────────────────────────────────────────
+    # Standard deviation on the z-score scale (after StandardScaler).
+    # 0.05 ≈ 5% of one standard deviation — very conservative.
+    'noise_std': 0.05,
+
+    # ── Temporal stretch ─────────────────────────────────────────────
+    # Random scale factor applied to sequence length, then resampled back.
+    # (0.85, 1.15) = ±15% speed variation.
+    'stretch_factor_range': (0.85, 1.15),
+
+    # ── Feature dropout ──────────────────────────────────────────────
+    # Probability that a single feature value at a single time step is zeroed.
+    'feature_dropout_p': 0.10,
+
+    # ── Magnitude scaling ─────────────────────────────────────────────
+    # Per-feature multiplicative factor drawn uniformly from this range.
+    'magnitude_scale_range': (0.85, 1.15),
+
+    # ── MixUp ────────────────────────────────────────────────────────
+    # Alpha parameter of the Beta(α, α) distribution for λ.
+    # Lower α → λ closer to 0 or 1 (less blending).
+    'mixup_alpha': 0.2,
 }
 
 # Cross-Validation Configuration
@@ -157,8 +213,8 @@ GRU_CONFIG = {
 
 # LSTM (Long Short-Term Memory) Configuration
 LSTM_CONFIG = {
-    'hidden_size': 256,
-    'num_layers': 3,
+    'hidden_size': 64,
+    'num_layers': 2,
     'dropout_rate': 0.4,
     'learning_rate': 0.005,
     'weight_decay': 1e-4,

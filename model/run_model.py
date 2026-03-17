@@ -37,9 +37,9 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
-USE_CROSS_VAL = False
+USE_CROSS_VAL = True
 ###########################################################
 
 def initialize_model(model_type: str):

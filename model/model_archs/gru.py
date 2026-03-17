@@ -14,8 +14,9 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import GRU_CONFIG, FEATURE_CONFIG, GLOBAL_LOSS_FUNCTION
+from model.config_model import GRU_CONFIG, FEATURE_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG
 from model import plotting_utils
+from model.data_augmentation import SequenceAugmenter
 
 class SequenceDataset(Dataset):
     def __init__(self, sequences, labels):
@@ -155,9 +156,20 @@ class GRURegressor:
         scaled_seqs_train = []
         for arr in flat_data_train:
             scaled_arr = self.scaler.transform(arr).astype(np.float32)
-            scaled_seqs_train.append(torch.from_numpy(scaled_arr))
+            scaled_seqs_train.append(scaled_arr)   # keep as numpy for augmentation
             
-        y_tensor_train = torch.from_numpy(y_train.values.astype(np.float32)).unsqueeze(1)
+        y_np_train = y_train.values.astype(np.float32)
+        
+        # 4b. Data augmentation (training only, on scaled z-score arrays)
+        augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
+        scaled_seqs_train, y_np_train = augmenter.augment_dataset(scaled_seqs_train, y_np_train)
+        if AUGMENTATION_CONFIG.get('enabled', True):
+            n_aug = len(scaled_seqs_train) - len(flat_data_train)
+            print(f"[GRURegressor] Augmentation: {len(flat_data_train)} → {len(scaled_seqs_train)} sequences (+{n_aug} synthetic)")
+        
+        # Convert to tensors
+        scaled_seqs_train = [torch.from_numpy(a) for a in scaled_seqs_train]
+        y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
         
         # 5. Process validation sequences using fitted scaler
         scaled_seqs_val = []

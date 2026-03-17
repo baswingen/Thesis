@@ -13,9 +13,10 @@ Segment logic
     PHASE_2_AWAITING_PICKUP   → window until next event  →  label: "free_movement"
     PHASE_2_AWAITING_PLACEMENT → window until next event  →  label: "carrying"
 - If any event in a consecutive pair is an error state the pair is DISCARDED.
-- A configurable time margin (default 100 ms) is added symmetrically around
-  **weight/carrying** segment boundaries before slicing. **free_movement**
-  segments carry no margin (exact event boundaries).
+- A configurable time margin (default 200 ms) is applied asymmetrically:
+  it shrinks the end of a **free_movement** segment and expands the start of
+  a **weight/carrying** segment (pickup), but remains 0.0 at the transition
+  from carrying back to free movement (placement).
 - Primary label: `weight` (kg); also stored: `state`, source/target cell,
   `t_start`, `t_end` (without margin), trial file path.
 
@@ -48,6 +49,10 @@ Each segment is a plain dict:
     "emg"     : np.ndarray,     # shape (N, n_emg)
     "imu_cols": list[str],
     "emg_cols": list[str],
+    "emg_fs"  : float,
+    "emg_fs_orig": float,
+    "imu_fs"  : float,
+    "imu_fs_orig": float,
     "trial_file": str,
   }
 
@@ -143,12 +148,13 @@ class SegmentedDataset:
     Parameters
     ----------
     margin_s : float
-        Margin in seconds added symmetrically around **carrying** segment
-        boundaries. Free-movement segments always use zero margin.
-        Default is 0.1 s (100 ms).
+        Margin in seconds applied asymmetrically. It shrinks the end of a
+        **free_movement** segment (before pickup) and expands the start of a
+        **carrying** segment (at pickup). Transition at placement (carrying ->
+        free_movement) uses 0.0 margin. Default is 0.2 s (200 ms).
     """
 
-    def __init__(self, margin_s: float = 0.1):
+    def __init__(self, margin_s: float = 0.2):
         self.margin_s = float(margin_s)
 
     # ------------------------------------------------------------------
@@ -176,12 +182,12 @@ class SegmentedDataset:
                 print(f"[SEGMENTER] No Phase 2 segments found in {file_path.name}")
                 return []
 
-            t_common, imu_data, emg_data, imu_cols, emg_cols = self._load_signal_matrix(f)
+            t_common, imu_data, emg_data, imu_cols, emg_cols, fs_info = self._load_signal_matrix(f)
 
         segments = []
         for meta in segments_meta:
             seg = self._slice_segment(meta, t_common, imu_data, emg_data,
-                                      imu_cols, emg_cols, str(file_path))
+                                      imu_cols, emg_cols, fs_info, str(file_path))
             if seg is not None:
                 segments.append(seg)
 
@@ -325,12 +331,16 @@ class SegmentedDataset:
                     compression="gzip", compression_opts=4
                 )
                 ds_imu.attrs["column_names"] = [c.encode() for c in seg["imu_cols"]]
+                ds_imu.attrs["fs"] = seg.get("imu_fs", 500.0)
+                ds_imu.attrs["fs_orig"] = seg.get("imu_fs_orig", 500.0)
 
                 ds_emg = grp.create_dataset(
                     "emg", data=seg["emg"].astype(np.float64),
                     compression="gzip", compression_opts=4
                 )
                 ds_emg.attrs["column_names"] = [c.encode() for c in seg["emg_cols"]]
+                ds_emg.attrs["fs"] = seg.get("emg_fs", 4000.0)
+                ds_emg.attrs["fs_orig"] = seg.get("emg_fs_orig", 4000.0)
 
                 # Metadata attributes
                 # label is either a float (carrying) or the string "free_movement"
@@ -384,6 +394,10 @@ class SegmentedDataset:
             ("trial_file", "U256"),
             ("imu_cols", "U256"),
             ("emg_cols", "U256"),
+            ("emg_fs", "f8"),
+            ("emg_fs_orig", "f8"),
+            ("imu_fs", "f8"),
+            ("imu_fs_orig", "f8"),
         ])
         meta = np.zeros(len(segments), dtype=meta_dtype)
         for i, seg in enumerate(segments):
@@ -397,6 +411,10 @@ class SegmentedDataset:
                 seg["trial_file"],
                 ",".join(seg["imu_cols"]),
                 ",".join(seg["emg_cols"]),
+                seg.get("emg_fs", 4000.0),
+                seg.get("emg_fs_orig", 4000.0),
+                seg.get("imu_fs", 500.0),
+                seg.get("imu_fs_orig", 500.0),
             )
         arrays["metadata"] = meta
 
@@ -491,10 +509,18 @@ class SegmentedDataset:
             else:
                 label = "free_movement"
 
-            # Apply margin per segment type:
-            #   free_movement → no margin (exact event boundaries)
-            #   carrying      → self.margin_s (default 0.1 s)
-            seg_margin = 0.0 if seg_state == "free_movement" else self.margin_s
+            # Apply margin per segment type, but only at the pickup boundary.
+            # Pickup boundary = start of 'carrying' / end of 'free_movement'.
+            # Drop/Placement boundary = end of 'carrying' / start of 'free_movement'.
+            
+            if seg_state == "carrying":
+                # Starts at pickup (expand by margin_s), ends at placement (0.0)
+                t_start_m = t_start - self.margin_s
+                t_end_m = t_end
+            else:
+                # Starts at placement (0.0), ends at pickup (shrink by margin_s)
+                t_start_m = t_start
+                t_end_m = t_end - self.margin_s
 
             segments.append({
                 "state": seg_state,
@@ -506,15 +532,15 @@ class SegmentedDataset:
                 "tgt_col": evt.tgt_col,
                 "t_start": t_start,
                 "t_end": t_end,
-                "t_start_m": t_start - seg_margin,
-                "t_end_m": t_end + seg_margin,
+                "t_start_m": t_start_m,
+                "t_end_m": t_end_m,
             })
 
         return segments
 
     def _load_signal_matrix(
         self, f: h5py.File
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str], list[str]]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, list[str], list[str], dict[str, float]]:
         """
         Load the signal matrix from the HDF5 file.
 
@@ -526,7 +552,13 @@ class SegmentedDataset:
         emg_data : (N, M) float64  — M = number of non-all-NaN EMG channels
         imu_cols : list[str]       — always == IMU_COLUMNS (12 names)
         emg_cols : list[str]       — M names
+        fs_info  : dict[str, float] — Contains emg_fs, emg_fs_orig, imu_fs, imu_fs_orig
         """
+        fs_info = {
+            "emg_fs": 4000.0, "emg_fs_orig": 4000.0,
+            "imu_fs": 500.0, "imu_fs_orig": 500.0
+        }
+
         # ---- IMU: from synced/data ----
         if "synced/data" not in f:
             raise KeyError("'synced/data' not found in HDF5 file.")
@@ -548,6 +580,9 @@ class SegmentedDataset:
             ds_imu = f["synced/imu_processed"]
             raw_imu_cols = list(ds_imu.attrs.get("column_names", []))
             imu_cols_found = [c.decode() if isinstance(c, (bytes, np.bytes_)) else str(c) for c in raw_imu_cols]
+            
+            fs_info["imu_fs"] = ds_imu.attrs.get("fs", 500.0)
+            fs_info["imu_fs_orig"] = ds_imu.attrs.get("fs_orig", fs_info["imu_fs"])
             
             # Ignore t_pc_common and t_tmsi from imu_processed to avoid duplicate columns
             # if we just want pure IMU fields:
@@ -582,6 +617,9 @@ class SegmentedDataset:
         emg_cols_all = [c.decode() if isinstance(c, (bytes, np.bytes_)) else str(c)
                         for c in raw_emg_cols]
 
+        fs_info["emg_fs"] = ds_emg.attrs.get("fs", 4000.0)
+        fs_info["emg_fs_orig"] = ds_emg.attrs.get("fs_orig", fs_info["emg_fs"])
+
         emg_raw = ds_emg[:]
 
         # If emg_processed has a different number of rows than synced/data,
@@ -599,11 +637,11 @@ class SegmentedDataset:
             imu_data = imu_data[:min_rows]
             n_rows = min_rows
 
-        # Select ch* columns that are not entirely NaN
+        # Select columns that are not entirely NaN and not timestamps
         ch_indices = []
         ch_names = []
         for i, col in enumerate(emg_cols_all):
-            if not col.startswith("ch"):
+            if col in ["t_pc_common", "t_tmsi"] or col.startswith("t_"):
                 continue  # skip timestamp columns inside emg_processed
             if not np.all(np.isnan(emg_raw[:, i])):
                 ch_indices.append(i)
@@ -613,7 +651,7 @@ class SegmentedDataset:
 
         emg_data = emg_raw[:, ch_indices]
 
-        return t_common, imu_data, emg_data, imu_cols_found, ch_names
+        return t_common, imu_data, emg_data, imu_cols_found, ch_names, fs_info
 
     def _slice_segment(
         self,
@@ -623,6 +661,7 @@ class SegmentedDataset:
         emg_data: np.ndarray,
         imu_cols: list[str],
         emg_cols: list[str],
+        fs_info: dict[str, float],
         trial_file: str,
     ) -> dict | None:
         """
@@ -648,6 +687,10 @@ class SegmentedDataset:
             "emg": emg_data[mask],
             "imu_cols": imu_cols,
             "emg_cols": emg_cols,
+            "emg_fs": fs_info["emg_fs"],
+            "emg_fs_orig": fs_info["emg_fs_orig"],
+            "imu_fs": fs_info["imu_fs"],
+            "imu_fs_orig": fs_info["imu_fs_orig"],
             "trial_file": trial_file,
         }
 
@@ -734,9 +777,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--margin",
         type=float,
-        default=0.1,
-        help="Time margin in seconds added around carrying segment boundaries. "
-             "Free-movement segments always use zero margin (default: 0.1).",
+        default=0.2,
+        help="Time margin in seconds applied asymmetrically around the "
+             "weight pickup transitioning point (default: 0.2).",
     )
     parser.add_argument(
         "--out",
