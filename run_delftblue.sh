@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 #SBATCH --job-name="run_model"
-#SBATCH --partition=gpu
+#SBATCH --partition=gpu-v100
 #SBATCH --time=1:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
