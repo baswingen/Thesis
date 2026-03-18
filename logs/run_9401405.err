@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/bwingen/thesis/Thesis/model/run_model.py", line 492, in <module>
+    main()
+  File "/home/bwingen/thesis/Thesis/model/run_model.py", line 146, in main
+    df = loader.load_and_extract_features(h5_paths, is_sequence=is_sequence)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bwingen/thesis/Thesis/model/data_loader.py", line 52, in load_and_extract_features
+    from tqdm import tqdm
+ModuleNotFoundError: No module named 'tqdm'
+srun: error: gpu020: task 0: Exited with exit code 1
+srun: launch/slurm: _step_signal: Terminating StepId=9401405.0

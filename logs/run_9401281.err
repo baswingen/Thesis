@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/bwingen/thesis/Thesis/model/run_model.py", line 492, in <module>
+    main()
+  File "/home/bwingen/thesis/Thesis/model/run_model.py", line 253, in main
+    model.fit(X_train, y_train)
+  File "/home/bwingen/thesis/Thesis/model/model_archs/lstm.py", line 131, in fit
+    from tqdm import tqdm
+ModuleNotFoundError: No module named 'tqdm'
+srun: error: cmp016: task 0: Exited with exit code 1
+srun: launch/slurm: _step_signal: Terminating StepId=9401281.0
