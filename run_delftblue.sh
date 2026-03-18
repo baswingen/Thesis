@@ -9,7 +9,7 @@
 #SBATCH --output=logs/run_%j.out
 #SBATCH --error=logs/run_%j.err
 
-cd /full/path/from/pwd
+cd /home/bwingen/thesis/Thesis/logs
 source .venv/bin/activate
 
 echo "Running on $(hostname)"
