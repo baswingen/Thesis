@@ -442,7 +442,7 @@ def write_report(run_dir, model_type, timestamp, use_cv, modes_run,
         f.write("\n")
         
         f.write("--- FEATURE CONFIGURATION ---\n")
-        f.write(f"Window Size: {FEATURE_CONFIG['window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
+        f.write(f"Window Size (EMG): {FEATURE_CONFIG['emg_window_size_sec']}s, (IMU): {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
         
         emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
         f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")

@@ -214,7 +214,7 @@ GRU_CONFIG = {
 # LSTM (Long Short-Term Memory) Configuration
 LSTM_CONFIG = {
     'hidden_size': 64,
-    'num_layers': 2,
+    'num_layers': 3,
     'dropout_rate': 0.4,
     'learning_rate': 0.005,
     'weight_decay': 1e-4,
