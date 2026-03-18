@@ -40,6 +40,7 @@ from sklearn.metrics import (
 MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = False
+RUN_GRID_SEARCH = False
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -112,6 +113,18 @@ def calculate_per_weight_metrics(y_true, y_pred):
 def main():
     # Define paths
     base_dir = Path(__file__).parent.parent
+    
+    if RUN_GRID_SEARCH:
+        print(f"\n--- GRID SEARCH ENABLED ---")
+        print(f"Launching hyperparameter sweep for {MODEL_TYPE.upper()}...")
+        sweep_script = base_dir / "model" / "model_archs" / "model_hp_opti" / f"sweep_{MODEL_TYPE.lower()}.py"
+        if sweep_script.exists():
+            import subprocess
+            subprocess.run([sys.executable, str(sweep_script)])
+        else:
+            print(f"Error: Grid search script {sweep_script.name} not found.")
+        return
+        
     segments_dir = base_dir / "database" / "segments"
     results_dir = base_dir / "model" / "model_results"
     
@@ -311,7 +324,7 @@ def main():
         f.write(f"Database segments used: {[p.name for p in h5_paths]}\n")
         f.write(f"Total samples: {len(X)}\n")
         if use_cv:
-            f.write(f"Evaluation Mode: {n_folds}-Fold Cross-Validation\n")
+            f.write(f"Evaluation Mode: {n_folds}-Fold Stratified Cross-Validation (Intra-Subject, Sequences Intact)\n")
             f.write(f"Final Model Training samples: {getattr(model, 'train_samples', len(X))}\n")
             if hasattr(model, 'val_samples') and model.val_samples > 0:
                 f.write(f"Final Model Validation samples: {model.val_samples}\n")
