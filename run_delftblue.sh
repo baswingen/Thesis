@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-task=1
 #SBATCH --mem-per-cpu=1G
-#SBATCH --account=research-ME-MSc-ME
+#SBATCH --account=education-ME-MSc-ME
 #SBATCH --output=logs/run_%j.out
 #SBATCH --error=logs/run_%j.err
 
