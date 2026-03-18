@@ -1,0 +1,17 @@
+Running on cmp016
+Working directory: /home/bwingen/thesis/Thesis
+/home/bwingen/thesis/Thesis/.venv/bin/python
+Python 3.11.13
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260318_123201
+Found 3 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+Extracted features dataframe shape: (4429, 11)
+Sequence Data Summary:
+  - Total Lifts (Sequences): 4429
+  - Average Windows per Lift: 10.6
+  - Features per Window: 276
+Label vector (y) shape: (4429,) (Target: weight)
+
+Training on 3543 samples, testing on 886 samples.
+Initializing LSTM Regressor with config: {'hidden_size': 64, 'num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'random_state': 18}
+[LSTMRegressor] Using device: cpu

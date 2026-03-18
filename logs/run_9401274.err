@@ -1,0 +1,4 @@
+/cm/local/apps/slurm/var/spool/job9401274/slurm_script: line 13: .venv/bin/activate: No such file or directory
+/home/bwingen/thesis/Thesis/.venv/bin/python: can't open file '/home/bwingen/thesis/Thesis/logs/model/run_model.py': [Errno 2] No such file or directory
+srun: error: cmp100: task 0: Exited with exit code 2
+srun: launch/slurm: _step_signal: Terminating StepId=9401274.0
