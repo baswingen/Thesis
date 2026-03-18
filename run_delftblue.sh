@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --gpus-per-task=1
 #SBATCH --mem-per-cpu=1G
-#SBATCH --account=research-ME-BME
+#SBATCH --account=Education-ME-MSc-ME
 
 module load 2025
 module load cuda
