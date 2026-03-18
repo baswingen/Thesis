@@ -18,4 +18,4 @@ echo "Working directory: $(pwd)"
 which python
 python --version
 
-srun python model/run_model.py
+srun python -u model/run_model.py
