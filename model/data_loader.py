@@ -82,6 +82,23 @@ class DataLoader:
                     imu_cols = self._decode_cols(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
                     emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
 
+                    # Filter EMG channels based on config
+                    emg_channels_config = FEATURE_CONFIG.get('emg_channels', {})
+                    if emg_cols and emg_channels_config:
+                        valid_emg_idx = [i for i, col in enumerate(emg_cols) if emg_channels_config.get(col, True)]
+                        emg_cols = [emg_cols[i] for i in valid_emg_idx]
+                        if emg.size > 0:
+                            emg = emg[:, valid_emg_idx]
+
+                    # Filter IMU channels based on config
+                    imu_channels_config = FEATURE_CONFIG.get('imu_channels', {})
+                    if imu_cols and imu_channels_config:
+                        valid_imu_idx = [i for i, col in enumerate(imu_cols) if imu_channels_config.get(col, True)]
+                        imu_cols = [imu_cols[i] for i in valid_imu_idx]
+                        if imu.size > 0:
+                            imu = imu[:, valid_imu_idx]
+
+
                     # Read dynamic sampling rates if available (stored by postprocessing.py & segmentation.py)
                     # We look at the attributes of the datasets inside the segment
                     fs_emg_eff = grp["emg"].attrs.get("fs", self.extractor.emg_fs) if "emg" in grp else self.extractor.emg_fs

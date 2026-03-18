@@ -36,6 +36,31 @@ FEATURE_CONFIG = {
     'imu_window_size_sec': 0.3,
     'window_step_sec': 0.1,
 
+    # ── EMG Channels (set False to exclude a muscle entirely) ────
+    'emg_channels': {
+        "Anterior Deltoid": True,
+        "Lateral Deltoid": True,
+        "Posterior Deltoid": True,
+        "Triceps Brachii": True,
+        "Biceps Brachii": True,
+        "Brachioradialis": True,
+        "Flexor Carpi Ulnaris (FCU)": True,
+        "Extensor Carpi Radialis (ECR)": True,
+    },
+
+    # ── IMU Sensors/Axes (set False to exclude entirely) ─────────
+    'imu_channels': {
+        # Sensor 1
+        'ax1': True, 'ay1': True, 'az1': True,
+        'roll_rad1': True, 'pitch_rad1': True, 'yaw_rad1': True,
+        # Sensor 2
+        'ax2': True, 'ay2': True, 'az2': True,
+        'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
+        # Differential (Elbow Kinematics)
+        'ax_diff': True, 'ay_diff': True, 'az_diff': True,
+        'roll_diff': True, 'pitch_diff': True, 'yaw_diff': True,
+    },
+
 
     # ── EMG Features (set False to disable) ──────────────
     'emg_features': {
