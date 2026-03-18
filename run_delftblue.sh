@@ -12,4 +12,4 @@
 module load 2025
 module load cuda
 
-srun ./model/run_model.py
+srun python model/run_model.py
