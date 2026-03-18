@@ -1,0 +1,59 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260318_142520
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5']
+Total samples: 4429
+Evaluation Mode: Train/Validation/Test Split (72/8/20)
+Testing samples: 886
+Training samples: 3188
+Validation samples: 355
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.3s, Step: 0.1s
+Enabled EMG Features: MAV, RMS, WL, ZC, SSC, VAR, WAMP, IEMG, LogDet, Skew, Kurt, HjMob, HjComp, Myopulse, MNF, MDF, Power, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Mean, Var, Std, Max, Min, RMS, SMA, P2P, IQR, Skew, Kurt, Jerk, ZC, Energy, DomFreq, SpecEnergy, MNF, MDF, SpecEntropy, SVM_Mean, SVM_Std
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 64
+Num Layers: 3
+Dropout Rate: 0.4
+Learning Rate: 0.005
+Batch Size: 128
+Epochs: 150
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.3
+Window Step (s): 0.1
+Random State: 18
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.0839
+Mean Squared Error: 0.0508
+Root Mean Squared Error: 0.2255
+R-squared Score: 0.9849
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 444      | 0.0047     | 0.0501    
+0.75 kg      | 63       | 0.0998     | 0.1457    
+1.00 kg      | 63       | 0.1473     | 0.2018    
+2.00 kg      | 63       | 0.2341     | 0.3658    
+2.25 kg      | 63       | 0.2041     | 0.2884    
+3.00 kg      | 64       | 0.2142     | 0.3624    
+4.25 kg      | 63       | 0.1866     | 0.4638    
+6.00 kg      | 63       | 0.0574     | 0.2641    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (Tesla V100S-PCIE-32GB) on x86_64 (x86_64)
+Total Parameters: 197,441
+Trainable Parameters: 197,441
+Estimated Inference GFLOPs (per sample): 0.007834
+Estimated Total Training GFLOPs: 11238.2662
+Training Time: 50.7822s
+Inference Time (per sample): 0.7219ms
+
