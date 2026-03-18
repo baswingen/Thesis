@@ -1,15 +1,20 @@
-#!/bin/sh
-#
-#SBATCH --job-name="run_model"
+#!/bin/bash
+#SBATCH --job-name=run_model
 #SBATCH --partition=compute
-#SBATCH --time=1:00:00
+#SBATCH --time=01:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --gpus-per-task=0
 #SBATCH --mem-per-cpu=1G
 #SBATCH --account=Education-ME-MSc-ME
+#SBATCH --output=logs/run_%j.out
+#SBATCH --error=logs/run_%j.err
 
-module load 2025
-module load cuda
+cd /full/path/from/pwd
+source .venv/bin/activate
+
+echo "Running on $(hostname)"
+echo "Working directory: $(pwd)"
+which python
+python --version
 
 srun python model/run_model.py
