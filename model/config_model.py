@@ -57,8 +57,8 @@ FEATURE_CONFIG = {
         'ax2': True, 'ay2': True, 'az2': True,
         'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
         # Differential (Elbow Kinematics)
-        'ax_diff': True, 'ay_diff': True, 'az_diff': True,
-        'roll_diff': True, 'pitch_diff': True, 'yaw_diff': True,
+        'ax_diff': False, 'ay_diff': False, 'az_diff': False,
+        'roll_diff': False, 'pitch_diff': False, 'yaw_diff': False,
     },
 
 
@@ -66,23 +66,23 @@ FEATURE_CONFIG = {
     'emg_features': {
         # Time-domain
         'MAV':        True,    # Mean Absolute Value
-        'RMS':        False,   # Root Mean Square
+        'RMS':        True,   # Root Mean Square
         'WL':         True,    # Waveform Length
-        'ZC':         False,   # Zero Crossings
+        'ZC':         True,   # Zero Crossings
         'SSC':        True,    # Slope Sign Changes
         'VAR':        True,    # Variance
-        'WAMP':       False,   # Willison Amplitude
+        'WAMP':       True,   # Willison Amplitude
         'IEMG':       True,    # Integrated EMG
-        'LogDet':     False,   # Log Detector
+        'LogDet':     True,   # Log Detector
         'Skew':       True,    # Skewness
         'Kurt':       True,    # Kurtosis
-        'HjMob':      False,   # Hjorth Mobility
-        'HjComp':     False,   # Hjorth Complexity
-        'Myopulse':   False,   # Myopulse Percentage Rate
+        'HjMob':      True,   # Hjorth Mobility
+        'HjComp':     True,   # Hjorth Complexity
+        'Myopulse':   True,   # Myopulse Percentage Rate
         # Frequency-domain
         'MNF':        True,    # Mean Frequency
         'MDF':        True,    # Median Frequency
-        'Power':      False,   # Total Spectral Power
+        'Power':      True,   # Total Spectral Power
         'SpecEntropy':True,    # Spectral Entropy
         'PeakFreq':   True,    # Peak Frequency
         'BW':         True,    # Bandwidth (95%)
@@ -91,26 +91,26 @@ FEATURE_CONFIG = {
     # ── IMU Features (set False to disable) ──────────────
     'imu_features': {
         # Time-domain
-        'Mean':       False,   # Mean value
+        'Mean':       True,   # Mean value
         'Var':        True,    # Variance
         'Std':        True,    # Standard Deviation
         'Max':        True,    # Maximum
-        'Min':        False,   # Minimum
-        'RMS':        False,   # Root Mean Square
+        'Min':        True,   # Minimum
+        'RMS':        True,   # Root Mean Square
         'SMA':        True,    # Signal Magnitude Area
         'P2P':        True,    # Peak-to-Peak
-        'IQR':        False,   # Interquartile Range
-        'Skew':       False,   # Skewness
+        'IQR':        True,   # Interquartile Range
+        'Skew':       True,   # Skewness
         'Kurt':       True,    # Kurtosis
-        'Jerk':       False,   # Mean Absolute Jerk
-        'ZC':         False,   # Zero Crossings
-        'Energy':     False,   # Energy
+        'Jerk':       True,   # Mean Absolute Jerk
+        'ZC':         True,   # Zero Crossings
+        'Energy':     True,   # Energy
         # Frequency-domain
         'DomFreq':    True,    # Dominant Frequency
         'SpecEnergy': True,    # Spectral Energy
         'MNF':        True,    # Mean Frequency
         'MDF':        True,    # Median Frequency
-        'SpecEntropy':False,   # Spectral Entropy
+        'SpecEntropy':True,   # Spectral Entropy
         # Cross-channel
         'SVM_Mean':   True,    # Signal Vector Magnitude (mean)
         'SVM_Std':    True,    # Signal Vector Magnitude (std)
