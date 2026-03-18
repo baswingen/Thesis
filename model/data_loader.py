@@ -49,14 +49,25 @@ class DataLoader:
         if window_step_sec is None:
             window_step_sec = FEATURE_CONFIG.get('window_step_sec')
             
+        from tqdm import tqdm
+        
         all_features = []
         
+        # Pre-scan total number of segments across all valid files for a smooth progress bar
+        total_segments = 0
+        valid_paths = []
         for path in h5_paths:
             path = Path(path)
-            if not path.exists():
+            if path.exists():
+                valid_paths.append(path)
+                with h5py.File(path, "r") as f:
+                    total_segments += sum(1 for k in f.keys() if k.startswith("segment_"))
+            else:
                 print(f"[WARN] File not found: {path}")
-                continue
                 
+        # Main extraction loop
+        pbar = tqdm(total=total_segments, desc="Extracting Features", unit="segment")
+        for path in valid_paths:
             with h5py.File(path, "r") as f:
                 # Find all segment groups
                 segment_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
@@ -138,6 +149,9 @@ class DataLoader:
                     features["imu_fs_orig"] = fs_imu_orig
 
                     all_features.append(features)
+                    pbar.update(1)
+                    
+        pbar.close()
 
         if not all_features:
             print("[WARN] No features were extracted. Check if valid HDF5 file(s) were provided.")
