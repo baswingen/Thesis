@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=run_model
-#SBATCH --partition=compute
+#SBATCH --partition=gpu
 #SBATCH --time=01:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
+#SBATCH --gpus-per-task=1
 #SBATCH --mem-per-cpu=1G
-#SBATCH --account=Education-ME-MSc-ME
+#SBATCH --account=research-ME-MSc-ME
 #SBATCH --output=logs/run_%j.out
 #SBATCH --error=logs/run_%j.err
 
