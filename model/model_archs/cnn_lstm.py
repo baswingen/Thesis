@@ -7,74 +7,142 @@ import pandas as pd
 import numpy as np
 import sys
 from pathlib import Path
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import CNN_LSTM_CONFIG, FEATURE_CONFIG, GLOBAL_LOSS_FUNCTION
-from model.model_archs.gru import SequenceDataset, pad_collate_fn  # Reuse dataloader utilities
+from model.config_model import CNN_LSTM_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG
 from model import plotting_utils
+from model.data_augmentation import SequenceAugmenter
+
+# ---------------------------------------------------------------------------
+# Dataset & collate for variable-length raw segments
+# ---------------------------------------------------------------------------
+
+class RawSegmentDataset(Dataset):
+    """Holds raw segments as tensors of shape (time_steps, n_channels)."""
+    def __init__(self, segments, labels):
+        self.segments = segments   # list of tensors (T_i, C)
+        self.labels = labels       # tensor (N, 1)
+
+    def __len__(self):
+        return len(self.segments)
+
+    def __getitem__(self, idx):
+        return self.segments[idx], self.labels[idx]
+
+
+def raw_pad_collate_fn(batch):
+    """Pad variable-length segments and return lengths for packing."""
+    segments, labels = zip(*batch)
+    lengths = torch.tensor([seg.shape[0] for seg in segments])
+    # pad_sequence expects (T, C) tensors → pads along dim-0
+    padded = rnn_utils.pad_sequence(segments, batch_first=True, padding_value=0.0)
+    labels = torch.stack(labels)
+    return padded, labels, lengths
+
+# ---------------------------------------------------------------------------
+# CNN Feature Extractor
+# ---------------------------------------------------------------------------
+
+class CNNFeatureExtractor(nn.Module):
+    """
+    Multi-layer 1-D CNN that downsamples a raw multi-channel time series
+    into a shorter sequence of learned feature vectors.
+
+    Input  : (batch, n_channels, time_steps)
+    Output : (batch, reduced_time, cnn_filters[-1])
+    """
+    def __init__(self, n_channels: int, cnn_filters: list[int],
+                 cnn_kernel_sizes: list[int], pool_size: int,
+                 dropout_rate: float):
+        super().__init__()
+        layers = []
+        in_ch = n_channels
+        for filters, ks in zip(cnn_filters, cnn_kernel_sizes):
+            padding = ks // 2  # 'same'-like padding
+            layers.extend([
+                nn.Conv1d(in_ch, filters, kernel_size=ks, padding=padding),
+                nn.BatchNorm1d(filters),
+                nn.ReLU(inplace=True),
+                nn.MaxPool1d(kernel_size=pool_size),
+                nn.Dropout(dropout_rate),
+            ])
+            in_ch = filters
+        self.net = nn.Sequential(*layers)
+        self.out_channels = cnn_filters[-1]
+        self.pool_size = pool_size
+        self.n_blocks = len(cnn_filters)
+
+    def forward(self, x):
+        # x: (batch, n_channels, time)
+        out = self.net(x)          # (batch, out_channels, reduced_time)
+        out = out.transpose(1, 2)  # (batch, reduced_time, out_channels)
+        return out
+
+# ---------------------------------------------------------------------------
+# Full CNN-LSTM Network
+# ---------------------------------------------------------------------------
 
 class CNNLSTMNetwork(nn.Module):
-    def __init__(self, input_size: int, cnn_filters: int, cnn_kernel_size: int, 
-                 lstm_hidden_size: int, lstm_num_layers: int, dropout_rate: float):
+    def __init__(self, n_channels: int, cnn_filters: list[int],
+                 cnn_kernel_sizes: list[int], pool_size: int,
+                 lstm_hidden_size: int, lstm_num_layers: int,
+                 dropout_rate: float):
         super().__init__()
-        
-        # 1D CNN for feature extraction over the sequence
-        # We use padding='same' equivalent (padding = kernel_size // 2) to maintain sequence length
-        padding = cnn_kernel_size // 2
-        self.conv1d = nn.Conv1d(
-            in_channels=input_size, 
-            out_channels=cnn_filters, 
-            kernel_size=cnn_kernel_size, 
-            padding=padding
+        self.cnn = CNNFeatureExtractor(
+            n_channels, cnn_filters, cnn_kernel_sizes, pool_size, dropout_rate
         )
-        self.relu = nn.ReLU()
-        
-        # LSTM layer
         self.lstm = nn.LSTM(
-            input_size=cnn_filters, 
-            hidden_size=lstm_hidden_size, 
-            num_layers=lstm_num_layers, 
-            batch_first=True, 
-            dropout=dropout_rate if lstm_num_layers > 1 else 0.0
+            input_size=self.cnn.out_channels,
+            hidden_size=lstm_hidden_size,
+            num_layers=lstm_num_layers,
+            batch_first=True,
+            dropout=dropout_rate if lstm_num_layers > 1 else 0.0,
         )
         self.dropout = nn.Dropout(dropout_rate)
         self.fc = nn.Linear(lstm_hidden_size, 1)
-        
+
+        # Store for length adjustment
+        self._pool_size = pool_size
+        self._n_blocks = len(cnn_filters)
+
+    def _adjust_lengths(self, lengths):
+        """Compute post-CNN sequence lengths from original sample lengths."""
+        adj = lengths.float()
+        for _ in range(self._n_blocks):
+            adj = torch.floor(adj / self._pool_size)
+        return adj.long().clamp(min=1)
+
     def forward(self, x, lengths):
-        # x shape: (batch_size, seq_len, input_size)
-        
-        # Conv1d expects (batch_size, channels, seq_len)
-        x_cnn = x.transpose(1, 2)
-        
-        # Apply CNN
-        cnn_out = self.conv1d(x_cnn)
-        cnn_out = self.relu(cnn_out)
-        
-        # Transpose back for LSTM: (batch_size, seq_len, cnn_filters)
-        lstm_input = cnn_out.transpose(1, 2)
-        
-        # Pack the sequence to avoid training on padding
-        # Even though CNN processed padding, packing ignores it for the recurrent state
-        packed_x = rnn_utils.pack_padded_sequence(lstm_input, lengths.cpu(), batch_first=True, enforce_sorted=False)
-        
-        packed_out, (hidden, cell) = self.lstm(packed_x) # hidden is (num_layers, batch, hidden_size)
-        
-        # Extract the hidden state from the last LSTM layer
-        last_hidden = hidden[-1] # (batch, hidden_size)
+        # x: (batch, n_channels, time_steps)
+        cnn_out = self.cnn(x)   # (batch, reduced_time, features)
+
+        # Compute adjusted lengths for packing
+        adj_lengths = self._adjust_lengths(lengths)
+        # Clamp to actual reduced_time (safety)
+        adj_lengths = adj_lengths.clamp(max=cnn_out.size(1))
+
+        packed = rnn_utils.pack_padded_sequence(
+            cnn_out, adj_lengths.cpu(), batch_first=True, enforce_sorted=False
+        )
+        _, (h_n, _) = self.lstm(packed)
+        last_hidden = h_n[-1]           # (batch, hidden_size)
         last_hidden = self.dropout(last_hidden)
-        
-        out = self.fc(last_hidden)
+        out = self.fc(last_hidden)      # (batch, 1)
         return out
 
+# ---------------------------------------------------------------------------
+# Scikit-learn-style regressor wrapper
+# ---------------------------------------------------------------------------
+
 class CNNLSTMRegressor:
-    def __init__(self, 
-                 cnn_filters: int = CNN_LSTM_CONFIG['cnn_filters'],
-                 cnn_kernel_size: int = CNN_LSTM_CONFIG['cnn_kernel_size'],
+    def __init__(self,
+                 cnn_filters: list[int] = CNN_LSTM_CONFIG['cnn_filters'],
+                 cnn_kernel_sizes: list[int] = CNN_LSTM_CONFIG['cnn_kernel_sizes'],
+                 pool_size: int = CNN_LSTM_CONFIG['pool_size'],
                  lstm_hidden_size: int = CNN_LSTM_CONFIG['lstm_hidden_size'],
                  lstm_num_layers: int = CNN_LSTM_CONFIG['lstm_num_layers'],
                  dropout_rate: float = CNN_LSTM_CONFIG['dropout_rate'],
@@ -83,17 +151,15 @@ class CNNLSTMRegressor:
                  batch_size: int = CNN_LSTM_CONFIG['batch_size'],
                  epochs: int = CNN_LSTM_CONFIG['epochs'],
                  validation_split: float = CNN_LSTM_CONFIG.get('validation_split', 0.2),
-                 early_stopping_patience: int = CNN_LSTM_CONFIG.get('early_stopping_patience', 10),
-                 scheduler_patience: int = CNN_LSTM_CONFIG.get('scheduler_patience', 5),
+                 early_stopping_patience: int = CNN_LSTM_CONFIG.get('early_stopping_patience', 30),
+                 scheduler_patience: int = CNN_LSTM_CONFIG.get('scheduler_patience', 10),
                  scheduler_factor: float = CNN_LSTM_CONFIG.get('scheduler_factor', 0.5),
-                 emg_window_size_sec: float = FEATURE_CONFIG['emg_window_size_sec'],
-                 imu_window_size_sec: float = FEATURE_CONFIG['imu_window_size_sec'],
-                 window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
-                  loss_type: str = GLOBAL_LOSS_FUNCTION,
-                  random_state: int = CNN_LSTM_CONFIG['random_state']):
-                 
-        self.cnn_filters = cnn_filters
-        self.cnn_kernel_size = cnn_kernel_size
+                 loss_type: str = GLOBAL_LOSS_FUNCTION,
+                 random_state: int = CNN_LSTM_CONFIG['random_state']):
+
+        self.cnn_filters = list(cnn_filters)
+        self.cnn_kernel_sizes = list(cnn_kernel_sizes)
+        self.pool_size = pool_size
         self.lstm_hidden_size = lstm_hidden_size
         self.lstm_num_layers = lstm_num_layers
         self.dropout_rate = dropout_rate
@@ -103,24 +169,22 @@ class CNNLSTMRegressor:
         self.epochs = epochs
         self.validation_split = validation_split
         self.early_stopping_patience = early_stopping_patience
-        self.emg_window_size_sec = emg_window_size_sec
-        self.imu_window_size_sec = imu_window_size_sec
-        self.window_step_sec = window_step_sec
+        self.scheduler_patience = scheduler_patience
+        self.scheduler_factor = scheduler_factor
         self.loss_type = loss_type.lower()
         self.random_state = random_state
-        
-        # Loss history
+
+        # Tracking
         self.loss_history = {"train": [], "val": []}
-        
-        # Split stats
         self.train_samples = 0
         self.val_samples = 0
-        
+
         torch.manual_seed(self.random_state)
-        
+
         self.scaler = StandardScaler()
         self.model = None
-        self.feature_names = None
+        self.n_channels = None
+
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
         elif torch.backends.mps.is_available():
@@ -128,168 +192,204 @@ class CNNLSTMRegressor:
         else:
             self.device = torch.device("cpu")
         print(f"[{self.__class__.__name__}] Using device: {self.device}")
-        
-    def _extract_sequences(self, X: pd.DataFrame) -> list:
-        if 'sequence_dicts' not in X.columns:
-            raise ValueError("CNNLSTMRegressor expects DataFrame with 'sequence_dicts' column.")
-        return X['sequence_dicts'].tolist()
-        
+
+    # ------------------------------------------------------------------
+    # Data helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _extract_raw_segments(X: pd.DataFrame) -> list[np.ndarray]:
+        """Extract raw segment arrays from the DataFrame."""
+        if 'raw_segment' not in X.columns:
+            raise ValueError(
+                "CNNLSTMRegressor expects a DataFrame with a 'raw_segment' column. "
+                "Use DataLoader.load_raw_segments() to prepare data."
+            )
+        return X['raw_segment'].tolist()
+
+    def _scale_segments(self, segments: list[np.ndarray], fit: bool = False) -> list[np.ndarray]:
+        """Per-channel z-score standardisation."""
+        if fit:
+            # Flatten all time-steps across all segments to fit one scaler
+            all_data = np.vstack(segments)
+            self.scaler.fit(all_data)
+
+        scaled = []
+        for seg in segments:
+            scaled.append(self.scaler.transform(seg).astype(np.float32))
+        return scaled
+
+    # ------------------------------------------------------------------
+    # Training
+    # ------------------------------------------------------------------
+
     def fit(self, X: pd.DataFrame, y: pd.Series):
         from sklearn.model_selection import train_test_split
         from tqdm import tqdm
         import copy
-        
-        # 1. Split data into train and validation sets
+
+        # 1. Train / validation split
         stratify = X["label"] if "label" in X.columns else None
         X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=self.validation_split, random_state=self.random_state, stratify=stratify
+            X, y, test_size=self.validation_split,
+            random_state=self.random_state, stratify=stratify,
         )
-        
-        # 2. Extract sequences
-        sequences_train = self._extract_sequences(X_train)
-        sequences_val = self._extract_sequences(X_val)
-        self.feature_names = list(sequences_train[0][0].keys())
-        
-        # 3. Flatten train to fit scaler
-        flat_data_train = []
-        for seq in sequences_train:
-            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            flat_data_train.append(seq_arr)
-            
-        all_features_train = np.vstack(flat_data_train)
-        self.scaler.fit(all_features_train)
-        
-        # 4. Reconstruct scaled train sequences
-        scaled_seqs_train = []
-        for arr in flat_data_train:
-            scaled_arr = self.scaler.transform(arr).astype(np.float32)
-            scaled_seqs_train.append(torch.from_numpy(scaled_arr))
-            
-        y_tensor_train = torch.from_numpy(y_train.values.astype(np.float32)).unsqueeze(1)
-        
-        # 5. Process validation sequences using fitted scaler
-        scaled_seqs_val = []
-        for seq in sequences_val:
-            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(seq_arr).astype(np.float32)
-            scaled_seqs_val.append(torch.from_numpy(scaled_arr))
-            
+
+        # 2. Extract raw segments
+        segs_train = self._extract_raw_segments(X_train)
+        segs_val = self._extract_raw_segments(X_val)
+        self.n_channels = segs_train[0].shape[1]
+
+        # 3. Fit scaler on training data, then transform both
+        scaled_train = self._scale_segments(segs_train, fit=True)
+        scaled_val = self._scale_segments(segs_val, fit=False)
+        y_np_train = y_train.values.astype(np.float32)
+
+        # 3b. Data augmentation (training only)
+        augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
+        scaled_train, y_np_train = augmenter.augment_dataset(scaled_train, y_np_train)
+        if AUGMENTATION_CONFIG.get('enabled', False):
+            n_aug = len(scaled_train) - len(segs_train)
+            print(f"[CNNLSTMRegressor] Augmentation: {len(segs_train)} → "
+                  f"{len(scaled_train)} segments (+{n_aug} synthetic)")
+
+        # Convert to tensors
+        train_tensors = [torch.from_numpy(s) for s in scaled_train]
+        y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
+        val_tensors = [torch.from_numpy(s) for s in scaled_val]
         y_tensor_val = torch.from_numpy(y_val.values.astype(np.float32)).unsqueeze(1)
-        
+
         self.train_samples = len(X_train)
         self.val_samples = len(X_val)
-        
-        # 6. Initialize Model and Optimizers
-        input_dim = len(self.feature_names)
-        self.model = CNNLSTMNetwork(input_dim, self.cnn_filters, self.cnn_kernel_size,
-                                    self.lstm_hidden_size, self.lstm_num_layers, 
-                                    self.dropout_rate).to(self.device)
-        
-        optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=self.scheduler_patience, factor=self.scheduler_factor)
-        
+
+        # 4. Build model
+        self.model = CNNLSTMNetwork(
+            n_channels=self.n_channels,
+            cnn_filters=self.cnn_filters,
+            cnn_kernel_sizes=self.cnn_kernel_sizes,
+            pool_size=self.pool_size,
+            lstm_hidden_size=self.lstm_hidden_size,
+            lstm_num_layers=self.lstm_num_layers,
+            dropout_rate=self.dropout_rate,
+        ).to(self.device)
+
+        optimizer = optim.AdamW(self.model.parameters(),
+                                lr=self.learning_rate, weight_decay=self.weight_decay)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='min',
+            patience=self.scheduler_patience, factor=self.scheduler_factor,
+        )
+
         if self.loss_type == 'mae':
             criterion = nn.L1Loss()
         else:
             criterion = nn.MSELoss()
             if self.loss_type != 'mse':
-                print(f"[CNNLSTMRegressor] Unknown loss type '{self.loss_type}', defaulting to MSE.")
-        
-        dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
-        loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
-        
-        dataset_val = SequenceDataset(scaled_seqs_val, y_tensor_val)
-        loader_val = DataLoader(dataset_val, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate_fn)
-        
-        # Early stopping tracking
+                print(f"[CNNLSTMRegressor] Unknown loss '{self.loss_type}', defaulting to MSE.")
+
+        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
+        loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
+                                  shuffle=True, collate_fn=raw_pad_collate_fn)
+
+        dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)
+        loader_val = DataLoader(dataset_val, batch_size=self.batch_size,
+                                shuffle=False, collate_fn=raw_pad_collate_fn)
+
+        # 5. Training loop
         best_val_loss = float('inf')
         patience_counter = 0
-        best_model_weights = copy.deepcopy(self.model.state_dict())
-        
-        # Wrap the epoch range with tqdm
+        best_weights = copy.deepcopy(self.model.state_dict())
+
         with tqdm(range(self.epochs), desc="Training CNN-LSTM", unit="epoch") as pbar:
             for epoch in pbar:
-                # TRAIN LOOP
+                # --- TRAIN ---
                 self.model.train()
                 running_loss = 0.0
                 for batch_x, batch_y, lengths in loader_train:
-                    batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                    # batch_x: (B, T, C) → transpose to (B, C, T) for Conv1d
+                    batch_x = batch_x.transpose(1, 2).to(self.device)
+                    batch_y = batch_y.to(self.device)
                     lengths = lengths.to(self.device)
-                    
+
                     optimizer.zero_grad()
                     outputs = self.model(batch_x, lengths)
                     loss = criterion(outputs, batch_y)
                     loss.backward()
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                     optimizer.step()
-                    
+
                     running_loss += loss.item() * batch_x.size(0)
-                    
+
                 avg_train_loss = running_loss / len(dataset_train)
-                
-                # VALIDATION LOOP
+
+                # --- VALIDATION ---
                 self.model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
                     for batch_x, batch_y, lengths in loader_val:
-                        batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                        batch_x = batch_x.transpose(1, 2).to(self.device)
+                        batch_y = batch_y.to(self.device)
                         lengths = lengths.to(self.device)
-                        
+
                         outputs = self.model(batch_x, lengths)
                         loss = criterion(outputs, batch_y)
                         val_loss += loss.item() * batch_x.size(0)
-                
+
                 avg_val_loss = val_loss / len(dataset_val)
-                pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
-                
-                # Step the scheduler based on validation loss
+                pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}",
+                                  "Val Loss": f"{avg_val_loss:.4f}"})
+
                 scheduler.step(avg_val_loss)
-                
-                # TRACK LOSS
+
                 self.loss_history["train"].append(avg_train_loss)
                 self.loss_history["val"].append(avg_val_loss)
-                
-                # EARLY STOPPING CHECK
+
                 if avg_val_loss < best_val_loss:
                     best_val_loss = avg_val_loss
                     patience_counter = 0
-                    best_model_weights = copy.deepcopy(self.model.state_dict())
+                    best_weights = copy.deepcopy(self.model.state_dict())
                 else:
                     patience_counter += 1
-                    
+
                 if patience_counter >= self.early_stopping_patience:
-                    print(f"\nEarly stopping triggered at epoch {epoch+1}. Best Val Loss: {best_val_loss:.4f}")
+                    print(f"\nEarly stopping at epoch {epoch+1}. "
+                          f"Best Val Loss: {best_val_loss:.4f}")
                     break
-                    
-        # Load best weights
-        self.model.load_state_dict(best_model_weights)
+
+        self.model.load_state_dict(best_weights)
         self.model.eval()
+
+    # ------------------------------------------------------------------
+    # Prediction
+    # ------------------------------------------------------------------
 
     def predict(self, X: pd.DataFrame):
         if self.model is None:
             raise ValueError("Model not fitted.")
-            
-        sequences = self._extract_sequences(X)
-        
-        scaled_seqs = []
-        for seq in sequences:
-            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(seq_arr).astype(np.float32)
-            scaled_seqs.append(torch.from_numpy(scaled_arr))
-            
-        dummy_y = torch.zeros((len(scaled_seqs), 1))
-        dataset = SequenceDataset(scaled_seqs, dummy_y)
-        loader = DataLoader(dataset, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate_fn)
-        
+
+        segments = self._extract_raw_segments(X)
+        scaled = self._scale_segments(segments, fit=False)
+        tensors = [torch.from_numpy(s) for s in scaled]
+
+        dummy_y = torch.zeros((len(tensors), 1))
+        dataset = RawSegmentDataset(tensors, dummy_y)
+        loader = DataLoader(dataset, batch_size=self.batch_size,
+                            shuffle=False, collate_fn=raw_pad_collate_fn)
+
         self.model.eval()
         all_preds = []
         with torch.no_grad():
             for batch_x, _, lengths in loader:
-                batch_x = batch_x.to(self.device)
+                batch_x = batch_x.transpose(1, 2).to(self.device)
                 lengths = lengths.to(self.device)
                 preds = self.model(batch_x, lengths).cpu().numpy()
                 all_preds.extend(preds.flatten())
-                
+
         return np.maximum(0.0, np.array(all_preds))
+
+    # ------------------------------------------------------------------
+    # Evaluation
+    # ------------------------------------------------------------------
 
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series):
         y_pred = self.predict(X_test)
@@ -297,7 +397,7 @@ class CNNLSTMRegressor:
         mse = mean_squared_error(y_test, y_pred)
         rmse = np.sqrt(mse)
         r2 = r2_score(y_test, y_pred)
-        
+
         metrics = {"MAE": mae, "MSE": mse, "RMSE": rmse, "R2": r2}
         report_str = (
             f"Mean Absolute Error: {mae:.4f}\n"
@@ -306,19 +406,23 @@ class CNNLSTMRegressor:
             f"R-squared Score: {r2:.4f}\n"
         )
         return metrics, report_str
-        
+
+    # ------------------------------------------------------------------
+    # Save / Load
+    # ------------------------------------------------------------------
+
     def save(self, filepath: str | Path):
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        
+
         state = {
             'model_state': self.model.state_dict(),
             'scaler': self.scaler,
-            'feature_names': self.feature_names,
-            'input_dim': len(self.feature_names),
+            'n_channels': self.n_channels,
             'config': {
                 'cnn_filters': self.cnn_filters,
-                'cnn_kernel_size': self.cnn_kernel_size,
+                'cnn_kernel_sizes': self.cnn_kernel_sizes,
+                'pool_size': self.pool_size,
                 'lstm_hidden_size': self.lstm_hidden_size,
                 'lstm_num_layers': self.lstm_num_layers,
                 'dropout_rate': self.dropout_rate,
@@ -331,42 +435,45 @@ class CNNLSTMRegressor:
                 'early_stopping_patience': self.early_stopping_patience,
                 'scheduler_patience': self.scheduler_patience,
                 'scheduler_factor': self.scheduler_factor,
-                'emg_window_size_sec': self.emg_window_size_sec,
-                'imu_window_size_sec': self.imu_window_size_sec,
-                'window_step_sec': self.window_step_sec,
-                'random_state': self.random_state
+                'random_state': self.random_state,
             },
             'split_info': {
                 'train_samples': self.train_samples,
-                'val_samples': self.val_samples
+                'val_samples': self.val_samples,
             },
-            'loss_history': self.loss_history
+            'loss_history': self.loss_history,
         }
         torch.save(state, filepath)
-        
+
     @classmethod
     def load(cls, filepath: str | Path):
         state = torch.load(filepath, weights_only=False)
         regressor = cls(**state['config'])
         regressor.scaler = state['scaler']
-        regressor.feature_names = state['feature_names']
-        regressor.model = CNNLSTMNetwork(state['input_dim'], 
-                                         state['config']['cnn_filters'],
-                                         state['config']['cnn_kernel_size'],
-                                         state['config']['lstm_hidden_size'], 
-                                         state['config']['lstm_num_layers'], 
-                                         state['config']['dropout_rate']).to(regressor.device)
+        regressor.n_channels = state['n_channels']
+        regressor.model = CNNLSTMNetwork(
+            n_channels=state['n_channels'],
+            cnn_filters=state['config']['cnn_filters'],
+            cnn_kernel_sizes=state['config']['cnn_kernel_sizes'],
+            pool_size=state['config']['pool_size'],
+            lstm_hidden_size=state['config']['lstm_hidden_size'],
+            lstm_num_layers=state['config']['lstm_num_layers'],
+            dropout_rate=state['config']['dropout_rate'],
+        ).to(regressor.device)
         regressor.model.load_state_dict(state['model_state'])
         regressor.model.eval()
-        
+
         if 'split_info' in state:
             regressor.train_samples = state['split_info'].get('train_samples', 0)
             regressor.val_samples = state['split_info'].get('val_samples', 0)
-            
         if 'loss_history' in state:
             regressor.loss_history = state['loss_history']
-            
+
         return regressor
+
+    # ------------------------------------------------------------------
+    # Plotting passthrough
+    # ------------------------------------------------------------------
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):
         plotting_utils.plot_regression_results(y_test, y_pred, save_path, model_name="CNN-LSTM")

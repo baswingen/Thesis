@@ -111,6 +111,107 @@ class DataLoader:
         return df
 
     # ------------------------------------------------------------------
+    # Raw segment loading (for CNN-LSTM end-to-end models)
+    # ------------------------------------------------------------------
+
+    def load_raw_segments(self, h5_paths: List[Path]) -> pd.DataFrame:
+        """
+        Load raw EMG + IMU arrays directly from segmented HDF5 files.
+
+        Each segment produces one row with a ``raw_segment`` column containing
+        a numpy array of shape ``(N_samples, n_emg + n_imu)``.  Channel
+        filtering from ``FEATURE_CONFIG`` is applied.
+
+        This path is used exclusively by **CNN-LSTM**, which learns its own
+        features via 1-D convolutions instead of relying on hand-crafted
+        windowed features.
+        """
+        from tqdm import tqdm
+
+        all_rows: list[dict] = []
+        channel_names: list[str] | None = None
+
+        for path in h5_paths:
+            path = Path(path)
+            if not path.exists():
+                print(f"[WARN] File not found: {path}")
+                continue
+
+            with h5py.File(path, "r") as f:
+                segment_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
+
+                for key in tqdm(segment_keys, desc=f"Loading raw ({path.name})", unit="seg"):
+                    grp = f[key]
+
+                    # --- EMG ---
+                    emg = grp["emg"][:] if "emg" in grp else np.empty((0, 0))
+                    emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
+
+                    emg_channels_config = FEATURE_CONFIG.get('emg_channels', {})
+                    if emg_cols and emg_channels_config:
+                        valid_idx = [i for i, c in enumerate(emg_cols) if emg_channels_config.get(c, True)]
+                        emg_cols = [emg_cols[i] for i in valid_idx]
+                        if emg.size > 0:
+                            emg = emg[:, valid_idx]
+
+                    # --- IMU ---
+                    imu = grp["imu"][:] if "imu" in grp else np.empty((0, 0))
+                    imu_cols = self._decode_cols(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
+
+                    imu_channels_config = FEATURE_CONFIG.get('imu_channels', {})
+                    if imu_cols and imu_channels_config:
+                        valid_idx = [i for i, c in enumerate(imu_cols) if imu_channels_config.get(c, True)]
+                        imu_cols = [imu_cols[i] for i in valid_idx]
+                        if imu.size > 0:
+                            imu = imu[:, valid_idx]
+
+                    # Concatenate EMG + IMU along the channel axis
+                    if emg.size > 0 and imu.size > 0:
+                        # Align row counts (they share the same sample clock)
+                        n = min(emg.shape[0], imu.shape[0])
+                        raw = np.hstack([emg[:n], imu[:n]]).astype(np.float32)
+                        cols = emg_cols + imu_cols
+                    elif emg.size > 0:
+                        raw = emg.astype(np.float32)
+                        cols = emg_cols
+                    elif imu.size > 0:
+                        raw = imu.astype(np.float32)
+                        cols = imu_cols
+                    else:
+                        continue  # skip empty segments
+
+                    if channel_names is None:
+                        channel_names = cols
+
+                    # --- Metadata ---
+                    def _a(name, default=""):
+                        v = grp.attrs.get(name, default)
+                        return v.decode() if isinstance(v, bytes) else v
+
+                    label = str(_a("label", "unknown"))
+                    row = {
+                        "raw_segment": raw,
+                        "label": label,
+                        "state": str(_a("state", "unknown")),
+                        "weight": 0.0 if label == "free_movement" else float(grp.attrs.get("weight", -1.0)),
+                        "segment_id": key,
+                        "trial_file": _a("trial_file", "unknown"),
+                        "subject": path.stem.split("_")[1] if "participant" in path.stem else "unknown",
+                    }
+                    all_rows.append(row)
+
+        if not all_rows:
+            print("[WARN] No raw segments loaded.")
+            return pd.DataFrame()
+
+        df = pd.DataFrame(all_rows)
+        # Store the channel order for reference
+        df.attrs["channel_names"] = channel_names
+        print(f"[DataLoader] Loaded {len(df)} raw segments "
+              f"({channel_names and len(channel_names) or '?'} channels each)")
+        return df
+
+    # ------------------------------------------------------------------
     # Live feature extraction (also used as fallback)
     # ------------------------------------------------------------------
 

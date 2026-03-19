@@ -259,20 +259,23 @@ LSTM_CONFIG = {
     'random_state': GLOBAL_RANDOM_STATE
 }
 
-# CNN-LSTM Configuration
+# CNN-LSTM Configuration (raw-segment end-to-end model)
 CNN_LSTM_CONFIG = {
-    'cnn_filters': 32,
-    'cnn_kernel_size': 5,
+    'cnn_filters': [32, 64],        # filters per conv block
+    'cnn_kernel_sizes': [7, 5],     # kernel sizes per conv block
+    'pool_size': 4,                 # max-pool factor per block
     'lstm_hidden_size': 128,
-    'lstm_num_layers': 1,
+    'lstm_num_layers': 2,
     'dropout_rate': 0.3,
-    'learning_rate': 0.005,
+    'learning_rate': 0.001,
     'weight_decay': 1e-4,
     'batch_size': 32,
-    'epochs': 100,
+    'epochs': 200,
     'validation_split': 0.2,
-    'early_stopping_patience': 10,
-    'random_state': GLOBAL_RANDOM_STATE
+    'early_stopping_patience': 30,
+    'scheduler_patience': 10,
+    'scheduler_factor': 0.5,
+    'random_state': GLOBAL_RANDOM_STATE,
 }
 
 # Transformer Configuration

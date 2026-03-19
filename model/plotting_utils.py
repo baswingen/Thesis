@@ -132,7 +132,8 @@ def plot_training_loss(loss_history: dict, save_path: str | Path, model_name: st
     plt.close()
     print(f"Loss plot saved to {save_path}")
 
-def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path, model_name: str = "Model"):
+def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path,
+                            model_name: str = "Model", min_count: int = 10):
     """
     Plots MAE and RMSE as a function of elapsed time into the lift (i.e. how many
     sliding windows were available when the model made its prediction).
@@ -144,13 +145,20 @@ def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path, model
     if not per_seqlen_stats:
         return
 
+    # Drop bins with too few samples for reliable statistics
+    filtered = [row for row in per_seqlen_stats if row['Count'] >= min_count]
+    n_dropped = len(per_seqlen_stats) - len(filtered)
+    if not filtered:
+        print(f"[plot_seqlen_performance] All bins dropped (min_count={min_count}). Nothing to plot.")
+        return
+
     set_style()
 
-    times  = [float(row['TimeAtPrediction'].rstrip('s')) for row in per_seqlen_stats]
-    maes   = [float(row['MAE'])   for row in per_seqlen_stats]
-    rmses  = [float(row['RMSE'])  for row in per_seqlen_stats]
-    counts = [row['Count']        for row in per_seqlen_stats]
-    n_wins = [row['SeqLen']       for row in per_seqlen_stats]
+    times  = [float(row['TimeAtPrediction'].rstrip('s')) for row in filtered]
+    maes   = [float(row['MAE'])   for row in filtered]
+    rmses  = [float(row['RMSE'])  for row in filtered]
+    counts = [row['Count']        for row in filtered]
+    n_wins = [row['SeqLen']       for row in filtered]
 
     fig, ax1 = plt.subplots(figsize=(9, 5))
 
@@ -192,6 +200,11 @@ def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path, model
 
     ax1.set_zorder(ax2.get_zorder() + 1)
     ax1.patch.set_visible(False)
+
+    # Footnote about omitted bins
+    footnote = f"Bins with < {min_count} samples omitted ({n_dropped} bin(s) excluded)."
+    fig.text(0.5, -0.02, footnote, ha='center', va='top',
+             fontsize=9, color='grey', style='italic')
 
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')

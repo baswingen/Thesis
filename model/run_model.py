@@ -37,7 +37,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
@@ -130,7 +130,7 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
 
     for L in unique_lens:
         mask = (seq_lengths == L)
-        if np.sum(mask) < 2:   # skip groups too small for meaningful stats
+        if np.sum(mask) < 10:   # skip groups too small for meaningful stats
             continue
         mae  = mean_absolute_error(y_true[mask], y_pred[mask])
         rmse = np.sqrt(mean_squared_error(y_true[mask], y_pred[mask]))
@@ -185,15 +185,19 @@ def main():
     print("Extracting features from HDF5 files. This may take a moment...")
     
     model_type = MODEL_TYPE.lower()
-    is_sequence = model_type in ["gru", "lstm", "cnn_lstm", "transformer"]
+    is_sequence = model_type in ["gru", "lstm", "transformer"]
+    is_raw_segment = model_type == "cnn_lstm"
     target_col = "weight"
     
-    # Load features — use precomputed by default; falls back to live extraction
-    df = loader.load_and_extract_features(
-        h5_paths,
-        is_sequence=is_sequence,
-        use_precomputed=USE_PRECOMPUTED_FEATURES,
-    )
+    # Load data — raw segments for CNN-LSTM, features for everything else
+    if is_raw_segment:
+        df = loader.load_raw_segments(h5_paths)
+    else:
+        df = loader.load_and_extract_features(
+            h5_paths,
+            is_sequence=is_sequence,
+            use_precomputed=USE_PRECOMPUTED_FEATURES,
+        )
     
     if df.empty:
         print("Data extraction failed or produced an empty DataFrame.")
@@ -205,7 +209,16 @@ def main():
     
     X, y = loader.prepare_for_ml(df, target_col=target_col)
     
-    if is_sequence:
+    if is_raw_segment:
+        seg_lengths = np.array([seg.shape[0] for seg in X['raw_segment']])
+        n_channels = X['raw_segment'].iloc[0].shape[1]
+        avg_seg_len = seg_lengths.mean()
+        print(f"Raw Segment Data Summary:")
+        print(f"  - Total Segments: {len(X)}")
+        print(f"  - Channels (EMG + IMU): {n_channels}")
+        print(f"  - Avg Segment Length: {avg_seg_len:.0f} samples")
+        print(f"  - Min / Max Segment Length: {seg_lengths.min()} / {seg_lengths.max()} samples")
+    elif is_sequence:
         avg_seq_len = np.mean([len(s) for s in X.iloc[:, 0]])
         # Access first window of first sequence to get feature count
         first_seq = X.iloc[0, 0]
@@ -351,7 +364,7 @@ def main():
 
     # Calculate per-sequence-length statistics (sequence models only)
     per_seqlen_stats = None
-    if is_sequence:
+    if is_sequence and not is_raw_segment:
         if use_cv:
             # For CV we don't easily have X at test time; skip for now
             pass
@@ -419,13 +432,20 @@ def main():
         f.write("\n")
 
         f.write("--- FEATURE CONFIGURATION ---\n")
-        f.write(f"EMG Window Size: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window Size: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
-        
-        emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
-        f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")
-        
-        imu_enabled = [k for k, v in FEATURE_CONFIG['imu_features'].items() if v]
-        f.write(f"Enabled IMU Features: {', '.join(imu_enabled)}\n")
+        if is_raw_segment:
+            f.write(f"Input: Raw EMG + IMU segments (end-to-end CNN feature extraction)\n")
+            emg_ch = [k for k, v in FEATURE_CONFIG.get('emg_channels', {}).items() if v]
+            imu_ch = [k for k, v in FEATURE_CONFIG.get('imu_channels', {}).items() if v]
+            f.write(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}\n")
+            f.write(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}\n")
+        else:
+            f.write(f"EMG Window Size: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window Size: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
+            
+            emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
+            f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")
+            
+            imu_enabled = [k for k, v in FEATURE_CONFIG['imu_features'].items() if v]
+            f.write(f"Enabled IMU Features: {', '.join(imu_enabled)}\n")
         f.write("\n")
         
         f.write("--- HYPERPARAMETERS ---\n")
@@ -488,7 +508,8 @@ def main():
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "cnn_lstm":
             f.write(f"CNN Filters: {model.cnn_filters}\n")
-            f.write(f"CNN Kernel Size: {model.cnn_kernel_size}\n")
+            f.write(f"CNN Kernel Sizes: {model.cnn_kernel_sizes}\n")
+            f.write(f"Pool Size: {model.pool_size}\n")
             f.write(f"LSTM Hidden Size: {model.lstm_hidden_size}\n")
             f.write(f"LSTM Num Layers: {model.lstm_num_layers}\n")
             f.write(f"Dropout Rate: {model.dropout_rate}\n")
@@ -496,9 +517,7 @@ def main():
             f.write(f"Batch Size: {model.batch_size}\n")
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
-            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
-            f.write(f"Window Step (s): {model.window_step_sec}\n")
+            f.write(f"Input Channels: {model.n_channels}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "transformer":
             f.write(f"D_Model: {model.d_model}\n")
