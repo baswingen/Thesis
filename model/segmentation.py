@@ -758,7 +758,171 @@ def _run_cli(args):
         sys.exit(f"[ERR] Path not found: {target}")
 
 
+
+# ---------------------------------------------------------------------------
+# Precomputed feature helpers
+# ---------------------------------------------------------------------------
+
+def save_precomputed_features(
+    h5_path: str | Path,
+    segment_features: dict[str, dict],
+    feature_config: dict | None = None,
+) -> None:
+    """
+    Write pre-extracted features into an existing segmented HDF5 file.
+
+    For each segment key (e.g. ``"segment_0000"``) in *segment_features*,
+    a ``"features"`` group is created (or overwritten) inside that segment
+    group containing:
+
+    * One scalar dataset per feature (float64).
+    * A ``"feature_names"`` string dataset listing all feature names in order.
+    * If *feature_config* is supplied its contents are serialised as JSON and
+      stored as a group attribute ``"feature_config_json"`` so the extraction
+      settings are permanently recorded alongside the data.
+
+    Parameters
+    ----------
+    h5_path : path to the segmented .h5 file (must already exist).
+    segment_features : mapping  segment_key → {feature_name: value, ...}
+        ``value`` may be a scalar **or** a list/array (for sequence features).
+    feature_config : optional dict from ``FEATURE_CONFIG`` to store as metadata.
+    """
+    import json as _json
+
+    h5_path = Path(h5_path)
+    if not h5_path.exists():
+        raise FileNotFoundError(f"Segment HDF5 file not found: {h5_path}")
+
+    config_json = _json.dumps(feature_config, default=str) if feature_config else ""
+
+    with h5py.File(h5_path, "a") as f:
+        for seg_key, feat_dict in segment_features.items():
+            if seg_key not in f:
+                print(f"[SEGMENTER] WARNING: '{seg_key}' not found in {h5_path.name} — skipping.")
+                continue
+
+            grp = f[seg_key]
+
+            # Remove old features group if it exists so we can write fresh data
+            if "features" in grp:
+                del grp["features"]
+
+            feat_grp = grp.create_group("features")
+
+            if config_json:
+                feat_grp.attrs["feature_config_json"] = config_json
+
+            # Separate scalar features from sequence features
+            scalar_names: list[str] = []
+            seq_names: list[str] = []
+
+            for name, val in feat_dict.items():
+                if isinstance(val, (list, np.ndarray)):
+                    # Sequence feature: list of dicts or array
+                    seq_names.append(name)
+                else:
+                    scalar_names.append(name)
+
+            # --- scalar features stored as a compact 1-D float array ----------
+            if scalar_names:
+                scalar_vals = np.array(
+                    [feat_dict[n] for n in scalar_names], dtype=np.float64
+                )
+                feat_grp.create_dataset(
+                    "scalar_values",
+                    data=scalar_vals,
+                    compression="gzip",
+                    compression_opts=4,
+                )
+                feat_grp.attrs["scalar_names"] = [n.encode() for n in scalar_names]
+
+            # --- sequence features (list of window-dicts) ---------------------
+            if "sequence_dicts" in feat_dict:
+                windows: list[dict] = feat_dict["sequence_dicts"]  # type: ignore[assignment]
+                if windows:
+                    all_keys = list(windows[0].keys())
+                    arr = np.array(
+                        [[w[k] for k in all_keys] for w in windows],
+                        dtype=np.float64,
+                    )  # shape: (n_windows, n_features)
+                    feat_grp.create_dataset(
+                        "sequence_values",
+                        data=arr,
+                        compression="gzip",
+                        compression_opts=4,
+                    )
+                    feat_grp.attrs["sequence_feature_names"] = [
+                        k.encode() for k in all_keys
+                    ]
+
+    print(
+        f"[SEGMENTER] Saved precomputed features for "
+        f"{len(segment_features)} segments → {h5_path}"
+    )
+
+
+def load_precomputed_features(
+    h5_path: str | Path,
+) -> dict[str, dict]:
+    """
+    Read precomputed features from a segmented HDF5 file written by
+    :func:`save_precomputed_features`.
+
+    Returns
+    -------
+    dict mapping segment_key → feature_dict.
+    Scalar features are individual float entries; sequence features are
+    stored under the key ``"sequence_dicts"`` as a list of window-dicts.
+    Returns an empty dict if no ``"features"`` groups are found.
+    """
+    h5_path = Path(h5_path)
+    if not h5_path.exists():
+        raise FileNotFoundError(f"Segment HDF5 file not found: {h5_path}")
+
+    result: dict[str, dict] = {}
+
+    with h5py.File(h5_path, "r") as f:
+        seg_keys = [k for k in f.keys() if k.startswith("segment_")]
+        for seg_key in seg_keys:
+            grp = f[seg_key]
+            if "features" not in grp:
+                continue  # no precomputed features for this segment
+
+            feat_grp = grp["features"]
+            feat_dict: dict = {}
+
+            # --- scalars -------------------------------------------------------
+            if "scalar_values" in feat_grp:
+                scalar_vals = feat_grp["scalar_values"][:]
+                raw_names = feat_grp.attrs.get("scalar_names", [])
+                scalar_names = [
+                    n.decode() if isinstance(n, (bytes, np.bytes_)) else str(n)
+                    for n in raw_names
+                ]
+                for name, val in zip(scalar_names, scalar_vals):
+                    feat_dict[name] = float(val)
+
+            # --- sequences -----------------------------------------------------
+            if "sequence_values" in feat_grp:
+                seq_arr = feat_grp["sequence_values"][:]  # (n_windows, n_features)
+                raw_names = feat_grp.attrs.get("sequence_feature_names", [])
+                seq_feature_names = [
+                    n.decode() if isinstance(n, (bytes, np.bytes_)) else str(n)
+                    for n in raw_names
+                ]
+                windows = [
+                    dict(zip(seq_feature_names, row)) for row in seq_arr
+                ]
+                feat_dict["sequence_dicts"] = windows
+
+            result[seg_key] = feat_dict
+
+    return result
+
+
 if __name__ == "__main__":
+
     # Add project root to path so imports work when run as script
     _root = Path(__file__).parent.parent
     if str(_root) not in sys.path:

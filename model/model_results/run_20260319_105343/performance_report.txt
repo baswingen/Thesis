@@ -1,0 +1,59 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260319_105343
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5']
+Total samples: 4429
+Evaluation Mode: Train/Validation/Test Split (72/8/20)
+Testing samples: 886
+Training samples: 3188
+Validation samples: 355
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.2s, Step: 0.15s
+Enabled EMG Features: MAV, RMS, WL, ZC, SSC, VAR, WAMP, IEMG, LogDet, Skew, Kurt, HjMob, HjComp, Myopulse, MNF, MDF, Power, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Mean, Var, Std, Max, SMA, P2P, Skew, Kurt, Jerk, DomFreq, SpecEnergy, MNF, SVM_Mean
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 512
+Num Layers: 3
+Dropout Rate: 0.2
+Learning Rate: 0.0005
+Batch Size: 64
+Epochs: 600
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.2
+Window Step (s): 0.15
+Random State: 18
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.0747
+Mean Squared Error: 0.0419
+Root Mean Squared Error: 0.2048
+R-squared Score: 0.9875
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 444      | 0.0080     | 0.0621    
+0.75 kg      | 63       | 0.0923     | 0.1339    
+1.00 kg      | 63       | 0.1160     | 0.1763    
+2.00 kg      | 63       | 0.2107     | 0.3178    
+2.25 kg      | 63       | 0.1499     | 0.2399    
+3.00 kg      | 64       | 0.2309     | 0.3851    
+4.25 kg      | 63       | 0.1577     | 0.3942    
+6.00 kg      | 63       | 0.0328     | 0.2215    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 6,025,729
+Trainable Parameters: 6,025,729
+Estimated Inference GFLOPs (per sample): 0.076469
+Estimated Total Training GFLOPs: 438811.1327
+Training Time: 1774.3190s
+Inference Time (per sample): 1.1886ms
+

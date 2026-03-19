@@ -1,12 +1,58 @@
+"""
+Feature Extraction Script
+=========================
+Run this script to (re)compute features from all segmented HDF5 files and
+store them directly inside each file.  ``run_model.py`` will then load these
+precomputed features instead of re-extracting on every run.
+
+Usage
+-----
+From the project root::
+
+    python -m model.feature_extraction          # process all segment files
+    python -m model.feature_extraction --dry-run # check files without writing
+
+Configuration
+-------------
+All feature-extraction and sliding-window settings are taken from the
+``FEATURE_CONFIG`` block at the top of this file (mirrored from
+``model/config_model.py``).  Edit here to change what gets stored.
+"""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# ============================================================
+#  FEATURE EXTRACTION CONFIGURATION
+#  (identical to the FEATURE_CONFIG in config_model.py)
+# ============================================================
+from model.config_model import FEATURE_CONFIG
+
+# ── Sliding window properties ────────────────────────────────────────────────
+# These must match the window settings used during model training.
+EMG_WINDOW_SIZE_SEC: float = FEATURE_CONFIG['emg_window_size_sec']  # seconds
+IMU_WINDOW_SIZE_SEC: float = FEATURE_CONFIG['imu_window_size_sec']  # seconds
+WINDOW_STEP_SEC: float     = FEATURE_CONFIG['window_step_sec']       # seconds
+
+# ── Feature toggles ──────────────────────────────────────────────────────────
+# Controlled via FEATURE_CONFIG['emg_features'] and FEATURE_CONFIG['imu_features']
+# Set individual entries to False in config_model.py to disable specific features.
+
+# ── Extraction mode ──────────────────────────────────────────────────────────
+# True  → windowed sequences (required for LSTM / GRU / CNN-LSTM / Transformer)
+# False → single feature vector per segment (for SVR / RF / GB / MLP)
+IS_SEQUENCE: bool = True
+
+# ─────────────────────────────────────────────────────────────────────────────
+
 import warnings
 import numpy as np
 from scipy import signal, stats
 import pandas as pd
 from typing import Dict, List, Optional, Set, Tuple
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from model.config_model import FEATURE_CONFIG
+
 
 class FeatureExtractor:
     def __init__(self, emg_fs: float = 2000,
@@ -393,3 +439,152 @@ class FeatureExtractor:
             t_end += window_step_sec
             
         return windows_features
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Standalone runner
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
+    """
+    Extract features from every ``*.h5`` segment file in *segments_dir* and
+    write the results back into each file using
+    :func:`model.segmentation.save_precomputed_features`.
+    """
+    import h5py
+    from tqdm import tqdm
+    from model.segmentation import save_precomputed_features
+
+    h5_paths = sorted(segments_dir.glob("*.h5"))
+    if not h5_paths:
+        print(f"[feature_extraction] No .h5 files found in {segments_dir}")
+        return
+
+    print(
+        f"[feature_extraction] Found {len(h5_paths)} segment file(s).\n"
+        f"  EMG window : {EMG_WINDOW_SIZE_SEC}s  |  "
+        f"IMU window : {IMU_WINDOW_SIZE_SEC}s  |  "
+        f"Step : {WINDOW_STEP_SEC}s  |  "
+        f"Sequence mode : {IS_SEQUENCE}"
+    )
+    if dry_run:
+        print("[feature_extraction] DRY-RUN — no files will be written.")
+
+    for h5_path in h5_paths:
+        print(f"\n→ Processing: {h5_path.name}")
+
+        # Collect all segment keys and their raw signal data
+        with h5py.File(h5_path, "r") as f:
+            seg_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
+
+            if not seg_keys:
+                print(f"  [WARN] No segment groups found — skipping.")
+                continue
+
+            # Decode helper
+            def _decode(raw):
+                return [c.decode() if isinstance(c, (bytes, np.bytes_)) else str(c) for c in raw]
+
+            segments_raw = {}
+            for key in seg_keys:
+                grp = f[key]
+                imu = grp["imu"][:] if "imu" in grp else np.empty((0, 0))
+                emg = grp["emg"][:] if "emg" in grp else np.empty((0, 0))
+                imu_cols = _decode(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
+                emg_cols = _decode(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
+                fs_emg = float(grp["emg"].attrs.get("fs", 4000.0)) if "emg" in grp else 4000.0
+                fs_imu = float(grp["imu"].attrs.get("fs", 500.0))  if "imu" in grp else 500.0
+                segments_raw[key] = {
+                    "imu": imu, "emg": emg,
+                    "imu_cols": imu_cols, "emg_cols": emg_cols,
+                    "fs_emg": fs_emg, "fs_imu": fs_imu,
+                }
+
+        # Filter EMG/IMU channels according to config
+        emg_channels_config = FEATURE_CONFIG.get('emg_channels', {})
+        imu_channels_config = FEATURE_CONFIG.get('imu_channels', {})
+
+        segment_features: dict[str, dict] = {}
+
+        for key, seg in tqdm(segments_raw.items(), desc=h5_path.name, unit="seg"):
+            emg = seg["emg"]
+            emg_cols = seg["emg_cols"]
+            imu = seg["imu"]
+            imu_cols = seg["imu_cols"]
+
+            # Apply channel filters
+            if emg_cols and emg_channels_config:
+                valid_idx = [i for i, c in enumerate(emg_cols) if emg_channels_config.get(c, True)]
+                emg_cols = [emg_cols[i] for i in valid_idx]
+                if emg.size > 0:
+                    emg = emg[:, valid_idx]
+
+            if imu_cols and imu_channels_config:
+                valid_idx = [i for i, c in enumerate(imu_cols) if imu_channels_config.get(c, True)]
+                imu_cols = [imu_cols[i] for i in valid_idx]
+                if imu.size > 0:
+                    imu = imu[:, valid_idx]
+
+            extractor = FeatureExtractor(
+                emg_fs=seg["fs_emg"],
+                imu_fs=seg["fs_imu"],
+                emg_threshold=FEATURE_CONFIG.get('emg_threshold', 1e-5),
+                emg_features=FEATURE_CONFIG.get('emg_features'),
+                imu_features=FEATURE_CONFIG.get('imu_features'),
+            )
+
+            if IS_SEQUENCE:
+                windows = extractor.extract_features_windowed(
+                    emg_data=emg, emg_cols=emg_cols,
+                    imu_data=imu, imu_cols=imu_cols,
+                    emg_window_size_sec=EMG_WINDOW_SIZE_SEC,
+                    imu_window_size_sec=IMU_WINDOW_SIZE_SEC,
+                    window_step_sec=WINDOW_STEP_SEC,
+                )
+                if not windows:
+                    continue
+                feat_dict: dict = {"sequence_dicts": windows}
+            else:
+                feat_dict = extractor.extract_features(
+                    emg_data=emg, emg_cols=emg_cols,
+                    imu_data=imu, imu_cols=imu_cols,
+                )
+
+            segment_features[key] = feat_dict
+
+        print(
+            f"  Computed features for {len(segment_features)}/{len(segments_raw)} segments."
+        )
+        if not dry_run and segment_features:
+            save_precomputed_features(h5_path, segment_features, feature_config=FEATURE_CONFIG)
+
+    print("\n[feature_extraction] Done.")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    _root = Path(__file__).resolve().parent.parent
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    parser = argparse.ArgumentParser(
+        description=(
+            "Pre-extract features from segmented HDF5 files and store them "
+            "inside each file so that run_model.py can load them instantly."
+        )
+    )
+    parser.add_argument(
+        "--segments-dir",
+        default=str(_root / "database" / "segments"),
+        help="Directory containing the segmented *.h5 files "
+             "(default: <project_root>/database/segments).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute features but do NOT write them to disk.",
+    )
+    args = parser.parse_args()
+
+    _run_extraction(Path(args.segments_dir), dry_run=args.dry_run)

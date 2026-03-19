@@ -131,3 +131,69 @@ def plot_training_loss(loss_history: dict, save_path: str | Path, model_name: st
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Loss plot saved to {save_path}")
+
+def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path, model_name: str = "Model"):
+    """
+    Plots MAE and RMSE as a function of elapsed time into the lift (i.e. how many
+    sliding windows were available when the model made its prediction).
+
+    Left y-axis : MAE and RMSE lines.
+    Right y-axis: sample count bars (light background bars for context).
+    X-axis       : real-time seconds elapsed into the lift at prediction.
+    """
+    if not per_seqlen_stats:
+        return
+
+    set_style()
+
+    times  = [float(row['TimeAtPrediction'].rstrip('s')) for row in per_seqlen_stats]
+    maes   = [float(row['MAE'])   for row in per_seqlen_stats]
+    rmses  = [float(row['RMSE'])  for row in per_seqlen_stats]
+    counts = [row['Count']        for row in per_seqlen_stats]
+    n_wins = [row['SeqLen']       for row in per_seqlen_stats]
+
+    fig, ax1 = plt.subplots(figsize=(9, 5))
+
+    # ── Background bars: sample count (right axis) ──────────────────
+    ax2 = ax1.twinx()
+    bar_width = (times[1] - times[0]) * 0.6 if len(times) > 1 else 0.08
+    ax2.bar(times, counts, width=bar_width, color='#AEC7E8', alpha=0.35,
+            label='Sample count', zorder=1)
+    ax2.set_ylabel("Sample count", color='#7090B0', fontsize=12)
+    ax2.tick_params(axis='y', labelcolor='#7090B0')
+    ax2.set_ylim(0, max(counts) * 3.5)   # push bars to bottom third
+    ax2.spines['top'].set_visible(False)
+
+    # ── Error lines (left axis) ──────────────────────────────────────
+    ax1.plot(times, maes,  marker='o', linewidth=2.0, markersize=5,
+             color='#1F77B4', label='MAE',  zorder=3)
+    ax1.plot(times, rmses, marker='s', linewidth=2.0, markersize=5,
+             color='#FF7F0E', label='RMSE', zorder=3)
+
+    # Annotate each point with window count
+    for t, mae, n in zip(times, maes, n_wins):
+        ax1.annotate(f"w={n}", xy=(t, mae), xytext=(0, 6),
+                     textcoords='offset points', ha='center',
+                     fontsize=8, color='#1F77B4')
+
+    ax1.set_xlabel("Elapsed time into lift at prediction (s)", labelpad=10)
+    ax1.set_ylabel("Error (kg)", labelpad=10)
+    ax1.set_title(f"{model_name}: Prediction Error vs. Available Segment Length".upper(),
+                  pad=18, fontsize=13, fontweight='bold')
+    ax1.set_ylim(bottom=0)
+    ax1.set_xticks(times)
+    ax1.set_xticklabels([f"{t:.2f}s" for t in times], rotation=30, ha='right')
+
+    # Combined legend
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2,
+               loc='upper right', frameon=True, facecolor='white', framealpha=0.9)
+
+    ax1.set_zorder(ax2.get_zorder() + 1)
+    ax1.patch.set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Sequence-length performance plot saved to {save_path}")

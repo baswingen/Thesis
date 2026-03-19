@@ -12,7 +12,7 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 # Add project root to sys.path so 'model' package can be found
 sys.path.append(str(Path(__file__).parent.parent))
 
-from model import performance_utils
+from model import performance_utils, plotting_utils
 from model.data_loader import DataLoader
 from model.model_archs.svm import SVMClassifier
 from model.model_archs.rbfnn import RBFNNClassifier
@@ -37,10 +37,15 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "transformer"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
-USE_CROSS_VAL = False
+USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
+
+# Use pre-extracted features stored in the segment HDF5 files.
+# Run 'python -m model.feature_extraction' to compute and store them.
+# Falls back to live extraction automatically if no precomputed features exist.
+USE_PRECOMPUTED_FEATURES = True
 ###########################################################
 
 def initialize_model(model_type: str):
@@ -110,6 +115,34 @@ def calculate_per_weight_metrics(y_true, y_pred):
             })
     return per_weight_results
 
+def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
+    """Calculate MAE and RMSE grouped by sequence length (number of windows per lift).
+    
+    Bins lengths into groups of 1 window each up to a threshold, then merges
+    the long-tail into a single '>= N' bucket so the table stays readable.
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    seq_lengths = np.asarray(seq_lengths, dtype=int)
+
+    unique_lens = np.sort(np.unique(seq_lengths))
+    results = []
+
+    for L in unique_lens:
+        mask = (seq_lengths == L)
+        if np.sum(mask) < 2:   # skip groups too small for meaningful stats
+            continue
+        mae  = mean_absolute_error(y_true[mask], y_pred[mask])
+        rmse = np.sqrt(mean_squared_error(y_true[mask], y_pred[mask]))
+        results.append({
+            'SeqLen':    L,
+            'TimeAtPrediction': None,   # filled below
+            'Count':     int(np.sum(mask)),
+            'MAE':       f"{mae:.4f}",
+            'RMSE':      f"{rmse:.4f}",
+        })
+    return results
+
 def main():
     # Define paths
     base_dir = Path(__file__).parent.parent
@@ -155,8 +188,12 @@ def main():
     is_sequence = model_type in ["gru", "lstm", "cnn_lstm", "transformer"]
     target_col = "weight"
     
-    # DataLoader defaults to window properties in FEATURE_CONFIG
-    df = loader.load_and_extract_features(h5_paths, is_sequence=is_sequence)
+    # Load features — use precomputed by default; falls back to live extraction
+    df = loader.load_and_extract_features(
+        h5_paths,
+        is_sequence=is_sequence,
+        use_precomputed=USE_PRECOMPUTED_FEATURES,
+    )
     
     if df.empty:
         print("Data extraction failed or produced an empty DataFrame.")
@@ -312,6 +349,39 @@ def main():
         # Reuse y_pred already computed for the regression plot above
         per_weight_stats = calculate_per_weight_metrics(y_test, y_pred)
 
+    # Calculate per-sequence-length statistics (sequence models only)
+    per_seqlen_stats = None
+    if is_sequence:
+        if use_cv:
+            # For CV we don't easily have X at test time; skip for now
+            pass
+        else:
+            # Extract number of windows for each test sample from the sequence_dicts column
+            seq_col = 'sequence_dicts'
+            if seq_col in X_test.columns:
+                test_seq_lengths = np.array([len(row) for row in X_test[seq_col]])
+            else:
+                # Fallback: try the first (and only) column
+                test_seq_lengths = np.array([len(row) for row in X_test.iloc[:, 0]])
+
+            per_seqlen_stats = calculate_per_seqlen_metrics(
+                y_test.values, y_pred, test_seq_lengths
+            )
+            # Annotate with the real-time elapsed seconds at prediction
+            step = FEATURE_CONFIG.get('window_step_sec', 0.1)
+            max_win = max(FEATURE_CONFIG.get('emg_window_size_sec', 0.15),
+                          FEATURE_CONFIG.get('imu_window_size_sec', 0.3))
+            for row in per_seqlen_stats:
+                # time elapsed when the L-th window completes: max_window + (L-1)*step
+                row['TimeAtPrediction'] = f"{max_win + (row['SeqLen'] - 1) * step:.3f}s"
+
+            # Save the segment-length performance plot
+            if per_seqlen_stats:
+                seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
+                plotting_utils.plot_seqlen_performance(
+                    per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper()
+                )
+
     # Save detailed performance report
     report_file = run_dir / "performance_report.txt"
     with open(report_file, "w") as f:
@@ -458,6 +528,18 @@ def main():
             f.write("-" * 50 + "\n")
             for stats in per_weight_stats:
                 f.write(f"{stats['Weight']:<12} | {stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
+            f.write("\n")
+
+        if per_seqlen_stats:
+            f.write("--- PER-SEQUENCE-LENGTH METRICS ---\n")
+            f.write("(How many sliding windows were available when the LSTM made its prediction)\n")
+            f.write(f"Window step: {FEATURE_CONFIG.get('window_step_sec', '?')}s  |  "
+                    f"First window ready at: {max(FEATURE_CONFIG.get('emg_window_size_sec', 0), FEATURE_CONFIG.get('imu_window_size_sec', 0)):.3f}s\n")
+            f.write(f"{'# Windows':<12} | {'Time into lift':<16} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
+            f.write("-" * 65 + "\n")
+            for stats in per_seqlen_stats:
+                f.write(f"{stats['SeqLen']:<12} | {stats['TimeAtPrediction']:<16} | "
+                        f"{stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
             f.write("\n")
             
         # Add Compute Metrics

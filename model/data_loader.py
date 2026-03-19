@@ -14,6 +14,14 @@ class DataLoader:
     DataLoader handles taking segmented HDF5 files, iterating through their segments,
     extracting features using FeatureExtractor, and preparing the standard X & y arrays
     for traditional Machine Learning classification algorithms.
+
+    Supports two modes:
+    - **Precomputed** (default): reads features previously written by
+      ``feature_extraction.py`` from a ``"features"`` group inside each
+      segment.  Fast – no signal processing at runtime.
+    - **Live extraction**: runs FeatureExtractor on the raw IMU/EMG arrays
+      inside each segment.  Used as an automatic fallback if no precomputed
+      features are found, and by ``feature_extraction.py`` itself.
     """
     def __init__(self, emg_fs: float = 2000, 
                  imu_fs: float = 2000):
@@ -28,19 +36,117 @@ class DataLoader:
     def _decode_cols(self, raw) -> List[str]:
         return [c.decode() if isinstance(c, bytes) else str(c) for c in raw]
 
+    # ------------------------------------------------------------------
+    # Precomputed feature loading
+    # ------------------------------------------------------------------
+
+    def load_precomputed_features(self, h5_paths: List[Path]) -> pd.DataFrame:
+        """
+        Load features that were pre-extracted and stored inside the segmented
+        HDF5 files by ``feature_extraction.py``.
+
+        Returns a DataFrame in exactly the same format as
+        ``load_and_extract_features``, or an empty DataFrame if no
+        precomputed features are found in any of the files.
+        """
+        from tqdm import tqdm
+        from model.segmentation import load_precomputed_features as _load_feats
+
+        all_features = []
+
+        for path in h5_paths:
+            path = Path(path)
+            if not path.exists():
+                print(f"[WARN] File not found: {path}")
+                continue
+
+            seg_feats = _load_feats(path)
+            if not seg_feats:
+                return pd.DataFrame()  # caller will fall back to live extraction
+
+            with h5py.File(path, "r") as f:
+                for seg_key in tqdm(
+                    sorted(seg_feats.keys()),
+                    desc=f"Loading precomputed ({path.name})",
+                    unit="segment",
+                ):
+                    feat_dict = seg_feats[seg_key]
+                    grp = f[seg_key]
+
+                    def _a(name, default=""):
+                        v = grp.attrs.get(name, default)
+                        return v.decode() if isinstance(v, bytes) else v
+
+                    label = str(_a("label", "unknown"))
+                    feat_dict["label"] = label
+                    feat_dict["state"] = str(_a("state", "unknown"))
+                    feat_dict["weight"] = (
+                        0.0 if label == "free_movement"
+                        else float(grp.attrs.get("weight", -1.0))
+                    )
+                    feat_dict["segment_id"] = seg_key
+                    feat_dict["trial_file"] = _a("trial_file", "unknown")
+                    feat_dict["subject"] = (
+                        path.stem.split("_")[1]
+                        if "participant" in path.stem
+                        else "unknown"
+                    )
+
+                    # Sampling-rate metadata (stored as attrs on the raw datasets)
+                    if "emg" in grp:
+                        feat_dict["emg_fs"] = grp["emg"].attrs.get("fs", 2000.0)
+                        feat_dict["emg_fs_orig"] = grp["emg"].attrs.get("fs_orig", feat_dict["emg_fs"])
+                    if "imu" in grp:
+                        feat_dict["imu_fs"] = grp["imu"].attrs.get("fs", 2000.0)
+                        feat_dict["imu_fs_orig"] = grp["imu"].attrs.get("fs_orig", feat_dict["imu_fs"])
+
+                    all_features.append(feat_dict)
+
+        if not all_features:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(all_features)
+        if "sequence_dicts" not in df.columns:
+            df.fillna(0, inplace=True)
+        return df
+
+    # ------------------------------------------------------------------
+    # Live feature extraction (also used as fallback)
+    # ------------------------------------------------------------------
+
     def load_and_extract_features(self, h5_paths: List[Path],
                                   is_sequence: bool = True,
                                   emg_window_size_sec: Optional[float] = None,
                                   imu_window_size_sec: Optional[float] = None,
-                                  window_step_sec: Optional[float] = None) -> pd.DataFrame:
+                                  window_step_sec: Optional[float] = None,
+                                  use_precomputed: bool = True) -> pd.DataFrame:
         """
         Iterates over a list of segmented HDF5 files, extracts temporal and spectral 
         features from the EMG and IMU segments within it, and returns a single DataFrame 
         containing all features and labels. If window parameters are provided, extracts
         sequences of features over sliding windows.
         
+        Parameters
+        ----------
+        use_precomputed : bool, default True
+            When True, attempts to read features stored by ``feature_extraction.py``
+            instead of re-running FeatureExtractor.  Falls back to live extraction
+            automatically if no precomputed features are present, printing a warning.
+
         Defaults to FEATURE_CONFIG for window properties if not provided.
         """
+        # ── Try precomputed path first ─────────────────────────────────────
+        if use_precomputed:
+            df = self.load_precomputed_features(h5_paths)
+            if not df.empty:
+                return df
+            print(
+                "[DataLoader] No precomputed features found. "
+                "Falling back to live extraction.\n"
+                "  → Run 'python -m model.feature_extraction' to precompute features."
+            )
+
+        # ── Live extraction ────────────────────────────────────────────────
         # Fallback to FEATURE_CONFIG if not provided as arguments
         if emg_window_size_sec is None:
             emg_window_size_sec = FEATURE_CONFIG.get('emg_window_size_sec')
@@ -97,7 +203,6 @@ class DataLoader:
                         imu_cols = [imu_cols[i] for i in valid_imu_idx]
                         if imu.size > 0:
                             imu = imu[:, valid_imu_idx]
-
 
                     # Read dynamic sampling rates if available (stored by postprocessing.py & segmentation.py)
                     # We look at the attributes of the datasets inside the segment
@@ -233,4 +338,3 @@ if __name__ == "__main__":
             print(X.iloc[0, :5])  # Display 5 features of row 0
     else:
         print(f"Could not perform test, sample file {sample_file} not found.")
-

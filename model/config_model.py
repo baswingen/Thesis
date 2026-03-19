@@ -32,9 +32,10 @@ FEATURE_CONFIG = {
     'emg_threshold': 1e-5,
 
     # Sliding window properties (for sequence models)
+    # Updated to match LSTM sweep Iteration 68 best params
     'emg_window_size_sec': 0.15,
-    'imu_window_size_sec': 0.3,
-    'window_step_sec': 0.1,
+    'imu_window_size_sec': 0.2,
+    'window_step_sec': 0.15,
 
     # ── EMG Channels (set False to exclude a muscle entirely) ────
     'emg_channels': {
@@ -56,9 +57,9 @@ FEATURE_CONFIG = {
         # Sensor 2
         'ax2': True, 'ay2': True, 'az2': True,
         'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
-        # Differential (Elbow Kinematics)
-        'ax_diff': False, 'ay_diff': False, 'az_diff': False,
-        'roll_diff': False, 'pitch_diff': False, 'yaw_diff': False,
+        # Differential (Elbow Kinematics) — enabled to capture relative arm angle
+        'ax_diff': True, 'ay_diff': True, 'az_diff': True,
+        'roll_diff': True, 'pitch_diff': True, 'yaw_diff': True,
     },
 
 
@@ -89,31 +90,36 @@ FEATURE_CONFIG = {
     },
 
     # ── IMU Features (set False to disable) ──────────────
+    # Trimmed to 13 features to offset cost of 6 new diff channels.
+    # Disabled: Min (≈-Max), RMS (≈Std for zero-mean), IQR (≈Std),
+    #           ZC (low load-estimation value), Energy (≈Var*N),
+    #           SpecEntropy (low discriminability for rigid-body motion),
+    #           SVM_Std (SVM_Mean captures the key cross-channel info).
     'imu_features': {
-        # Time-domain
-        'Mean':       True,   # Mean value
+        # Time-domain (kept: 8)
+        'Mean':       True,    # Mean value
         'Var':        True,    # Variance
         'Std':        True,    # Standard Deviation
         'Max':        True,    # Maximum
-        'Min':        True,   # Minimum
-        'RMS':        True,   # Root Mean Square
+        'Min':        False,   # DISABLED — redundant with Max via P2P
+        'RMS':        False,   # DISABLED — ≈Std for near-zero-mean signals
         'SMA':        True,    # Signal Magnitude Area
         'P2P':        True,    # Peak-to-Peak
-        'IQR':        True,   # Interquartile Range
-        'Skew':       True,   # Skewness
+        'IQR':        False,   # DISABLED — highly correlated with Std
+        'Skew':       True,    # Skewness
         'Kurt':       True,    # Kurtosis
-        'Jerk':       True,   # Mean Absolute Jerk
-        'ZC':         True,   # Zero Crossings
-        'Energy':     True,   # Energy
-        # Frequency-domain
+        'Jerk':       True,    # Mean Absolute Jerk
+        'ZC':         False,   # DISABLED — low value for load estimation
+        'Energy':     False,   # DISABLED — ≈Var*N (redundant)
+        # Frequency-domain (kept: 3)
         'DomFreq':    True,    # Dominant Frequency
         'SpecEnergy': True,    # Spectral Energy
         'MNF':        True,    # Mean Frequency
-        'MDF':        True,    # Median Frequency
-        'SpecEntropy':True,   # Spectral Entropy
-        # Cross-channel
+        'MDF':        False,   # DISABLED — highly correlated with MNF
+        'SpecEntropy':False,   # DISABLED — low discrimination for rigid-body
+        # Cross-channel (kept: 1)
         'SVM_Mean':   True,    # Signal Vector Magnitude (mean)
-        'SVM_Std':    True,    # Signal Vector Magnitude (std)
+        'SVM_Std':    False,   # DISABLED — SVM_Mean is the key statistic
     },
 }
 
@@ -237,18 +243,19 @@ GRU_CONFIG = {
 }
 
 # LSTM (Long Short-Term Memory) Configuration
+# Sweep Iteration 68 best params (R²=0.9897, MAE=0.0768)
 LSTM_CONFIG = {
-    'hidden_size': 64,
+    'hidden_size': 512,
     'num_layers': 3,
-    'dropout_rate': 0.4,
-    'learning_rate': 0.005,
-    'weight_decay': 1e-4,
-    'batch_size': 128,
-    'epochs': 150,
+    'dropout_rate': 0.2,
+    'learning_rate': 0.0005,
+    'weight_decay': 0.001,
+    'batch_size': 64,
+    'epochs': 600,
     'validation_split': 0.1,
-    'early_stopping_patience': 50,
-    'scheduler_patience': 5,
-    'scheduler_factor': 0.5,
+    'early_stopping_patience': 200,
+    'scheduler_patience': 10,
+    'scheduler_factor': 0.8,
     'random_state': GLOBAL_RANDOM_STATE
 }
 
