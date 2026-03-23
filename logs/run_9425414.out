@@ -1,0 +1,38 @@
+Running on gpu019
+Working directory: /home/bwingen/thesis/Thesis
+/home/bwingen/thesis/Thesis/.venv/bin/python
+Python 3.11.13
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260323_045802
+Found 3 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+[DataLoader] Loaded 4429 raw segments (26 channels each)
+Extracted features dataframe shape: (4429, 7)
+Raw Segment Data Summary:
+  - Total Segments: 4429
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2618 samples
+  - Min / Max Segment Length: 1005 / 89659 samples
+Label vector (y) shape: (4429,) (Target: weight)
+
+Training on 3543 samples, testing on 886 samples.
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.2, 'early_stopping_patience': 30, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 18}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 65. Best Val Loss: 0.0430
+
+Evaluating CNN_LSTM Model on unseen test set...
+=======================================================
+Regression Metrics:
+Mean Absolute Error: 0.0746
+Mean Squared Error: 0.0359
+Root Mean Squared Error: 0.1895
+R-squared Score: 0.9893
+
+Training Time: 166.55s
+Inference Time (per sample): 0.5692ms
+=======================================================
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260323_045802/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260323_045802/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260323_045802/loss_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260323_045802/performance_report.txt
