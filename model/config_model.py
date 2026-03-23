@@ -4,7 +4,7 @@ Centralizing these values makes it easier to manage experiments and
 ensures consistency across training and inference scripts.
 """
 
-GLOBAL_RANDOM_STATE = 18
+GLOBAL_RANDOM_STATE = 69
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
 ###########################################################

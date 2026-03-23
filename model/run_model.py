@@ -130,8 +130,6 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
 
     for L in unique_lens:
         mask = (seq_lengths == L)
-        if np.sum(mask) < 10:   # skip groups too small for meaningful stats
-            continue
         mae  = mean_absolute_error(y_true[mask], y_pred[mask])
         rmse = np.sqrt(mean_squared_error(y_true[mask], y_pred[mask]))
         results.append({
@@ -145,7 +143,7 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
 
 
 def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
-                                   n_bins: int = 15, min_count: int = 10):
+                                   n_bins: int = 60):
     """Calculate MAE and RMSE for the CNN-LSTM binned by raw segment duration.
 
     Because CNN-LSTM receives the full raw segment (no sliding windows), the
@@ -158,8 +156,6 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
         Duration of each test segment in seconds.
     n_bins : int
         Number of equal-width duration bins.
-    min_count : int
-        Bins with fewer samples are omitted.
 
     Returns
     -------
@@ -184,7 +180,7 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
             mask = (durations_sec >= lo) & (durations_sec <= hi)
 
         count = int(np.sum(mask))
-        if count < min_count:
+        if count == 0:
             continue
 
         mae  = mean_absolute_error(y_true[mask], y_pred[mask])
@@ -460,7 +456,7 @@ def main():
         if 'segment_duration_sec' in df.columns:
             test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
             per_duration_stats = calculate_per_duration_metrics(
-                y_test.values, y_pred, test_durations, n_bins=15
+                y_test.values, y_pred, test_durations, n_bins=60
             )
             if per_duration_stats:
                 seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
