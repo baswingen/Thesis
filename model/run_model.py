@@ -143,6 +143,64 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
         })
     return results
 
+
+def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
+                                   n_bins: int = 15, min_count: int = 10):
+    """Calculate MAE and RMSE for the CNN-LSTM binned by raw segment duration.
+
+    Because CNN-LSTM receives the full raw segment (no sliding windows), the
+    natural equivalent of 'number of windows seen' is the elapsed time into the
+    lift at the moment of prediction, i.e. the segment duration in seconds.
+
+    Parameters
+    ----------
+    durations_sec : array-like
+        Duration of each test segment in seconds.
+    n_bins : int
+        Number of equal-width duration bins.
+    min_count : int
+        Bins with fewer samples are omitted.
+
+    Returns
+    -------
+    list[dict]
+        Same format as ``calculate_per_seqlen_metrics`` so
+        ``plot_seqlen_performance`` can be reused directly.
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    durations_sec = np.asarray(durations_sec, dtype=float)
+
+    # Build equal-width bins spanning the full duration range
+    bin_edges = np.linspace(durations_sec.min(), durations_sec.max(), n_bins + 1)
+
+    results = []
+    for i in range(len(bin_edges) - 1):
+        lo, hi = bin_edges[i], bin_edges[i + 1]
+        # Include the right edge in the last bin
+        if i < len(bin_edges) - 2:
+            mask = (durations_sec >= lo) & (durations_sec < hi)
+        else:
+            mask = (durations_sec >= lo) & (durations_sec <= hi)
+
+        count = int(np.sum(mask))
+        if count < min_count:
+            continue
+
+        mae  = mean_absolute_error(y_true[mask], y_pred[mask])
+        rmse = np.sqrt(mean_squared_error(y_true[mask], y_pred[mask]))
+        mid  = (lo + hi) / 2  # representative time for this bin
+
+        results.append({
+            'SeqLen':          i + 1,           # bin index (used as x-tick label prefix)
+            'TimeAtPrediction': f"{mid:.3f}s",  # elapsed time — the real x-axis value
+            'Count':           count,
+            'MAE':             f"{mae:.4f}",
+            'RMSE':            f"{rmse:.4f}",
+        })
+    return results
+
+
 def main():
     # Define paths
     base_dir = Path(__file__).parent.parent
@@ -395,6 +453,23 @@ def main():
                     per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper()
                 )
 
+    # CNN-LSTM: bin test samples by raw segment duration (elapsed time into lift)
+    per_duration_stats = None
+    if is_raw_segment and not use_cv:
+        # segment_duration_sec was stored in df before prepare_for_ml dropped it
+        if 'segment_duration_sec' in df.columns:
+            test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
+            per_duration_stats = calculate_per_duration_metrics(
+                y_test.values, y_pred, test_durations, n_bins=15
+            )
+            if per_duration_stats:
+                seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
+                plotting_utils.plot_seqlen_performance(
+                    per_duration_stats, seqlen_plot_path, model_name="CNN-LSTM"
+                )
+        else:
+            print("[WARN] segment_duration_sec not found in df — skipping CNN-LSTM seqlen plot.")
+
     # Save detailed performance report
     report_file = run_dir / "performance_report.txt"
     with open(report_file, "w") as f:
@@ -558,6 +633,16 @@ def main():
             f.write("-" * 65 + "\n")
             for stats in per_seqlen_stats:
                 f.write(f"{stats['SeqLen']:<12} | {stats['TimeAtPrediction']:<16} | "
+                        f"{stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
+            f.write("\n")
+
+        if per_duration_stats:
+            f.write("--- PER-SEGMENT-DURATION METRICS (CNN-LSTM) ---\n")
+            f.write("(Prediction error vs. elapsed time into lift, binned from raw segment duration)\n")
+            f.write(f"{'Bin':<6} | {'Time into lift (mid)':<22} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
+            f.write("-" * 68 + "\n")
+            for stats in per_duration_stats:
+                f.write(f"{stats['SeqLen']:<6} | {stats['TimeAtPrediction']:<22} | "
                         f"{stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
             f.write("\n")
             

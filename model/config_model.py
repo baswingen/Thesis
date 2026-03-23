@@ -57,7 +57,7 @@ FEATURE_CONFIG = {
         # Sensor 2
         'ax2': True, 'ay2': True, 'az2': True,
         'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
-        # Differential (Elbow Kinematics) — enabled to capture relative arm angle
+        # Differential (Elbow Kinematics) — enabled to capture relative arm kinematics
         'ax_diff': True, 'ay_diff': True, 'az_diff': True,
         'roll_diff': True, 'pitch_diff': True, 'yaw_diff': True,
     },
@@ -271,10 +271,10 @@ CNN_LSTM_CONFIG = {
     'learning_rate': 0.001,
     'weight_decay': 1e-05,
     'batch_size': 64,
-    'epochs': 200,
+    'epochs': 1000,
     'validation_split': 0.2,
-    'early_stopping_patience': 30,
-    'scheduler_patience': 10,
+    'early_stopping_patience': 100,
+    'scheduler_patience': 50,
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE,
 }

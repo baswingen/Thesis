@@ -188,6 +188,9 @@ class DataLoader:
                         v = grp.attrs.get(name, default)
                         return v.decode() if isinstance(v, bytes) else v
 
+                    # Effective sampling rate for duration calculation
+                    emg_fs_eff = float(grp["emg"].attrs.get("fs", 2000.0)) if "emg" in grp else 2000.0
+
                     label = str(_a("label", "unknown"))
                     row = {
                         "raw_segment": raw,
@@ -197,6 +200,9 @@ class DataLoader:
                         "segment_id": key,
                         "trial_file": _a("trial_file", "unknown"),
                         "subject": path.stem.split("_")[1] if "participant" in path.stem else "unknown",
+                        "emg_fs": emg_fs_eff,
+                        # Duration of the raw segment in seconds (= elapsed time into lift)
+                        "segment_duration_sec": raw.shape[0] / emg_fs_eff,
                     }
                     all_rows.append(row)
 
@@ -405,7 +411,8 @@ class DataLoader:
         
         # Columns that are purely metadata / labels and shouldn't be trained on
         default_drop = ["label", "state", "weight", "segment_id", "trial_file", "subject", 
-                        "emg_fs", "emg_fs_orig", "imu_fs", "imu_fs_orig"]
+                        "emg_fs", "emg_fs_orig", "imu_fs", "imu_fs_orig",
+                        "segment_duration_sec"]
         
         if drop_cols:
             default_drop.extend(drop_cols)
