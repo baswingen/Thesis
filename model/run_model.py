@@ -37,7 +37,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = False
 RUN_GRID_SEARCH = False
@@ -143,7 +143,7 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
 
 
 def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
-                                   n_bins: int = 15):
+                                   n_bins: int = 60):
     """Calculate MAE and RMSE for the CNN-LSTM binned by raw segment duration.
 
     Because CNN-LSTM receives the full raw segment (no sliding windows), the
@@ -456,7 +456,7 @@ def main():
         if 'segment_duration_sec' in df.columns:
             test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
             per_duration_stats = calculate_per_duration_metrics(
-                y_test.values, y_pred, test_durations, n_bins=15
+                y_test.values, y_pred, test_durations, n_bins=60
             )
             if per_duration_stats:
                 seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
