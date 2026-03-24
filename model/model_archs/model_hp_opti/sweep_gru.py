@@ -24,50 +24,29 @@ def main():
     
     # Define Parameter Grid for GRU
     param_grid = {
-        'hidden_size': [64, 128, 256],
-        'num_layers': [1, 2, 3],
-        'dropout_rate': [0.0, 0.1, 0.2, 0.3],
-        'learning_rate': [0.0005, 0.001, 0.005],
-        'batch_size': [16, 32, 64],
-        'weight_decay': [0.0, 1e-5, 1e-4, 1e-3]
+        'hidden_size': [32, 64, 128, 256, 512],
+        'num_layers': [1, 2, 3, 4],
+        'dropout_rate': [0.1, 0.2, 0.3, 0.4, 0.5],
+        'learning_rate': [0.0005, 0.001, 0.005, 0.01],
+        'batch_size': [32, 64, 128, 256],
+        'weight_decay': [0.0, 1e-5, 1e-4, 1e-3],
+        'emg_window_size_sec': [0.1, 0.15, 0.2, 0.25],
+        'imu_window_size_sec': [0.15, 0.2, 0.25, 0.3],
+        'window_step_sec': [0.05, 0.1, 0.15]
     }
     
-    n_iter = 10  # Number of random combinations to try
+    n_iter = 100  # Extensive search
     
     print(f"Starting GRU hyperparameter sweep with {n_iter} iterations...")
     print(f"Results will be saved to: {run_dir}\n")
     
-    # 1. Load Data
+    # 1. Prepare Paths
     h5_paths = list(segments_dir.glob("*.h5"))
     if not h5_paths:
         print(f"No HDF5 segment files found in {segments_dir}.")
         return
 
     loader = DataLoader()
-    print("Extracting features (This only happens once for the sweep)...")
-    emg_window_size_sec = FEATURE_CONFIG.get('emg_window_size_sec', 0.2)
-    imu_window_size_sec = FEATURE_CONFIG.get('imu_window_size_sec', 0.25)
-    window_step_sec = FEATURE_CONFIG.get('window_step_sec', 0.1)
-    
-    df = loader.load_and_extract_features(h5_paths, 
-                                          emg_window_size_sec=emg_window_size_sec,
-                                          imu_window_size_sec=imu_window_size_sec,
-                                          window_step_sec=window_step_sec)
-    
-    if df.empty:
-        print("Data extraction failed.")
-        return
-        
-    X, y = loader.prepare_for_ml(df, target_col="weight")
-    
-    # 2. Train/Test Split (CV is disabled for this sweep to speed it up)
-    stratify = df["label"] if "label" in df.columns else None
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=7, stratify=stratify
-    )
-    
-    print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.\n")
-    
     sampler = ParameterSampler(param_grid, n_iter=n_iter, random_state=42)
     
     best_mae = float('inf')
@@ -77,12 +56,29 @@ def main():
     
     results = []
     
-    # 3. Sweep Loop
+    # Sweep Loop
     for i, params in enumerate(sampler, 1):
-        print(f"--- Iteration {i}/{n_iter} ---")
+        print(f"\n--- Iteration {i}/{n_iter} ---")
         print(f"Testing parameters: {params}")
         
-        # Initialize GRU Regressor with these params + static params
+        # 2. Load and Extract Data with current iteration window settings
+        df = loader.load_and_extract_features(h5_paths, 
+                                              emg_window_size_sec=params['emg_window_size_sec'],
+                                              imu_window_size_sec=params['imu_window_size_sec'],
+                                              window_step_sec=params['window_step_sec'])
+        if df.empty:
+            print("Data extraction failed or skipped for this configuration.")
+            continue
+            
+        X, y = loader.prepare_for_ml(df, target_col="weight")
+        
+        # 3. Train/Test Split
+        stratify = df["label"] if "label" in df.columns else None
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=7, stratify=stratify
+        )
+        
+        # 4. Initialize GRU Regressor with fixed user-requested settings and sweep params
         model = GRURegressor(
             hidden_size=params['hidden_size'],
             num_layers=params['num_layers'],
@@ -90,12 +86,12 @@ def main():
             learning_rate=params['learning_rate'],
             weight_decay=params['weight_decay'],
             batch_size=params['batch_size'],
-            epochs=GRU_CONFIG.get('epochs', 100),
+            epochs=250,                                      # User forced
+            early_stopping_patience=100,                     # User forced
             validation_split=GRU_CONFIG.get('validation_split', 0.2),
-            early_stopping_patience=GRU_CONFIG.get('early_stopping_patience', 10),
-            emg_window_size_sec=emg_window_size_sec,
-            imu_window_size_sec=imu_window_size_sec,
-            window_step_sec=window_step_sec,
+            emg_window_size_sec=params['emg_window_size_sec'],
+            imu_window_size_sec=params['imu_window_size_sec'],
+            window_step_sec=params['window_step_sec'],
             random_state=GRU_CONFIG.get('random_state', 42)
         )
         
@@ -155,3 +151,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
