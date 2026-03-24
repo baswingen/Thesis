@@ -1,0 +1,1036 @@
+Running on gpu011
+Working directory: /home/bwingen/thesis/Thesis
+/home/bwingen/thesis/Thesis/.venv/bin/python
+Python 3.11.13
+
+--- GRID SEARCH ENABLED ---
+Launching hyperparameter sweep for GRU...
+Starting GRU hyperparameter sweep with 100 iterations...
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_gru_20260324_101721
+
+
+--- Iteration 1/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 146. Best Val Loss: 0.0464
+Iteration MAE: 0.1075, R2: 0.9862
+
+>>> New Best Model! MAE: 0.1075
+
+--- Iteration 2/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 119. Best Val Loss: 0.0378
+Iteration MAE: 0.1079, R2: 0.9830
+
+
+--- Iteration 3/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 144. Best Val Loss: 0.0716
+Iteration MAE: 0.1373, R2: 0.9790
+
+
+--- Iteration 4/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 153. Best Val Loss: 0.0662
+Iteration MAE: 0.1156, R2: 0.9814
+
+
+--- Iteration 5/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 165. Best Val Loss: 0.0581
+Iteration MAE: 0.1299, R2: 0.9810
+
+
+--- Iteration 6/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 138. Best Val Loss: 0.0402
+Iteration MAE: 0.1049, R2: 0.9864
+
+>>> New Best Model! MAE: 0.1049
+
+--- Iteration 7/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 124. Best Val Loss: 0.1715
+Iteration MAE: 0.2817, R2: 0.9395
+
+
+--- Iteration 8/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 112. Best Val Loss: 0.0417
+Iteration MAE: 0.1306, R2: 0.9829
+
+
+--- Iteration 9/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 131. Best Val Loss: 0.0568
+Iteration MAE: 0.1498, R2: 0.9791
+
+
+--- Iteration 10/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 107. Best Val Loss: 0.0469
+Iteration MAE: 0.1098, R2: 0.9824
+
+
+--- Iteration 11/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 129. Best Val Loss: 0.0588
+Iteration MAE: 0.1568, R2: 0.9796
+
+
+--- Iteration 12/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 123. Best Val Loss: 0.0497
+Iteration MAE: 0.1406, R2: 0.9815
+
+
+--- Iteration 13/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 120. Best Val Loss: 0.0842
+Iteration MAE: 0.2157, R2: 0.9656
+
+
+--- Iteration 14/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 145. Best Val Loss: 0.0628
+Iteration MAE: 0.1478, R2: 0.9815
+
+
+--- Iteration 15/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 123. Best Val Loss: 0.0344
+Iteration MAE: 0.0682, R2: 0.9891
+
+>>> New Best Model! MAE: 0.0682
+
+--- Iteration 16/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 155. Best Val Loss: 0.0807
+Iteration MAE: 0.1499, R2: 0.9789
+
+
+--- Iteration 17/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 146. Best Val Loss: 0.0813
+Iteration MAE: 0.1825, R2: 0.9736
+
+
+--- Iteration 18/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 143. Best Val Loss: 0.0582
+Iteration MAE: 0.1421, R2: 0.9766
+
+
+--- Iteration 19/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 122. Best Val Loss: 0.0369
+Iteration MAE: 0.0965, R2: 0.9850
+
+
+--- Iteration 20/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 114. Best Val Loss: 0.0609
+Iteration MAE: 0.1154, R2: 0.9780
+
+
+--- Iteration 21/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 139. Best Val Loss: 0.0506
+Iteration MAE: 0.1343, R2: 0.9840
+
+
+--- Iteration 22/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 153. Best Val Loss: 0.0871
+Iteration MAE: 0.1908, R2: 0.9688
+
+
+--- Iteration 23/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 119. Best Val Loss: 0.0583
+Iteration MAE: 0.1550, R2: 0.9784
+
+
+--- Iteration 24/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 161. Best Val Loss: 0.0561
+Iteration MAE: 0.1472, R2: 0.9757
+
+
+--- Iteration 25/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 128. Best Val Loss: 0.0407
+Iteration MAE: 0.1051, R2: 0.9844
+
+
+--- Iteration 26/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 140. Best Val Loss: 0.0566
+Iteration MAE: 0.1562, R2: 0.9764
+
+
+--- Iteration 27/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 128. Best Val Loss: 0.0574
+Iteration MAE: 0.0831, R2: 0.9837
+
+
+--- Iteration 28/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 134. Best Val Loss: 0.0638
+Iteration MAE: 0.1592, R2: 0.9794
+
+
+--- Iteration 29/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 138. Best Val Loss: 0.0628
+Iteration MAE: 0.1413, R2: 0.9834
+
+
+--- Iteration 30/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 126. Best Val Loss: 0.0634
+Iteration MAE: 0.1473, R2: 0.9758
+
+
+--- Iteration 31/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 145. Best Val Loss: 0.0512
+Iteration MAE: 0.1139, R2: 0.9839
+
+
+--- Iteration 32/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 134. Best Val Loss: 0.0548
+Iteration MAE: 0.1062, R2: 0.9757
+
+
+--- Iteration 33/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 122. Best Val Loss: 0.0448
+Iteration MAE: 0.1106, R2: 0.9840
+
+
+--- Iteration 34/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 140. Best Val Loss: 0.0411
+Iteration MAE: 0.1145, R2: 0.9833
+
+
+--- Iteration 35/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 151. Best Val Loss: 0.0419
+Iteration MAE: 0.1026, R2: 0.9851
+
+
+--- Iteration 36/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 143. Best Val Loss: 0.0504
+Iteration MAE: 0.1178, R2: 0.9843
+
+
+--- Iteration 37/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 32, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 111. Best Val Loss: 0.1997
+Iteration MAE: 0.2869, R2: 0.9431
+
+
+--- Iteration 38/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 139. Best Val Loss: 0.0352
+Iteration MAE: 0.0752, R2: 0.9830
+
+
+--- Iteration 39/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 131. Best Val Loss: 0.0431
+Iteration MAE: 0.0964, R2: 0.9814
+
+
+--- Iteration 40/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 132. Best Val Loss: 0.0612
+Iteration MAE: 0.1543, R2: 0.9770
+
+
+--- Iteration 41/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 136. Best Val Loss: 0.0601
+Iteration MAE: 0.1554, R2: 0.9762
+
+
+--- Iteration 42/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 144. Best Val Loss: 0.0455
+Iteration MAE: 0.1125, R2: 0.9850
+
+
+--- Iteration 43/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 171. Best Val Loss: 0.0757
+Iteration MAE: 0.1742, R2: 0.9731
+
+
+--- Iteration 44/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 110. Best Val Loss: 0.0506
+Iteration MAE: 0.1154, R2: 0.9840
+
+
+--- Iteration 45/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 158. Best Val Loss: 0.0368
+Iteration MAE: 0.0958, R2: 0.9834
+
+
+--- Iteration 46/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.2, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 134. Best Val Loss: 0.0761
+Iteration MAE: 0.1313, R2: 0.9809
+
+
+--- Iteration 47/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 140. Best Val Loss: 0.0468
+Iteration MAE: 0.0848, R2: 0.9799
+
+
+--- Iteration 48/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 116. Best Val Loss: 0.0448
+Iteration MAE: 0.1172, R2: 0.9850
+
+
+--- Iteration 49/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 126. Best Val Loss: 0.0744
+Iteration MAE: 0.1565, R2: 0.9746
+
+
+--- Iteration 50/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 114. Best Val Loss: 0.0568
+Iteration MAE: 0.1559, R2: 0.9751
+
+
+--- Iteration 51/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 176. Best Val Loss: 0.0453
+Iteration MAE: 0.0867, R2: 0.9828
+
+
+--- Iteration 52/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 136. Best Val Loss: 0.0361
+Iteration MAE: 0.0853, R2: 0.9833
+
+
+--- Iteration 53/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 116. Best Val Loss: 0.0719
+Iteration MAE: 0.1152, R2: 0.9797
+
+
+--- Iteration 54/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 133. Best Val Loss: 0.0510
+Iteration MAE: 0.1032, R2: 0.9781
+
+
+--- Iteration 55/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 119. Best Val Loss: 0.0423
+Iteration MAE: 0.0950, R2: 0.9854
+
+
+--- Iteration 56/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 152. Best Val Loss: 0.0500
+Iteration MAE: 0.1303, R2: 0.9810
+
+
+--- Iteration 57/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 151. Best Val Loss: 0.0480
+Iteration MAE: 0.1201, R2: 0.9844
+
+
+--- Iteration 58/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 144. Best Val Loss: 0.1083
+Iteration MAE: 0.2122, R2: 0.9644
+
+
+--- Iteration 59/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 144. Best Val Loss: 0.0462
+Iteration MAE: 0.1243, R2: 0.9816
+
+
+--- Iteration 60/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 125. Best Val Loss: 0.0384
+Iteration MAE: 0.1034, R2: 0.9853
+
+
+--- Iteration 61/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 157. Best Val Loss: 0.0316
+Iteration MAE: 0.0870, R2: 0.9842
+
+
+--- Iteration 62/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.2, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 118. Best Val Loss: 0.0878
+Iteration MAE: 0.1162, R2: 0.9748
+
+
+--- Iteration 63/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 130. Best Val Loss: 0.0652
+Iteration MAE: 0.1326, R2: 0.9804
+
+
+--- Iteration 64/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 108. Best Val Loss: 0.0732
+Iteration MAE: 0.1694, R2: 0.9757
+
+
+--- Iteration 65/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 159. Best Val Loss: 0.0674
+Iteration MAE: 0.1237, R2: 0.9789
+
+
+--- Iteration 66/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 149. Best Val Loss: 0.0570
+Iteration MAE: 0.1463, R2: 0.9790
+
+
+--- Iteration 67/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 158. Best Val Loss: 0.0799
+Iteration MAE: 0.1557, R2: 0.9731
+
+
+--- Iteration 68/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 149. Best Val Loss: 0.0446
+Iteration MAE: 0.1074, R2: 0.9866
+
+
+--- Iteration 69/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 32, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.1, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 187. Best Val Loss: 0.0596
+Iteration MAE: 0.1548, R2: 0.9758
+
+
+--- Iteration 70/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 117. Best Val Loss: 0.0480
+Iteration MAE: 0.1045, R2: 0.9860
+
+
+--- Iteration 71/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 174. Best Val Loss: 0.0567
+Iteration MAE: 0.1428, R2: 0.9778
+
+
+--- Iteration 72/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 156. Best Val Loss: 0.0439
+Iteration MAE: 0.1121, R2: 0.9853
+
+
+--- Iteration 73/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 115. Best Val Loss: 0.0532
+Iteration MAE: 0.1529, R2: 0.9800
+
+
+--- Iteration 74/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 141. Best Val Loss: 0.0568
+Iteration MAE: 0.1259, R2: 0.9837
+
+
+--- Iteration 75/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 166. Best Val Loss: 0.0619
+Iteration MAE: 0.1418, R2: 0.9765
+
+
+--- Iteration 76/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 145. Best Val Loss: 0.0351
+Iteration MAE: 0.0813, R2: 0.9894
+
+
+--- Iteration 77/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 161. Best Val Loss: 0.0479
+Iteration MAE: 0.1170, R2: 0.9836
+
+
+--- Iteration 78/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 133. Best Val Loss: 0.0684
+Iteration MAE: 0.1629, R2: 0.9773
+
+
+--- Iteration 79/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 108. Best Val Loss: 0.1085
+Iteration MAE: 0.2068, R2: 0.9644
+
+
+--- Iteration 80/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 144. Best Val Loss: 0.0402
+Iteration MAE: 0.0980, R2: 0.9878
+
+
+--- Iteration 81/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 119. Best Val Loss: 0.0539
+Iteration MAE: 0.0990, R2: 0.9865
+
+
+--- Iteration 82/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 121. Best Val Loss: 0.0610
+Iteration MAE: 0.1637, R2: 0.9727
+
+
+--- Iteration 83/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 126. Best Val Loss: 0.0385
+Iteration MAE: 0.0986, R2: 0.9882
+
+
+--- Iteration 84/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 127. Best Val Loss: 0.0435
+Iteration MAE: 0.1158, R2: 0.9839
+
+
+--- Iteration 85/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 142. Best Val Loss: 0.0394
+Iteration MAE: 0.1049, R2: 0.9780
+
+
+--- Iteration 86/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 109. Best Val Loss: 0.0552
+Iteration MAE: 0.1299, R2: 0.9728
+
+
+--- Iteration 87/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 137. Best Val Loss: 0.0839
+Iteration MAE: 0.2002, R2: 0.9680
+
+
+--- Iteration 88/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 112. Best Val Loss: 0.0405
+Iteration MAE: 0.1150, R2: 0.9800
+
+
+--- Iteration 89/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 121. Best Val Loss: 0.1077
+Iteration MAE: 0.1956, R2: 0.9709
+
+
+--- Iteration 90/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 133. Best Val Loss: 0.0305
+Iteration MAE: 0.0817, R2: 0.9893
+
+
+--- Iteration 91/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 111. Best Val Loss: 0.0950
+Iteration MAE: 0.1985, R2: 0.9678
+
+
+--- Iteration 92/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 138. Best Val Loss: 0.0742
+Iteration MAE: 0.1709, R2: 0.9709
+
+
+--- Iteration 93/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 128}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 163. Best Val Loss: 0.0478
+Iteration MAE: 0.1240, R2: 0.9854
+
+
+--- Iteration 94/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.1, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 120. Best Val Loss: 0.0422
+Iteration MAE: 0.0789, R2: 0.9873
+
+
+--- Iteration 95/100 ---
+Testing parameters: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 123. Best Val Loss: 0.0826
+Iteration MAE: 0.1543, R2: 0.9742
+
+
+--- Iteration 96/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 115. Best Val Loss: 0.0518
+Iteration MAE: 0.1370, R2: 0.9844
+
+
+--- Iteration 97/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.1, 'batch_size': 32}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 120. Best Val Loss: 0.0528
+Iteration MAE: 0.1121, R2: 0.9716
+
+
+--- Iteration 98/100 ---
+Testing parameters: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 152. Best Val Loss: 0.0616
+Iteration MAE: 0.1368, R2: 0.9799
+
+
+--- Iteration 99/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 32, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 64}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 136. Best Val Loss: 0.0574
+Iteration MAE: 0.1444, R2: 0.9769
+
+
+--- Iteration 100/100 ---
+Testing parameters: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 256}
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+[GRURegressor] Using device: cuda
+
+Early stopping triggered at epoch 160. Best Val Loss: 0.0675
+Iteration MAE: 0.1398, R2: 0.9796
+
+
+==================================================
+SWEEP COMPLETE
+==================================================
+Best Parameters:
+  window_step_sec: 0.15
+  weight_decay: 0.0001
+  num_layers: 2
+  learning_rate: 0.005
+  imu_window_size_sec: 0.2
+  hidden_size: 512
+  emg_window_size_sec: 0.1
+  dropout_rate: 0.5
+  batch_size: 32
+
+Best Metrics:
+Mean Absolute Error: 0.0682
+Mean Squared Error: 0.0369
+Root Mean Squared Error: 0.1920
+R-squared Score: 0.9891
+
+==================================================
+Report and best model saved to /home/bwingen/thesis/Thesis/model/model_results/sweep_gru_20260324_101721

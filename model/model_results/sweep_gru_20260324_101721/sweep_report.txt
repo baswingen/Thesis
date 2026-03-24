@@ -1,0 +1,422 @@
+GRU HYPERPARAMETER SWEEP REPORT
+==================================================
+
+BEST PARAMETERS:
+window_step_sec: 0.15
+weight_decay: 0.0001
+num_layers: 2
+learning_rate: 0.005
+imu_window_size_sec: 0.2
+hidden_size: 512
+emg_window_size_sec: 0.1
+dropout_rate: 0.5
+batch_size: 32
+
+BEST EVALUATION METRICS:
+Mean Absolute Error: 0.0682
+Mean Squared Error: 0.0369
+Root Mean Squared Error: 0.1920
+R-squared Score: 0.9891
+
+--------------------------------------------------
+ALL CONFIGURATIONS TESTED:
+
+Iteration 1
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 64}
+MAE: 0.1075, R2: 0.9862
+
+Iteration 2
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 64}
+MAE: 0.1079, R2: 0.9830
+
+Iteration 3
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1373, R2: 0.9790
+
+Iteration 4
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1156, R2: 0.9814
+
+Iteration 5
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 64}
+MAE: 0.1299, R2: 0.9810
+
+Iteration 6
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 64}
+MAE: 0.1049, R2: 0.9864
+
+Iteration 7
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.2817, R2: 0.9395
+
+Iteration 8
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 32}
+MAE: 0.1306, R2: 0.9829
+
+Iteration 9
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1498, R2: 0.9791
+
+Iteration 10
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 64}
+MAE: 0.1098, R2: 0.9824
+
+Iteration 11
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 128}
+MAE: 0.1568, R2: 0.9796
+
+Iteration 12
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 128}
+MAE: 0.1406, R2: 0.9815
+
+Iteration 13
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 256}
+MAE: 0.2157, R2: 0.9656
+
+Iteration 14
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 32}
+MAE: 0.1478, R2: 0.9815
+
+Iteration 15
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 32}
+MAE: 0.0682, R2: 0.9891
+
+Iteration 16
+Params: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1499, R2: 0.9789
+
+Iteration 17
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 128}
+MAE: 0.1825, R2: 0.9736
+
+Iteration 18
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1421, R2: 0.9766
+
+Iteration 19
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 128}
+MAE: 0.0965, R2: 0.9850
+
+Iteration 20
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1154, R2: 0.9780
+
+Iteration 21
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 64}
+MAE: 0.1343, R2: 0.9840
+
+Iteration 22
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 256}
+MAE: 0.1908, R2: 0.9688
+
+Iteration 23
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.1550, R2: 0.9784
+
+Iteration 24
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 128}
+MAE: 0.1472, R2: 0.9757
+
+Iteration 25
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1051, R2: 0.9844
+
+Iteration 26
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 128}
+MAE: 0.1562, R2: 0.9764
+
+Iteration 27
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 64}
+MAE: 0.0831, R2: 0.9837
+
+Iteration 28
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1592, R2: 0.9794
+
+Iteration 29
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 32}
+MAE: 0.1413, R2: 0.9834
+
+Iteration 30
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1473, R2: 0.9758
+
+Iteration 31
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 32}
+MAE: 0.1139, R2: 0.9839
+
+Iteration 32
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1062, R2: 0.9757
+
+Iteration 33
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 64}
+MAE: 0.1106, R2: 0.9840
+
+Iteration 34
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 32}
+MAE: 0.1145, R2: 0.9833
+
+Iteration 35
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 32}
+MAE: 0.1026, R2: 0.9851
+
+Iteration 36
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1178, R2: 0.9843
+
+Iteration 37
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 32, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 32}
+MAE: 0.2869, R2: 0.9431
+
+Iteration 38
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 32}
+MAE: 0.0752, R2: 0.9830
+
+Iteration 39
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.0964, R2: 0.9814
+
+Iteration 40
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 64}
+MAE: 0.1543, R2: 0.9770
+
+Iteration 41
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1554, R2: 0.9762
+
+Iteration 42
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 256}
+MAE: 0.1125, R2: 0.9850
+
+Iteration 43
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 256}
+MAE: 0.1742, R2: 0.9731
+
+Iteration 44
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.1154, R2: 0.9840
+
+Iteration 45
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 128}
+MAE: 0.0958, R2: 0.9834
+
+Iteration 46
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.2, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.1313, R2: 0.9809
+
+Iteration 47
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 32}
+MAE: 0.0848, R2: 0.9799
+
+Iteration 48
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1172, R2: 0.9850
+
+Iteration 49
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1565, R2: 0.9746
+
+Iteration 50
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1559, R2: 0.9751
+
+Iteration 51
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 128}
+MAE: 0.0867, R2: 0.9828
+
+Iteration 52
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 32}
+MAE: 0.0853, R2: 0.9833
+
+Iteration 53
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1152, R2: 0.9797
+
+Iteration 54
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 256}
+MAE: 0.1032, R2: 0.9781
+
+Iteration 55
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 64}
+MAE: 0.0950, R2: 0.9854
+
+Iteration 56
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.1, 'batch_size': 64}
+MAE: 0.1303, R2: 0.9810
+
+Iteration 57
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 256}
+MAE: 0.1201, R2: 0.9844
+
+Iteration 58
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.2122, R2: 0.9644
+
+Iteration 59
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 256}
+MAE: 0.1243, R2: 0.9816
+
+Iteration 60
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.1034, R2: 0.9853
+
+Iteration 61
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 256}
+MAE: 0.0870, R2: 0.9842
+
+Iteration 62
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.2, 'batch_size': 128}
+MAE: 0.1162, R2: 0.9748
+
+Iteration 63
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1326, R2: 0.9804
+
+Iteration 64
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 128}
+MAE: 0.1694, R2: 0.9757
+
+Iteration 65
+Params: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 128}
+MAE: 0.1237, R2: 0.9789
+
+Iteration 66
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 32}
+MAE: 0.1463, R2: 0.9790
+
+Iteration 67
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 128}
+MAE: 0.1557, R2: 0.9731
+
+Iteration 68
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.2, 'batch_size': 64}
+MAE: 0.1074, R2: 0.9866
+
+Iteration 69
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 32, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.1, 'batch_size': 32}
+MAE: 0.1548, R2: 0.9758
+
+Iteration 70
+Params: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 32}
+MAE: 0.1045, R2: 0.9860
+
+Iteration 71
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.2, 'batch_size': 256}
+MAE: 0.1428, R2: 0.9778
+
+Iteration 72
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1121, R2: 0.9853
+
+Iteration 73
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 32}
+MAE: 0.1529, R2: 0.9800
+
+Iteration 74
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.5, 'batch_size': 128}
+MAE: 0.1259, R2: 0.9837
+
+Iteration 75
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 32, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 32}
+MAE: 0.1418, R2: 0.9765
+
+Iteration 76
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 2, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 32}
+MAE: 0.0813, R2: 0.9894
+
+Iteration 77
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 64}
+MAE: 0.1170, R2: 0.9836
+
+Iteration 78
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 1, 'learning_rate': 0.001, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 32}
+MAE: 0.1629, R2: 0.9773
+
+Iteration 79
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 128, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.2068, R2: 0.9644
+
+Iteration 80
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.001, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.3, 'batch_size': 128}
+MAE: 0.0980, R2: 0.9878
+
+Iteration 81
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 128}
+MAE: 0.0990, R2: 0.9865
+
+Iteration 82
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.1, 'batch_size': 256}
+MAE: 0.1637, R2: 0.9727
+
+Iteration 83
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.3, 'batch_size': 32}
+MAE: 0.0986, R2: 0.9882
+
+Iteration 84
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 32}
+MAE: 0.1158, R2: 0.9839
+
+Iteration 85
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 256}
+MAE: 0.1049, R2: 0.9780
+
+Iteration 86
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 512, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.3, 'batch_size': 256}
+MAE: 0.1299, R2: 0.9728
+
+Iteration 87
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.3, 'batch_size': 64}
+MAE: 0.2002, R2: 0.9680
+
+Iteration 88
+Params: {'window_step_sec': 0.05, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.15, 'hidden_size': 512, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1150, R2: 0.9800
+
+Iteration 89
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.0001, 'num_layers': 1, 'learning_rate': 0.01, 'imu_window_size_sec': 0.3, 'hidden_size': 64, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1956, R2: 0.9709
+
+Iteration 90
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 3, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.2, 'batch_size': 128}
+MAE: 0.0817, R2: 0.9893
+
+Iteration 91
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 1, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 128, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1985, R2: 0.9678
+
+Iteration 92
+Params: {'window_step_sec': 0.1, 'weight_decay': 1e-05, 'num_layers': 2, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.3, 'hidden_size': 128, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 256}
+MAE: 0.1709, R2: 0.9709
+
+Iteration 93
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.001, 'num_layers': 2, 'learning_rate': 0.001, 'imu_window_size_sec': 0.3, 'hidden_size': 256, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.1, 'batch_size': 128}
+MAE: 0.1240, R2: 0.9854
+
+Iteration 94
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 2, 'learning_rate': 0.01, 'imu_window_size_sec': 0.15, 'hidden_size': 256, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.1, 'batch_size': 32}
+MAE: 0.0789, R2: 0.9873
+
+Iteration 95
+Params: {'window_step_sec': 0.1, 'weight_decay': 0.001, 'num_layers': 3, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.25, 'hidden_size': 32, 'emg_window_size_sec': 0.1, 'dropout_rate': 0.5, 'batch_size': 32}
+MAE: 0.1543, R2: 0.9742
+
+Iteration 96
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 1, 'learning_rate': 0.005, 'imu_window_size_sec': 0.2, 'hidden_size': 256, 'emg_window_size_sec': 0.15, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1370, R2: 0.9844
+
+Iteration 97
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0001, 'num_layers': 4, 'learning_rate': 0.01, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.1, 'batch_size': 32}
+MAE: 0.1121, R2: 0.9716
+
+Iteration 98
+Params: {'window_step_sec': 0.05, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.005, 'imu_window_size_sec': 0.25, 'hidden_size': 64, 'emg_window_size_sec': 0.2, 'dropout_rate': 0.5, 'batch_size': 256}
+MAE: 0.1368, R2: 0.9799
+
+Iteration 99
+Params: {'window_step_sec': 0.15, 'weight_decay': 1e-05, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 32, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 64}
+MAE: 0.1444, R2: 0.9769
+
+Iteration 100
+Params: {'window_step_sec': 0.15, 'weight_decay': 0.0, 'num_layers': 4, 'learning_rate': 0.0005, 'imu_window_size_sec': 0.2, 'hidden_size': 64, 'emg_window_size_sec': 0.25, 'dropout_rate': 0.4, 'batch_size': 256}
+MAE: 0.1398, R2: 0.9796
