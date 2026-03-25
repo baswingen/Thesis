@@ -1,0 +1,88 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260324_195511
+=======================================================
+
+--- DATASET INFO ---
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5']
+Total samples: 4429
+Evaluation Mode: Train/Validation/Test Split (72/8/20)
+Testing samples: 886
+Training samples: 3188
+Validation samples: 355
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.2s, Step: 0.15s
+Enabled EMG Features: MAV, RMS, WL, ZC, SSC, VAR, WAMP, IEMG, LogDet, Skew, Kurt, HjMob, HjComp, Myopulse, MNF, MDF, Power, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Mean, Var, Std, Max, SMA, P2P, Skew, Kurt, Jerk, DomFreq, SpecEnergy, MNF, SVM_Mean
+
+--- HYPERPARAMETERS ---
+Model: GRU
+Hidden Size: 512
+Num Layers: 2
+Dropout Rate: 0.5
+Learning Rate: 0.0005
+Batch Size: 32
+Epochs: 600
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.2
+Window Step (s): 0.15
+Random State: 69
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.0843
+Mean Squared Error: 0.0308
+Root Mean Squared Error: 0.1754
+R-squared Score: 0.9909
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 444      | 0.0095     | 0.0384    
+0.75 kg      | 63       | 0.1024     | 0.1387    
+1.00 kg      | 63       | 0.0988     | 0.1364    
+2.00 kg      | 63       | 0.2446     | 0.3222    
+2.25 kg      | 63       | 0.1753     | 0.2320    
+3.00 kg      | 64       | 0.2893     | 0.3644    
+4.25 kg      | 63       | 0.1563     | 0.2382    
+6.00 kg      | 63       | 0.0470     | 0.1881    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+(How many sliding windows were available when the LSTM made its prediction)
+Window step: 0.15s  |  First window ready at: 0.200s
+# Windows    | Time into lift   | Count    | MAE        | RMSE      
+-----------------------------------------------------------------
+3            | 0.500s           | 4        | 0.3111     | 0.3694    
+4            | 0.650s           | 31       | 0.1290     | 0.2161    
+5            | 0.800s           | 91       | 0.1262     | 0.1955    
+6            | 0.950s           | 156      | 0.1065     | 0.1981    
+7            | 1.100s           | 182      | 0.0873     | 0.1842    
+8            | 1.250s           | 165      | 0.0660     | 0.1489    
+9            | 1.400s           | 89       | 0.0513     | 0.1244    
+10           | 1.550s           | 70       | 0.0493     | 0.1033    
+11           | 1.700s           | 34       | 0.0488     | 0.0896    
+12           | 1.850s           | 26       | 0.0575     | 0.1656    
+13           | 2.000s           | 6        | 0.0456     | 0.0973    
+14           | 2.150s           | 10       | 0.1757     | 0.4695    
+15           | 2.300s           | 6        | 0.0250     | 0.0433    
+16           | 2.450s           | 3        | 0.2305     | 0.3705    
+18           | 2.750s           | 2        | 0.0005     | 0.0007    
+19           | 2.900s           | 4        | 0.0601     | 0.0862    
+20           | 3.050s           | 1        | 0.0871     | 0.0871    
+22           | 3.350s           | 1        | 0.0000     | 0.0000    
+24           | 3.650s           | 1        | 0.0000     | 0.0000    
+27           | 4.100s           | 1        | 0.0950     | 0.0950    
+34           | 5.150s           | 1        | 0.0000     | 0.0000    
+35           | 5.300s           | 1        | 0.0814     | 0.0814    
+45           | 6.800s           | 1        | 0.0000     | 0.0000    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 2,943,489
+Trainable Parameters: 2,943,489
+Estimated Inference GFLOPs (per sample): 0.038235
+Estimated Total Training GFLOPs: 219408.5044
+Training Time: 1239.1981s
+Inference Time (per sample): 1.9088ms
+

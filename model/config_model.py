@@ -227,17 +227,18 @@ MLP_CONFIG = {
 }
 
 # GRU (Gated Recurrent Unit) Configuration
+# Sweep Iteration 15 best params (R²=0.9891, MAE=0.0682)
 GRU_CONFIG = {
-    'hidden_size': 256,
-    'num_layers': 3,
-    'dropout_rate': 0.2,
-    'learning_rate': 0.005,
+    'hidden_size': 512,
+    'num_layers': 2,
+    'dropout_rate': 0.5,
+    'learning_rate': 0.0005,
     'weight_decay': 1e-4,
-    'batch_size': 64,
-    'epochs': 150,
+    'batch_size': 32,
+    'epochs': 600,
     'validation_split': 0.1,
-    'early_stopping_patience': 50,
-    'scheduler_patience': 5,
+    'early_stopping_patience': 200,
+    'scheduler_patience': 10,
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE
 }
@@ -278,6 +279,27 @@ CNN_LSTM_CONFIG = {
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE,
 }
+
+# Lighter CNN-LSTM Configuration specifically for Sequential Backward Selection Ablation
+# Designed to be faster to train but still representative of relative channel importance.
+CNN_LSTM_ABLATION_CONFIG = {
+    'cnn_filters': [64, 128],
+    'cnn_kernel_sizes': [5, 3],
+    'pool_size': 4,
+    'lstm_hidden_size': 128,
+    'lstm_num_layers': 2,
+    'dropout_rate': 0.4,
+    'learning_rate': 0.001,
+    'weight_decay': 1e-05,
+    'batch_size': 128,
+    'epochs': 150,
+    'validation_split': 0.2,
+    'early_stopping_patience': 25,
+    'scheduler_patience': 10,
+    'scheduler_factor': 0.5,
+    'random_state': GLOBAL_RANDOM_STATE,
+}
+
 
 # Transformer Configuration
 TRANSFORMER_CONFIG = {
