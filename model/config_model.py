@@ -29,7 +29,7 @@ CHANNEL_CONFIG = {
     'imu_channels': {
         # Sensor 1
         'ax1': True, 'ay1': True, 'az1': True,
-        'roll_rad1': True, 'pitch_rad1': True, 'yaw_rad1': True,
+        'roll_rad1': False, 'pitch_rad1': True, 'yaw_rad1': True,
         # Sensor 2
         'ax2': True, 'ay2': True, 'az2': True,
         'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
