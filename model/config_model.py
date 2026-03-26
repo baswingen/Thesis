@@ -292,19 +292,19 @@ CNN_LSTM_CONFIG = {
 # Lighter CNN-LSTM Configuration specifically for Sequential Backward Selection Ablation
 # Designed to be faster to train but still representative of relative channel importance.
 CNN_LSTM_ABLATION_CONFIG = {
-    'cnn_filters': [64, 128],
+    'cnn_filters': [32, 64],
     'cnn_kernel_sizes': [5, 3],
     'pool_size': 4,
-    'lstm_hidden_size': 128,
-    'lstm_num_layers': 2,
+    'lstm_hidden_size': 64,
+    'lstm_num_layers': 1,
     'dropout_rate': 0.4,
     'learning_rate': 0.001,
     'weight_decay': 1e-05,
-    'batch_size': 128,
-    'epochs': 150,
+    'batch_size': 256,
+    'epochs': 100,
     'validation_split': 0.2,
-    'early_stopping_patience': 25,
-    'scheduler_patience': 10,
+    'early_stopping_patience': 15,
+    'scheduler_patience': 5,
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE,
 }

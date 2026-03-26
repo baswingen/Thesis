@@ -50,40 +50,56 @@ def run_evaluation(df_subset: pd.DataFrame, loader: DataLoader, target_col: str 
 
 
 def plot_sbs_history(sbs_history: list, run_dir: Path):
-    """Generates a performance plot showing MAE dropping across channel removals."""
+    """Generates a performance plot showing RMSE and R^2 across channel removals."""
     steps = [h['step'] for h in sbs_history]
-    maes = [h['mae'] for h in sbs_history]
+    rmses = [h['rmse'] for h in sbs_history]
+    r2s = [h.get('r2', np.nan) for h in sbs_history]
     dropped = [h['dropped_channel'] for h in sbs_history]
     n_remaining = [len(h['remaining_channels']) for h in sbs_history]
     
-    plt.figure(figsize=(14, 7))
-    plt.plot(n_remaining, maes, marker='o', linestyle='-', linewidth=2, markersize=8, color='#1f77b4')
+    fig, ax1 = plt.subplots(figsize=(14, 7))
+    
+    # Plot RMSE on primary y-axis
+    color = '#1f77b4'
+    ax1.plot(n_remaining, rmses, marker='o', linestyle='-', linewidth=2, markersize=8, color=color, label='RMSE')
+    ax1.set_xlabel("Number of Remaining Channels", fontsize=14, labelpad=10)
+    ax1.set_ylabel("Root Mean Squared Error (RMSE)", fontsize=14, labelpad=10, color=color)
+    ax1.tick_params(axis='y', labelcolor=color)
     
     # Annotate dropped channels
     for i in range(1, len(sbs_history)):
-        plt.annotate(
+        ax1.annotate(
             f"-{dropped[i]}",
-            (n_remaining[i], maes[i]),
+            (n_remaining[i], rmses[i]),
             textcoords="offset points",
-            xytext=(0, 12),
+            xytext=(0, 15),
             ha='center',
             fontsize=9,
             rotation=60
         )
         
+    # Plot R^2 on secondary y-axis
+    ax2 = ax1.twinx()
+    color2 = '#ff7f0e'
+    ax2.plot(n_remaining, r2s, marker='s', linestyle='--', linewidth=2, markersize=8, color=color2, label='R² Score')
+    ax2.set_ylabel("R² Score", fontsize=14, labelpad=10, color=color2)
+    ax2.tick_params(axis='y', labelcolor=color2)
+    
     # Invert x-axis so sequence progresses from many channels (left) to few (right)
-    plt.gca().invert_xaxis()
+    ax1.invert_xaxis()
     
     # Setup styling
     plt.title("SBS Profile: CNN-LSTM Performance vs. Remaining Channels", fontsize=16, fontweight='bold', pad=20)
-    plt.xlabel("Number of Remaining Channels", fontsize=14, labelpad=10)
-    plt.ylabel("Mean Absolute Error (MAE)", fontsize=14, labelpad=10)
-    plt.grid(True, linestyle='--', alpha=0.6)
+    ax1.grid(True, linestyle='--', alpha=0.6)
     
-    # Highlight the best configuration visually
-    best_step = np.argmin(maes)
-    plt.scatter([n_remaining[best_step]], [maes[best_step]], color='red', s=150, zorder=5, label='Best Performance Subset')
-    plt.legend()
+    # Highlight the best configuration visually (Lowest RMSE)
+    best_step = np.argmin(rmses)
+    ax1.scatter([n_remaining[best_step]], [rmses[best_step]], color='red', s=150, zorder=5, label='Best RMSE Subset')
+    
+    # Add legends
+    lines_1, labels_1 = ax1.get_legend_handles_labels()
+    lines_2, labels_2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc='upper right')
     
     plt.tight_layout()
     plot_path = run_dir / "sbs_performance_plot.png"
@@ -108,15 +124,20 @@ def write_report(sbs_history: list, run_dir: Path):
         f.write(f"Max Epochs : {CNN_LSTM_ABLATION_CONFIG['epochs']}\n\n")
         
         f.write("--- SBS STEP-BY-STEP ---\n")
+        f.write(f"{'Step':<5} | {'Dropped Channel':<20} | {'Remaining':<9} | {'RMSE':<8} | {'MAE':<8} | {'R2':<8}\n")
+        f.write("-" * 75 + "\n")
         for h in sbs_history:
-            f.write(f"Step {h['step']}: Dropped -> {h['dropped_channel']:<18} | Remaining: {len(h['remaining_channels']):<2} | MAE: {h['mae']:.4f}\n")
+            r2_val = h.get('r2', np.nan)
+            f.write(f"{h['step']:<5} | {h['dropped_channel']:<20} | {len(h['remaining_channels']):<9} | {h['rmse']:.4f}   | {h['mae']:.4f}   | {r2_val:.4f}\n")
             
         f.write("\n" + "=" * 60 + "\n")
-        best_h = min(sbs_history, key=lambda x: x['mae'])
-        f.write("RECOMMENDED CHANNEL SUBSET (Lowest MAE)\n")
+        best_h = min(sbs_history, key=lambda x: x['rmse'])
+        f.write("RECOMMENDED CHANNEL SUBSET (Lowest RMSE)\n")
         f.write("=" * 60 + "\n")
         f.write(f"Dropped so far : {len(sbs_history) - len(best_h['remaining_channels'])}\n")
+        f.write(f"Optimal RMSE   : {best_h['rmse']:.4f}\n")
         f.write(f"Optimal MAE    : {best_h['mae']:.4f}\n")
+        f.write(f"Optimal R2     : {best_h.get('r2', np.nan):.4f}\n")
         f.write(f"Ideal Channels : {', '.join(best_h['remaining_channels'])}\n")
         
     return report_file
@@ -144,22 +165,25 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
     print("\n[Step 0] Training Base Model (All Channels) ... ", flush=True)
     base_metrics = run_evaluation(df_raw, loader, target_col)
     
+    base_rmse = base_metrics['RMSE']
     base_mae = base_metrics['MAE']
-    print(f"=> Base MAE: {base_mae:.4f}")
+    base_r2 = base_metrics.get('R2', np.nan)
+    print(f"=> Base RMSE: {base_rmse:.4f} (MAE: {base_mae:.4f}, R2: {base_r2:.4f})")
     
     sbs_history.append({
         'step': 0,
         'dropped_channel': 'None (Baseline)',
         'remaining_channels': list(current_channels),
         'mae': base_mae,
-        'rmse': base_metrics['RMSE']
+        'rmse': base_rmse,
+        'r2': base_r2
     })
     
     # --- SBS Loop ---
     step = 1
     while len(current_channels) > 1:
         print(f"\n[Step {step}] Evaluating removals from {len(current_channels)} channels...")
-        best_mae = float('inf')
+        best_rmse = float('inf')
         best_channel_to_drop = None
         best_metrics = None
         
@@ -170,25 +194,28 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
             df_slice = slice_channels(df_raw, all_channels, test_subset)
             
             metrics = run_evaluation(df_slice, loader, target_col)
+            rmse = metrics['RMSE']
             mae = metrics['MAE']
+            r2 = metrics.get('R2', np.nan)
             
-            print(f"MAE = {mae:.4f}")
+            print(f"RMSE = {rmse:.4f} (MAE: {mae:.4f}, R2: {r2:.4f})")
             
-            if mae < best_mae:
-                best_mae = mae
+            if rmse < best_rmse:
+                best_rmse = rmse
                 best_channel_to_drop = ch
                 best_metrics = metrics
                 
         # Lock in the best drop
-        print(f"+++ WINNER Step {step}: Drop '{best_channel_to_drop}' (New Best MAE: {best_mae:.4f})")
+        print(f"+++ WINNER Step {step}: Drop '{best_channel_to_drop}' (New Best RMSE: {best_rmse:.4f})")
         current_channels.remove(best_channel_to_drop)
         
         sbs_history.append({
             'step': step,
             'dropped_channel': best_channel_to_drop,
             'remaining_channels': list(current_channels),
-            'mae': best_mae,
-            'rmse': best_metrics['RMSE']
+            'mae': best_metrics['MAE'],
+            'rmse': best_rmse,
+            'r2': best_metrics.get('R2', np.nan)
         })
         
         step += 1
