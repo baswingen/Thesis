@@ -1,0 +1,46 @@
+============================================================
+CNN-LSTM ABLATION STUDY REPORT
+Strategy: Sequential Backward Selection (SBS)
+Run Timestamp: 2026-03-25 23:07:18
+============================================================
+
+--- TRAINING CONFIGURATION ---
+CNN Filters: [64, 128]
+LSTM Hidden: 128
+Batch Size : 128
+Max Epochs : 150
+
+--- SBS STEP-BY-STEP ---
+Step 0: Dropped -> None (Baseline)    | Remaining: 26 | MAE: 0.1012
+Step 1: Dropped -> roll_rad1          | Remaining: 25 | MAE: 0.0687
+Step 2: Dropped -> pitch_rad1         | Remaining: 24 | MAE: 0.0724
+Step 3: Dropped -> Posterior Deltoid  | Remaining: 23 | MAE: 0.0772
+Step 4: Dropped -> Biceps Brachii     | Remaining: 22 | MAE: 0.0766
+Step 5: Dropped -> az_diff            | Remaining: 21 | MAE: 0.0933
+Step 6: Dropped -> Extensor Carpi Radialis (ECR) | Remaining: 20 | MAE: 0.0805
+Step 7: Dropped -> ay1                | Remaining: 19 | MAE: 0.0709
+Step 8: Dropped -> ay2                | Remaining: 18 | MAE: 0.0808
+Step 9: Dropped -> ax2                | Remaining: 17 | MAE: 0.0837
+Step 10: Dropped -> yaw_rad2           | Remaining: 16 | MAE: 0.0693
+Step 11: Dropped -> yaw_rad1           | Remaining: 15 | MAE: 0.0766
+Step 12: Dropped -> ax1                | Remaining: 14 | MAE: 0.0754
+Step 13: Dropped -> roll_rad2          | Remaining: 13 | MAE: 0.0784
+Step 14: Dropped -> ax_diff            | Remaining: 12 | MAE: 0.0839
+Step 15: Dropped -> az2                | Remaining: 11 | MAE: 0.0942
+Step 16: Dropped -> Lateral Deltoid    | Remaining: 10 | MAE: 0.0873
+Step 17: Dropped -> ay_diff            | Remaining: 9  | MAE: 0.0928
+Step 18: Dropped -> roll_rad_diff      | Remaining: 8  | MAE: 0.1079
+Step 19: Dropped -> az1                | Remaining: 7  | MAE: 0.1117
+Step 20: Dropped -> yaw_rad_diff       | Remaining: 6  | MAE: 0.1171
+Step 21: Dropped -> Flexor Carpi Ulnaris (FCU) | Remaining: 5  | MAE: 0.1284
+Step 22: Dropped -> Anterior Deltoid   | Remaining: 4  | MAE: 0.1539
+Step 23: Dropped -> pitch_rad_diff     | Remaining: 3  | MAE: 0.1934
+Step 24: Dropped -> pitch_rad2         | Remaining: 2  | MAE: 0.2271
+Step 25: Dropped -> Triceps Brachii    | Remaining: 1  | MAE: 0.3419
+
+============================================================
+RECOMMENDED CHANNEL SUBSET (Lowest MAE)
+============================================================
+Dropped so far : 1
+Optimal MAE    : 0.0687
+Ideal Channels : Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR), ax1, ay1, az1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
