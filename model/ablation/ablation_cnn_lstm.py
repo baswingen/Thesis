@@ -38,7 +38,7 @@ def run_evaluation(df_subset: pd.DataFrame, loader: DataLoader, target_col: str 
     # Train/Test Split
     strat_labels = df_subset["label"] if "label" in df_subset.columns else None
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=strat_labels
+        X, y, test_size=0.2, random_state=CNN_LSTM_ABLATION_CONFIG.get('random_state', 42), stratify=strat_labels
     )
     
     # Note: CNNLSTMRegressor handles the internal validation split (e.g. 0.2 of X_train) automatically
@@ -50,10 +50,10 @@ def run_evaluation(df_subset: pd.DataFrame, loader: DataLoader, target_col: str 
 
 
 def plot_sbs_history(sbs_history: list, run_dir: Path):
-    """Generates a performance plot showing RMSE and R^2 across channel removals."""
+    """Generates a performance plot showing RMSE and MAE across channel removals."""
     steps = [h['step'] for h in sbs_history]
     rmses = [h['rmse'] for h in sbs_history]
-    r2s = [h.get('r2', np.nan) for h in sbs_history]
+    maes = [h['mae'] for h in sbs_history]
     dropped = [h['dropped_channel'] for h in sbs_history]
     n_remaining = [len(h['remaining_channels']) for h in sbs_history]
     
@@ -78,11 +78,11 @@ def plot_sbs_history(sbs_history: list, run_dir: Path):
             rotation=60
         )
         
-    # Plot R^2 on secondary y-axis
+    # Plot MAE on secondary y-axis
     ax2 = ax1.twinx()
     color2 = '#ff7f0e'
-    ax2.plot(n_remaining, r2s, marker='s', linestyle='--', linewidth=2, markersize=8, color=color2, label='R² Score')
-    ax2.set_ylabel("R² Score", fontsize=14, labelpad=10, color=color2)
+    ax2.plot(n_remaining, maes, marker='s', linestyle='--', linewidth=2, markersize=8, color=color2, label='MAE')
+    ax2.set_ylabel("Mean Absolute Error (MAE)", fontsize=14, labelpad=10, color=color2)
     ax2.tick_params(axis='y', labelcolor=color2)
     
     # Invert x-axis so sequence progresses from many channels (left) to few (right)

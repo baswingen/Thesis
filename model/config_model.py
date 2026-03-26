@@ -4,7 +4,7 @@ Centralizing these values makes it easier to manage experiments and
 ensures consistency across training and inference scripts.
 """
 
-GLOBAL_RANDOM_STATE = 69
+GLOBAL_RANDOM_STATE = 1337
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
 ###########################################################
@@ -298,7 +298,7 @@ CNN_LSTM_ABLATION_CONFIG = {
     'lstm_hidden_size': 64,
     'lstm_num_layers': 1,
     'dropout_rate': 0.4,
-    'learning_rate': 0.001,
+    'learning_rate': 0.0005,
     'weight_decay': 1e-05,
     'batch_size': 256,
     'epochs': 100,
