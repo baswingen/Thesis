@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 #  FEATURE EXTRACTION CONFIGURATION
 #  (identical to the FEATURE_CONFIG in config_model.py)
 # ============================================================
-from model.config_model import FEATURE_CONFIG
+from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG
 
 # ── Sliding window properties ────────────────────────────────────────────────
 # These must match the window settings used during model training.
@@ -501,8 +501,8 @@ def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
                 }
 
         # Filter EMG/IMU channels according to config
-        emg_channels_config = FEATURE_CONFIG.get('emg_channels', {})
-        imu_channels_config = FEATURE_CONFIG.get('imu_channels', {})
+        emg_channels_config = CHANNEL_CONFIG.get('emg_channels', {})
+        imu_channels_config = CHANNEL_CONFIG.get('imu_channels', {})
 
         segment_features: dict[str, dict] = {}
 

@@ -7,7 +7,7 @@ import sys
 import os
 
 from model.feature_extraction import FeatureExtractor
-from model.config_model import FEATURE_CONFIG
+from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG
 
 class DataLoader:
     """
@@ -147,7 +147,7 @@ class DataLoader:
                     emg = grp["emg"][:] if "emg" in grp else np.empty((0, 0))
                     emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
 
-                    emg_channels_config = FEATURE_CONFIG.get('emg_channels', {})
+                    emg_channels_config = CHANNEL_CONFIG.get('emg_channels', {})
                     if emg_cols and emg_channels_config:
                         valid_idx = [i for i, c in enumerate(emg_cols) if emg_channels_config.get(c, True)]
                         emg_cols = [emg_cols[i] for i in valid_idx]
@@ -158,7 +158,7 @@ class DataLoader:
                     imu = grp["imu"][:] if "imu" in grp else np.empty((0, 0))
                     imu_cols = self._decode_cols(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
 
-                    imu_channels_config = FEATURE_CONFIG.get('imu_channels', {})
+                    imu_channels_config = CHANNEL_CONFIG.get('imu_channels', {})
                     if imu_cols and imu_channels_config:
                         valid_idx = [i for i, c in enumerate(imu_cols) if imu_channels_config.get(c, True)]
                         imu_cols = [imu_cols[i] for i in valid_idx]
@@ -296,7 +296,7 @@ class DataLoader:
                     emg_cols = self._decode_cols(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
 
                     # Filter EMG channels based on config
-                    emg_channels_config = FEATURE_CONFIG.get('emg_channels', {})
+                    emg_channels_config = CHANNEL_CONFIG.get('emg_channels', {})
                     if emg_cols and emg_channels_config:
                         valid_emg_idx = [i for i, col in enumerate(emg_cols) if emg_channels_config.get(col, True)]
                         emg_cols = [emg_cols[i] for i in valid_emg_idx]
@@ -304,7 +304,7 @@ class DataLoader:
                             emg = emg[:, valid_emg_idx]
 
                     # Filter IMU channels based on config
-                    imu_channels_config = FEATURE_CONFIG.get('imu_channels', {})
+                    imu_channels_config = CHANNEL_CONFIG.get('imu_channels', {})
                     if imu_cols and imu_channels_config:
                         valid_imu_idx = [i for i, col in enumerate(imu_cols) if imu_channels_config.get(col, True)]
                         imu_cols = [imu_cols[i] for i in valid_imu_idx]

@@ -25,7 +25,7 @@ from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG
 )
 
 from sklearn.metrics import (
@@ -505,8 +505,8 @@ def main():
         f.write("--- FEATURE CONFIGURATION ---\n")
         if is_raw_segment:
             f.write(f"Input: Raw EMG + IMU segments (end-to-end CNN feature extraction)\n")
-            emg_ch = [k for k, v in FEATURE_CONFIG.get('emg_channels', {}).items() if v]
-            imu_ch = [k for k, v in FEATURE_CONFIG.get('imu_channels', {}).items() if v]
+            emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
+            imu_ch = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if v]
             f.write(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}\n")
             f.write(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}\n")
         else:
