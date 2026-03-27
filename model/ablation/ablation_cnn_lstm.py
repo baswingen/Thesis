@@ -12,7 +12,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
 from model.data_loader import DataLoader
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
-from model.config_model import CNN_LSTM_ABLATION_CONFIG
+from model.config_model import CNN_LSTM_ABLATION_CONFIG, CHANNEL_CONFIG
 
 from sklearn.model_selection import train_test_split
 
@@ -49,7 +49,7 @@ def run_evaluation(df_subset: pd.DataFrame, loader: DataLoader, target_col: str 
     return metrics
 
 
-def plot_sbs_history(sbs_history: list, run_dir: Path):
+def plot_sbs_history(sbs_history: list, run_dir: Path, ref_metrics: dict = None):
     """Generates a performance plot showing RMSE and MAE across channel removals."""
     steps = [h['step'] for h in sbs_history]
     rmses = [h['rmse'] for h in sbs_history]
@@ -92,6 +92,14 @@ def plot_sbs_history(sbs_history: list, run_dir: Path):
     plt.title("SBS Profile: CNN-LSTM Performance vs. Remaining Channels", fontsize=16, fontweight='bold', pad=20)
     ax1.grid(True, linestyle='--', alpha=0.6)
     
+    if ref_metrics:
+        if 'EMG Only' in ref_metrics:
+            ax1.axhline(ref_metrics['EMG Only']['RMSE'], color='green', linestyle='-.', alpha=0.7, label='EMG Only RMSE')
+            ax2.axhline(ref_metrics['EMG Only']['MAE'], color='#d62728', linestyle='-.', alpha=0.7, label='EMG Only MAE')
+        if 'IMU Only' in ref_metrics:
+            ax1.axhline(ref_metrics['IMU Only']['RMSE'], color='brown', linestyle=':', alpha=0.7, label='IMU Only RMSE')
+            ax2.axhline(ref_metrics['IMU Only']['MAE'], color='#e377c2', linestyle=':', alpha=0.7, label='IMU Only MAE')
+
     # Highlight the best configuration visually (Lowest RMSE)
     best_step = np.argmin(rmses)
     ax1.scatter([n_remaining[best_step]], [rmses[best_step]], color='red', s=150, zorder=5, label='Best RMSE Subset')
@@ -108,7 +116,7 @@ def plot_sbs_history(sbs_history: list, run_dir: Path):
     return plot_path
 
 
-def write_report(sbs_history: list, run_dir: Path):
+def write_report(sbs_history: list, run_dir: Path, ref_metrics: dict = None):
     report_file = run_dir / "ablation_cnn_lstm_report.txt"
     with open(report_file, "w") as f:
         f.write("=" * 60 + "\n")
@@ -123,6 +131,15 @@ def write_report(sbs_history: list, run_dir: Path):
         f.write(f"Batch Size : {CNN_LSTM_ABLATION_CONFIG['batch_size']}\n")
         f.write(f"Max Epochs : {CNN_LSTM_ABLATION_CONFIG['epochs']}\n\n")
         
+        if ref_metrics:
+            f.write("--- REFERENCE BASELINES ---\n")
+            f.write(f"{'Configuration':<20} | {'RMSE':<8} | {'MAE':<8} | {'R2':<8}\n")
+            f.write("-" * 55 + "\n")
+            for name, m in ref_metrics.items():
+                r2 = m.get('R2', np.nan)
+                f.write(f"{name:<20} | {m['RMSE']:.4f}   | {m['MAE']:.4f}   | {r2:.4f}\n")
+            f.write("\n")
+
         f.write("--- SBS STEP-BY-STEP ---\n")
         f.write(f"{'Step':<5} | {'Dropped Channel':<20} | {'Remaining':<9} | {'RMSE':<8} | {'MAE':<8} | {'R2':<8}\n")
         f.write("-" * 75 + "\n")
@@ -179,6 +196,25 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
         'r2': base_r2
     })
     
+    # --- Reference Models ---
+    print("\n[Reference] Training EMG-only Model ... ", flush=True)
+    emg_keys = list(CHANNEL_CONFIG['emg_channels'].keys())
+    imu_keys = list(CHANNEL_CONFIG['imu_channels'].keys())
+    actual_emg = [c for c in all_channels if c in emg_keys]
+    actual_imu = [c for c in all_channels if c in imu_keys]
+    
+    ref_metrics = {}
+    if actual_emg:
+        df_emg = slice_channels(df_raw, all_channels, actual_emg)
+        ref_metrics['EMG Only'] = run_evaluation(df_emg, loader, target_col)
+        print(f"=> EMG Only RMSE: {ref_metrics['EMG Only']['RMSE']:.4f} (MAE: {ref_metrics['EMG Only']['MAE']:.4f})")
+    
+    if actual_imu:
+        print("\n[Reference] Training IMU-only Model ... ", flush=True)
+        df_imu = slice_channels(df_raw, all_channels, actual_imu)
+        ref_metrics['IMU Only'] = run_evaluation(df_imu, loader, target_col)
+        print(f"=> IMU Only RMSE: {ref_metrics['IMU Only']['RMSE']:.4f} (MAE: {ref_metrics['IMU Only']['MAE']:.4f})")
+    
     # --- SBS Loop ---
     step = 1
     while len(current_channels) > 1:
@@ -221,10 +257,10 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
         step += 1
         
         # Save checkpoints incrementally
-        write_report(sbs_history, run_dir)
-        plot_sbs_history(sbs_history, run_dir)
+        write_report(sbs_history, run_dir, ref_metrics)
+        plot_sbs_history(sbs_history, run_dir, ref_metrics)
         
-    return sbs_history
+    return sbs_history, ref_metrics
 
 
 def main():
@@ -264,11 +300,11 @@ def main():
     target_col = "weight"
     
     # Run the SBS strategy
-    sbs_history = run_sbs(df_raw, loader, target_col, run_dir)
+    sbs_history, ref_metrics = run_sbs(df_raw, loader, target_col, run_dir)
     
     # Finalize outputs
-    report_file = write_report(sbs_history, run_dir)
-    plot_file = plot_sbs_history(sbs_history, run_dir)
+    report_file = write_report(sbs_history, run_dir, ref_metrics)
+    plot_file = plot_sbs_history(sbs_history, run_dir, ref_metrics)
     
     print(f"\n{'='*60}")
     print("Ablation study complete.")
