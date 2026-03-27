@@ -14,7 +14,7 @@ from model.data_loader import DataLoader
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.config_model import CNN_LSTM_ABLATION_CONFIG, CHANNEL_CONFIG
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, KFold
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -28,25 +28,45 @@ def slice_channels(df: pd.DataFrame, all_channels: list, subset_channels: list) 
     return df_sliced
 
 
-def run_evaluation(df_subset: pd.DataFrame, loader: DataLoader, target_col: str = "weight"):
+def run_evaluation(df_subset: pd.DataFrame, loader: DataLoader, target_col: str = "weight", n_splits: int = 3, random_state: int = 42):
     """
-    Train and evaluate the CNN-LSTM explicitly mapping to the CNN_LSTM_ABLATION_CONFIG.
-    Returns metrics dict with MAE, MSE, RMSE, R2.
+    Train and evaluate the CNN-LSTM using K-Fold cross-validation.
+    Returns averaged metrics dict with MAE, MSE, RMSE, R2.
     """
     X, y = loader.prepare_for_ml(df_subset, target_col=target_col)
     
-    # Train/Test Split
+    # Cross-Validation Split
     strat_labels = df_subset["label"] if "label" in df_subset.columns else None
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=CNN_LSTM_ABLATION_CONFIG.get('random_state', 42), stratify=strat_labels
-    )
     
-    # Note: CNNLSTMRegressor handles the internal validation split (e.g. 0.2 of X_train) automatically
-    model = CNNLSTMRegressor(**CNN_LSTM_ABLATION_CONFIG)
-    model.fit(X_train, y_train)
+    if strat_labels is not None:
+        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+        splits = cv.split(X, strat_labels)
+    else:
+        cv = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+        splits = cv.split(X)
+        
+    all_metrics = []
     
-    metrics, _ = model.evaluate(X_test, y_test)
-    return metrics
+    for train_idx, test_idx in splits:
+        X_train = X.iloc[train_idx] if hasattr(X, "iloc") else X[train_idx]
+        X_test = X.iloc[test_idx] if hasattr(X, "iloc") else X[test_idx]
+        y_train = y.iloc[train_idx] if hasattr(y, "iloc") else y[train_idx]
+        y_test = y.iloc[test_idx] if hasattr(y, "iloc") else y[test_idx]
+        
+        # Note: CNNLSTMRegressor handles the internal validation split automatically
+        model = CNNLSTMRegressor(**CNN_LSTM_ABLATION_CONFIG)
+        model.fit(X_train, y_train)
+        
+        metrics, _ = model.evaluate(X_test, y_test)
+        all_metrics.append(metrics)
+        
+    # Average the metrics across all folds
+    avg_metrics = {}
+    for k in all_metrics[0].keys():
+        vals = [m[k] for m in all_metrics if pd.notna(m.get(k, np.nan))]
+        avg_metrics[k] = np.mean(vals) if vals else np.nan
+        
+    return avg_metrics
 
 
 def plot_sbs_history(sbs_history: list, run_dir: Path, ref_metrics: dict = None):
@@ -164,7 +184,7 @@ def write_report(sbs_history: list, run_dir: Path, ref_metrics: dict = None):
 # Main Strategy Logic
 # ---------------------------------------------------------------------------
 
-def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: Path):
+def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: Path, n_splits: int = 3, random_state: int = 42):
     all_channels = df_raw.attrs.get("channel_names")
     if not all_channels:
         print("[ERROR] No channel names found in DataLoader output.")
@@ -180,7 +200,7 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
     
     # --- Step 0: Baseline ---
     print("\n[Step 0] Training Base Model (All Channels) ... ", flush=True)
-    base_metrics = run_evaluation(df_raw, loader, target_col)
+    base_metrics = run_evaluation(df_raw, loader, target_col, n_splits=n_splits, random_state=random_state)
     
     base_rmse = base_metrics['RMSE']
     base_mae = base_metrics['MAE']
@@ -206,13 +226,13 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
     ref_metrics = {}
     if actual_emg:
         df_emg = slice_channels(df_raw, all_channels, actual_emg)
-        ref_metrics['EMG Only'] = run_evaluation(df_emg, loader, target_col)
+        ref_metrics['EMG Only'] = run_evaluation(df_emg, loader, target_col, n_splits=n_splits, random_state=random_state)
         print(f"=> EMG Only RMSE: {ref_metrics['EMG Only']['RMSE']:.4f} (MAE: {ref_metrics['EMG Only']['MAE']:.4f})")
     
     if actual_imu:
         print("\n[Reference] Training IMU-only Model ... ", flush=True)
         df_imu = slice_channels(df_raw, all_channels, actual_imu)
-        ref_metrics['IMU Only'] = run_evaluation(df_imu, loader, target_col)
+        ref_metrics['IMU Only'] = run_evaluation(df_imu, loader, target_col, n_splits=n_splits, random_state=random_state)
         print(f"=> IMU Only RMSE: {ref_metrics['IMU Only']['RMSE']:.4f} (MAE: {ref_metrics['IMU Only']['MAE']:.4f})")
     
     # --- SBS Loop ---
@@ -229,7 +249,7 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
             test_subset = [c for c in current_channels if c != ch]
             df_slice = slice_channels(df_raw, all_channels, test_subset)
             
-            metrics = run_evaluation(df_slice, loader, target_col)
+            metrics = run_evaluation(df_slice, loader, target_col, n_splits=n_splits, random_state=random_state)
             rmse = metrics['RMSE']
             mae = metrics['MAE']
             r2 = metrics.get('R2', np.nan)
@@ -265,7 +285,9 @@ def run_sbs(df_raw: pd.DataFrame, loader: DataLoader, target_col: str, run_dir: 
 
 def main():
     parser = argparse.ArgumentParser(description="CNN-LSTM Channel Ablation Study")
-    parser.parse_args()
+    parser.add_argument("--cv-splits", type=int, default=3, help="Number of cross-validation splits (default: 3)")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for CV shuffling (default: 42)")
+    args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent.parent.parent
     segments_dir = base_dir / "database" / "segments"
@@ -300,7 +322,7 @@ def main():
     target_col = "weight"
     
     # Run the SBS strategy
-    sbs_history, ref_metrics = run_sbs(df_raw, loader, target_col, run_dir)
+    sbs_history, ref_metrics = run_sbs(df_raw, loader, target_col, run_dir, n_splits=args.cv_splits, random_state=args.seed)
     
     # Finalize outputs
     report_file = write_report(sbs_history, run_dir, ref_metrics)
