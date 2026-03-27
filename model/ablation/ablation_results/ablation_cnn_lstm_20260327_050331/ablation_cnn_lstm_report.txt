@@ -1,7 +1,7 @@
 ============================================================
 CNN-LSTM ABLATION STUDY REPORT
 Strategy: Sequential Backward Selection (SBS)
-Run Timestamp: 2026-03-27 08:58:51
+Run Timestamp: 2026-03-27 10:03:16
 ============================================================
 
 --- TRAINING CONFIGURATION ---
@@ -26,11 +26,23 @@ Step  | Dropped Channel      | Remaining | RMSE     | MAE      | R2
 10    | ax_diff              | 15        | 0.4741   | 0.2541   | 0.9332
 11    | ay2                  | 14        | 0.4027   | 0.2090   | 0.9518
 12    | az1                  | 13        | 0.4379   | 0.2279   | 0.9430
+13    | ax1                  | 12        | 0.4334   | 0.2387   | 0.9442
+14    | az_diff              | 11        | 0.4349   | 0.2349   | 0.9438
+15    | ax2                  | 10        | 0.4463   | 0.2163   | 0.9408
+16    | pitch_rad1           | 9         | 0.4638   | 0.2660   | 0.9361
+17    | Lateral Deltoid      | 8         | 0.4949   | 0.2677   | 0.9273
+18    | roll_rad2            | 7         | 0.4639   | 0.2449   | 0.9361
+19    | pitch_rad2           | 6         | 0.5113   | 0.2911   | 0.9223
+20    | yaw_rad2             | 5         | 0.5708   | 0.3128   | 0.9032
+21    | Flexor Carpi Ulnaris (FCU) | 4         | 0.6209   | 0.3535   | 0.8855
+22    | Extensor Carpi Radialis (ECR) | 3         | 0.6463   | 0.4060   | 0.8759
+23    | yaw_rad_diff         | 2         | 0.6833   | 0.4185   | 0.8613
+24    | az2                  | 1         | 0.7958   | 0.5047   | 0.8119
 
 ============================================================
 RECOMMENDED CHANNEL SUBSET (Lowest RMSE)
 ============================================================
-Dropped so far : -5
+Dropped so far : 7
 Optimal RMSE   : 0.3960
 Optimal MAE    : 0.1994
 Optimal R2     : 0.9534
