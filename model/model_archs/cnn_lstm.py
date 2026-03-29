@@ -288,8 +288,11 @@ class CNNLSTMRegressor:
                 print(f"[CNNLSTMRegressor] Unknown loss '{self.loss_type}', defaulting to MSE.")
 
         dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
+        _g = torch.Generator()
+        _g.manual_seed(self.random_state)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
-                                  shuffle=True, collate_fn=raw_pad_collate_fn)
+                                  shuffle=True, collate_fn=raw_pad_collate_fn,
+                                  generator=_g)
 
         dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)
         loader_val = DataLoader(dataset_val, batch_size=self.batch_size,
