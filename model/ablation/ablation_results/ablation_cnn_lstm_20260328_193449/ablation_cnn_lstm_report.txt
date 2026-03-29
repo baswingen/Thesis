@@ -1,0 +1,56 @@
+============================================================
+CNN-LSTM ABLATION STUDY REPORT
+Strategy: Sequential Backward Selection (SBS)
+Run Timestamp: 2026-03-29 15:36:33
+============================================================
+
+--- TRAINING CONFIGURATION ---
+CNN Filters: [32, 64]
+LSTM Hidden: 64
+Batch Size : 256
+Max Epochs : 100
+
+--- REFERENCE BASELINES ---
+Configuration        | RMSE     | MAE      | R2      
+-------------------------------------------------------
+EMG Only             | 0.4922   | 0.2626   | 0.9270
+IMU Only             | 1.2825   | 0.8708   | 0.5108
+
+--- SBS STEP-BY-STEP ---
+Step  | Dropped Channel      | Remaining | RMSE     | MAE      | R2      
+---------------------------------------------------------------------------
+0     | None (Baseline)      | 26        | 0.5673   | 0.3169   | 0.9035
+1     | yaw_rad_diff         | 25        | 0.5566   | 0.3084   | 0.9075
+2     | Brachioradialis      | 24        | 0.5561   | 0.3360   | 0.9075
+3     | yaw_rad2             | 23        | 0.4850   | 0.2522   | 0.9291
+4     | Biceps Brachii       | 22        | 0.5447   | 0.3118   | 0.9114
+5     | ax_diff              | 21        | 0.5445   | 0.2959   | 0.9101
+6     | Posterior Deltoid    | 20        | 0.4763   | 0.2620   | 0.9318
+7     | pitch_rad2           | 19        | 0.5173   | 0.2776   | 0.9202
+8     | Triceps Brachii      | 18        | 0.5812   | 0.3270   | 0.8993
+9     | pitch_rad_diff       | 17        | 0.5507   | 0.3166   | 0.9096
+10    | roll_rad_diff        | 16        | 0.5822   | 0.3311   | 0.8993
+11    | az2                  | 15        | 0.5892   | 0.3528   | 0.8969
+12    | yaw_rad1             | 14        | 0.6007   | 0.3463   | 0.8918
+13    | az1                  | 13        | 0.5422   | 0.3043   | 0.9124
+14    | ay_diff              | 12        | 0.6150   | 0.3573   | 0.8851
+15    | pitch_rad1           | 11        | 0.5443   | 0.3064   | 0.9116
+16    | roll_rad2            | 10        | 0.6269   | 0.3712   | 0.8829
+17    | ax2                  | 9         | 0.6132   | 0.3473   | 0.8880
+18    | ay2                  | 8         | 0.5151   | 0.2831   | 0.9210
+19    | ax1                  | 7         | 0.5994   | 0.3342   | 0.8919
+20    | az_diff              | 6         | 0.6744   | 0.3939   | 0.8645
+21    | Flexor Carpi Ulnaris (FCU) | 5         | 0.6629   | 0.3836   | 0.8687
+22    | roll_rad1            | 4         | 0.6259   | 0.3492   | 0.8824
+23    | Lateral Deltoid      | 3         | 0.6446   | 0.3684   | 0.8739
+24    | ay1                  | 2         | 0.7602   | 0.4641   | 0.8242
+25    | Anterior Deltoid     | 1         | 0.8880   | 0.5567   | 0.7641
+
+============================================================
+RECOMMENDED CHANNEL SUBSET (Lowest RMSE)
+============================================================
+Dropped so far : 6
+Optimal RMSE   : 0.4763
+Optimal MAE    : 0.2620
+Optimal R2     : 0.9318
+Ideal Channels : Anterior Deltoid, Lateral Deltoid, Triceps Brachii, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR), ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff
