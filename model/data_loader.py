@@ -7,7 +7,7 @@ import sys
 import os
 
 from model.feature_extraction import FeatureExtractor
-from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG
+from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG
 
 class DataLoader:
     """
@@ -36,6 +36,41 @@ class DataLoader:
     def _decode_cols(self, raw) -> List[str]:
         return [c.decode() if isinstance(c, bytes) else str(c) for c in raw]
 
+    @staticmethod
+    def filter_paths_by_participant(h5_paths: List[Path]) -> List[Path]:
+        """
+        Filter a list of HDF5 paths based on PARTICIPANT_CONFIG['include'].
+        Expects filenames containing 'participant_PXX'.
+        """
+        include = PARTICIPANT_CONFIG.get('include', 'all')
+        if include == 'all':
+            return h5_paths
+        
+        if isinstance(include, str):
+            include = [include]
+            
+        filtered = []
+        for p in h5_paths:
+            # Filename format: participant_P01_session_01_segments.h5
+            parts = p.stem.split("_")
+            if "participant" in parts:
+                idx = parts.index("participant") + 1
+                if idx < len(parts) and parts[idx] in include:
+                    filtered.append(p)
+                else:
+                    # Optional: print(f"[DataLoader] Skipping {p.name} (participant not included)")
+                    pass
+            else:
+                # If name doesn't match pattern, include it by default or skip?
+                # For safety, let's include it but warn if it was meant to be a participant file.
+                filtered.append(p)
+                
+        if len(filtered) < len(h5_paths):
+            print(f"[DataLoader] Filtered {len(h5_paths)} files down to {len(filtered)} "
+                  f"based on PARTICIPANT_CONFIG['include']={include}")
+            
+        return filtered
+
     # ------------------------------------------------------------------
     # Precomputed feature loading
     # ------------------------------------------------------------------
@@ -52,6 +87,7 @@ class DataLoader:
         from tqdm import tqdm
         from model.segmentation import load_precomputed_features as _load_feats
 
+        h5_paths = self.filter_paths_by_participant(h5_paths)
         all_features = []
 
         for path in h5_paths:
@@ -128,6 +164,7 @@ class DataLoader:
         """
         from tqdm import tqdm
 
+        h5_paths = self.filter_paths_by_participant(h5_paths)
         all_rows: list[dict] = []
         channel_names: list[str] | None = None
 
@@ -263,6 +300,8 @@ class DataLoader:
             window_step_sec = FEATURE_CONFIG.get('window_step_sec')
             
         from tqdm import tqdm
+        
+        h5_paths = self.filter_paths_by_participant(h5_paths)
         
         all_features = []
         

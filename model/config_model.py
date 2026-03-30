@@ -8,10 +8,19 @@ GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
 ###########################################################
+# PARTICIPANT CONFIGURATION
+###########################################################
+# Controls which participants are included in the training/evaluation.
+PARTICIPANT_CONFIG = {
+    'include': 'all',  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+}
+
+###########################################################
 # RAW CHANNEL TOGGLES (apply to ALL architectures)
 # Set False to exclude a channel from both raw-segment
 # (CNN-LSTM) and feature-extraction (LSTM/GRU/…) pipelines.
 ###########################################################
+
 CHANNEL_CONFIG = {
     # ── EMG Channels ─────────────────────────────────────────
     'emg_channels': {
