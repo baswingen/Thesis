@@ -1,0 +1,1514 @@
+Running on gpu015
+Working directory: /home/bwingen/thesis/Thesis
+/home/bwingen/thesis/Thesis/.venv/bin/python
+Python 3.11.13
+Results will be saved to:
+  /home/bwingen/thesis/Thesis/model/ablation/ablation_results/ablation_cnn_lstm_20260329_172137
+
+Global seed: 42
+Loading raw segments for CNN-LSTM Ablation...
+[DataLoader] Loaded 4429 raw segments (26 channels each)
+Dataset Loaded: 4429 segments found. Channels: 26
+
+============================================================
+PHASE — SEQUENTIAL BACKWARD SELECTION (26 initial channels)
+============================================================
+
+[Step 0] Training Base Model (All Channels) ... 
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 69. Best Val Loss: 0.1703
+=> Base RMSE: 0.5068 (MAE: 0.2401, R2: 0.9237)
+
+[Reference] Training EMG-only Model ... 
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.1654
+=> EMG Only RMSE: 0.4732 (MAE: 0.2330)
+
+[Reference] Training IMU-only Model ... 
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 1.1645
+=> IMU Only RMSE: 1.0904 (MAE: 0.7648)
+
+[Step 1] Evaluating removals from 26 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.3097
+RMSE = 0.6378 (MAE: 0.3006, R2: 0.8792)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.3170
+RMSE = 0.6611 (MAE: 0.3137, R2: 0.8702)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 70. Best Val Loss: 0.2863
+RMSE = 0.5681 (MAE: 0.2848, R2: 0.9041)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 124. Best Val Loss: 0.2851
+RMSE = 0.5571 (MAE: 0.2497, R2: 0.9078)
+  Testing minus 'Biceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.1196
+RMSE = 0.4059 (MAE: 0.1699, R2: 0.9511)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1362
+RMSE = 0.3989 (MAE: 0.2039, R2: 0.9527)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 119. Best Val Loss: 0.1327
+RMSE = 0.4347 (MAE: 0.1739, R2: 0.9439)
+  Testing minus 'Extensor Carpi Radialis (ECR)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 182. Best Val Loss: 0.1750
+RMSE = 0.5033 (MAE: 0.1884, R2: 0.9248)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1415
+RMSE = 0.4299 (MAE: 0.1854, R2: 0.9451)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1316
+RMSE = 0.4261 (MAE: 0.1922, R2: 0.9461)
+  Testing minus 'az1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1572
+RMSE = 0.4381 (MAE: 0.2007, R2: 0.9430)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 111. Best Val Loss: 0.1282
+RMSE = 0.4208 (MAE: 0.1977, R2: 0.9474)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.1277
+RMSE = 0.4134 (MAE: 0.1932, R2: 0.9492)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1586
+RMSE = 0.4594 (MAE: 0.2215, R2: 0.9373)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2078
+RMSE = 0.5019 (MAE: 0.2307, R2: 0.9252)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.2022
+RMSE = 0.4764 (MAE: 0.2150, R2: 0.9326)
+  Testing minus 'az2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1372
+RMSE = 0.3965 (MAE: 0.1712, R2: 0.9533)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1635
+RMSE = 0.4492 (MAE: 0.2002, R2: 0.9401)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2108
+RMSE = 0.5382 (MAE: 0.2374, R2: 0.9140)
+  Testing minus 'yaw_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2348
+RMSE = 0.5227 (MAE: 0.2533, R2: 0.9189)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2549
+RMSE = 0.5421 (MAE: 0.2550, R2: 0.9127)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2577
+RMSE = 0.5438 (MAE: 0.2504, R2: 0.9122)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2315
+RMSE = 0.5034 (MAE: 0.2448, R2: 0.9247)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 107. Best Val Loss: 0.1618
+RMSE = 0.4371 (MAE: 0.2015, R2: 0.9432)
+  Testing minus 'pitch_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1681
+RMSE = 0.4721 (MAE: 0.1834, R2: 0.9338)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 107. Best Val Loss: 0.1645
+RMSE = 0.4246 (MAE: 0.1986, R2: 0.9465)
++++ WINNER Step 1: Drop 'az2' (New Best RMSE: 0.3965)
+
+[Step 2] Evaluating removals from 25 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 107. Best Val Loss: 0.2729
+RMSE = 0.5608 (MAE: 0.2801, R2: 0.9066)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.2263
+RMSE = 0.5579 (MAE: 0.2487, R2: 0.9075)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.3013
+RMSE = 0.6219 (MAE: 0.2947, R2: 0.8851)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2464
+RMSE = 0.5611 (MAE: 0.2603, R2: 0.9065)
+  Testing minus 'Biceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 79. Best Val Loss: 0.2912
+RMSE = 0.6004 (MAE: 0.2784, R2: 0.8929)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.2898
+RMSE = 0.6303 (MAE: 0.3110, R2: 0.8820)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.2080
+RMSE = 0.5641 (MAE: 0.2325, R2: 0.9055)
+  Testing minus 'Extensor Carpi Radialis (ECR)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.3523
+RMSE = 0.6509 (MAE: 0.2918, R2: 0.8742)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.3810
+RMSE = 0.7008 (MAE: 0.3686, R2: 0.8541)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 66. Best Val Loss: 0.3671
+RMSE = 0.6545 (MAE: 0.3523, R2: 0.8728)
+  Testing minus 'az1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.3330
+RMSE = 0.6208 (MAE: 0.2871, R2: 0.8855)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 111. Best Val Loss: 0.1878
+RMSE = 0.4844 (MAE: 0.1977, R2: 0.9303)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 119. Best Val Loss: 0.2320
+RMSE = 0.5528 (MAE: 0.2633, R2: 0.9092)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2580
+RMSE = 0.5619 (MAE: 0.2819, R2: 0.9062)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 64. Best Val Loss: 0.3220
+RMSE = 0.5996 (MAE: 0.3166, R2: 0.8932)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1516
+RMSE = 0.5415 (MAE: 0.2174, R2: 0.9129)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 87. Best Val Loss: 0.1981
+RMSE = 0.4874 (MAE: 0.2279, R2: 0.9294)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1540
+RMSE = 0.4602 (MAE: 0.1901, R2: 0.9371)
+  Testing minus 'yaw_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.2009
+RMSE = 0.5615 (MAE: 0.2400, R2: 0.9064)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2484
+RMSE = 0.5535 (MAE: 0.2263, R2: 0.9090)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1668
+RMSE = 0.5434 (MAE: 0.2335, R2: 0.9123)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 136. Best Val Loss: 0.2101
+RMSE = 0.5732 (MAE: 0.2542, R2: 0.9024)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.2189
+RMSE = 0.5871 (MAE: 0.2520, R2: 0.8976)
+  Testing minus 'pitch_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 111. Best Val Loss: 0.1535
+RMSE = 0.4525 (MAE: 0.1855, R2: 0.9392)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1702
+RMSE = 0.5262 (MAE: 0.2277, R2: 0.9178)
++++ WINNER Step 2: Drop 'pitch_rad_diff' (New Best RMSE: 0.4525)
+
+[Step 3] Evaluating removals from 24 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1454
+RMSE = 0.4212 (MAE: 0.1649, R2: 0.9473)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1395
+RMSE = 0.4496 (MAE: 0.1961, R2: 0.9400)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1440
+RMSE = 0.4848 (MAE: 0.1966, R2: 0.9302)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1623
+RMSE = 0.4953 (MAE: 0.1877, R2: 0.9271)
+  Testing minus 'Biceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 124. Best Val Loss: 0.1089
+RMSE = 0.3804 (MAE: 0.1520, R2: 0.9570)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 119. Best Val Loss: 0.1178
+RMSE = 0.4279 (MAE: 0.1776, R2: 0.9456)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 101. Best Val Loss: 0.1239
+RMSE = 0.4632 (MAE: 0.1969, R2: 0.9363)
+  Testing minus 'Extensor Carpi Radialis (ECR)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1273
+RMSE = 0.4064 (MAE: 0.1752, R2: 0.9510)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 96. Best Val Loss: 0.1577
+RMSE = 0.4707 (MAE: 0.1806, R2: 0.9342)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1142
+RMSE = 0.4407 (MAE: 0.1809, R2: 0.9423)
+  Testing minus 'az1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1582
+RMSE = 0.4851 (MAE: 0.2141, R2: 0.9301)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.2200
+RMSE = 0.5385 (MAE: 0.2384, R2: 0.9139)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1558
+RMSE = 0.4659 (MAE: 0.1788, R2: 0.9355)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.1759
+RMSE = 0.4462 (MAE: 0.1964, R2: 0.9409)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1501
+RMSE = 0.4888 (MAE: 0.1804, R2: 0.9290)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1637
+RMSE = 0.4923 (MAE: 0.2061, R2: 0.9280)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1355
+RMSE = 0.4559 (MAE: 0.1782, R2: 0.9383)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 134. Best Val Loss: 0.1549
+RMSE = 0.4767 (MAE: 0.1908, R2: 0.9325)
+  Testing minus 'yaw_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1404
+RMSE = 0.4330 (MAE: 0.1644, R2: 0.9443)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 87. Best Val Loss: 0.1309
+RMSE = 0.3810 (MAE: 0.1740, R2: 0.9569)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.1599
+RMSE = 0.4256 (MAE: 0.1993, R2: 0.9462)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1613
+RMSE = 0.4207 (MAE: 0.2031, R2: 0.9474)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1540
+RMSE = 0.4432 (MAE: 0.1983, R2: 0.9417)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1567
+RMSE = 0.4218 (MAE: 0.1887, R2: 0.9472)
++++ WINNER Step 3: Drop 'Biceps Brachii' (New Best RMSE: 0.3804)
+
+[Step 4] Evaluating removals from 23 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1819
+RMSE = 0.4986 (MAE: 0.2167, R2: 0.9262)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1360
+RMSE = 0.4390 (MAE: 0.1809, R2: 0.9428)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1758
+RMSE = 0.4392 (MAE: 0.2169, R2: 0.9427)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1541
+RMSE = 0.4762 (MAE: 0.1841, R2: 0.9327)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1721
+RMSE = 0.5118 (MAE: 0.2182, R2: 0.9222)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 126. Best Val Loss: 0.1750
+RMSE = 0.4919 (MAE: 0.1940, R2: 0.9281)
+  Testing minus 'Extensor Carpi Radialis (ECR)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1518
+RMSE = 0.4700 (MAE: 0.1929, R2: 0.9344)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 149. Best Val Loss: 0.1230
+RMSE = 0.4753 (MAE: 0.1690, R2: 0.9329)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1392
+RMSE = 0.4038 (MAE: 0.1739, R2: 0.9516)
+  Testing minus 'az1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.2109
+RMSE = 0.5153 (MAE: 0.2240, R2: 0.9211)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1563
+RMSE = 0.5097 (MAE: 0.1902, R2: 0.9228)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2274
+RMSE = 0.5370 (MAE: 0.2390, R2: 0.9143)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.2169
+RMSE = 0.5402 (MAE: 0.2217, R2: 0.9133)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.1880
+RMSE = 0.5625 (MAE: 0.2286, R2: 0.9060)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1520
+RMSE = 0.5069 (MAE: 0.1728, R2: 0.9237)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1714
+RMSE = 0.4648 (MAE: 0.1873, R2: 0.9358)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 130. Best Val Loss: 0.1760
+RMSE = 0.5291 (MAE: 0.2133, R2: 0.9169)
+  Testing minus 'yaw_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1447
+RMSE = 0.3904 (MAE: 0.1792, R2: 0.9547)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1586
+RMSE = 0.4630 (MAE: 0.1785, R2: 0.9363)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1399
+RMSE = 0.4567 (MAE: 0.1894, R2: 0.9381)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.1813
+RMSE = 0.4919 (MAE: 0.2326, R2: 0.9281)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.1974
+RMSE = 0.5294 (MAE: 0.2318, R2: 0.9168)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1714
+RMSE = 0.4644 (MAE: 0.2052, R2: 0.9359)
++++ WINNER Step 4: Drop 'yaw_rad2' (New Best RMSE: 0.3904)
+
+[Step 5] Evaluating removals from 22 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1469
+RMSE = 0.5054 (MAE: 0.1963, R2: 0.9241)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1460
+RMSE = 0.4658 (MAE: 0.1948, R2: 0.9355)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1623
+RMSE = 0.4578 (MAE: 0.1983, R2: 0.9377)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.1617
+RMSE = 0.4585 (MAE: 0.2201, R2: 0.9376)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1410
+RMSE = 0.4742 (MAE: 0.2128, R2: 0.9332)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1298
+RMSE = 0.4280 (MAE: 0.1887, R2: 0.9456)
+  Testing minus 'Extensor Carpi Radialis (ECR)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1635
+RMSE = 0.4045 (MAE: 0.1881, R2: 0.9514)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 69. Best Val Loss: 0.1938
+RMSE = 0.5182 (MAE: 0.2399, R2: 0.9203)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1643
+RMSE = 0.4572 (MAE: 0.2010, R2: 0.9379)
+  Testing minus 'az1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1969
+RMSE = 0.4884 (MAE: 0.2269, R2: 0.9291)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1708
+RMSE = 0.4961 (MAE: 0.2092, R2: 0.9269)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.1846
+RMSE = 0.4787 (MAE: 0.2306, R2: 0.9320)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.1812
+RMSE = 0.5025 (MAE: 0.2295, R2: 0.9250)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.1947
+RMSE = 0.4678 (MAE: 0.2492, R2: 0.9350)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 76. Best Val Loss: 0.2098
+RMSE = 0.5519 (MAE: 0.2303, R2: 0.9095)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2020
+RMSE = 0.5400 (MAE: 0.2326, R2: 0.9134)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1598
+RMSE = 0.4995 (MAE: 0.2100, R2: 0.9259)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.2378
+RMSE = 0.5997 (MAE: 0.2307, R2: 0.8932)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2125
+RMSE = 0.5580 (MAE: 0.2692, R2: 0.9075)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1862
+RMSE = 0.5039 (MAE: 0.2252, R2: 0.9246)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1606
+RMSE = 0.4372 (MAE: 0.1878, R2: 0.9432)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1933
+RMSE = 0.5134 (MAE: 0.2184, R2: 0.9217)
++++ WINNER Step 5: Drop 'Extensor Carpi Radialis (ECR)' (New Best RMSE: 0.4045)
+
+[Step 6] Evaluating removals from 21 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1783
+RMSE = 0.4857 (MAE: 0.2127, R2: 0.9299)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.1896
+RMSE = 0.4860 (MAE: 0.1927, R2: 0.9298)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 107. Best Val Loss: 0.1997
+RMSE = 0.4584 (MAE: 0.2271, R2: 0.9376)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1862
+RMSE = 0.4911 (MAE: 0.2170, R2: 0.9284)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.1586
+RMSE = 0.4483 (MAE: 0.2043, R2: 0.9403)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.1245
+RMSE = 0.3865 (MAE: 0.1529, R2: 0.9556)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1574
+RMSE = 0.4835 (MAE: 0.1897, R2: 0.9306)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1650
+RMSE = 0.4322 (MAE: 0.2029, R2: 0.9445)
+  Testing minus 'az1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1129
+RMSE = 0.3560 (MAE: 0.1592, R2: 0.9624)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1816
+RMSE = 0.4554 (MAE: 0.2187, R2: 0.9384)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1650
+RMSE = 0.4670 (MAE: 0.1813, R2: 0.9352)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1566
+RMSE = 0.5004 (MAE: 0.2091, R2: 0.9256)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1425
+RMSE = 0.4510 (MAE: 0.2030, R2: 0.9396)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1561
+RMSE = 0.4606 (MAE: 0.1974, R2: 0.9370)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1407
+RMSE = 0.4368 (MAE: 0.1805, R2: 0.9433)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1385
+RMSE = 0.4202 (MAE: 0.1764, R2: 0.9476)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 76. Best Val Loss: 0.2453
+RMSE = 0.5058 (MAE: 0.2487, R2: 0.9240)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 124. Best Val Loss: 0.1586
+RMSE = 0.4510 (MAE: 0.1837, R2: 0.9396)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1313
+RMSE = 0.4429 (MAE: 0.1714, R2: 0.9417)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1623
+RMSE = 0.4972 (MAE: 0.1905, R2: 0.9266)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.2067
+RMSE = 0.5404 (MAE: 0.2223, R2: 0.9133)
++++ WINNER Step 6: Drop 'az1' (New Best RMSE: 0.3560)
+
+[Step 7] Evaluating removals from 20 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.2368
+RMSE = 0.5251 (MAE: 0.2364, R2: 0.9181)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2326
+RMSE = 0.5500 (MAE: 0.2676, R2: 0.9102)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2562
+RMSE = 0.5269 (MAE: 0.2710, R2: 0.9176)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.2661
+RMSE = 0.5398 (MAE: 0.2688, R2: 0.9135)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.2306
+RMSE = 0.4872 (MAE: 0.2535, R2: 0.9295)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1431
+RMSE = 0.3982 (MAE: 0.1797, R2: 0.9529)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2279
+RMSE = 0.4783 (MAE: 0.2442, R2: 0.9321)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2906
+RMSE = 0.5502 (MAE: 0.3079, R2: 0.9101)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2163
+RMSE = 0.4769 (MAE: 0.2217, R2: 0.9324)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.4211
+RMSE = 0.6419 (MAE: 0.3785, R2: 0.8776)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2127
+RMSE = 0.4785 (MAE: 0.2266, R2: 0.9320)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2200
+RMSE = 0.5045 (MAE: 0.2610, R2: 0.9244)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2151
+RMSE = 0.4669 (MAE: 0.2402, R2: 0.9353)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1784
+RMSE = 0.4435 (MAE: 0.2043, R2: 0.9416)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2512
+RMSE = 0.5272 (MAE: 0.2464, R2: 0.9175)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2508
+RMSE = 0.5270 (MAE: 0.2587, R2: 0.9175)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1683
+RMSE = 0.4311 (MAE: 0.2001, R2: 0.9448)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.2665
+RMSE = 0.5390 (MAE: 0.2814, R2: 0.9137)
+  Testing minus 'roll_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 170. Best Val Loss: 0.1081
+RMSE = 0.3699 (MAE: 0.1497, R2: 0.9594)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 113. Best Val Loss: 0.1697
+RMSE = 0.4483 (MAE: 0.1962, R2: 0.9403)
++++ WINNER Step 7: Drop 'roll_rad_diff' (New Best RMSE: 0.3699)
+
+[Step 8] Evaluating removals from 19 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.2561
+RMSE = 0.5721 (MAE: 0.2896, R2: 0.9028)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.2878
+RMSE = 0.6026 (MAE: 0.2874, R2: 0.8922)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2555
+RMSE = 0.5634 (MAE: 0.2310, R2: 0.9057)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2661
+RMSE = 0.5849 (MAE: 0.2501, R2: 0.8984)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.2732
+RMSE = 0.6134 (MAE: 0.3009, R2: 0.8883)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2668
+RMSE = 0.5616 (MAE: 0.2663, R2: 0.9063)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.2625
+RMSE = 0.5754 (MAE: 0.2314, R2: 0.9017)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 101. Best Val Loss: 0.2317
+RMSE = 0.5770 (MAE: 0.2419, R2: 0.9011)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.3221
+RMSE = 0.6263 (MAE: 0.3072, R2: 0.8835)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2624
+RMSE = 0.5854 (MAE: 0.2492, R2: 0.8982)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2190
+RMSE = 0.5702 (MAE: 0.2526, R2: 0.9034)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2196
+RMSE = 0.5318 (MAE: 0.2299, R2: 0.9160)
+  Testing minus 'ay2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1912
+RMSE = 0.4446 (MAE: 0.1876, R2: 0.9413)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2045
+RMSE = 0.4913 (MAE: 0.2242, R2: 0.9283)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.2633
+RMSE = 0.6094 (MAE: 0.2755, R2: 0.8897)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2864
+RMSE = 0.5775 (MAE: 0.2812, R2: 0.9009)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.2862
+RMSE = 0.5798 (MAE: 0.2923, R2: 0.9002)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 101. Best Val Loss: 0.2271
+RMSE = 0.5123 (MAE: 0.2597, R2: 0.9220)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2435
+RMSE = 0.5357 (MAE: 0.2246, R2: 0.9148)
++++ WINNER Step 8: Drop 'ay2' (New Best RMSE: 0.4446)
+
+[Step 9] Evaluating removals from 18 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.2068
+RMSE = 0.5223 (MAE: 0.2219, R2: 0.9190)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1411
+RMSE = 0.4374 (MAE: 0.1754, R2: 0.9432)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.1446
+RMSE = 0.4202 (MAE: 0.1971, R2: 0.9476)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 136. Best Val Loss: 0.1330
+RMSE = 0.4608 (MAE: 0.1887, R2: 0.9369)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 122. Best Val Loss: 0.1629
+RMSE = 0.4055 (MAE: 0.1763, R2: 0.9512)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1408
+RMSE = 0.4590 (MAE: 0.1805, R2: 0.9374)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1770
+RMSE = 0.5101 (MAE: 0.1945, R2: 0.9227)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1528
+RMSE = 0.4420 (MAE: 0.1588, R2: 0.9420)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.1419
+RMSE = 0.4312 (MAE: 0.1595, R2: 0.9448)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1567
+RMSE = 0.5142 (MAE: 0.1784, R2: 0.9215)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 107. Best Val Loss: 0.1349
+RMSE = 0.4317 (MAE: 0.1846, R2: 0.9447)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 107. Best Val Loss: 0.1268
+RMSE = 0.3892 (MAE: 0.1671, R2: 0.9550)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1353
+RMSE = 0.3869 (MAE: 0.1695, R2: 0.9555)
+  Testing minus 'pitch_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.0955
+RMSE = 0.3680 (MAE: 0.1454, R2: 0.9598)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 92. Best Val Loss: 0.1468
+RMSE = 0.4099 (MAE: 0.1841, R2: 0.9501)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.1563
+RMSE = 0.4230 (MAE: 0.2148, R2: 0.9469)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1687
+RMSE = 0.4502 (MAE: 0.2193, R2: 0.9398)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 74. Best Val Loss: 0.1941
+RMSE = 0.4785 (MAE: 0.2486, R2: 0.9320)
++++ WINNER Step 9: Drop 'pitch_rad2' (New Best RMSE: 0.3680)
+
+[Step 10] Evaluating removals from 17 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.2266
+RMSE = 0.4862 (MAE: 0.2421, R2: 0.9298)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1579
+RMSE = 0.4431 (MAE: 0.2057, R2: 0.9417)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 137. Best Val Loss: 0.2150
+RMSE = 0.4984 (MAE: 0.2251, R2: 0.9262)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.2171
+RMSE = 0.4970 (MAE: 0.2353, R2: 0.9266)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1818
+RMSE = 0.4633 (MAE: 0.2329, R2: 0.9363)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 74. Best Val Loss: 0.1892
+RMSE = 0.4937 (MAE: 0.2384, R2: 0.9276)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1947
+RMSE = 0.4717 (MAE: 0.2433, R2: 0.9339)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.1934
+RMSE = 0.5170 (MAE: 0.2454, R2: 0.9206)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 116. Best Val Loss: 0.1456
+RMSE = 0.4764 (MAE: 0.1925, R2: 0.9326)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1626
+RMSE = 0.5078 (MAE: 0.1946, R2: 0.9234)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 73. Best Val Loss: 0.2094
+RMSE = 0.5248 (MAE: 0.2572, R2: 0.9182)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1221
+RMSE = 0.4518 (MAE: 0.2100, R2: 0.9394)
+  Testing minus 'roll_rad2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.1712
+RMSE = 0.4404 (MAE: 0.1976, R2: 0.9424)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.2401
+RMSE = 0.5866 (MAE: 0.2623, R2: 0.8978)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.1397
+RMSE = 0.4688 (MAE: 0.2225, R2: 0.9347)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 80. Best Val Loss: 0.1868
+RMSE = 0.4800 (MAE: 0.2301, R2: 0.9316)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 73. Best Val Loss: 0.1687
+RMSE = 0.4795 (MAE: 0.2277, R2: 0.9317)
++++ WINNER Step 10: Drop 'roll_rad2' (New Best RMSE: 0.4404)
+
+[Step 11] Evaluating removals from 16 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.2569
+RMSE = 0.5989 (MAE: 0.2675, R2: 0.8935)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.2176
+RMSE = 0.5128 (MAE: 0.2315, R2: 0.9219)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2254
+RMSE = 0.5144 (MAE: 0.2136, R2: 0.9214)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 77. Best Val Loss: 0.2919
+RMSE = 0.6036 (MAE: 0.2565, R2: 0.8918)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2105
+RMSE = 0.5242 (MAE: 0.2438, R2: 0.9184)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2791
+RMSE = 0.5733 (MAE: 0.2720, R2: 0.9024)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 101. Best Val Loss: 0.2330
+RMSE = 0.5460 (MAE: 0.2213, R2: 0.9114)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 101. Best Val Loss: 0.1595
+RMSE = 0.4716 (MAE: 0.2111, R2: 0.9339)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 79. Best Val Loss: 0.2051
+RMSE = 0.4725 (MAE: 0.2631, R2: 0.9337)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 79. Best Val Loss: 0.2015
+RMSE = 0.4961 (MAE: 0.2797, R2: 0.9269)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1815
+RMSE = 0.4670 (MAE: 0.2320, R2: 0.9352)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.2070
+RMSE = 0.4824 (MAE: 0.2331, R2: 0.9309)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 56. Best Val Loss: 0.2526
+RMSE = 0.5184 (MAE: 0.3031, R2: 0.9202)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2283
+RMSE = 0.5071 (MAE: 0.2160, R2: 0.9236)
+  Testing minus 'az_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1481
+RMSE = 0.4094 (MAE: 0.1847, R2: 0.9502)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1896
+RMSE = 0.4539 (MAE: 0.2065, R2: 0.9388)
++++ WINNER Step 11: Drop 'az_diff' (New Best RMSE: 0.4094)
+
+[Step 12] Evaluating removals from 15 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1694
+RMSE = 0.4478 (MAE: 0.2097, R2: 0.9404)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.1241
+RMSE = 0.4327 (MAE: 0.2054, R2: 0.9444)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1584
+RMSE = 0.4218 (MAE: 0.1957, R2: 0.9472)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.1748
+RMSE = 0.4245 (MAE: 0.1931, R2: 0.9465)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 114. Best Val Loss: 0.1655
+RMSE = 0.4376 (MAE: 0.1977, R2: 0.9431)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2154
+RMSE = 0.5088 (MAE: 0.2346, R2: 0.9231)
+  Testing minus 'ax1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.1318
+RMSE = 0.4027 (MAE: 0.1758, R2: 0.9518)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1533
+RMSE = 0.4493 (MAE: 0.2036, R2: 0.9401)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.1384
+RMSE = 0.4211 (MAE: 0.1883, R2: 0.9473)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1304
+RMSE = 0.4211 (MAE: 0.1898, R2: 0.9473)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.2281
+RMSE = 0.5175 (MAE: 0.2364, R2: 0.9205)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1691
+RMSE = 0.4716 (MAE: 0.1865, R2: 0.9339)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1890
+RMSE = 0.4711 (MAE: 0.2179, R2: 0.9341)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 124. Best Val Loss: 0.1333
+RMSE = 0.4901 (MAE: 0.1916, R2: 0.9286)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 97. Best Val Loss: 0.1876
+RMSE = 0.4541 (MAE: 0.1887, R2: 0.9387)
++++ WINNER Step 12: Drop 'ax1' (New Best RMSE: 0.4027)
+
+[Step 13] Evaluating removals from 14 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1560
+RMSE = 0.4709 (MAE: 0.2136, R2: 0.9341)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 136. Best Val Loss: 0.1743
+RMSE = 0.4808 (MAE: 0.2096, R2: 0.9313)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.1745
+RMSE = 0.4341 (MAE: 0.2103, R2: 0.9440)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.2559
+RMSE = 0.5855 (MAE: 0.2704, R2: 0.8982)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.2231
+RMSE = 0.5284 (MAE: 0.2457, R2: 0.9171)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1436
+RMSE = 0.4484 (MAE: 0.2001, R2: 0.9403)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 78. Best Val Loss: 0.1698
+RMSE = 0.4552 (MAE: 0.2279, R2: 0.9385)
+  Testing minus 'roll_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 110. Best Val Loss: 0.0722
+RMSE = 0.3704 (MAE: 0.1386, R2: 0.9593)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1388
+RMSE = 0.4345 (MAE: 0.1807, R2: 0.9439)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1410
+RMSE = 0.4155 (MAE: 0.2068, R2: 0.9487)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 111. Best Val Loss: 0.1629
+RMSE = 0.4267 (MAE: 0.1824, R2: 0.9459)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.1671
+RMSE = 0.4282 (MAE: 0.2229, R2: 0.9455)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1582
+RMSE = 0.4663 (MAE: 0.2114, R2: 0.9354)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1871
+RMSE = 0.4407 (MAE: 0.1997, R2: 0.9423)
++++ WINNER Step 13: Drop 'roll_rad1' (New Best RMSE: 0.3704)
+
+[Step 14] Evaluating removals from 13 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 111. Best Val Loss: 0.1672
+RMSE = 0.4535 (MAE: 0.1965, R2: 0.9389)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1367
+RMSE = 0.4457 (MAE: 0.1733, R2: 0.9410)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.1666
+RMSE = 0.4238 (MAE: 0.1947, R2: 0.9467)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1789
+RMSE = 0.5018 (MAE: 0.2379, R2: 0.9252)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1822
+RMSE = 0.4454 (MAE: 0.2595, R2: 0.9411)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.1624
+RMSE = 0.4445 (MAE: 0.2246, R2: 0.9413)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1855
+RMSE = 0.4647 (MAE: 0.2439, R2: 0.9359)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1486
+RMSE = 0.4346 (MAE: 0.2163, R2: 0.9439)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1163
+RMSE = 0.4116 (MAE: 0.2044, R2: 0.9497)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1312
+RMSE = 0.4484 (MAE: 0.1968, R2: 0.9403)
+  Testing minus 'ax_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 101. Best Val Loss: 0.1172
+RMSE = 0.3868 (MAE: 0.1812, R2: 0.9556)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1886
+RMSE = 0.4700 (MAE: 0.2406, R2: 0.9344)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.1542
+RMSE = 0.4547 (MAE: 0.2237, R2: 0.9386)
++++ WINNER Step 14: Drop 'ax_diff' (New Best RMSE: 0.3868)
+
+[Step 15] Evaluating removals from 12 channels...
+  Testing minus 'Anterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 106. Best Val Loss: 0.1154
+RMSE = 0.3625 (MAE: 0.1925, R2: 0.9610)
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 86. Best Val Loss: 0.1599
+RMSE = 0.4578 (MAE: 0.2219, R2: 0.9378)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 73. Best Val Loss: 0.2003
+RMSE = 0.4614 (MAE: 0.2793, R2: 0.9368)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1593
+RMSE = 0.4901 (MAE: 0.2351, R2: 0.9287)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 77. Best Val Loss: 0.1725
+RMSE = 0.4754 (MAE: 0.2480, R2: 0.9329)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 129. Best Val Loss: 0.1482
+RMSE = 0.4456 (MAE: 0.2089, R2: 0.9410)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1210
+RMSE = 0.4616 (MAE: 0.2159, R2: 0.9367)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 69. Best Val Loss: 0.1520
+RMSE = 0.4755 (MAE: 0.2503, R2: 0.9328)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 79. Best Val Loss: 0.1201
+RMSE = 0.4356 (MAE: 0.2077, R2: 0.9436)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 76. Best Val Loss: 0.1524
+RMSE = 0.4187 (MAE: 0.2120, R2: 0.9479)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 98. Best Val Loss: 0.1189
+RMSE = 0.4622 (MAE: 0.2096, R2: 0.9365)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1156
+RMSE = 0.4573 (MAE: 0.2118, R2: 0.9379)
++++ WINNER Step 15: Drop 'Anterior Deltoid' (New Best RMSE: 0.3625)
+
+[Step 16] Evaluating removals from 11 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 103. Best Val Loss: 0.1478
+RMSE = 0.4241 (MAE: 0.1939, R2: 0.9466)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1688
+RMSE = 0.4309 (MAE: 0.2093, R2: 0.9449)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.2076
+RMSE = 0.5117 (MAE: 0.2543, R2: 0.9222)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1939
+RMSE = 0.4945 (MAE: 0.2862, R2: 0.9274)
+  Testing minus 'Flexor Carpi Ulnaris (FCU)' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1030
+RMSE = 0.3924 (MAE: 0.1916, R2: 0.9543)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 99. Best Val Loss: 0.1310
+RMSE = 0.4268 (MAE: 0.2000, R2: 0.9459)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1187
+RMSE = 0.4587 (MAE: 0.2153, R2: 0.9375)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 73. Best Val Loss: 0.1747
+RMSE = 0.4755 (MAE: 0.2443, R2: 0.9329)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1426
+RMSE = 0.5058 (MAE: 0.2255, R2: 0.9240)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.1522
+RMSE = 0.4143 (MAE: 0.2161, R2: 0.9490)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1284
+RMSE = 0.4307 (MAE: 0.2127, R2: 0.9449)
++++ WINNER Step 16: Drop 'Flexor Carpi Ulnaris (FCU)' (New Best RMSE: 0.3924)
+
+[Step 17] Evaluating removals from 10 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 125. Best Val Loss: 0.1116
+RMSE = 0.3807 (MAE: 0.2033, R2: 0.9570)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1066
+RMSE = 0.3831 (MAE: 0.1889, R2: 0.9564)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.2020
+RMSE = 0.5025 (MAE: 0.2852, R2: 0.9250)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1833
+RMSE = 0.4784 (MAE: 0.2818, R2: 0.9320)
+  Testing minus 'ay1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 104. Best Val Loss: 0.1252
+RMSE = 0.3801 (MAE: 0.1905, R2: 0.9571)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1170
+RMSE = 0.4665 (MAE: 0.2269, R2: 0.9354)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1348
+RMSE = 0.4160 (MAE: 0.2045, R2: 0.9486)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 109. Best Val Loss: 0.1340
+RMSE = 0.4046 (MAE: 0.2091, R2: 0.9514)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1095
+RMSE = 0.3807 (MAE: 0.1872, R2: 0.9569)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.1456
+RMSE = 0.4368 (MAE: 0.2536, R2: 0.9433)
++++ WINNER Step 17: Drop 'ay1' (New Best RMSE: 0.3801)
+
+[Step 18] Evaluating removals from 9 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 79. Best Val Loss: 0.2599
+RMSE = 0.5865 (MAE: 0.2826, R2: 0.8978)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 145. Best Val Loss: 0.1604
+RMSE = 0.4651 (MAE: 0.2194, R2: 0.9357)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.2320
+RMSE = 0.5331 (MAE: 0.3005, R2: 0.9156)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.2005
+RMSE = 0.4737 (MAE: 0.2807, R2: 0.9334)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.1890
+RMSE = 0.5042 (MAE: 0.2803, R2: 0.9245)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.1114
+RMSE = 0.4172 (MAE: 0.2067, R2: 0.9483)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 84. Best Val Loss: 0.1207
+RMSE = 0.4158 (MAE: 0.2421, R2: 0.9486)
+  Testing minus 'ay_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1443
+RMSE = 0.4059 (MAE: 0.2238, R2: 0.9511)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 82. Best Val Loss: 0.1175
+RMSE = 0.4216 (MAE: 0.2284, R2: 0.9472)
++++ WINNER Step 18: Drop 'ay_diff' (New Best RMSE: 0.4059)
+
+[Step 19] Evaluating removals from 8 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 77. Best Val Loss: 0.2795
+RMSE = 0.5746 (MAE: 0.3106, R2: 0.9019)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1545
+RMSE = 0.4379 (MAE: 0.2487, R2: 0.9430)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.3703
+RMSE = 0.6394 (MAE: 0.3530, R2: 0.8786)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 95. Best Val Loss: 0.1949
+RMSE = 0.5222 (MAE: 0.3139, R2: 0.9190)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 69. Best Val Loss: 0.3187
+RMSE = 0.6650 (MAE: 0.3980, R2: 0.8687)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 75. Best Val Loss: 0.2766
+RMSE = 0.5776 (MAE: 0.3110, R2: 0.9009)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.2024
+RMSE = 0.5154 (MAE: 0.3038, R2: 0.9211)
+  Testing minus 'yaw_rad_diff' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1521
+RMSE = 0.4171 (MAE: 0.2350, R2: 0.9483)
++++ WINNER Step 19: Drop 'yaw_rad_diff' (New Best RMSE: 0.4171)
+
+[Step 20] Evaluating removals from 7 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 73. Best Val Loss: 0.1498
+RMSE = 0.4396 (MAE: 0.2421, R2: 0.9426)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 76. Best Val Loss: 0.1495
+RMSE = 0.4398 (MAE: 0.2587, R2: 0.9426)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 67. Best Val Loss: 0.3010
+RMSE = 0.5791 (MAE: 0.3541, R2: 0.9004)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1753
+RMSE = 0.4548 (MAE: 0.2774, R2: 0.9386)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 89. Best Val Loss: 0.2643
+RMSE = 0.5871 (MAE: 0.3292, R2: 0.8976)
+  Testing minus 'yaw_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1239
+RMSE = 0.3935 (MAE: 0.2100, R2: 0.9540)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 69. Best Val Loss: 0.1639
+RMSE = 0.4763 (MAE: 0.3025, R2: 0.9326)
++++ WINNER Step 20: Drop 'yaw_rad1' (New Best RMSE: 0.3935)
+
+[Step 21] Evaluating removals from 6 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.1487
+RMSE = 0.4155 (MAE: 0.2389, R2: 0.9487)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 102. Best Val Loss: 0.1586
+RMSE = 0.4577 (MAE: 0.2341, R2: 0.9378)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 105. Best Val Loss: 0.2382
+RMSE = 0.5126 (MAE: 0.3037, R2: 0.9219)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1845
+RMSE = 0.4777 (MAE: 0.2801, R2: 0.9322)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.1635
+RMSE = 0.4780 (MAE: 0.2609, R2: 0.9321)
+  Testing minus 'ax2' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.1319
+RMSE = 0.4132 (MAE: 0.2343, R2: 0.9493)
++++ WINNER Step 21: Drop 'ax2' (New Best RMSE: 0.4132)
+
+[Step 22] Evaluating removals from 5 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 70. Best Val Loss: 0.1869
+RMSE = 0.4942 (MAE: 0.3188, R2: 0.9275)
+  Testing minus 'Posterior Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.1625
+RMSE = 0.4664 (MAE: 0.2743, R2: 0.9354)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 90. Best Val Loss: 0.2796
+RMSE = 0.5857 (MAE: 0.3243, R2: 0.8981)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 100. Best Val Loss: 0.2991
+RMSE = 0.5785 (MAE: 0.3460, R2: 0.9006)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 59. Best Val Loss: 0.2921
+RMSE = 0.6722 (MAE: 0.4003, R2: 0.8658)
++++ WINNER Step 22: Drop 'Posterior Deltoid' (New Best RMSE: 0.4664)
+
+[Step 23] Evaluating removals from 4 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 81. Best Val Loss: 0.2524
+RMSE = 0.5688 (MAE: 0.3244, R2: 0.9039)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 72. Best Val Loss: 0.2506
+RMSE = 0.5604 (MAE: 0.3190, R2: 0.9067)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 94. Best Val Loss: 0.2431
+RMSE = 0.5542 (MAE: 0.3293, R2: 0.9088)
+  Testing minus 'pitch_rad1' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 70. Best Val Loss: 0.2046
+RMSE = 0.5174 (MAE: 0.3090, R2: 0.9205)
++++ WINNER Step 23: Drop 'pitch_rad1' (New Best RMSE: 0.5174)
+
+[Step 24] Evaluating removals from 3 channels...
+  Testing minus 'Lateral Deltoid' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 73. Best Val Loss: 0.2774
+RMSE = 0.5503 (MAE: 0.3112, R2: 0.9101)
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 85. Best Val Loss: 0.3940
+RMSE = 0.6771 (MAE: 0.4169, R2: 0.8638)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 88. Best Val Loss: 0.3490
+RMSE = 0.6518 (MAE: 0.4183, R2: 0.8738)
++++ WINNER Step 24: Drop 'Lateral Deltoid' (New Best RMSE: 0.5503)
+
+[Step 25] Evaluating removals from 2 channels...
+  Testing minus 'Triceps Brachii' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 58. Best Val Loss: 0.5405
+RMSE = 0.7128 (MAE: 0.3895, R2: 0.8491)
+  Testing minus 'Brachioradialis' ... [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 61. Best Val Loss: 0.4622
+RMSE = 0.6858 (MAE: 0.4088, R2: 0.8603)
++++ WINNER Step 25: Drop 'Brachioradialis' (New Best RMSE: 0.6858)
+
+============================================================
+Ablation study complete.
+Report : /home/bwingen/thesis/Thesis/model/ablation/ablation_results/ablation_cnn_lstm_20260329_172137/ablation_cnn_lstm_report.txt
+Plot   : /home/bwingen/thesis/Thesis/model/ablation/ablation_results/ablation_cnn_lstm_20260329_172137/sbs_performance_plot.png
+============================================================
