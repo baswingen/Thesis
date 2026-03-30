@@ -1,0 +1,63 @@
+=================================================================
+  CHANNEL CROSS-CORRELATION & COVARIANCE ANALYSIS REPORT
+=================================================================
+
+── Dataset Statistics ─────────────────────────────────────────
+  Sessions      : P01 sessions 01, 02, 03
+  Total samples : 11,592,958
+  Channels      : 26
+  Channel list  :
+     1. Anterior Deltoid
+     2. Lateral Deltoid
+     3. Posterior Deltoid
+     4. Triceps Brachii
+     5. Biceps Brachii
+     6. Brachioradialis
+     7. Flexor Carpi Ulnaris (FCU)
+     8. Extensor Carpi Radialis (ECR)
+     9. ax1
+    10. ay1
+    11. az1
+    12. roll_rad1
+    13. pitch_rad1
+    14. yaw_rad1
+    15. ax2
+    16. ay2
+    17. az2
+    18. roll_rad2
+    19. pitch_rad2
+    20. yaw_rad2
+    21. ax_diff
+    22. ay_diff
+    23. az_diff
+    24. roll_rad_diff
+    25. pitch_rad_diff
+    26. yaw_rad_diff
+
+── Pearson Correlation — Top 15 Most Correlated Pairs ─────────
+     |r|         r   Channel A                      Channel B
+  ------------------------------------------------------------
+   0.908     0.908   ax2                            ax_diff
+   0.885    -0.885   az1                            roll_rad1
+   0.827    -0.827   az1                            az_diff
+   0.802     0.802   roll_rad1                      az_diff
+   0.788     0.788   ax1                            ax2
+   0.776    -0.776   yaw_rad1                       yaw_rad_diff
+   0.763     0.763   Anterior Deltoid               Lateral Deltoid
+   0.753     0.753   az2                            az_diff
+   0.728     0.728   az1                            roll_rad_diff
+   0.724    -0.724   roll_rad1                      roll_rad_diff
+   0.724     0.724   roll_rad2                      roll_rad_diff
+   0.715     0.715   pitch_rad2                     pitch_rad_diff
+   0.709     0.709   ay2                            pitch_rad2
+   0.689     0.689   ay2                            ay_diff
+   0.674     0.674   ax1                            ay1
+
+── Covariance Eigenvalue Spectrum ─────────────────────────────
+  Components needed for 90% variance : 11 / 26
+  Components needed for 95% variance : 14 / 26
+  Top eigenvalue fraction (λ₁ / Σλ)  : 0.242
+
+  No channels exceeded the mean |r| ≥ 0.7 cluster threshold.
+
+=================================================================
