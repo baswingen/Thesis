@@ -18,4 +18,4 @@ echo "Working directory: $(pwd)"
 which python
 python --version
 
-srun python -u model/ablation/ablation_cnn_lstm.py
+srun python -u model/run_model.py
