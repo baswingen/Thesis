@@ -45,6 +45,7 @@ H5_FILES = [
     PROJECT_ROOT / "database" / "segments" / "participant_P01_session_01_segments.h5",
     PROJECT_ROOT / "database" / "segments" / "participant_P01_session_02_segments.h5",
     PROJECT_ROOT / "database" / "segments" / "participant_P01_session_03_segments.h5",
+    PROJECT_ROOT / "database" / "segments" / "participant_P02_session_01_segments.h5",
 ]
 
 OUT_DIR = PROJECT_ROOT / "data_analysis" / "results"
