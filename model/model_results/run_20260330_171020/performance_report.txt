@@ -1,0 +1,90 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260330_171020
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5']
+Total samples: 5857
+Evaluation Mode: Train/Validation/Test Split (72/8/20)
+Testing samples: 1172
+Training samples: 4216
+Validation samples: 469
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.2s, Step: 0.15s
+Enabled EMG Features: MAV, RMS, WL, ZC, SSC, VAR, WAMP, IEMG, LogDet, Skew, Kurt, HjMob, HjComp, Myopulse, MNF, MDF, Power, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Mean, Var, Std, Max, SMA, P2P, Skew, Kurt, Jerk, DomFreq, SpecEnergy, MNF, SVM_Mean
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 512
+Num Layers: 3
+Dropout Rate: 0.2
+Learning Rate: 0.0005
+Batch Size: 64
+Epochs: 600
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.2
+Window Step (s): 0.15
+Random State: 245
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.1086
+Mean Squared Error: 0.0474
+Root Mean Squared Error: 0.2177
+R-squared Score: 0.9859
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 587      | 0.0131     | 0.0632    
+0.75 kg      | 84       | 0.1797     | 0.2347    
+1.00 kg      | 84       | 0.2172     | 0.2952    
+2.00 kg      | 83       | 0.1984     | 0.2592    
+2.25 kg      | 83       | 0.1512     | 0.1917    
+3.00 kg      | 84       | 0.3006     | 0.3692    
+4.25 kg      | 83       | 0.2184     | 0.3727    
+6.00 kg      | 84       | 0.1652     | 0.3394    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+(How many sliding windows were available when the LSTM made its prediction)
+Window step: 0.15s  |  First window ready at: 0.200s
+# Windows    | Time into lift   | Count    | MAE        | RMSE      
+-----------------------------------------------------------------
+3            | 0.500s           | 10       | 0.2882     | 0.4025    
+4            | 0.650s           | 44       | 0.2852     | 0.4190    
+5            | 0.800s           | 120      | 0.1719     | 0.2558    
+6            | 0.950s           | 199      | 0.1166     | 0.1971    
+7            | 1.100s           | 257      | 0.1043     | 0.2229    
+8            | 1.250s           | 202      | 0.0762     | 0.1576    
+9            | 1.400s           | 153      | 0.0752     | 0.1700    
+10           | 1.550s           | 71       | 0.0544     | 0.1229    
+11           | 1.700s           | 48       | 0.0651     | 0.2133    
+12           | 1.850s           | 20       | 0.0830     | 0.2454    
+13           | 2.000s           | 13       | 0.0456     | 0.1406    
+14           | 2.150s           | 10       | 0.1436     | 0.4221    
+15           | 2.300s           | 6        | 0.1204     | 0.1857    
+16           | 2.450s           | 3        | 0.3320     | 0.5544    
+17           | 2.600s           | 3        | 0.0126     | 0.0198    
+18           | 2.750s           | 1        | 0.1765     | 0.1765    
+19           | 2.900s           | 4        | 0.1955     | 0.2280    
+20           | 3.050s           | 1        | 0.0000     | 0.0000    
+21           | 3.200s           | 2        | 0.0000     | 0.0000    
+22           | 3.350s           | 1        | 0.0000     | 0.0000    
+27           | 4.100s           | 1        | 0.0510     | 0.0510    
+28           | 4.250s           | 1        | 0.1750     | 0.1750    
+35           | 5.300s           | 1        | 0.0000     | 0.0000    
+298          | 44.750s          | 1        | 0.7306     | 0.7306    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 6,025,729
+Trainable Parameters: 6,025,729
+Estimated Inference GFLOPs (per sample): 0.076469
+Estimated Total Training GFLOPs: 580309.8292
+Training Time: 1659.9856s
+Inference Time (per sample): 1.0902ms
+

@@ -25,7 +25,7 @@ from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG
 )
 
 from sklearn.metrics import (
@@ -475,6 +475,7 @@ def main():
         f.write("=" * 55 + "\n\n")
         
         f.write("--- DATASET INFO ---\n")
+        f.write(f"Participants included: {PARTICIPANT_CONFIG.get('include', 'all')}\n")
         f.write(f"Database segments used: {[p.name for p in h5_paths]}\n")
         f.write(f"Total samples: {len(X)}\n")
         if use_cv:
