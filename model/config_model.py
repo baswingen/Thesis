@@ -12,7 +12,7 @@ GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': ['P03'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': ['all'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
 }
 
 ###########################################################
