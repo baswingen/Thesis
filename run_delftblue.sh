@@ -13,9 +13,9 @@
 cd /home/bwingen/thesis/Thesis
 
 # ── Environment Setup ──────────────────────────────────────
-# Using the absolute path to the environment's python is the most 
-# reliable way to ensure all packages (numpy, torch, etc.) are found.
-ENV_PYTHON="/scratch/bwingen/thesis_env/bin/python"
+module load 2024r1
+module load miniconda3
+conda activate thesis
 
 # ── DelftBlue Environment Check ────────────────────────────
 # The model is configured to look for data in /scratch/bwingen/thesis/database
@@ -27,7 +27,7 @@ if [ ! -d "$DB_ROOT" ]; then
 fi
 
 echo "Database found at $DB_ROOT"
-echo "Using Python: $ENV_PYTHON"
-$ENV_PYTHON --version
+echo "Using Python: $(which python)"
+python --version
 
-srun $ENV_PYTHON -u model/deepshap_analysis.py
+srun python -u model/deepshap_analysis.py
