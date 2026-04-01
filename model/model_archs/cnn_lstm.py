@@ -66,7 +66,7 @@ class CNNFeatureExtractor(nn.Module):
             layers.extend([
                 nn.Conv1d(in_ch, filters, kernel_size=ks, padding=padding),
                 nn.BatchNorm1d(filters),
-                nn.ReLU(inplace=True),
+                nn.ReLU(inplace=False),
                 nn.MaxPool1d(kernel_size=pool_size),
                 nn.Dropout(dropout_rate),
             ])
