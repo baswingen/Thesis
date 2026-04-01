@@ -12,12 +12,10 @@
 
 cd /home/bwingen/thesis/Thesis
 
-# Load Miniconda
-module load 2024r1 miniconda3
-
-# Standard DelftBlue way to enable 'conda activate' inside a script
-source $CONDA_PREFIX/etc/profile.d/conda.sh
-conda activate /scratch/bwingen/thesis_env
+# ── Environment Setup ──────────────────────────────────────
+# Using the absolute path to the environment's python is the most 
+# reliable way to ensure all packages (numpy, torch, etc.) are found.
+ENV_PYTHON="/scratch/bwingen/thesis_env/bin/python"
 
 # ── DelftBlue Environment Check ────────────────────────────
 # The model is configured to look for data in /scratch/bwingen/thesis/database
