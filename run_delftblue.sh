@@ -14,8 +14,8 @@ cd /home/bwingen/thesis/Thesis
 
 # ── Environment Setup ──────────────────────────────────────
 module load 2024r1
-module load miniconda3
-conda activate thesis
+module load cuda/12.1
+ENV_PYTHON="/home/bwingen/thesis/Thesis/.venv/bin/python"
 
 # ── DelftBlue Environment Check ────────────────────────────
 # The model is configured to look for data in /scratch/bwingen/thesis/database
@@ -27,7 +27,7 @@ if [ ! -d "$DB_ROOT" ]; then
 fi
 
 echo "Database found at $DB_ROOT"
-echo "Using Python: $(which python)"
-python --version
+echo "Using Python: $ENV_PYTHON"
+$ENV_PYTHON --version
 
-srun python -u model/deepshap_analysis.py
+srun $ENV_PYTHON -u model/deepshap_analysis.py
