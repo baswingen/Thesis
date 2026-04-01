@@ -25,7 +25,7 @@ from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG
 )
 
 from sklearn.metrics import (
@@ -212,7 +212,7 @@ def main():
             print(f"Error: Grid search script {sweep_script.name} not found.")
         return
         
-    segments_dir = base_dir / "database" / "segments"
+    segments_dir = DATABASE_CONFIG['segments_dir']
     results_dir = base_dir / "model" / "model_results"
     
     # Create results directory if it doesn't exist

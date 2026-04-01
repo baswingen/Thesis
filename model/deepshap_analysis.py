@@ -37,7 +37,7 @@ sys.path.append(str(ROOT))
 
 from model.data_loader import DataLoader
 from model.model_archs.cnn_lstm import CNNLSTMRegressor, CNNLSTMNetwork
-from model.config_model import CHANNEL_CONFIG, PARTICIPANT_CONFIG
+from model.config_model import CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG
 
 ###########################################################
 # CONFIGURATION — edit these before running
@@ -102,7 +102,7 @@ def main():
     import shap  # imported here so the rest of the script is importable without shap
 
     # ── Resolve paths ───────────────────────────────────────────────────────
-    segments_dir = ROOT / "database" / "segments"
+    segments_dir = DATABASE_CONFIG["segments_dir"]
     results_dir  = ROOT / "model" / "model_results"
 
     model_path = Path(SAVED_MODEL_PATH) if SAVED_MODEL_PATH else None

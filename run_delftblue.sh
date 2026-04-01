@@ -13,6 +13,18 @@
 cd /home/bwingen/thesis/Thesis
 source .venv/bin/activate
 
+# ── DelftBlue Environment Check ────────────────────────────
+# The model is configured to look for data in /scratch/bwingen/thesis/database
+# If it's not there, the job will fail with an informative message.
+
+DB_ROOT="/scratch/bwingen/thesis/database"
+if [ ! -d "$DB_ROOT" ]; then
+    echo "ERROR: Database not found at $DB_ROOT"
+    echo "Please run './upload_database.sh' from your local machine to sync data."
+    exit 1
+fi
+
+echo "Database found at $DB_ROOT"
 echo "Running on $(hostname)"
 echo "Working directory: $(pwd)"
 which python

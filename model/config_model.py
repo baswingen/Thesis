@@ -7,6 +7,29 @@ ensures consistency across training and inference scripts.
 GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
+# ──────────────────────────────────────────────────────────
+# DATABASE & ENVIRONMENT CONFIGURATION
+# ──────────────────────────────────────────────────────────
+import os
+from pathlib import Path
+
+# Detect if we are on the DelftBlue server
+ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
+
+# Define the root of the database depending on the environment.
+# Local: project-relative 'database/'
+# DelftBlue: high-performance '/scratch/bwingen/thesis/database/'
+if ON_DELFTBLUE:
+    DATABASE_ROOT = Path("/scratch/bwingen/thesis/database")
+else:
+    DATABASE_ROOT = Path(__file__).parent.parent / "database"
+
+DATABASE_CONFIG = {
+    'root': DATABASE_ROOT,
+    'segments_dir': DATABASE_ROOT / "segments",
+    'raw_dir': DATABASE_ROOT,
+}
+
 ###########################################################
 # PARTICIPANT CONFIGURATION
 ###########################################################
