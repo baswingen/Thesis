@@ -8,6 +8,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
 import joblib
 
+
+def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
+    """Replace NaN/Inf with 0 and clip abs-values to `clip` to prevent
+    float64 overflow inside sklearn's StandardScaler."""
+    arr = np.where(np.isfinite(arr), arr, 0.0)
+    return np.clip(arr, -clip, clip)
+
 from model.data_loader import DataLoader
 from model.config_model import RBFNN_CONFIG
 
@@ -51,7 +58,7 @@ class RBFNNClassifier:
     def fit(self, X: pd.DataFrame, y: pd.Series):
         """Fit the scaler, find RBF centers, map inputs to hidden layer, and train output layer."""
         # 1. Scale data
-        X_scaled = self.scaler.fit_transform(X)
+        X_scaled = self.scaler.fit_transform(_sanitise(X.values))
         
         # 2. Find prototype centers using KMeans
         self.kmeans.fit(X_scaled)
@@ -65,13 +72,13 @@ class RBFNNClassifier:
         
     def predict(self, X: pd.DataFrame):
         """Scale test data, get RBF features, and return predictions."""
-        X_scaled = self.scaler.transform(X)
+        X_scaled = self.scaler.transform(_sanitise(X.values))
         H = self._get_rbf_features(X_scaled)
         return self.output_layer.predict(H)
 
     def predict_proba(self, X: pd.DataFrame):
         """Scale test data, get RBF features, and return prediction probabilities."""
-        X_scaled = self.scaler.transform(X)
+        X_scaled = self.scaler.transform(_sanitise(X.values))
         H = self._get_rbf_features(X_scaled)
         return self.output_layer.predict_proba(H)
         

@@ -189,6 +189,13 @@ class TimeSeriesTransformerRegressor:
             
         sequences = X['sequence_dicts'].tolist()
         return sequences
+
+    @staticmethod
+    def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
+        """Replace NaN/Inf with 0 and clip abs-values to `clip` to prevent
+        float64 overflow inside sklearn's StandardScaler."""
+        arr = np.where(np.isfinite(arr), arr, 0.0)
+        return np.clip(arr, -clip, clip)
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
         from sklearn.model_selection import train_test_split
@@ -212,13 +219,13 @@ class TimeSeriesTransformerRegressor:
             seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
             flat_data_train.append(seq_arr)
             
-        all_features_train = np.vstack(flat_data_train)
+        all_features_train = self._sanitise(np.vstack(flat_data_train))
         self.scaler.fit(all_features_train)
         
         # 4. Reconstruct scaled train sequences
         scaled_seqs_train = []
         for arr in flat_data_train:
-            scaled_arr = self.scaler.transform(arr).astype(np.float32)
+            scaled_arr = self.scaler.transform(self._sanitise(arr)).astype(np.float32)
             scaled_seqs_train.append(scaled_arr)  # keep as numpy for augmentation
             
         y_np_train = y_train.values.astype(np.float32)
@@ -238,7 +245,7 @@ class TimeSeriesTransformerRegressor:
         scaled_seqs_val = []
         for seq in sequences_val:
             seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(seq_arr).astype(np.float32)
+            scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
             scaled_seqs_val.append(torch.from_numpy(scaled_arr))
             
         y_tensor_val = torch.from_numpy(y_val.values.astype(np.float32)).unsqueeze(1)
@@ -349,7 +356,7 @@ class TimeSeriesTransformerRegressor:
         scaled_seqs = []
         for seq in sequences:
             seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(seq_arr).astype(np.float32)
+            scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
             scaled_seqs.append(torch.from_numpy(scaled_arr))
             
         dummy_y = torch.zeros((len(scaled_seqs), 1))

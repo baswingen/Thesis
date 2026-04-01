@@ -207,16 +207,23 @@ class CNNLSTMRegressor:
             )
         return X['raw_segment'].tolist()
 
+    @staticmethod
+    def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
+        """Replace NaN/Inf with 0 and clip abs-values to `clip` to prevent
+        float64 overflow inside sklearn's StandardScaler."""
+        arr = np.where(np.isfinite(arr), arr, 0.0)
+        return np.clip(arr, -clip, clip)
+
     def _scale_segments(self, segments: list[np.ndarray], fit: bool = False) -> list[np.ndarray]:
         """Per-channel z-score standardisation."""
         if fit:
             # Flatten all time-steps across all segments to fit one scaler
-            all_data = np.vstack(segments)
+            all_data = self._sanitise(np.vstack(segments))
             self.scaler.fit(all_data)
 
         scaled = []
         for seg in segments:
-            scaled.append(self.scaler.transform(seg).astype(np.float32))
+            scaled.append(self.scaler.transform(self._sanitise(seg)).astype(np.float32))
         return scaled
 
     # ------------------------------------------------------------------

@@ -7,6 +7,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
 
+
+def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
+    """Replace NaN/Inf with 0 and clip abs-values to `clip` to prevent
+    float64 overflow inside sklearn's StandardScaler."""
+    arr = np.where(np.isfinite(arr), arr, 0.0)
+    return np.clip(arr, -clip, clip)
+
 from model.config_model import GB_CONFIG
 from model import plotting_utils
 
@@ -35,12 +42,12 @@ class GBRegressor:
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
         """Fit the scaler on features and train the GB."""
-        X_scaled = self.scaler.fit_transform(X)
+        X_scaled = self.scaler.fit_transform(_sanitise(X.values))
         self.model.fit(X_scaled, y)
         
     def predict(self, X: pd.DataFrame):
         """Scale test data based on fitted scaler and return non-negative predictions."""
-        X_scaled = self.scaler.transform(X)
+        X_scaled = self.scaler.transform(_sanitise(X.values))
         y_pred = self.model.predict(X_scaled)
         # Weight cannot be negative
         return np.maximum(0.0, y_pred)

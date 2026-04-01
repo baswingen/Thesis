@@ -11,6 +11,13 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 import joblib
 
+
+def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
+    """Replace NaN/Inf with 0 and clip abs-values to `clip` to prevent
+    float64 overflow inside sklearn's StandardScaler."""
+    arr = np.where(np.isfinite(arr), arr, 0.0)
+    return np.clip(arr, -clip, clip)
+
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
@@ -103,8 +110,8 @@ class MLPRegressor:
         self.val_samples = len(X_val)
         
         # 2. Scale features (fit only on training set)
-        X_train_scaled = self.scaler.fit_transform(X_train).astype(np.float32)
-        X_val_scaled = self.scaler.transform(X_val).astype(np.float32)
+        X_train_scaled = self.scaler.fit_transform(_sanitise(X_train.values)).astype(np.float32)
+        X_val_scaled = self.scaler.transform(_sanitise(X_val.values)).astype(np.float32)
         
         y_train_arr = y_train.values.reshape(-1, 1).astype(np.float32)
         y_val_arr = y_val.values.reshape(-1, 1).astype(np.float32)
@@ -193,7 +200,7 @@ class MLPRegressor:
         if self.model is None:
             raise ValueError("Model has not been trained yet. Call fit() first.")
             
-        X_scaled = self.scaler.transform(X).astype(np.float32)
+        X_scaled = self.scaler.transform(_sanitise(X.values)).astype(np.float32)
         X_tensor = torch.from_numpy(X_scaled).to(self.device)
         
         self.model.eval()

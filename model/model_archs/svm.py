@@ -5,6 +5,14 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
 import joblib
+import numpy as np
+
+
+def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
+    """Replace NaN/Inf with 0 and clip abs-values to `clip` to prevent
+    float64 overflow inside sklearn's StandardScaler."""
+    arr = np.where(np.isfinite(arr), arr, 0.0)
+    return np.clip(arr, -clip, clip)
 
 from model.data_loader import DataLoader
 from model.config_model import SVM_CONFIG
@@ -38,17 +46,17 @@ class SVMClassifier:
         
     def fit(self, X: pd.DataFrame, y: pd.Series):
         """Fit the scaler on features and train the SVM."""
-        X_scaled = self.scaler.fit_transform(X)
+        X_scaled = self.scaler.fit_transform(_sanitise(X.values))
         self.model.fit(X_scaled, y)
         
     def predict(self, X: pd.DataFrame):
         """Scale test data based on fitted scaler and return predictions."""
-        X_scaled = self.scaler.transform(X)
+        X_scaled = self.scaler.transform(_sanitise(X.values))
         return self.model.predict(X_scaled)
 
     def predict_proba(self, X: pd.DataFrame):
         """Scale test data and return prediction probabilities."""
-        X_scaled = self.scaler.transform(X)
+        X_scaled = self.scaler.transform(_sanitise(X.values))
         return self.model.predict_proba(X_scaled)
         
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series):
