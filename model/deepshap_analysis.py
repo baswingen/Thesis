@@ -206,6 +206,10 @@ def main():
     explainer   = shap.DeepExplainer(shap_model, bg_tensor_cpu)
     shap_values = explainer.shap_values(exp_tensor_cpu, check_additivity=False)  # (N, C, T)
 
+    # shap.DeepExplainer often returns a list for PyTorch models [ (N, C, T) ]
+    if isinstance(shap_values, list):
+        shap_values = shap_values[0]
+        
     shap_values = np.array(shap_values)
     print(f"SHAP values shape: {shap_values.shape}")  # (n_exp, n_channels, T)
 
