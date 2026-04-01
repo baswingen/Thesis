@@ -15,8 +15,8 @@ cd /home/bwingen/thesis/Thesis
 # Load Miniconda
 module load 2024r1 miniconda3
 
-# Robust activation (ensures 'conda' command is available in shell)
-source $(dirname $(which conda))/../etc/profile.d/conda.sh
+# Standard DelftBlue way to enable 'conda activate' inside a script
+source $CONDA_PREFIX/etc/profile.d/conda.sh
 conda activate /scratch/bwingen/thesis_env
 
 # ── DelftBlue Environment Check ────────────────────────────
