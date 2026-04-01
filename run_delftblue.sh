@@ -17,11 +17,6 @@ module load 2024r1
 module load cuda/12.1
 ENV_PYTHON="/home/bwingen/thesis/Thesis/.venv/bin/python"
 
-# Ensure all dependencies from requirements.txt are installed
-# This is necessary because some packages (like 'shap') might be missing.
-echo "Checking/Installing dependencies from requirements.txt..."
-$ENV_PYTHON -m pip install -r requirements.txt
-
 # ── DelftBlue Environment Check ────────────────────────────
 # The model is configured to look for data in /scratch/bwingen/thesis/database
 DB_ROOT="/scratch/bwingen/thesis/database"
