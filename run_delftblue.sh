@@ -11,7 +11,12 @@
 #SBATCH --error=logs/run_%j.err
 
 cd /home/bwingen/thesis/Thesis
+
+# Load Miniconda
 module load 2024r1 miniconda3
+
+# Robust activation (ensures 'conda' command is available in shell)
+source $(dirname $(which conda))/../etc/profile.d/conda.sh
 conda activate /scratch/bwingen/thesis_env
 
 # ── DelftBlue Environment Check ────────────────────────────
