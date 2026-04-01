@@ -19,8 +19,6 @@ ENV_PYTHON="/scratch/bwingen/thesis_env/bin/python"
 
 # ── DelftBlue Environment Check ────────────────────────────
 # The model is configured to look for data in /scratch/bwingen/thesis/database
-# If it's not there, the job will fail with an informative message.
-
 DB_ROOT="/scratch/bwingen/thesis/database"
 if [ ! -d "$DB_ROOT" ]; then
     echo "ERROR: Database not found at $DB_ROOT"
@@ -29,11 +27,6 @@ if [ ! -d "$DB_ROOT" ]; then
 fi
 
 echo "Database found at $DB_ROOT"
-# ── Environment Setup ──────────────────────────────────────
-# Using the absolute path to the environment's python is the most 
-# reliable way to ensure all packages (numpy, torch, etc.) are found.
-ENV_PYTHON="/scratch/bwingen/thesis_env/bin/python"
-
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
 
