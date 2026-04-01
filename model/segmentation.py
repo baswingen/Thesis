@@ -71,7 +71,10 @@ As a script::
 """
 
 import argparse
+import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -318,44 +321,57 @@ class SegmentedDataset:
         out_path = Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with h5py.File(out_path, "w") as f:
-            f.attrs["n_segments"] = len(segments)
-            f.attrs["margin_s"] = self.margin_s
+        # Write to a local temporary file first to avoid iCloud block timeouts
+        fd, temp_path = tempfile.mkstemp(suffix=".h5")
+        os.close(fd)
 
-            for i, seg in enumerate(segments):
-                grp = f.create_group(f"segment_{i:04d}")
+        try:
+            with h5py.File(temp_path, "w") as f:
+                f.attrs["n_segments"] = len(segments)
+                f.attrs["margin_s"] = self.margin_s
 
-                # Signal datasets
-                ds_imu = grp.create_dataset(
-                    "imu", data=seg["imu"].astype(np.float64),
-                    compression="gzip", compression_opts=4
-                )
-                ds_imu.attrs["column_names"] = [c.encode() for c in seg["imu_cols"]]
-                ds_imu.attrs["fs"] = seg.get("imu_fs", 500.0)
-                ds_imu.attrs["fs_orig"] = seg.get("imu_fs_orig", 500.0)
+                for i, seg in enumerate(segments):
+                    grp = f.create_group(f"segment_{i:04d}")
 
-                ds_emg = grp.create_dataset(
-                    "emg", data=seg["emg"].astype(np.float64),
-                    compression="gzip", compression_opts=4
-                )
-                ds_emg.attrs["column_names"] = [c.encode() for c in seg["emg_cols"]]
-                ds_emg.attrs["fs"] = seg.get("emg_fs", 4000.0)
-                ds_emg.attrs["fs_orig"] = seg.get("emg_fs_orig", 4000.0)
+                    # Signal datasets
+                    ds_imu = grp.create_dataset(
+                        "imu", data=seg["imu"].astype(np.float64),
+                        compression="gzip", compression_opts=4
+                    )
+                    ds_imu.attrs["column_names"] = [c.encode() for c in seg["imu_cols"]]
+                    ds_imu.attrs["fs"] = seg.get("imu_fs", 500.0)
+                    ds_imu.attrs["fs_orig"] = seg.get("imu_fs_orig", 500.0)
 
-                # Metadata attributes
-                # label is either a float (carrying) or the string "free_movement"
-                grp.attrs["label"] = seg["label"]
-                grp.attrs["weight"] = seg["weight"]
-                grp.attrs["state"] = seg["state"]
-                grp.attrs["src_row"] = seg["src_row"]
-                grp.attrs["src_col"] = seg["src_col"]
-                grp.attrs["tgt_row"] = seg["tgt_row"]
-                grp.attrs["tgt_col"] = seg["tgt_col"]
-                grp.attrs["t_start"] = seg["t_start"]
-                grp.attrs["t_end"] = seg["t_end"]
-                grp.attrs["t_start_margin"] = seg["t_start_m"]
-                grp.attrs["t_end_margin"] = seg["t_end_m"]
-                grp.attrs["trial_file"] = seg["trial_file"]
+                    ds_emg = grp.create_dataset(
+                        "emg", data=seg["emg"].astype(np.float64),
+                        compression="gzip", compression_opts=4
+                    )
+                    ds_emg.attrs["column_names"] = [c.encode() for c in seg["emg_cols"]]
+                    ds_emg.attrs["fs"] = seg.get("emg_fs", 4000.0)
+                    ds_emg.attrs["fs_orig"] = seg.get("emg_fs_orig", 4000.0)
+
+                    # Metadata attributes
+                    # label is either a float (carrying) or the string "free_movement"
+                    grp.attrs["label"] = seg["label"]
+                    grp.attrs["weight"] = seg["weight"]
+                    grp.attrs["state"] = seg["state"]
+                    grp.attrs["src_row"] = seg["src_row"]
+                    grp.attrs["src_col"] = seg["src_col"]
+                    grp.attrs["tgt_row"] = seg["tgt_row"]
+                    grp.attrs["tgt_col"] = seg["tgt_col"]
+                    grp.attrs["t_start"] = seg["t_start"]
+                    grp.attrs["t_end"] = seg["t_end"]
+                    grp.attrs["t_start_margin"] = seg["t_start_m"]
+                    grp.attrs["t_end_margin"] = seg["t_end_m"]
+                    grp.attrs["trial_file"] = seg["trial_file"]
+
+            # Move completed file to the final destination (overwriting if exists)
+            shutil.move(temp_path, out_path)
+
+        except Exception:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise
 
         print(f"[SEGMENTER] Saved {len(segments)} segments → {out_path}")
         return out_path
@@ -374,6 +390,10 @@ class SegmentedDataset:
         """
         out_path = Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write to local temp file to avoid iCloud Drive file locks
+        fd, temp_path = tempfile.mkstemp(suffix=".npz")
+        os.close(fd)
 
         arrays: dict[str, np.ndarray] = {}
 
@@ -418,7 +438,14 @@ class SegmentedDataset:
             )
         arrays["metadata"] = meta
 
-        np.savez_compressed(str(out_path), **arrays)
+        try:
+            np.savez_compressed(temp_path, **arrays)
+            shutil.move(temp_path, out_path)
+        except Exception:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise
+
         print(f"[SEGMENTER] Saved {len(segments)} segments → {out_path}")
         return out_path
 
@@ -737,20 +764,69 @@ def _run_cli(args):
         else:
             sys.exit(f"[ERR] Unknown format '{fmt}'. Use hdf5, npz, or both.")
 
+    def _check_exists(name):
+        """Check if output files for 'name' already exist."""
+        if not args.skip_existing:
+            return False
+        
+        # Check HDF5
+        if fmt in ("hdf5", "h5", "both"):
+            if (out_dir / f"{name}_segments.h5").exists():
+                return True
+        # Check NPZ
+        if fmt in ("npz", "both"):
+            if (out_dir / f"{name}_segments.npz").exists():
+                return True
+        return False
+
     if target.is_file():
-        segments = ds.segment_trial(target)
-        _save(segments, target.stem)
-        _print_summary(segments, target.name, out_dir)
+        if _check_exists(target.stem):
+            print(f"[SEGMENTER] Skipping existing trial: {target.name}")
+        else:
+            segments = ds.segment_trial(target)
+            _save(segments, target.stem)
+            _print_summary(segments, target.name, out_dir)
 
     elif target.is_dir():
-        session_map = ds.segment_database(target)
+        # Find all session_NN directories directly to allow skipping
+        # (mirroring the logic in segment_database)
+        session_dirs = sorted(
+            p for p in target.rglob("session_*") if p.is_dir()
+        )
+
         all_segments = []
-        for session_key, segs in session_map.items():
-            # session_key e.g. "participant_P01/session_01"
-            # Use underscores for the filename: "participant_P01_session_01"
-            safe_name = session_key.replace("/", "_").replace("\\", "_")
-            _save(segs, safe_name)
-            all_segments.extend(segs)
+        
+        if not session_dirs:
+            # Fallback to flat scan (single participant directory or similar)
+            h5_files = sorted(target.rglob("*.h5"))
+            if h5_files:
+                name = target.name
+                if not _check_exists(name):
+                    segs = []
+                    for fp in h5_files:
+                        try:
+                            segs.extend(ds.segment_trial(fp))
+                        except Exception as exc:
+                            print(f"[SEGMENTER] WARNING: Skipping {fp.name} — {exc}")
+                    _save(segs, name)
+                    all_segments = segs
+                else:
+                    print(f"[SEGMENTER] Skipping existing flat database/participant: {name}")
+        else:
+            # Process sessions one by one
+            for sdir in session_dirs:
+                # Key: e.g. "participant_P01/session_01"
+                session_key = f"{sdir.parent.name}/{sdir.name}"
+                safe_name = session_key.replace("/", "_").replace("\\", "_")
+                
+                if _check_exists(safe_name):
+                    print(f"[SEGMENTER] Skipping existing session: {session_key}")
+                    continue
+                
+                segs = ds.segment_session(sdir)
+                _save(segs, safe_name)
+                all_segments.extend(segs)
+
         if all_segments:
             _print_summary(all_segments, str(target), out_dir)
 
@@ -955,6 +1031,11 @@ if __name__ == "__main__":
         default="hdf5",
         choices=["hdf5", "h5", "npz", "both"],
         help="Output format: hdf5, npz, or both (default: hdf5).",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip processing if the output segment file already exists.",
     )
     _args = parser.parse_args()
     _run_cli(_args)

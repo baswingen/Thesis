@@ -212,9 +212,12 @@ def main():
         
     shap_values = np.array(shap_values)
     
-    # If it is a 4D array (e.g. 1 output branch), squeeze the first dimension
-    if shap_values.ndim == 4 and shap_values.shape[0] == 1:
-        shap_values = shap_values[0]
+    # If it is a 4D array (e.g. 1 output branch), squeeze the rogue dimension
+    if shap_values.ndim == 4:
+        if shap_values.shape[-1] == 1:  # e.g. (n_exp, n_channels, T, 1)
+            shap_values = shap_values[..., 0]
+        elif shap_values.shape[0] == 1: # e.g. (1, n_exp, n_channels, T)
+            shap_values = shap_values[0]
         
     print(f"SHAP values shape: {shap_values.shape}")  # (n_exp, n_channels, T)
 
