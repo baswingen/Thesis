@@ -11,7 +11,8 @@
 #SBATCH --error=logs/run_%j.err
 
 cd /home/bwingen/thesis/Thesis
-source .venv/bin/activate
+module load 2024r1 miniconda3
+conda activate /scratch/bwingen/thesis_env
 
 # ── DelftBlue Environment Check ────────────────────────────
 # The model is configured to look for data in /scratch/bwingen/thesis/database
