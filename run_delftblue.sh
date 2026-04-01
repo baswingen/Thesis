@@ -31,9 +31,12 @@ if [ ! -d "$DB_ROOT" ]; then
 fi
 
 echo "Database found at $DB_ROOT"
-echo "Running on $(hostname)"
-echo "Working directory: $(pwd)"
-which python
-python --version
+# ── Environment Setup ──────────────────────────────────────
+# Using the absolute path to the environment's python is the most 
+# reliable way to ensure all packages (numpy, torch, etc.) are found.
+ENV_PYTHON="/scratch/bwingen/thesis_env/bin/python"
 
-srun python -u model/deepshap_analysis.py
+echo "Using Python: $ENV_PYTHON"
+$ENV_PYTHON --version
+
+srun $ENV_PYTHON -u model/deepshap_analysis.py
