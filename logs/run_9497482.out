@@ -1,0 +1,7 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Found 5 HDF5 file(s).
+[DataLoader] Filtered 5 files down to 0 based on PARTICIPANT_CONFIG['include']=['all']
+[WARN] No raw segments loaded.
+[ERROR] Data loading returned an empty DataFrame.

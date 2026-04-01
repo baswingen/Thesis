@@ -1,0 +1,11 @@
+
+EnvironmentNameNotFound: Could not find conda environment: thesis
+You can list all discoverable environments with `conda info --envs`.
+
+
+Traceback (most recent call last):
+  File "model/deepshap_analysis.py", line 24, in <module>
+srun: error: gpu020: task 0: Exited with exit code 1
+srun: launch/slurm: _step_signal: Terminating StepId=9497893.0
+    import numpy as np
+ModuleNotFoundError: No module named 'numpy'

@@ -1,0 +1,5 @@
+Checking/Installing dependencies from requirements.txt...
+Requirement already satisfied: torch>=2.0.0 in ./.venv/lib64/python3.11/site-packages (from -r requirements.txt (line 3)) (2.10.0)
+Database found at /scratch/bwingen/thesis/database
+Using Python: /home/bwingen/thesis/Thesis/.venv/bin/python
+Python 3.11.13

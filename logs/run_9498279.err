@@ -1,0 +1,45 @@
+WARNING: Retrying (Retry(total=4, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x15554d8fe6d0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/tensorflow/
+WARNING: Retrying (Retry(total=3, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x15554d4e6e90>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/tensorflow/
+WARNING: Retrying (Retry(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x15554d4e7890>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/tensorflow/
+WARNING: Retrying (Retry(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x15554d4f84d0>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/tensorflow/
+WARNING: Retrying (Retry(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('<pip._vendor.urllib3.connection.HTTPSConnection object at 0x15554d4f9150>: Failed to establish a new connection: [Errno 101] Network is unreachable')': /simple/tensorflow/
+ERROR: Could not find a version that satisfies the requirement tensorflow>=2.15.0 (from versions: none)
+ERROR: No matching distribution found for tensorflow>=2.15.0
+Traceback (most recent call last):
+  File "/home/bwingen/thesis/Thesis/model/deepshap_analysis.py", line 30, in <module>
+    from sklearn.model_selection import train_test_split
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/sklearn/__init__.py", line 70, in <module>
+    from sklearn.base import clone  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/sklearn/base.py", line 19, in <module>
+    from sklearn.utils._metadata_requests import _MetadataRequester, _routing_enabled
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/sklearn/utils/__init__.py", line 9, in <module>
+    from sklearn.utils._chunking import gen_batches, gen_even_slices
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/sklearn/utils/_chunking.py", line 11, in <module>
+    from sklearn.utils._param_validation import Interval, validate_params
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/sklearn/utils/_param_validation.py", line 14, in <module>
+    from scipy.sparse import csr_matrix, issparse
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/sparse/__init__.py", line 307, in <module>
+    from ._base import *
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/sparse/_base.py", line 8, in <module>
+    from ._sputils import (asmatrix, check_reshape_kwargs, check_shape,
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/sparse/_sputils.py", line 10, in <module>
+    from scipy._lib._util import np_long, np_ulong
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/_lib/_util.py", line 17, in <module>
+    from scipy._lib._array_api import (Array, array_namespace, is_lazy_array, is_numpy,
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/_lib/_array_api.py", line 24, in <module>
+    from scipy._lib.array_api_compat import (
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/_lib/array_api_compat/numpy/__init__.py", line 9, in <module>
+    __all__ = clone_module("numpy", globals())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/scipy/_lib/array_api_compat/_internal.py", line 64, in clone_module
+    exec(f"from {mod.__name__} import *", objs)
+  File "<string>", line 1, in <module>
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/numpy/__init__.py", line 712, in __getattr__
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/numpy/fft/__init__.py", line 203, in <module>
+    from . import _pocketfft, helper
+  File "/home/bwingen/thesis/Thesis/.venv/lib64/python3.11/site-packages/numpy/fft/_pocketfft.py", line 35, in <module>
+    from numpy.core import asarray, zeros, swapaxes, conjugate, take, sqrt
+ModuleNotFoundError: No module named 'numpy.core'
+srun: error: gpu020: task 0: Exited with exit code 1
+srun: launch/slurm: _step_signal: Terminating StepId=9498279.0

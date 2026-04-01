@@ -1,0 +1,13 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /home/bwingen/thesis/Thesis/.venv/bin/python
+Python 3.11.13
+Found 5 HDF5 file(s).
+[DataLoader] Loaded 6855 raw segments (26 channels each)
+Split: 5484 train / 1371 test samples.
+Loading saved model from /home/bwingen/thesis/Thesis/model/model_results/P01_session_01-03/P01_session_01-03_cnn_lstm/cnn_lstm_model.joblib …
+[CNNLSTMRegressor] Using device: cuda
+Model on device: cuda
+Background tensor : (50, 26, 5351)
+Explanation tensor: (40, 26, 5351)
+
+Running shap.DeepExplainer with 50 background and 40 test samples …

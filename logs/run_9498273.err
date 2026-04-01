@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/bwingen/thesis/Thesis/model/deepshap_analysis.py", line 329, in <module>
+    main()
+  File "/home/bwingen/thesis/Thesis/model/deepshap_analysis.py", line 102, in main
+    import shap  # imported here so the rest of the script is importable without shap
+    ^^^^^^^^^^^
+ModuleNotFoundError: No module named 'shap'
+srun: error: gpu020: task 0: Exited with exit code 1
+srun: launch/slurm: _step_signal: Terminating StepId=9498273.0
