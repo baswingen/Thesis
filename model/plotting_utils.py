@@ -210,3 +210,50 @@ def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path,
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Sequence-length performance plot saved to {save_path}")
+
+def plot_participant_performance(per_participant_stats: list, save_path: str | Path, model_name: str = "Model"):
+    """
+    Creates a bar chart to visualize the generalization error (MAE and RMSE) for each left-out participant.
+    Also plots horizontal lines representing the mean error across all participants.
+    """
+    if not per_participant_stats:
+        return
+
+    set_style()
+    
+    participants = [stat['Participant'] for stat in per_participant_stats]
+    maes = [stat['MAE'] for stat in per_participant_stats]
+    rmses = [stat['RMSE'] for stat in per_participant_stats]
+
+    x = np.arange(len(participants))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    rects1 = ax.bar(x - width/2, maes, width, label='MAE', color='#1F77B4', alpha=0.85)
+    rects2 = ax.bar(x + width/2, rmses, width, label='RMSE', color='#FF7F0E', alpha=0.85)
+    
+    mean_mae = np.mean(maes)
+    mean_rmse = np.mean(rmses)
+    
+    ax.axhline(mean_mae, color='#1F77B4', linestyle='--', linewidth=1.5, alpha=0.8)
+    ax.text(-0.5, mean_mae + max(0.02, mean_mae*0.02), f"Mean MAE: {mean_mae:.3f}", color='#1F77B4', fontsize=10, verticalalignment='bottom')
+    
+    ax.axhline(mean_rmse, color='#FF7F0E', linestyle='--', linewidth=1.5, alpha=0.8)
+    ax.text(-0.5, mean_rmse + max(0.02, mean_rmse*0.02), f"Mean RMSE: {mean_rmse:.3f}", color='#FF7F0E', fontsize=10, verticalalignment='bottom')
+    
+    ax.set_ylabel('Error (kg)')
+    ax.set_xlabel('Unseen Participant Left Out', labelpad=12)
+    ax.set_title(f'{model_name}: Generalization Performance per Participant'.upper(), pad=15, fontsize=14, fontweight='bold')
+    ax.set_xticks(x)
+    ax.set_xticklabels(participants)
+    
+    max_val = max(np.max(maes), np.max(rmses))
+    ax.set_ylim(0, max_val * 1.25)
+    ax.legend(loc='upper right')
+
+    fig.tight_layout()
+
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Participant performance plot saved to {save_path}")

@@ -273,6 +273,7 @@ def main():
     print(f"Extracted features dataframe shape: {df.shape}")
     
     # Prepare data for ML
+    groups = df["subject"].astype(str).values if "subject" in df.columns else None
     
     X, y = loader.prepare_for_ml(df, target_col=target_col)
     
@@ -301,22 +302,37 @@ def main():
     
     # Determine if we use Cross-Validation or Single Split
     use_cv = CV_CONFIG.get('use_cross_val', False)
+    cv_strategy = CV_CONFIG.get('strategy', 'kfold')
     
     if use_cv:
-        n_folds = CV_CONFIG.get('n_folds', 5)
-        print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
-        
-        skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+        if cv_strategy == 'participant':
+            from sklearn.model_selection import LeaveOneGroupOut
+            logo = LeaveOneGroupOut()
+            n_folds = logo.get_n_splits(X, y, groups)
+            print(f"\nStarting {n_folds}-Fold Leave-One-Participant-Out Cross-Validation...")
+            cv_iterator = list(logo.split(X, y, groups))
+            if groups is None:
+                print("Error: 'subject' column missing in DataFrame. Cannot do Participant CV.")
+                return
+        else:
+            n_folds = CV_CONFIG.get('n_folds', 5)
+            print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
+            from sklearn.model_selection import StratifiedKFold
+            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+            strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
+            cv_iterator = list(skf.split(X, strat_labels))
         
         cv_metrics = []
         fold_results = []
         oof_predictions = np.zeros(len(X))
+        participant_stats = []
         
-        # Use df['weight'] (cast to str) for stratification
-        strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
-        
-        for fold, (train_idx, test_idx) in enumerate(skf.split(X, strat_labels), 1):
-            print(f"--- Fold {fold}/{n_folds} ---")
+        for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
+            if cv_strategy == 'participant':
+                left_out_participant = groups[test_idx[0]]
+                print(f"--- Fold {fold}/{n_folds} (Left out Participant: {left_out_participant}) ---")
+            else:
+                print(f"--- Fold {fold}/{n_folds} ---")
             
             X_train_fold, X_test_fold = X.iloc[train_idx], X.iloc[test_idx]
             y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
@@ -342,7 +358,19 @@ def main():
             
             cv_metrics.append(metrics)
             fold_results.append(report_str)
-            oof_predictions[test_idx] = model.predict(X_test_fold)
+            
+            preds = model.predict(X_test_fold)
+            oof_predictions[test_idx] = preds
+            
+            if cv_strategy == 'participant':
+                mae_participant = mean_absolute_error(y_test_fold, preds)
+                rmse_participant = np.sqrt(mean_squared_error(y_test_fold, preds))
+                participant_stats.append({
+                    'Participant': left_out_participant,
+                    'MAE': mae_participant,
+                    'RMSE': rmse_participant,
+                    'Samples': len(test_idx)
+                })
         
         # Aggregate Results
         print("\n" + "=" * 55)
@@ -420,6 +448,9 @@ def main():
         model.plot_loss(loss_plot_path)
         print(f"Loss plot saved to {loss_plot_path}")
     
+    if use_cv and cv_strategy == 'participant' and 'participant_stats' in locals():
+        participant_plot_path = run_dir / "participant_performance.png"
+        plotting_utils.plot_participant_performance(participant_stats, participant_plot_path, model_name=model_type.upper())
     
     # Calculate per-weight statistics for regression
     per_weight_stats = None
@@ -503,7 +534,10 @@ def main():
         f.write(f"Database segments used: {[p.name for p in h5_paths]}\n")
         f.write(f"Total samples: {len(X)}\n")
         if use_cv:
-            f.write(f"Evaluation Mode: {n_folds}-Fold Stratified Cross-Validation (Intra-Subject, Sequences Intact)\n")
+            if cv_strategy == 'participant':
+                f.write(f"Evaluation Mode: Leave-One-Participant-Out Cross-Validation ({n_folds} Participants)\n")
+            else:
+                f.write(f"Evaluation Mode: {n_folds}-Fold Stratified Cross-Validation (Intra-Subject, Sequences Intact)\n")
             f.write(f"Final Model Training samples: {getattr(model, 'train_samples', len(X))}\n")
             if hasattr(model, 'val_samples') and model.val_samples > 0:
                 f.write(f"Final Model Validation samples: {model.val_samples}\n")
@@ -643,6 +677,14 @@ def main():
             f.write("-" * 50 + "\n")
             for stats in per_weight_stats:
                 f.write(f"{stats['Weight']:<12} | {stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
+            f.write("\n")
+
+        if use_cv and cv_strategy == 'participant' and 'participant_stats' in locals():
+            f.write("--- PER-PARTICIPANT METRICS ---\n")
+            f.write(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10}\n")
+            f.write("-" * 50 + "\n")
+            for stats in participant_stats:
+                f.write(f"{stats['Participant']:<12} | {stats['Samples']:<8} | {stats['MAE']:<10.4f} | {stats['RMSE']:<10.4f}\n")
             f.write("\n")
 
         if per_seqlen_stats:

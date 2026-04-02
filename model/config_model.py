@@ -221,8 +221,9 @@ AUGMENTATION_CONFIG = {
 
 # Cross-Validation Configuration
 CV_CONFIG = {
-    'use_cross_val': False,
-    'n_folds': 5
+    'use_cross_val': True,
+    'n_folds': 5,
+    'strategy': 'participant'  # Options: 'kfold', 'participant'
 }
 
 # SVM Configuration
