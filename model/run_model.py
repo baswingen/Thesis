@@ -143,7 +143,7 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
 
 
 def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
-                                   n_bins: int = 60):
+                                   n_bins: int = None):
     """Calculate MAE and RMSE for the CNN-LSTM binned by raw segment duration.
 
     Because CNN-LSTM receives the full raw segment (no sliding windows), the
@@ -154,8 +154,9 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
     ----------
     durations_sec : array-like
         Duration of each test segment in seconds.
-    n_bins : int
-        Number of equal-width duration bins.
+    n_bins : int or None
+        Number of equal-width duration bins. If None, it will be smartly 
+        calculated based on the number of available segments and their lengths.
 
     Returns
     -------
@@ -166,6 +167,18 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     durations_sec = np.asarray(durations_sec, dtype=float)
+
+    if n_bins is None:
+        # SMART BINNING strategy
+        # Higher resolution (more bins) proportional to lengths (max duration) and available segments (len)
+        max_dur = durations_sec.max()
+        n_samples = len(durations_sec)
+        
+        # Base of 4 bins per second, scaled up by the density of the dataset
+        density_multiplier = max(1.0, np.sqrt(n_samples / 300.0))
+        n_bins = int(np.ceil(max_dur * 4 * density_multiplier))
+        # Put a sane limit so we don't create thousands of bins
+        n_bins = min(250, max(10, n_bins))
 
     # Build equal-width bins spanning the full duration range
     bin_edges = np.linspace(durations_sec.min(), durations_sec.max(), n_bins + 1)
@@ -444,9 +457,13 @@ def main():
 
             # Save the segment-length performance plot
             if per_seqlen_stats:
+                n_samples_test = len(y_test)
+                dynamic_min_count = max(5, int(n_samples_test * 0.01))
+                
                 seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
                 plotting_utils.plot_seqlen_performance(
-                    per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper()
+                    per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper(),
+                    min_count=dynamic_min_count
                 )
 
     # CNN-LSTM: bin test samples by raw segment duration (elapsed time into lift)
@@ -455,13 +472,20 @@ def main():
         # segment_duration_sec was stored in df before prepare_for_ml dropped it
         if 'segment_duration_sec' in df.columns:
             test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
+            
+            # n_bins=None triggers our smart binning logic for high-res proportional bins
             per_duration_stats = calculate_per_duration_metrics(
-                y_test.values, y_pred, test_durations, n_bins=60
+                y_test.values, y_pred, test_durations, n_bins=None
             )
             if per_duration_stats:
+                n_samples_test = len(y_test)
+                # Exclude bins (min_count) proportional to the test set size to decrease noise
+                dynamic_min_count = max(5, int(n_samples_test * 0.01))
+                
                 seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
                 plotting_utils.plot_seqlen_performance(
-                    per_duration_stats, seqlen_plot_path, model_name="CNN-LSTM"
+                    per_duration_stats, seqlen_plot_path, model_name="CNN-LSTM", 
+                    min_count=dynamic_min_count
                 )
         else:
             print("[WARN] segment_duration_sec not found in df — skipping CNN-LSTM seqlen plot.")

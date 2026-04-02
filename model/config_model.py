@@ -39,6 +39,21 @@ PARTICIPANT_CONFIG = {
 }
 
 ###########################################################
+# WEIGHT CALIBRATION CONFIGURATION
+###########################################################
+# Maps nominal weight labels to precise measured weights in real life.
+# If a weight is not found in this list, the fallback is the original label.
+TRUE_WEIGHTS = {
+    0.75: 0.899,
+    1.0: 0.979,
+    2.0: 1.966,
+    2.25: 2.238,
+    3.0: 2.945,
+    4.25: 4.142,
+    6.0: 5.922,
+}
+
+###########################################################
 # RAW CHANNEL TOGGLES (apply to ALL architectures)
 # Set False to exclude a channel from both raw-segment
 # (CNN-LSTM) and feature-extraction (LSTM/GRU/…) pipelines.

@@ -7,7 +7,7 @@ import sys
 import os
 
 from model.feature_extraction import FeatureExtractor
-from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG
+from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, TRUE_WEIGHTS
 
 class DataLoader:
     """
@@ -116,10 +116,13 @@ class DataLoader:
                     label = str(_a("label", "unknown"))
                     feat_dict["label"] = label
                     feat_dict["state"] = str(_a("state", "unknown"))
-                    feat_dict["weight"] = (
-                        0.0 if label == "free_movement"
-                        else float(grp.attrs.get("weight", -1.0))
-                    )
+                    
+                    if label == "free_movement":
+                        feat_dict["weight"] = 0.0
+                    else:
+                        weight_raw = float(grp.attrs.get("weight", -1.0))
+                        feat_dict["weight"] = TRUE_WEIGHTS.get(weight_raw, weight_raw)
+                        
                     feat_dict["segment_id"] = seg_key
                     feat_dict["trial_file"] = _a("trial_file", "unknown")
                     feat_dict["subject"] = (
@@ -229,11 +232,16 @@ class DataLoader:
                     emg_fs_eff = float(grp["emg"].attrs.get("fs", 2000.0)) if "emg" in grp else 2000.0
 
                     label = str(_a("label", "unknown"))
+                    
+                    weight_raw = -1.0
+                    if label != "free_movement":
+                        weight_raw = float(grp.attrs.get("weight", -1.0))
+                    
                     row = {
                         "raw_segment": raw,
                         "label": label,
                         "state": str(_a("state", "unknown")),
-                        "weight": 0.0 if label == "free_movement" else float(grp.attrs.get("weight", -1.0)),
+                        "weight": 0.0 if label == "free_movement" else TRUE_WEIGHTS.get(weight_raw, weight_raw),
                         "segment_id": key,
                         "trial_file": _a("trial_file", "unknown"),
                         "subject": path.stem.split("_")[1] if "participant" in path.stem else "unknown",
@@ -399,11 +407,12 @@ class DataLoader:
                     features["state"] = str(_a("state", "unknown"))
                     
                     # For regression: map 'free_movement' to 0.0kg. 
-                    # Others use the weight recorded in h5 attributes.
+                    # Others use the weight recorded in h5 attributes mapped to true weight.
                     if label == "free_movement":
                         features["weight"] = 0.0
                     else:
-                        features["weight"] = float(grp.attrs.get("weight", -1.0))
+                        weight_raw = float(grp.attrs.get("weight", -1.0))
+                        features["weight"] = TRUE_WEIGHTS.get(weight_raw, weight_raw)
                     
                     # Context elements (if we want to use them for nested cross-validation later)
                     features["segment_id"] = key
@@ -477,9 +486,9 @@ if __name__ == "__main__":
         
         if not df.empty:
             # Prepare ML structures
-            X, y = loader.prepare_for_ml(df, target_col="label")
+            X, y = loader.prepare_for_ml(df, target_col="weight")
             print(f"X shape: {X.shape}, y shape: {y.shape}")
-            print("\nClasses present:", y.unique())
+            print("\nClasses present/weights:", y.unique())
             
             print("\nSample features subset:")
             print(X.iloc[0, :5])  # Display 5 features of row 0
