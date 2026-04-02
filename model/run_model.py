@@ -39,7 +39,7 @@ from sklearn.metrics import (
 # Choose model to train:
 MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
-USE_CROSS_VAL = False
+USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
 
 # Use pre-extracted features stored in the segment HDF5 files.
