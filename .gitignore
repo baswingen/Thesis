@@ -2,7 +2,7 @@
 database/**/*.h5
 database/*.h5
 
-# Ignore Python specific files
+# Python specific files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -14,6 +14,22 @@ ENV/
 env.bak/
 venv.bak/
 
+# macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # Project specifics
 .gemini/
 .agents/
+.cursor/

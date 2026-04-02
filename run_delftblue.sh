@@ -12,13 +12,11 @@
 
 cd /home/bwingen/thesis/Thesis
 
-# ── Environment Setup ──────────────────────────────────────
 module load 2024r1
 module load cuda/12.1
-ENV_PYTHON="/home/bwingen/thesis/Thesis/.venv/bin/python"
 
-# ── DelftBlue Environment Check ────────────────────────────
-# The model is configured to look for data in /scratch/bwingen/thesis/database
+ENV_PYTHON="/scratch/bwingen/thesis_env/bin/python"
+
 DB_ROOT="/scratch/bwingen/thesis/database"
 if [ ! -d "$DB_ROOT" ]; then
     echo "ERROR: Database not found at $DB_ROOT"

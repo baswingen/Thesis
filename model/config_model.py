@@ -35,7 +35,7 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': ['P05'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': 'all',  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
 }
 
 ###########################################################
