@@ -1,0 +1,38 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260402_150255
+Found 7 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+[DataLoader] Loaded 8352 raw segments (26 channels each)
+Extracted features dataframe shape: (8352, 9)
+Raw Segment Data Summary:
+  - Total Segments: 8352
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2779 samples
+  - Min / Max Segment Length: 695 / 135696 samples
+Label vector (y) shape: (8352,) (Target: weight)
+
+Training on 6681 samples, testing on 1671 samples.
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 248. Best Val Loss: 0.0419
+
+Evaluating CNN_LSTM Model on unseen test set...
+=======================================================
+Regression Metrics:
+Mean Absolute Error: 0.0931
+Mean Squared Error: 0.0633
+Root Mean Squared Error: 0.2516
+R-squared Score: 0.9805
+
+Training Time: 1383.77s
+Inference Time (per sample): 0.9576ms
+=======================================================
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_150255/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_150255/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_150255/loss_plot.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_150255/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_150255/performance_report.txt
