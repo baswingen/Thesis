@@ -457,18 +457,40 @@ class CNNLSTMRegressor:
 
     @classmethod
     def load(cls, filepath: str | Path):
-        state = torch.load(filepath, weights_only=False)
-        regressor = cls(**state['config'])
+        import inspect
+        state = torch.load(filepath, map_location='cpu', weights_only=False)
+        
+        # Backwards compatibility for older saved models
+        if 'hidden_size' in state['config']:
+            state['config']['lstm_hidden_size'] = state['config'].pop('hidden_size')
+        if 'num_layers' in state['config']:
+            state['config']['lstm_num_layers'] = state['config'].pop('num_layers')
+            
+        # Filter out unexpectedly stored configuration keys (e.g. emg_window_size_sec)
+        sig = inspect.signature(cls.__init__)
+        valid_keys = set(sig.parameters.keys())
+        valid_keys.discard('self')
+        
+        filtered_config = {k: v for k, v in state['config'].items() if k in valid_keys}
+            
+        regressor = cls(**filtered_config)
         regressor.scaler = state['scaler']
-        regressor.n_channels = state['n_channels']
+        
+        # Infer n_channels for older models
+        if 'n_channels' in state:
+            n_channels = state['n_channels']
+        else:
+            n_channels = state['model_state']['cnn.net.0.weight'].shape[1]
+        
+        regressor.n_channels = n_channels
         regressor.model = CNNLSTMNetwork(
-            n_channels=state['n_channels'],
-            cnn_filters=state['config']['cnn_filters'],
-            cnn_kernel_sizes=state['config']['cnn_kernel_sizes'],
-            pool_size=state['config']['pool_size'],
-            lstm_hidden_size=state['config']['lstm_hidden_size'],
-            lstm_num_layers=state['config']['lstm_num_layers'],
-            dropout_rate=state['config']['dropout_rate'],
+            n_channels=n_channels,
+            cnn_filters=state['config'].get('cnn_filters', filtered_config.get('cnn_filters')),
+            cnn_kernel_sizes=state['config'].get('cnn_kernel_sizes', filtered_config.get('cnn_kernel_sizes')),
+            pool_size=state['config'].get('pool_size', filtered_config.get('pool_size')),
+            lstm_hidden_size=state['config'].get('lstm_hidden_size', filtered_config.get('lstm_hidden_size')),
+            lstm_num_layers=state['config'].get('lstm_num_layers', filtered_config.get('lstm_num_layers')),
+            dropout_rate=state['config'].get('dropout_rate', filtered_config.get('dropout_rate')),
         ).to(regressor.device)
         regressor.model.load_state_dict(state['model_state'])
         regressor.model.eval()

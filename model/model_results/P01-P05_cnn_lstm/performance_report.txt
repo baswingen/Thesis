@@ -1,0 +1,87 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260402_101525
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P01_session_01_segments.h5']
+Total samples: 8352
+Evaluation Mode: Train/Validation/Test Split (64/16/20)
+Testing samples: 1671
+Training samples: 5344
+Validation samples: 1337
+
+--- FEATURE CONFIGURATION ---
+Input: Raw EMG + IMU segments (end-to-end CNN feature extraction)
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (18): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- HYPERPARAMETERS ---
+Model: CNN_LSTM
+CNN Filters: [128, 256, 512]
+CNN Kernel Sizes: [7, 5, 3]
+Pool Size: 4
+LSTM Hidden Size: 512
+LSTM Num Layers: 4
+Dropout Rate: 0.4
+Learning Rate: 0.001
+Batch Size: 64
+Epochs: 1000
+Loss Function: MSE
+Input Channels: 26
+Random State: 245
+
+--- EVALUATION METRICS ---
+Mean Absolute Error: 0.0841
+Mean Squared Error: 0.0651
+Root Mean Squared Error: 0.2551
+R-squared Score: 0.9807
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 837      | 0.0140     | 0.0567    
+0.75 kg      | 119      | 0.1237     | 0.2289    
+1.00 kg      | 120      | 0.1280     | 0.3093    
+2.00 kg      | 118      | 0.1348     | 0.2805    
+2.25 kg      | 119      | 0.1495     | 0.2457    
+3.00 kg      | 120      | 0.1588     | 0.4184    
+4.25 kg      | 119      | 0.1457     | 0.2942    
+6.00 kg      | 119      | 0.2406     | 0.5836    
+
+--- PER-SEGMENT-DURATION METRICS (CNN-LSTM) ---
+(Prediction error vs. elapsed time into lift, binned from raw segment duration)
+Bin    | Time into lift (mid)   | Count    | MAE        | RMSE      
+--------------------------------------------------------------------
+1      | 0.651s                 | 108      | 0.1251     | 0.2965    
+2      | 0.990s                 | 556      | 0.1106     | 0.3030    
+3      | 1.329s                 | 584      | 0.0550     | 0.1797    
+4      | 1.667s                 | 225      | 0.0690     | 0.2347    
+5      | 2.006s                 | 76       | 0.0725     | 0.2485    
+6      | 2.345s                 | 45       | 0.1126     | 0.3377    
+7      | 2.684s                 | 19       | 0.1319     | 0.3826    
+8      | 3.023s                 | 18       | 0.0576     | 0.1472    
+9      | 3.362s                 | 14       | 0.1405     | 0.4436    
+10     | 3.701s                 | 8        | 0.1007     | 0.2670    
+11     | 4.039s                 | 3        | 0.0075     | 0.0076    
+12     | 4.378s                 | 4        | 0.0234     | 0.0411    
+13     | 4.717s                 | 2        | 0.0072     | 0.0072    
+14     | 5.056s                 | 1        | 0.0075     | 0.0075    
+15     | 5.395s                 | 1        | 0.0065     | 0.0065    
+16     | 5.734s                 | 1        | 0.0062     | 0.0062    
+17     | 6.073s                 | 2        | 0.0173     | 0.0205    
+18     | 6.411s                 | 1        | 0.7527     | 0.7527    
+20     | 7.089s                 | 1        | 0.0040     | 0.0040    
+21     | 7.428s                 | 1        | 0.0066     | 0.0066    
+60     | 20.643s                | 1        | 0.0073     | 0.0073    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)
+Total Parameters: 8,988,545
+Trainable Parameters: 8,988,545
+Estimated Inference GFLOPs (per sample): 0.017955
+Estimated Total Training GFLOPs: 287859.8185
+Training Time: 1798.7592s
+Inference Time (per sample): 0.8527ms
+

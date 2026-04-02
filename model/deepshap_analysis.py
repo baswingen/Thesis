@@ -202,27 +202,39 @@ def main():
     exp_tensor_cpu = exp_tensor.to(shap_device)
 
     # ── DeepExplainer ───────────────────────────────────────────────────────
-    print(f"\nRunning shap.DeepExplainer with {n_bg} background and {n_exp} test samples …")
-    explainer   = shap.DeepExplainer(shap_model, bg_tensor_cpu)
-    shap_values = explainer.shap_values(exp_tensor_cpu, check_additivity=False)  # (N, C, T)
-
-    # shap.DeepExplainer often returns a list for PyTorch models [ (N, C, T) ]
-    if isinstance(shap_values, list):
-        shap_values = shap_values[0]
-        
-    shap_values = np.array(shap_values)
+    from tqdm import tqdm
     
-    # If it is a 4D array (e.g. 1 output branch), squeeze the rogue dimension
-    if shap_values.ndim == 4:
-        if shap_values.shape[-1] == 1:  # e.g. (n_exp, n_channels, T, 1)
-            shap_values = shap_values[..., 0]
-        elif shap_values.shape[0] == 1: # e.g. (1, n_exp, n_channels, T)
-            shap_values = shap_values[0]
+    print(f"\nRunning shap.DeepExplainer with {n_bg} background and {n_exp} test samples …")
+    explainer = shap.DeepExplainer(shap_model, bg_tensor_cpu)
+    
+    # Process in chunks to provide a tqdm progress bar and reduce peak RAM
+    batch_size = 5
+    all_shap_values = []
+    
+    for i in tqdm(range(0, len(exp_tensor_cpu), batch_size), desc="Computing SHAP", unit="batch"):
+        batch_exp = exp_tensor_cpu[i : i + batch_size]
+        batch_shap = explainer.shap_values(batch_exp, check_additivity=False)
+        
+        if isinstance(batch_shap, list):
+            batch_shap = batch_shap[0]
+            
+        batch_shap = np.array(batch_shap)
+        
+        # Squeeze rogue dimensions if necessary
+        if batch_shap.ndim == 4:
+            if batch_shap.shape[-1] == 1:
+                batch_shap = batch_shap[..., 0]
+            elif batch_shap.shape[0] == 1:
+                batch_shap = batch_shap[0]
+                
+        all_shap_values.append(batch_shap)
+        
+    shap_values = np.concatenate(all_shap_values, axis=0) # (N, C, T)
         
     print(f"SHAP values shape: {shap_values.shape}")  # (n_exp, n_channels, T)
 
-    # ── Aggregate: mean |SHAP| across time and samples → (n_channels,) ─────
-    mean_abs_shap = np.abs(shap_values).mean(axis=(0, 2))  # over samples & time
+    # ── Aggregate: sum |SHAP| across time, then mean over test samples → (n_channels,) ─────
+    mean_abs_shap = np.abs(shap_values).sum(axis=2).mean(axis=0)  # Total channel importance per sample
 
     n_channels = mean_abs_shap.shape[0]
 
