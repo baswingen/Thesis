@@ -1,0 +1,65 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260402_155238
+Found 7 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+[DataLoader] Loaded 8352 raw segments (26 channels each)
+Extracted features dataframe shape: (8352, 9)
+Raw Segment Data Summary:
+  - Total Segments: 8352
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2779 samples
+  - Min / Max Segment Length: 695 / 135696 samples
+Label vector (y) shape: (8352,) (Target: weight)
+
+Starting 5-Fold Leave-One-Participant-Out Cross-Validation...
+--- Fold 1/5 (Left out Participant: P01) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 256. Best Val Loss: 0.0470
+--- Fold 2/5 (Left out Participant: P02) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 170. Best Val Loss: 0.0372
+--- Fold 3/5 (Left out Participant: P03) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 187. Best Val Loss: 0.0574
+--- Fold 4/5 (Left out Participant: P04) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 246. Best Val Loss: 0.0404
+--- Fold 5/5 (Left out Participant: P05) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 286. Best Val Loss: 0.0382
+
+=======================================================
+CROSS-VALIDATION RESULTS (5 Folds)
+MAE: 0.7027 (±0.4065)
+MSE: 1.3003 (±1.0003)
+RMSE: 1.0598 (±0.4209)
+R2: 0.6003 (±0.3071)
+train_time: 1212.9935 (±281.9036)
+inference_time_total: 1.4172 (±0.9273)
+inference_time_per_sample: 0.0010 (±0.0003)
+
+=======================================================
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 273. Best Val Loss: 0.0403
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_155238/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_155238/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_155238/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_155238/participant_performance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260402_155238/performance_report.txt
