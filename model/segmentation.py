@@ -865,6 +865,8 @@ def save_precomputed_features(
     feature_config : optional dict from ``FEATURE_CONFIG`` to store as metadata.
     """
     import json as _json
+    import tempfile as _tempfile
+    import shutil as _shutil
 
     h5_path = Path(h5_path)
     if not h5_path.exists():
@@ -872,65 +874,79 @@ def save_precomputed_features(
 
     config_json = _json.dumps(feature_config, default=str) if feature_config else ""
 
-    with h5py.File(h5_path, "a") as f:
-        for seg_key, feat_dict in segment_features.items():
-            if seg_key not in f:
-                print(f"[SEGMENTER] WARNING: '{seg_key}' not found in {h5_path.name} — skipping.")
-                continue
+    # Write to a local temporary file first to avoid iCloud block timeouts
+    fd, temp_path = _tempfile.mkstemp(suffix=".h5")
+    os.close(fd)
+    _shutil.copy2(h5_path, temp_path)
 
-            grp = f[seg_key]
+    try:
+        with h5py.File(temp_path, "a") as f:
+            for seg_key, feat_dict in segment_features.items():
+                if seg_key not in f:
+                    print(f"[SEGMENTER] WARNING: '{seg_key}' not found in {h5_path.name} — skipping.")
+                    continue
 
-            # Remove old features group if it exists so we can write fresh data
-            if "features" in grp:
-                del grp["features"]
+                grp = f[seg_key]
 
-            feat_grp = grp.create_group("features")
+                # Remove old features group if it exists so we can write fresh data
+                if "features" in grp:
+                    del grp["features"]
 
-            if config_json:
-                feat_grp.attrs["feature_config_json"] = config_json
+                feat_grp = grp.create_group("features")
 
-            # Separate scalar features from sequence features
-            scalar_names: list[str] = []
-            seq_names: list[str] = []
+                if config_json:
+                    feat_grp.attrs["feature_config_json"] = config_json
 
-            for name, val in feat_dict.items():
-                if isinstance(val, (list, np.ndarray)):
-                    # Sequence feature: list of dicts or array
-                    seq_names.append(name)
-                else:
-                    scalar_names.append(name)
+                # Separate scalar features from sequence features
+                scalar_names: list[str] = []
+                seq_names: list[str] = []
 
-            # --- scalar features stored as a compact 1-D float array ----------
-            if scalar_names:
-                scalar_vals = np.array(
-                    [feat_dict[n] for n in scalar_names], dtype=np.float64
-                )
-                feat_grp.create_dataset(
-                    "scalar_values",
-                    data=scalar_vals,
-                    compression="gzip",
-                    compression_opts=4,
-                )
-                feat_grp.attrs["scalar_names"] = [n.encode() for n in scalar_names]
+                for name, val in feat_dict.items():
+                    if isinstance(val, (list, np.ndarray)):
+                        # Sequence feature: list of dicts or array
+                        seq_names.append(name)
+                    else:
+                        scalar_names.append(name)
 
-            # --- sequence features (list of window-dicts) ---------------------
-            if "sequence_dicts" in feat_dict:
-                windows: list[dict] = feat_dict["sequence_dicts"]  # type: ignore[assignment]
-                if windows:
-                    all_keys = list(windows[0].keys())
-                    arr = np.array(
-                        [[w[k] for k in all_keys] for w in windows],
-                        dtype=np.float64,
-                    )  # shape: (n_windows, n_features)
+                # --- scalar features stored as a compact 1-D float array ----------
+                if scalar_names:
+                    scalar_vals = np.array(
+                        [feat_dict[n] for n in scalar_names], dtype=np.float64
+                    )
                     feat_grp.create_dataset(
-                        "sequence_values",
-                        data=arr,
+                        "scalar_values",
+                        data=scalar_vals,
                         compression="gzip",
                         compression_opts=4,
                     )
-                    feat_grp.attrs["sequence_feature_names"] = [
-                        k.encode() for k in all_keys
-                    ]
+                    feat_grp.attrs["scalar_names"] = [n.encode() for n in scalar_names]
+
+                # --- sequence features (list of window-dicts) ---------------------
+                if "sequence_dicts" in feat_dict:
+                    windows: list[dict] = feat_dict["sequence_dicts"]  # type: ignore[assignment]
+                    if windows:
+                        all_keys = list(windows[0].keys())
+                        arr = np.array(
+                            [[w[k] for k in all_keys] for w in windows],
+                            dtype=np.float64,
+                        )  # shape: (n_windows, n_features)
+                        feat_grp.create_dataset(
+                            "sequence_values",
+                            data=arr,
+                            compression="gzip",
+                            compression_opts=4,
+                        )
+                        feat_grp.attrs["sequence_feature_names"] = [
+                            k.encode() for k in all_keys
+                        ]
+
+        # Move completed file to the final destination (overwriting if exists)
+        _shutil.move(temp_path, h5_path)
+
+    except Exception:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise
 
     print(
         f"[SEGMENTER] Saved precomputed features for "

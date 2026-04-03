@@ -452,6 +452,8 @@ def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
     :func:`model.segmentation.save_precomputed_features`.
     """
     import h5py
+    import shutil
+    import tempfile
     from tqdm import tqdm
     from model.segmentation import save_precomputed_features
 
@@ -473,32 +475,37 @@ def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
     for h5_path in h5_paths:
         print(f"\n→ Processing: {h5_path.name}")
 
-        # Collect all segment keys and their raw signal data
-        with h5py.File(h5_path, "r") as f:
-            seg_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
+        # Collect all segment keys and their raw signal data using a local temp copy
+        # to avoid iCloud Drive 'Operation timed out' errors on evicted files.
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir) / h5_path.name
+            shutil.copy2(h5_path, tmp_path)
+            
+            with h5py.File(tmp_path, "r") as f:
+                seg_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
 
-            if not seg_keys:
-                print(f"  [WARN] No segment groups found — skipping.")
-                continue
+                if not seg_keys:
+                    print(f"  [WARN] No segment groups found — skipping.")
+                    continue
 
-            # Decode helper
-            def _decode(raw):
-                return [c.decode() if isinstance(c, (bytes, np.bytes_)) else str(c) for c in raw]
+                # Decode helper
+                def _decode(raw):
+                    return [c.decode() if isinstance(c, (bytes, np.bytes_)) else str(c) for c in raw]
 
-            segments_raw = {}
-            for key in seg_keys:
-                grp = f[key]
-                imu = grp["imu"][:] if "imu" in grp else np.empty((0, 0))
-                emg = grp["emg"][:] if "emg" in grp else np.empty((0, 0))
-                imu_cols = _decode(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
-                emg_cols = _decode(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
-                fs_emg = float(grp["emg"].attrs.get("fs", 4000.0)) if "emg" in grp else 4000.0
-                fs_imu = float(grp["imu"].attrs.get("fs", 500.0))  if "imu" in grp else 500.0
-                segments_raw[key] = {
-                    "imu": imu, "emg": emg,
-                    "imu_cols": imu_cols, "emg_cols": emg_cols,
-                    "fs_emg": fs_emg, "fs_imu": fs_imu,
-                }
+                segments_raw = {}
+                for key in seg_keys:
+                    grp = f[key]
+                    imu = grp["imu"][:] if "imu" in grp else np.empty((0, 0))
+                    emg = grp["emg"][:] if "emg" in grp else np.empty((0, 0))
+                    imu_cols = _decode(grp["imu"].attrs.get("column_names", [])) if "imu" in grp else []
+                    emg_cols = _decode(grp["emg"].attrs.get("column_names", [])) if "emg" in grp else []
+                    fs_emg = float(grp["emg"].attrs.get("fs", 4000.0)) if "emg" in grp else 4000.0
+                    fs_imu = float(grp["imu"].attrs.get("fs", 500.0))  if "imu" in grp else 500.0
+                    segments_raw[key] = {
+                        "imu": imu, "emg": emg,
+                        "imu_cols": imu_cols, "emg_cols": emg_cols,
+                        "fs_emg": fs_emg, "fs_imu": fs_imu,
+                    }
 
         # Filter EMG/IMU channels according to config
         emg_channels_config = CHANNEL_CONFIG.get('emg_channels', {})
