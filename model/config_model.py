@@ -184,16 +184,16 @@ FEATURE_CONFIG = {
 ###########################################################
 AUGMENTATION_CONFIG = {
     # Master toggle — set False to disable all augmentation
-    'enabled': False,
+    'enabled': True,
 
     # Probability that any single training sample is augmented (0.0 – 1.0).
     # Each selected sample produces one additional augmented copy alongside
     # the original, so the dataset can grow up to 2× when p=1.0.
-    'p': 0.5,
+    'p': 0.7,
 
     # Active augmentation methods.  Remove a method name to disable it.
     # Available: 'noise', 'stretch', 'feature_dropout', 'magnitude_scale', 'mixup'
-    'methods': ['noise', 'stretch', 'feature_dropout'],
+    'methods': ['noise', 'stretch', 'feature_dropout', 'magnitude_scale', 'mixup'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -202,8 +202,8 @@ AUGMENTATION_CONFIG = {
 
     # ── Temporal stretch ─────────────────────────────────────────────
     # Random scale factor applied to sequence length, then resampled back.
-    # (0.85, 1.15) = ±15% speed variation.
-    'stretch_factor_range': (0.85, 1.15),
+    # (0.80, 1.20) = ±20% speed variation.
+    'stretch_factor_range': (0.80, 1.20),
 
     # ── Feature dropout ──────────────────────────────────────────────
     # Probability that a single feature value at a single time step is zeroed.
@@ -211,12 +211,13 @@ AUGMENTATION_CONFIG = {
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
-    'magnitude_scale_range': (0.85, 1.15),
+    # ±20% range targets inter-participant amplitude differences (EMG/IMU).
+    'magnitude_scale_range': (0.80, 1.20),
 
     # ── MixUp ────────────────────────────────────────────────────────
     # Alpha parameter of the Beta(α, α) distribution for λ.
-    # Lower α → λ closer to 0 or 1 (less blending).
-    'mixup_alpha': 0.2,
+    # 0.1 is very conservative — λ stays close to 0 or 1 (minimal blending).
+    'mixup_alpha': 0.1,
 }
 
 # Cross-Validation Configuration
