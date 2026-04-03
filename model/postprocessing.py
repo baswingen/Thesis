@@ -26,11 +26,11 @@ if str(project_root) not in sys.path:
 from src.emg_processing import BandpassFilter, NotchFilter, EMGEnvelopeExtractor
 from model.config_model import EMG_CHANNEL_CONFIG
 
-def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwrite: bool = True, channel_peaks: dict = None):
+def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwrite: bool = True, channel_stats: dict = None):
     """
     Reads the synced matrix from an HDF5 file, processes the EMG channels,
     and saves the processed data back to the file.
-    If channel_peaks is provided, it uses those for normalization.
+    If channel_stats is provided (containing median and iqr), it uses those for robust scaling.
     """
     file_path = Path(file_path)
     if not file_path.exists():
@@ -172,14 +172,23 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
             channel_data = envelope_extractor.extract(channel_data)
             envelope_extractor.reset()
             
-            # Normalization (Peak normalization)
-            if channel_peaks and emg_col_names[i] in channel_peaks:
-                peak = channel_peaks[emg_col_names[i]]
+            # Normalization (Robust Scaling)
+            if channel_stats and emg_col_names[i] in channel_stats:
+                stat = channel_stats[emg_col_names[i]]
+                median = stat['median']
+                iqr = stat['iqr']
             else:
-                peak = np.nanmax(channel_data)
+                # Per-trial fallback
+                median = np.nanmedian(channel_data)
+                q1 = np.nanpercentile(channel_data, 25)
+                q3 = np.nanpercentile(channel_data, 75)
+                iqr = q3 - q1
                 
-            if peak > 0 and not np.isnan(peak):
-                channel_data = channel_data / peak
+            if iqr > 1e-9:
+                channel_data = (channel_data - median) / iqr
+            else:
+                # Fallback to centering only if signal is flat
+                channel_data = channel_data - median
                 
             processed_emg[:, i] = channel_data
             
@@ -218,7 +227,7 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
         out_dset.attrs['description'] = "Postprocessed EMG: BP(10-500Hz) -> Notch(50Hz) -> Smoothed Envelope(10Hz) -> Normalized"
         out_dset.attrs['fs'] = fs
         out_dset.attrs['fs_orig'] = fs_orig
-        out_dset.attrs['normalization'] = "session-level" if channel_peaks else "per-trial"
+        out_dset.attrs['normalization'] = "robust_scaling_session_level" if channel_stats else "robust_scaling_per_trial"
         
         print(f"Processed data saved to {out_dataset_name} successfully.")
         
@@ -387,17 +396,18 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
         print(f"Processed IMU data saved to {out_dataset_name} successfully.")
         
 
-def get_session_peaks(session_dir: Path, fs: float = 4000.0) -> dict:
+def get_session_stats(session_dir: Path, fs: float = 4000.0) -> dict:
     """
-    Scans a session directory to find the maximum peak of each EMG envelope
-    across all trials.
+    Scans a session directory and returns the session-wide Median and IQR
+    for each muscle channel. Used for cross-trial Robust Scaling.
     """
     h5_files = list(session_dir.glob("*.h5"))
     if not h5_files: return {}
     
-    session_peaks = {}
-    print(f"Scanning session {session_dir.name} for global peaks...")
+    # Store processed envelope data temporarily to compute statistics
+    session_data = {muscle: [] for muscle in EMG_CHANNEL_CONFIG.keys()}
     
+    print(f"Calculating session-wide statistics for {session_dir.name}...")
     for path in h5_files:
         with h5py.File(path, 'r') as f:
             if 'synced/data' not in f: continue
@@ -407,6 +417,7 @@ def get_session_peaks(session_dir: Path, fs: float = 4000.0) -> dict:
             if not emg_indices: continue
             
             data = dset[:]
+            
             # Effective FS for filtering
             fs_eff = fs
             if "t_pc_common" in cols:
@@ -420,54 +431,50 @@ def get_session_peaks(session_dir: Path, fs: float = 4000.0) -> dict:
             raw_emg = data[:, emg_indices]
             emg_col_names = [cols[i] for i in emg_indices]
             
-            derived_emg_data = []
-            derived_emg_names = []
-            
             for muscle_name, channels in EMG_CHANNEL_CONFIG.items():
+                signal = None
                 if isinstance(channels, tuple):
                     ch1, ch2 = channels
                     if ch1 in emg_col_names and ch2 in emg_col_names:
-                        idx1 = emg_col_names.index(ch1)
-                        idx2 = emg_col_names.index(ch2)
-                        diff_signal = raw_emg[:, idx1] - raw_emg[:, idx2]
-                        derived_emg_data.append(diff_signal)
-                        derived_emg_names.append(muscle_name)
+                        idx1, idx2 = emg_col_names.index(ch1), emg_col_names.index(ch2)
+                        signal = raw_emg[:, idx1] - raw_emg[:, idx2]
                 else:
-                    ch = channels
-                    if ch in emg_col_names:
-                        idx = emg_col_names.index(ch)
-                        derived_emg_data.append(raw_emg[:, idx])
-                        derived_emg_names.append(muscle_name)
-                        
-            if not derived_emg_data: continue
-            raw_emg_derived = np.column_stack(derived_emg_data)
-            
-            for i, name in enumerate(derived_emg_names):
-                channel_data = np.nan_to_num(raw_emg_derived[:, i], nan=0.0)
-                if np.all(channel_data == 0): continue
+                    if channels in emg_col_names:
+                        signal = raw_emg[:, emg_col_names.index(channels)]
                 
-                # Apply envelope extraction
-                processed = env.extract(nt.filter(bp.filter(channel_data)))
-                bp.reset(); nt.reset(); env.reset()
-                
-                peak = np.nanmax(processed)
-                session_peaks[name] = max(session_peaks.get(name, 0), peak)
-                
-                
-    return session_peaks
+                if signal is not None:
+                    channel_data = np.nan_to_num(signal, nan=0.0)
+                    if not np.all(channel_data == 0):
+                        processed = env.extract(nt.filter(bp.filter(channel_data)))
+                        bp.reset(); nt.reset(); env.reset()
+                        session_data[muscle_name].append(processed)
+    
+    session_stats = {}
+    for name, data_list in session_data.items():
+        if not data_list: continue
+        all_data = np.concatenate(data_list)
+        median = np.nanmedian(all_data)
+        q1 = np.nanpercentile(all_data, 25)
+        q3 = np.nanpercentile(all_data, 75)
+        iqr = q3 - q1
+        session_stats[name] = {'median': float(median), 'iqr': float(iqr)}
+        
+    return session_stats
 
 def process_session_data(session_dir: str | Path, fs: float = 4000.0, overwrite: bool = True):
     """
-    Processes all trials in a session using session-level peak normalization.
+    Processes all trials in a session using session-level Robust Scaling (Median/IQR).
     """
     session_dir = Path(session_dir)
-    peaks = get_session_peaks(session_dir, fs=fs)
-    print(f"Session {session_dir.name} peaks: { {k: f'{v:.2e}' for k, v in peaks.items()} }")
+    stats = get_session_stats(session_dir, fs=fs)
+    print(f"Session {session_dir.name} stats (median/iqr):")
+    for k, v in stats.items():
+        print(f"  {k}: {v['median']:.2e} / {v['iqr']:.2e}")
     
     h5_files = list(session_dir.glob("*.h5"))
     for path in h5_files:
         try:
-            process_emg_data(path, fs_fallback=fs, overwrite=overwrite, channel_peaks=peaks)
+            process_emg_data(path, fs_fallback=fs, overwrite=overwrite, channel_stats=stats)
             process_imu_data(path, fs_fallback=500.0, overwrite=overwrite)
         except Exception as e:
             print(f"Failed session process for {path.name}: {e}")
@@ -494,7 +501,7 @@ def process_all_in_database(database_dir: str | Path, fs: float = 4000.0, overwr
         process_session_data(sdir, fs=fs, overwrite=overwrite)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process EMG/IMU channels with robust FS and session-level normalization.")
+    parser = argparse.ArgumentParser(description="Process EMG/IMU channels with Robust Scaling (Median/IQR).")
     parser.add_argument("path", nargs="?", default="database", help="Path to trial file, session dir, or database.")
     parser.add_argument("--fs", type=float, default=4000.0, help="Sampling frequency fallback (default: 4000.0)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing datasets")

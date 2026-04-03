@@ -80,6 +80,7 @@ from typing import Any
 
 import h5py
 import numpy as np
+from tqdm import tqdm
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -285,9 +286,12 @@ class SegmentedDataset:
 
         print(f"[SEGMENTER] Found {len(session_dirs)} session directory(ies).")
         results: dict[str, list[dict]] = {}
-        for sdir in session_dirs:
+        for sdir in tqdm(session_dirs, desc="Segmenting database", unit="session"):
             # Key: e.g. "participant_P01/session_01"
-            key = f"{sdir.parent.name}/{sdir.name}"
+            participant = sdir.parent.name
+            session = sdir.name
+            key = f"{participant}/{session}"
+            tqdm.write(f"[SEGMENTER] Processing {participant} | {session}")
             results[key] = self.segment_session(sdir)
 
         total = sum(len(v) for v in results.values())
@@ -814,15 +818,18 @@ def _run_cli(args):
                     print(f"[SEGMENTER] Skipping existing flat database/participant: {name}")
         else:
             # Process sessions one by one
-            for sdir in session_dirs:
+            for sdir in tqdm(session_dirs, desc="Segmenting participants", unit="session"):
                 # Key: e.g. "participant_P01/session_01"
-                session_key = f"{sdir.parent.name}/{sdir.name}"
+                participant = sdir.parent.name
+                session = sdir.name
+                session_key = f"{participant}/{session}"
                 safe_name = session_key.replace("/", "_").replace("\\", "_")
                 
                 if _check_exists(safe_name):
-                    print(f"[SEGMENTER] Skipping existing session: {session_key}")
+                    tqdm.write(f"[SEGMENTER] Skipping existing: {session_key}")
                     continue
                 
+                tqdm.write(f"\n[SEGMENTER] Processing {participant} | {session}")
                 segs = ds.segment_session(sdir)
                 _save(segs, safe_name)
                 all_segments.extend(segs)

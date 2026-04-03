@@ -48,6 +48,12 @@ IS_SEQUENCE: bool = True
 # ─────────────────────────────────────────────────────────────────────────────
 
 import warnings
+import h5py
+import shutil
+import tempfile
+import time
+from tqdm import tqdm
+from model.segmentation import save_precomputed_features
 import numpy as np
 from scipy import signal, stats
 import pandas as pd
@@ -448,14 +454,34 @@ class FeatureExtractor:
 def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
     """
     Extract features from every ``*.h5`` segment file in *segments_dir* and
-    write the results back into each file using
-    :func:`model.segmentation.save_precomputed_features`.
+    write the results back into each file.
     """
-    import h5py
-    import shutil
-    import tempfile
-    from tqdm import tqdm
-    from model.segmentation import save_precomputed_features
+
+    def robust_copy(src, dst, retries=3, delay=2):
+        """Forces iCloud download by reading first byte and retries on TimeoutError."""
+        for attempt in range(retries):
+            try:
+                # 1. Force iCloud download by opening the file and reading one byte
+                with open(src, 'rb') as f:
+                    f.read(1)
+                
+                # 2. Use a buffered stream copy instead of shutil.copy2 (which uses 
+                # a high-level OS call that can time out on metadata access)
+                with open(src, 'rb') as fsrc:
+                    with open(dst, 'wb') as fdst:
+                        shutil.copyfileobj(fsrc, fdst, length=1024*1024) # 1MB buffer
+                
+                # Preserve permissions like copy2 would
+                shutil.copystat(src, dst)
+                return True
+            except (TimeoutError, OSError) as e:
+                # Errno 60 is Operation timed out
+                if getattr(e, 'errno', None) == 60 and attempt < retries - 1:
+                    print(f"  [iCloud] Sync latency detected for {Path(src).name}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                    continue
+                raise e
+        return False
 
     h5_paths = sorted(segments_dir.glob("*.h5"))
     if not h5_paths:
@@ -479,7 +505,7 @@ def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
         # to avoid iCloud Drive 'Operation timed out' errors on evicted files.
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir) / h5_path.name
-            shutil.copy2(h5_path, tmp_path)
+            robust_copy(h5_path, tmp_path)
             
             with h5py.File(tmp_path, "r") as f:
                 seg_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
