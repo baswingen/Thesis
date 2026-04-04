@@ -1,0 +1,73 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260404_105910
+Found 9 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+Extracted features dataframe shape: (10341, 11)
+Sequence Data Summary:
+  - Total Lifts (Sequences): 10341
+  - Average Windows per Lift: 7.9
+  - Features per Window: 376
+Label vector (y) shape: (10341,) (Target: weight)
+
+Starting 7-Fold Leave-One-Participant-Out Cross-Validation...
+--- Fold 1/7 (Left out Participant: P01) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 230. Best Val Loss: 0.1029
+--- Fold 2/7 (Left out Participant: P02) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 238. Best Val Loss: 0.0580
+--- Fold 3/7 (Left out Participant: P03) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 245. Best Val Loss: 0.0761
+--- Fold 4/7 (Left out Participant: P04) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 318. Best Val Loss: 0.0695
+--- Fold 5/7 (Left out Participant: P05) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 233. Best Val Loss: 0.0513
+--- Fold 6/7 (Left out Participant: P06) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 222. Best Val Loss: 0.0736
+--- Fold 7/7 (Left out Participant: P07) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 216. Best Val Loss: 0.0961
+
+=======================================================
+CROSS-VALIDATION RESULTS (7 Folds)
+MAE: 0.7534 (±0.5697)
+MSE: 2.0068 (±2.2116)
+RMSE: 1.1875 (±0.7724)
+R2: 0.3825 (±0.6821)
+train_time: 265.2888 (±37.8055)
+inference_time_total: 0.5002 (±0.3526)
+inference_time_per_sample: 0.0004 (±0.0001)
+
+=======================================================
+
+Training final model on full dataset for saving...
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 251. Best Val Loss: 0.0720
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_105910/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_105910/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_105910/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_105910/participant_performance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_105910/performance_report.txt
