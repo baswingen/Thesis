@@ -217,7 +217,7 @@ AUGMENTATION_CONFIG = {
     # ── MixUp ────────────────────────────────────────────────────────
     # Alpha parameter of the Beta(α, α) distribution for λ.
     # 0.1 is very conservative — λ stays close to 0 or 1 (minimal blending).
-    'mixup_alpha': 0,
+    'mixup_alpha': 0.2,
 }
 
 # Cross-Validation Configuration

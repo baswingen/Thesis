@@ -118,7 +118,11 @@ class SequenceAugmenter:
         to seq_b if lengths differ to make them compatible.
         """
         alpha = self.config.get('mixup_alpha', 0.2)
-        lam = np.random.beta(alpha, alpha)
+        if alpha <= 0:
+            # If alpha is invalid, fallback to no blending (lam=1.0)
+            lam = 1.0
+        else:
+            lam = np.random.beta(alpha, alpha)
 
         # Align lengths if needed
         if seq_a.shape[0] != seq_b.shape[0]:
@@ -205,8 +209,8 @@ class SequenceAugmenter:
             aug_sequences.append(aug_seq)
             aug_labels.append(labels_flat[i])
 
-        # ── MixUp pass (if enabled) ──────────────────────────────────
-        if 'mixup' in methods:
+        # ── MixUp pass (if enabled and alpha > 0) ────────────────────
+        if 'mixup' in methods and self.config.get('mixup_alpha', 0.2) > 0:
             n_orig = len(sequences)
             for i in range(n_orig):
                 if rng.random() > p:
