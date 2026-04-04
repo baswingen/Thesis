@@ -1,0 +1,36 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260404_082759
+Found 9 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+Extracted features dataframe shape: (10341, 11)
+Sequence Data Summary:
+  - Total Lifts (Sequences): 10341
+  - Average Windows per Lift: 7.9
+  - Features per Window: 376
+Label vector (y) shape: (10341,) (Target: weight)
+
+Training on 8272 samples, testing on 2069 samples.
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 600, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.8, 'random_state': 245}
+[LSTMRegressor] Using device: cuda
+
+Early stopping triggered at epoch 280. Best Val Loss: 0.0844
+
+Evaluating LSTM Model on unseen test set...
+=======================================================
+Regression Metrics:
+Mean Absolute Error: 0.0861
+Mean Squared Error: 0.0905
+Root Mean Squared Error: 0.3009
+R-squared Score: 0.9722
+
+Training Time: 362.99s
+Inference Time (per sample): 0.3977ms
+=======================================================
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_082759/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_082759/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_082759/loss_plot.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_082759/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_082759/performance_report.txt
