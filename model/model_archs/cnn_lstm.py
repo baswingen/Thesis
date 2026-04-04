@@ -515,6 +515,8 @@ class CNNLSTMRegressor:
         np.ndarray of shape (N, cnn_filters[-1])
             One feature vector per segment, suitable for t-SNE / PCA.
         """
+        from tqdm import tqdm
+
         if self.model is None:
             raise ValueError("Model not fitted.")
 
@@ -530,7 +532,7 @@ class CNNLSTMRegressor:
         self.model.eval()
         all_features = []
         with torch.no_grad():
-            for batch_x, _, lengths in loader:
+            for batch_x, _, lengths in tqdm(loader, desc="Extracting CNN features", unit="batch"):
                 # batch_x: (B, T, C) → (B, C, T) for Conv1d
                 batch_x = batch_x.transpose(1, 2).to(self.device)
 
