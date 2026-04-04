@@ -37,3 +37,61 @@ Early stopping at epoch 382. Best Val Loss: 0.0538
 --- Fold 5/7 (Left out Participant: P05) ---
 Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
 [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 365. Best Val Loss: 0.0611
+--- Fold 6/7 (Left out Participant: P06) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 322. Best Val Loss: 0.0756
+--- Fold 7/7 (Left out Participant: P07) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 211. Best Val Loss: 0.0792
+
+=======================================================
+CROSS-VALIDATION RESULTS (7 Folds)
+MAE: 0.5442 (±0.3780)
+MSE: 1.1687 (±1.4975)
+RMSE: 0.9263 (±0.5575)
+R2: 0.6409 (±0.4595)
+train_time: 2003.0799 (±447.7464)
+inference_time_total: 1.3051 (±1.0520)
+inference_time_per_sample: 0.0009 (±0.0003)
+
+=======================================================
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 294. Best Val Loss: 0.0623
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 10341 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 10341 samples in 0.002s...
+[t-SNE] Computed neighbors for 10341 samples in 1.612s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 10341
+[t-SNE] Computed conditional probabilities for sample 2000 / 10341
+[t-SNE] Computed conditional probabilities for sample 3000 / 10341
+[t-SNE] Computed conditional probabilities for sample 4000 / 10341
+[t-SNE] Computed conditional probabilities for sample 5000 / 10341
+[t-SNE] Computed conditional probabilities for sample 6000 / 10341
+[t-SNE] Computed conditional probabilities for sample 7000 / 10341
+[t-SNE] Computed conditional probabilities for sample 8000 / 10341
+[t-SNE] Computed conditional probabilities for sample 9000 / 10341
+[t-SNE] Computed conditional probabilities for sample 10000 / 10341
+[t-SNE] Computed conditional probabilities for sample 10341 / 10341
+[t-SNE] Mean sigma: 0.313271
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 83.684273
+[t-SNE] KL divergence after 1000 iterations: 1.673541
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/tsne_cnn_features.png
+t-SNE plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/participant_performance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_121932/performance_report.txt

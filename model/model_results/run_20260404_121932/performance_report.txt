@@ -1,0 +1,78 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260404_121932
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P01_session_01_segments.h5']
+Total samples: 10341
+Evaluation Mode: Leave-One-Participant-Out Cross-Validation (7 Participants)
+Final Model Training samples: 8272
+Final Model Validation samples: 2069
+
+--- FEATURE CONFIGURATION ---
+Input: Raw EMG + IMU segments (end-to-end CNN feature extraction)
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (18): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- DATA AUGMENTATION ---
+Enabled: False
+
+--- HYPERPARAMETERS ---
+Model: CNN_LSTM
+CNN Filters: [128, 256, 512]
+CNN Kernel Sizes: [7, 5, 3]
+Pool Size: 4
+LSTM Hidden Size: 512
+LSTM Num Layers: 4
+Dropout Rate: 0.4
+Learning Rate: 0.001
+Batch Size: 64
+Epochs: 1000
+Loss Function: MSE
+Input Channels: 26
+Random State: 245
+
+--- EVALUATION METRICS ---
+(Averaged over 7 folds)
+MAE: 0.5442 (±0.3780)
+MSE: 1.1687 (±1.4975)
+RMSE: 0.9263 (±0.5575)
+R2: 0.6409 (±0.4595)
+train_time: 2003.0799 (±447.7464)
+inference_time_total: 1.3051 (±1.0520)
+inference_time_per_sample: 0.0009 (±0.0003)
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 5179     | 0.1477     | 0.4578    
+0.90 kg      | 735      | 0.4400     | 0.7263    
+0.98 kg      | 739      | 0.4841     | 0.7671    
+1.97 kg      | 736      | 0.5314     | 0.7550    
+2.24 kg      | 737      | 0.5507     | 0.8236    
+2.94 kg      | 742      | 0.6801     | 0.9913    
+4.14 kg      | 734      | 0.7785     | 1.2615    
+5.92 kg      | 739      | 1.1266     | 1.7792    
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 4429     | 0.2702     | 0.5799    
+P02          | 1428     | 0.1989     | 0.4934    
+P03          | 998      | 0.3428     | 0.6265    
+P04          | 998      | 0.2349     | 0.5215    
+P05          | 499      | 1.3179     | 2.1715    
+P06          | 992      | 0.6613     | 0.9121    
+P07          | 997      | 0.7835     | 1.1788    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)
+Total Parameters: 8,988,545
+Trainable Parameters: 8,988,545
+Estimated Inference GFLOPs (per sample): 0.017955
+Estimated Total Training GFLOPs: 445579.4196
+Avg Training Time: 2003.0799s
+Avg Inference Time (per sample): 0.9414ms
+
