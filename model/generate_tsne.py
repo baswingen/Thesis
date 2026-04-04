@@ -37,7 +37,7 @@ from model.config_model import DATABASE_CONFIG
 ###########################################################
 
 # Path to a saved CNN-LSTM model (.joblib produced by run_model.py)
-SAVED_MODEL_PATH = "model/model_results/run_20260404_022324/cnn_lstm_model.joblib"
+SAVED_MODEL_PATH = "model/model_results/run_20260403_220609/cnn_lstm_model.joblib"
 
 # t-SNE perplexity (30 is a good default; try 15-50 depending on dataset size)
 PERPLEXITY: int = 50

@@ -497,7 +497,15 @@ class CNNLSTMRegressor:
             lstm_num_layers=state['config'].get('lstm_num_layers', filtered_config.get('lstm_num_layers')),
             dropout_rate=state['config'].get('dropout_rate', filtered_config.get('dropout_rate')),
         ).to(regressor.device)
-        regressor.model.load_state_dict(state['model_state'])
+        # Load weights with strict=False to handle the transition from BatchNorm to InstanceNorm
+        # (InstanceNorm doesn't use running statistics which are present in BN checkpoints)
+        missing_keys, unexpected_keys = regressor.model.load_state_dict(state['model_state'], strict=False)
+        if unexpected_keys:
+            print(f"[CNNLSTMRegressor] Note: ignored {len(unexpected_keys)} unexpected keys during load "
+                  f"(likely BatchNorm statistics being skipped for InstanceNorm layers).")
+        if missing_keys:
+            print(f"[CNNLSTMRegressor] WARNING: Missing keys during load: {missing_keys}")
+        
         regressor.model.eval()
 
         if 'split_info' in state:
