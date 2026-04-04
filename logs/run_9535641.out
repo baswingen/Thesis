@@ -54,3 +54,30 @@ Early stopping at epoch 359. Best Val Loss: 0.0657
 Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
 [CNNLSTMRegressor] Using device: cuda
 [CNNLSTMRegressor] Augmentation: 7475 → 17980 segments (+10505 synthetic)
+
+Early stopping at epoch 168. Best Val Loss: 0.0559
+
+=======================================================
+CROSS-VALIDATION RESULTS (7 Folds)
+MAE: 0.6716 (±0.4689)
+MSE: 1.2476 (±1.1637)
+RMSE: 0.9857 (±0.5253)
+R2: 0.6169 (±0.3568)
+train_time: 3516.9794 (±1484.1614)
+inference_time_total: 1.3507 (±0.8590)
+inference_time_per_sample: 0.0011 (±0.0003)
+
+=======================================================
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 8272 → 19812 segments (+11540 synthetic)
+
+Early stopping at epoch 258. Best Val Loss: 0.0595
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_053612/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_053612/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_053612/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_053612/participant_performance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_053612/performance_report.txt
