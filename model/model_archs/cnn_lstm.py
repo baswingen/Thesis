@@ -259,7 +259,12 @@ class CNNLSTMRegressor:
 
         # 3b. Data augmentation (training only)
         augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
-        scaled_train, y_np_train = augmenter.augment_dataset(scaled_train, y_np_train)
+        participant_ids_train = (
+            X_train['subject'].values if 'subject' in X_train.columns else None
+        )
+        scaled_train, y_np_train = augmenter.augment_dataset(
+            scaled_train, y_np_train, participant_ids=participant_ids_train
+        )
         if AUGMENTATION_CONFIG.get('enabled', False):
             n_aug = len(scaled_train) - len(segs_train)
             print(f"[CNNLSTMRegressor] Augmentation: {len(segs_train)} → "

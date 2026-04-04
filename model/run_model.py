@@ -606,8 +606,8 @@ def main():
                 f.write(f"  - Noise Std: {AUGMENTATION_CONFIG.get('noise_std')}\n")
             if 'stretch' in AUGMENTATION_CONFIG['methods']:
                 f.write(f"  - Stretch Range: {AUGMENTATION_CONFIG.get('stretch_factor_range')}\n")
-            if 'feature_dropout' in AUGMENTATION_CONFIG['methods']:
-                f.write(f"  - Feature Dropout P: {AUGMENTATION_CONFIG.get('feature_dropout_p')}\n")
+            if 'channel_dropout' in AUGMENTATION_CONFIG['methods']:
+                f.write(f"  - Channel Dropout P: {AUGMENTATION_CONFIG.get('channel_dropout_p')}\n")
             if 'magnitude_scale' in AUGMENTATION_CONFIG['methods']:
                 f.write(f"  - Magnitude Scale Range: {AUGMENTATION_CONFIG.get('magnitude_scale_range')}\n")
             if 'mixup' in AUGMENTATION_CONFIG['methods']:

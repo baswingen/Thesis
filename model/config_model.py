@@ -192,8 +192,8 @@ AUGMENTATION_CONFIG = {
     'p': 0.7,
 
     # Active augmentation methods.  Remove a method name to disable it.
-    # Available: 'noise', 'stretch', 'feature_dropout', 'magnitude_scale', 'mixup'
-    'methods': ['noise', 'stretch', 'feature_dropout', 'magnitude_scale', 'mixup'],
+    # Available: 'noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'
+    'methods': ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -205,9 +205,9 @@ AUGMENTATION_CONFIG = {
     # (0.80, 1.20) = ±20% speed variation.
     'stretch_factor_range': (0.80, 1.20),
 
-    # ── Feature dropout ──────────────────────────────────────────────
-    # Probability that a single feature value at a single time step is zeroed.
-    'feature_dropout_p': 0.10,
+    # ── Channel dropout ───────────────────────────────────────────────
+    # Probability that an entire channel (feature) is zeroed for the full window.
+    'channel_dropout_p': 0.10,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.

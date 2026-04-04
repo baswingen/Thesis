@@ -77,15 +77,16 @@ class SequenceAugmenter:
 
         return resampled
 
-    def feature_dropout(self, seq: np.ndarray) -> np.ndarray:
+    def channel_dropout(self, seq: np.ndarray) -> np.ndarray:
         """
-        Randomly zero out individual feature values across the sequence,
-        simulating missing or noisy sensor channels for a given window.
-        Each feature value is zeroed independently with probability p.
+        Randomly zero out entire channels (features) across the full sequence,
+        simulating a missing or faulty sensor for the entire window.
+        Each channel is zeroed independently with probability p.
         """
-        p = self.config.get('feature_dropout_p', 0.10)
-        mask = (np.random.rand(*seq.shape) > p).astype(np.float32)
-        return seq * mask
+        p = self.config.get('channel_dropout_p', 0.10)
+        # One mask value per feature, broadcast across all time steps
+        mask = (np.random.rand(seq.shape[1]) > p).astype(np.float32)
+        return seq * mask[np.newaxis, :]  # (1, n_features) broadcasts over time
 
     def magnitude_scale(self, seq: np.ndarray) -> np.ndarray:
         """
@@ -147,6 +148,7 @@ class SequenceAugmenter:
         self,
         sequences: List[np.ndarray],
         labels: np.ndarray,
+        participant_ids: np.ndarray = None,
     ) -> Tuple[List[np.ndarray], np.ndarray]:
         """
         Apply augmentations to the training dataset.
@@ -155,8 +157,12 @@ class SequenceAugmenter:
         probability `p` and *appended* to the dataset (original is kept).
         This means the dataset can grow up to 2× its original size.
 
-        MixUp is handled separately: it picks a random partner for each
-        selected sample and creates a blended copy.
+        MixUp is handled separately.  When `participant_ids` is supplied,
+        cross-participant MixUp is used: the partner is drawn from a
+        *different* participant that carries the **exact same weight label**.
+        Samples with no eligible cross-participant partner are skipped.
+        When `participant_ids` is None, a random partner is chosen (original
+        behaviour).
 
         Parameters
         ----------
@@ -164,6 +170,10 @@ class SequenceAugmenter:
             Scaled training sequences.
         labels : np.ndarray, shape (N,) or (N, 1)
             Corresponding target values.
+        participant_ids : np.ndarray, shape (N,), optional
+            Participant identifier for each sample (e.g. 'P01').  When
+            provided, MixUp partners are restricted to a different participant
+            with the same weight label.
 
         Returns
         -------
@@ -174,7 +184,7 @@ class SequenceAugmenter:
             return sequences, labels
 
         p = self.config.get('p', 0.5)
-        methods = self.config.get('methods', ['noise', 'stretch', 'feature_dropout'])
+        methods = self.config.get('methods', ['noise', 'stretch', 'channel_dropout'])
         rng = np.random.default_rng()  # fresh RNG each call
 
         labels_flat = labels.flatten()
@@ -201,8 +211,8 @@ class SequenceAugmenter:
                     aug_seq = self.gaussian_noise(aug_seq)
                 elif method == 'stretch':
                     aug_seq = self.temporal_stretch(aug_seq)
-                elif method == 'feature_dropout':
-                    aug_seq = self.feature_dropout(aug_seq)
+                elif method == 'channel_dropout':
+                    aug_seq = self.channel_dropout(aug_seq)
                 elif method == 'magnitude_scale':
                     aug_seq = self.magnitude_scale(aug_seq)
 
@@ -212,16 +222,49 @@ class SequenceAugmenter:
         # ── MixUp pass (if enabled and alpha > 0) ────────────────────
         if 'mixup' in methods and self.config.get('mixup_alpha', 0.2) > 0:
             n_orig = len(sequences)
-            for i in range(n_orig):
-                if rng.random() > p:
-                    continue
-                j = rng.integers(0, n_orig)
-                mixed_seq, mixed_label = self.mixup_pair(
-                    sequences[i], labels_flat[i],
-                    sequences[j], labels_flat[j],
-                )
-                aug_sequences.append(mixed_seq)
-                aug_labels.append(mixed_label)
+
+            if participant_ids is not None:
+                # ── Cross-participant MixUp ──────────────────────────
+                # Build lookup: (participant_id, weight) → list of indices
+                from collections import defaultdict
+                cp_lookup: dict = defaultdict(list)
+                for idx in range(n_orig):
+                    key = (participant_ids[idx], labels_flat[idx])
+                    cp_lookup[key].append(idx)
+
+                for i in range(n_orig):
+                    if rng.random() > p:
+                        continue
+                    pid_i = participant_ids[i]
+                    w_i = labels_flat[i]
+                    # Candidates: same weight, different participant
+                    candidates = [
+                        j
+                        for (pid_j, w_j), idxs in cp_lookup.items()
+                        if w_j == w_i and pid_j != pid_i
+                        for j in idxs
+                    ]
+                    if not candidates:
+                        continue  # no cross-participant partner available
+                    j = int(rng.choice(candidates))
+                    mixed_seq, mixed_label = self.mixup_pair(
+                        sequences[i], labels_flat[i],
+                        sequences[j], labels_flat[j],
+                    )
+                    aug_sequences.append(mixed_seq)
+                    aug_labels.append(mixed_label)
+            else:
+                # ── Original random-partner MixUp ────────────────────
+                for i in range(n_orig):
+                    if rng.random() > p:
+                        continue
+                    j = rng.integers(0, n_orig)
+                    mixed_seq, mixed_label = self.mixup_pair(
+                        sequences[i], labels_flat[i],
+                        sequences[j], labels_flat[j],
+                    )
+                    aug_sequences.append(mixed_seq)
+                    aug_labels.append(mixed_label)
 
         aug_labels_arr = np.array(aug_labels, dtype=np.float32)
         return aug_sequences, aug_labels_arr
