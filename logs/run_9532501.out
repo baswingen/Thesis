@@ -1,0 +1,56 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260404_022324
+Found 9 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+[DataLoader] Loaded 10341 raw segments (26 channels each)
+Extracted features dataframe shape: (10341, 9)
+Raw Segment Data Summary:
+  - Total Segments: 10341
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2619 samples
+  - Min / Max Segment Length: 470 / 135696 samples
+Label vector (y) shape: (10341,) (Target: weight)
+
+Starting 7-Fold Leave-One-Participant-Out Cross-Validation...
+--- Fold 1/7 (Left out Participant: P01) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 4729 → 11280 segments (+6551 synthetic)
+
+Early stopping at epoch 277. Best Val Loss: 0.0630
+--- Fold 2/7 (Left out Participant: P02) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7130 → 17067 segments (+9937 synthetic)
+
+Early stopping at epoch 198. Best Val Loss: 0.0689
+--- Fold 3/7 (Left out Participant: P03) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7474 → 17849 segments (+10375 synthetic)
+
+Early stopping at epoch 194. Best Val Loss: 0.0609
+--- Fold 4/7 (Left out Participant: P04) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7474 → 17958 segments (+10484 synthetic)
+
+Early stopping at epoch 124. Best Val Loss: 0.0800
+--- Fold 5/7 (Left out Participant: P05) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7873 → 18929 segments (+11056 synthetic)
+
+Early stopping at epoch 228. Best Val Loss: 0.0570
+--- Fold 6/7 (Left out Participant: P06) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7479 → 17944 segments (+10465 synthetic)
+
+Early stopping at epoch 249. Best Val Loss: 0.0718
+--- Fold 7/7 (Left out Participant: P07) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7475 → 17998 segments (+10523 synthetic)
