@@ -25,9 +25,8 @@ from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE
 )
-
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
     mean_absolute_error, mean_squared_error, r2_score
@@ -37,7 +36,7 @@ from sklearn.metrics import (
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = False
 RUN_GRID_SEARCH = False
@@ -301,7 +300,7 @@ def main():
     print(f"Label vector (y) shape: {y.shape} (Target: {target_col})")
     
     # Determine if we use Cross-Validation or Single Split
-    use_cv = CV_CONFIG.get('use_cross_val', False)
+    use_cv = USE_CROSS_VAL
     cv_strategy = CV_CONFIG.get('strategy', 'kfold')
     
     if use_cv:
@@ -318,7 +317,7 @@ def main():
             n_folds = CV_CONFIG.get('n_folds', 5)
             print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
             from sklearn.model_selection import StratifiedKFold
-            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
+            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
             strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
             cv_iterator = list(skf.split(X, strat_labels))
         
@@ -397,7 +396,7 @@ def main():
         stratify = df["weight"].astype(str) if "weight" in df.columns else None
         
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=stratify
+            X, y, test_size=TRAIN_TEST_SPLIT, random_state=GLOBAL_RANDOM_STATE, stratify=stratify
         )
         
         print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
@@ -576,6 +575,24 @@ def main():
             
             imu_enabled = [k for k, v in FEATURE_CONFIG['imu_features'].items() if v]
             f.write(f"Enabled IMU Features: {', '.join(imu_enabled)}\n")
+        f.write("\n")
+
+        f.write("--- DATA AUGMENTATION ---\n")
+        f.write(f"Enabled: {AUGMENTATION_CONFIG.get('enabled', False)}\n")
+        if AUGMENTATION_CONFIG.get('enabled', False):
+            f.write(f"Probability: {AUGMENTATION_CONFIG.get('p', 0)}\n")
+            f.write(f"Active Methods: {', '.join(AUGMENTATION_CONFIG.get('methods', []))}\n")
+            # Detailed parameters
+            if 'noise' in AUGMENTATION_CONFIG['methods']:
+                f.write(f"  - Noise Std: {AUGMENTATION_CONFIG.get('noise_std')}\n")
+            if 'stretch' in AUGMENTATION_CONFIG['methods']:
+                f.write(f"  - Stretch Range: {AUGMENTATION_CONFIG.get('stretch_factor_range')}\n")
+            if 'feature_dropout' in AUGMENTATION_CONFIG['methods']:
+                f.write(f"  - Feature Dropout P: {AUGMENTATION_CONFIG.get('feature_dropout_p')}\n")
+            if 'magnitude_scale' in AUGMENTATION_CONFIG['methods']:
+                f.write(f"  - Magnitude Scale Range: {AUGMENTATION_CONFIG.get('magnitude_scale_range')}\n")
+            if 'mixup' in AUGMENTATION_CONFIG['methods']:
+                f.write(f"  - MixUp Alpha: {AUGMENTATION_CONFIG.get('mixup_alpha')}\n")
         f.write("\n")
         
         f.write("--- HYPERPARAMETERS ---\n")

@@ -184,7 +184,7 @@ FEATURE_CONFIG = {
 ###########################################################
 AUGMENTATION_CONFIG = {
     # Master toggle — set False to disable all augmentation
-    'enabled': True,
+    'enabled': False,
 
     # Probability that any single training sample is augmented (0.0 – 1.0).
     # Each selected sample produces one additional augmented copy alongside
