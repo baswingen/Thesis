@@ -257,3 +257,138 @@ def plot_participant_performance(per_participant_stats: list, save_path: str | P
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Participant performance plot saved to {save_path}")
+
+
+def plot_cnn_tsne(
+    features: np.ndarray,
+    participants: np.ndarray,
+    weights: np.ndarray,
+    save_path: "str | Path",
+    model_name: str = "CNN-LSTM",
+    perplexity: int = 30,
+    random_state: int = 42,
+):
+    """
+    t-SNE scatter plot of CNN-extracted features colored by participant and weight.
+
+    Each participant gets a distinct base hue.  Within that hue, weight controls
+    lightness: lighter color = lower weight, darker color = heavier weight.
+    This lets you visually inspect whether the CNN feature extractor groups
+    samples by participant (good clustering) or mixes them up.
+
+    Parameters
+    ----------
+    features     : (N, D) array of CNN feature vectors.
+    participants : (N,)   array-like of participant IDs (str or int).
+    weights      : (N,)   array-like of weight labels (float).
+    save_path    : Path   where to save the PNG.
+    perplexity   : t-SNE perplexity (default 30).
+    random_state : reproducibility seed.
+    """
+    from sklearn.manifold import TSNE
+    import matplotlib.colors as mcolors
+    import matplotlib.cm as cm
+    import matplotlib.patches as mpatches
+
+    set_style()
+
+    # ── Run t-SNE ──────────────────────────────────────────────────────────
+    tsne = TSNE(n_components=2, perplexity=min(perplexity, len(features) - 1),
+                random_state=random_state, n_iter=1000, init='pca')
+    emb = tsne.fit_transform(features)          # (N, 2)
+
+    participants = np.asarray(participants)
+    weights = np.asarray(weights, dtype=float)
+
+    unique_participants = np.unique(participants)
+    n_participants = len(unique_participants)
+
+    # ── Assign base hues to participants ───────────────────────────────────
+    # Use a qualitative colormap spread evenly across the hue wheel
+    base_hues = np.linspace(0.0, 1.0, n_participants, endpoint=False)
+    participant_to_hue = {p: h for p, h in zip(unique_participants, base_hues)}
+
+    # ── Compute per-sample colours in HLS space ────────────────────────────
+    # Lightness range per participant: 0.75 (light, low weight) → 0.25 (dark, heavy)
+    w_min, w_max = weights.min(), weights.max()
+    w_range = w_max - w_min if w_max > w_min else 1.0
+
+    colors = []
+    for p, w in zip(participants, weights):
+        hue = participant_to_hue[p]
+        # Normalise weight → [0, 1], then map to lightness [0.75, 0.25]
+        t = (w - w_min) / w_range          # 0 = lightest, 1 = darkest
+        lightness = 0.75 - t * 0.50        # 0.75 → 0.25
+        saturation = 0.80
+        rgb = mcolors.hls_to_rgb(hue, lightness, saturation)
+        colors.append(rgb)
+
+    # ── Plot ───────────────────────────────────────────────────────────────
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    sc = ax.scatter(
+        emb[:, 0], emb[:, 1],
+        c=colors,
+        s=28,
+        alpha=0.80,
+        linewidths=0.0,
+        zorder=2,
+    )
+
+    ax.set_xlabel("t-SNE Component 1", labelpad=10)
+    ax.set_ylabel("t-SNE Component 2", labelpad=10)
+    ax.set_title(
+        f"{model_name}: CNN Feature Space (t-SNE)".upper(),
+        pad=18, fontsize=14, fontweight='bold'
+    )
+
+    # ── Legend: one patch per participant with a mid-lightness colour ──────
+    legend_patches = []
+    for p in unique_participants:
+        hue = participant_to_hue[p]
+        mid_rgb = mcolors.hls_to_rgb(hue, 0.45, 0.80)   # representative dark-ish tone
+        patch = mpatches.Patch(color=mid_rgb, label=str(p))
+        legend_patches.append(patch)
+
+    participant_legend = ax.legend(
+        handles=legend_patches,
+        title="Participant",
+        loc='upper left',
+        frameon=True,
+        facecolor='white',
+        framealpha=0.9,
+        fontsize=9,
+        title_fontsize=10,
+    )
+    ax.add_artist(participant_legend)
+
+    # ── Colorbar-style weight gradient legend ─────────────────────────────
+    # Use a neutral grey-to-black gradient just for the legend bar
+    gradient = np.linspace(0, 1, 256).reshape(1, -1)
+    cbar_ax = fig.add_axes([0.92, 0.20, 0.015, 0.60])   # [left, bottom, width, height]
+
+    # Build a custom ListedColormap using the first participant's hue as example
+    # (gradient only communicates the lightness concept)
+    sample_hue = base_hues[0]
+    cmap_colors = [mcolors.hls_to_rgb(sample_hue, 0.75 - t * 0.50, 0.80)
+                   for t in np.linspace(0, 1, 256)]
+    from matplotlib.colors import ListedColormap
+    weight_cmap = ListedColormap(cmap_colors)
+
+    norm = mcolors.Normalize(vmin=w_min, vmax=w_max)
+    sm = cm.ScalarMappable(cmap=weight_cmap, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.set_label("Weight (kg)", rotation=270, labelpad=15, fontsize=10)
+    cbar.ax.yaxis.set_ticks_position('right')
+
+    # Footnote
+    fig.text(
+        0.5, -0.01,
+        f"t-SNE perplexity={perplexity}  |  lighter shade = lower weight, darker = heavier",
+        ha='center', va='top', fontsize=9, color='grey', style='italic'
+    )
+
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"t-SNE feature plot saved to {save_path}")

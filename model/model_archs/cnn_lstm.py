@@ -504,6 +504,44 @@ class CNNLSTMRegressor:
         return regressor
 
     # ------------------------------------------------------------------
+    # Feature extraction (CNN only — for t-SNE / analysis)
+    # ------------------------------------------------------------------
+
+    def extract_cnn_features(self, X: pd.DataFrame) -> np.ndarray:
+        """Run only the CNN encoder and return global-average-pooled features.
+
+        Returns
+        -------
+        np.ndarray of shape (N, cnn_filters[-1])
+            One feature vector per segment, suitable for t-SNE / PCA.
+        """
+        if self.model is None:
+            raise ValueError("Model not fitted.")
+
+        segments = self._extract_raw_segments(X)
+        scaled = self._scale_segments(segments, fit=False)
+        tensors = [torch.from_numpy(s) for s in scaled]
+
+        dummy_y = torch.zeros((len(tensors), 1))
+        dataset = RawSegmentDataset(tensors, dummy_y)
+        loader = DataLoader(dataset, batch_size=self.batch_size,
+                            shuffle=False, collate_fn=raw_pad_collate_fn)
+
+        self.model.eval()
+        all_features = []
+        with torch.no_grad():
+            for batch_x, _, lengths in loader:
+                # batch_x: (B, T, C) → (B, C, T) for Conv1d
+                batch_x = batch_x.transpose(1, 2).to(self.device)
+
+                cnn_out = self.model.cnn(batch_x)  # (B, reduced_T, cnn_out_ch)
+                # Global average pooling over the time dimension
+                pooled = cnn_out.mean(dim=1)        # (B, cnn_out_ch)
+                all_features.append(pooled.cpu().numpy())
+
+        return np.concatenate(all_features, axis=0)  # (N, cnn_out_ch)
+
+    # ------------------------------------------------------------------
     # Plotting passthrough
     # ------------------------------------------------------------------
 
@@ -512,3 +550,27 @@ class CNNLSTMRegressor:
 
     def plot_loss(self, save_path: str | Path):
         plotting_utils.plot_training_loss(self.loss_history, save_path, model_name="CNN-LSTM")
+
+    def plot_tsne(self, X: pd.DataFrame, participants: np.ndarray,
+                  weights: np.ndarray, save_path: str | Path,
+                  perplexity: int = 30):
+        """Extract CNN features and produce a t-SNE scatter plot.
+
+        Parameters
+        ----------
+        X            : DataFrame with 'raw_segment' column (full dataset or test set).
+        participants : (N,) array of participant IDs aligned with rows in X.
+        weights      : (N,) array of weight labels aligned with rows in X.
+        save_path    : where to save the PNG.
+        perplexity   : t-SNE perplexity (default 30).
+        """
+        features = self.extract_cnn_features(X)
+        plotting_utils.plot_cnn_tsne(
+            features=features,
+            participants=participants,
+            weights=weights,
+            save_path=save_path,
+            model_name="CNN-LSTM",
+            perplexity=perplexity,
+            random_state=self.random_state,
+        )

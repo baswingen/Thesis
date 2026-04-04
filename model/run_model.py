@@ -446,7 +446,26 @@ def main():
         loss_plot_path = run_dir / "loss_plot.png"
         model.plot_loss(loss_plot_path)
         print(f"Loss plot saved to {loss_plot_path}")
-    
+
+    # CNN-LSTM: t-SNE of CNN feature space, coloured by participant and weight
+    if is_raw_segment and hasattr(model, 'plot_tsne') and groups is not None:
+        print("\nGenerating t-SNE plot of CNN feature space...")
+        tsne_plot_path = run_dir / "tsne_cnn_features.png"
+        # Use the full dataset so all participants are represented
+        tsne_participants = groups      # shape (N,) str participant IDs
+        tsne_weights = y.values         # shape (N,) float weight labels
+        try:
+            model.plot_tsne(
+                X=X,
+                participants=tsne_participants,
+                weights=tsne_weights,
+                save_path=tsne_plot_path,
+                perplexity=30,
+            )
+            print(f"t-SNE plot saved to {tsne_plot_path}")
+        except Exception as e:
+            print(f"[WARN] t-SNE plot failed: {e}")
+
     if use_cv and cv_strategy == 'participant' and 'participant_stats' in locals():
         participant_plot_path = run_dir / "participant_performance.png"
         plotting_utils.plot_participant_performance(participant_stats, participant_plot_path, model_name=model_type.upper())
