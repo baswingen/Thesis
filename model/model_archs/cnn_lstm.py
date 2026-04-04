@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn.utils.rnn as rnn_utils
 from torch.utils.data import DataLoader, Dataset
@@ -65,7 +66,7 @@ class CNNFeatureExtractor(nn.Module):
             padding = ks // 2  # 'same'-like padding
             layers.extend([
                 nn.Conv1d(in_ch, filters, kernel_size=ks, padding=padding),
-                nn.BatchNorm1d(filters),
+                nn.InstanceNorm1d(filters, affine=True),  # per-sample norm → strips participant-level statistics
                 nn.ReLU(inplace=False),
                 nn.MaxPool1d(kernel_size=pool_size),
                 nn.Dropout(dropout_rate),
@@ -119,6 +120,10 @@ class CNNLSTMNetwork(nn.Module):
     def forward(self, x, lengths):
         # x: (batch, n_channels, time_steps)
         cnn_out = self.cnn(x)   # (batch, reduced_time, features)
+
+        # L2-normalise along the feature dim so all participants land on the
+        # same unit hypersphere, removing between-participant magnitude offsets
+        cnn_out = F.normalize(cnn_out, p=2, dim=-1)
 
         # Compute adjusted lengths for packing
         adj_lengths = self._adjust_lengths(lengths)

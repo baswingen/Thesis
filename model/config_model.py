@@ -212,12 +212,12 @@ AUGMENTATION_CONFIG = {
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
     # ±20% range targets inter-participant amplitude differences (EMG/IMU).
-    'magnitude_scale_range': (0.80, 1.20),
+    'magnitude_scale_range': (0.5, 2.0),
 
     # ── MixUp ────────────────────────────────────────────────────────
     # Alpha parameter of the Beta(α, α) distribution for λ.
     # 0.1 is very conservative — λ stays close to 0 or 1 (minimal blending).
-    'mixup_alpha': 0.1,
+    'mixup_alpha': 0,
 }
 
 # Cross-Validation Configuration
