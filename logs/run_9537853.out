@@ -16,3 +16,23 @@ Label vector (y) shape: (10341,) (Target: weight)
 Training on 8272 samples, testing on 2069 samples.
 Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
 [CNNLSTMRegressor] Using device: cuda
+
+Early stopping at epoch 273. Best Val Loss: 0.0676
+
+Evaluating CNN_LSTM Model on unseen test set...
+=======================================================
+Regression Metrics:
+Mean Absolute Error: 0.0916
+Mean Squared Error: 0.0981
+Root Mean Squared Error: 0.3132
+R-squared Score: 0.9698
+
+Training Time: 1768.67s
+Inference Time (per sample): 0.9055ms
+=======================================================
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_084429/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_084429/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_084429/loss_plot.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_084429/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_084429/performance_report.txt

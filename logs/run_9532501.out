@@ -54,3 +54,22 @@ Early stopping at epoch 249. Best Val Loss: 0.0718
 Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
 [CNNLSTMRegressor] Using device: cuda
 [CNNLSTMRegressor] Augmentation: 7475 → 17998 segments (+10523 synthetic)
+
+Early stopping at epoch 225. Best Val Loss: 0.0515
+
+=======================================================
+CROSS-VALIDATION RESULTS (7 Folds)
+MAE: 0.6912 (±0.4947)
+MSE: 1.3503 (±1.2438)
+RMSE: 1.0193 (±0.5580)
+R2: 0.5852 (±0.3816)
+train_time: 3550.5181 (±694.1935)
+inference_time_total: 1.3348 (±0.8751)
+inference_time_per_sample: 0.0010 (±0.0004)
+
+=======================================================
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 8272 → 19767 segments (+11495 synthetic)
