@@ -333,7 +333,7 @@ CNN_LSTM_CONFIG = {
     'dropout_rate': 0.4,
     'learning_rate': 0.001,
     'weight_decay': 1e-05,
-    'batch_size': 256,           # Increased from 64 — more positive pairs per SupCon batch
+    'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
     'epochs': 1000,
     'validation_split': 0.2,
     'early_stopping_patience': 100,
