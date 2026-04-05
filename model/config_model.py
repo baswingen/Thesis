@@ -7,6 +7,10 @@ ensures consistency across training and inference scripts.
 GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
+# Canonical (true) weight values used by SupConLoss to exclude MixUp-blended samples.
+# These match the TRUE_WEIGHTS values plus the 0 kg (no-load) class.
+CANONICAL_WEIGHTS = [0.0, 0.899, 0.979, 1.966, 2.238, 2.945, 4.142, 5.922]
+
 # ──────────────────────────────────────────────────────────
 # DATABASE & ENVIRONMENT CONFIGURATION
 # ──────────────────────────────────────────────────────────
@@ -329,13 +333,18 @@ CNN_LSTM_CONFIG = {
     'dropout_rate': 0.4,
     'learning_rate': 0.001,
     'weight_decay': 1e-05,
-    'batch_size': 64,
+    'batch_size': 256,           # Increased from 64 — more positive pairs per SupCon batch
     'epochs': 1000,
     'validation_split': 0.2,
     'early_stopping_patience': 100,
     'scheduler_patience': 50,
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE,
+    # ── Supervised Contrastive Loss ──────────────────────────────────
+    'contrastive_enabled':          True,   # Set False to fall back to pure MSE
+    'contrastive_weight':           0.1,    # λ: contrastive loss scale (0.05–0.5)
+    'contrastive_temperature':      0.1,    # τ: lower → harder negatives
+    'contrastive_cross_participant': True,  # Only allow cross-participant positives
 }
 
 # Lighter CNN-LSTM Configuration specifically for Sequential Backward Selection Ablation

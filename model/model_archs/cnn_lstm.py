@@ -14,9 +14,10 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import CNN_LSTM_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG
+from model.config_model import CNN_LSTM_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG, CANONICAL_WEIGHTS
 from model import plotting_utils
 from model.data_augmentation import SequenceAugmenter
+from model.supcon_loss import SupConLoss
 
 # ---------------------------------------------------------------------------
 # Dataset & collate for variable-length raw segments
@@ -24,25 +25,27 @@ from model.data_augmentation import SequenceAugmenter
 
 class RawSegmentDataset(Dataset):
     """Holds raw segments as tensors of shape (time_steps, n_channels)."""
-    def __init__(self, segments, labels):
-        self.segments = segments   # list of tensors (T_i, C)
-        self.labels = labels       # tensor (N, 1)
+    def __init__(self, segments, labels, participant_ids=None):
+        self.segments = segments          # list of tensors (T_i, C)
+        self.labels = labels              # tensor (N, 1)
+        self.participant_ids = participant_ids  # list of str or None
 
     def __len__(self):
         return len(self.segments)
 
     def __getitem__(self, idx):
-        return self.segments[idx], self.labels[idx]
+        pid = self.participant_ids[idx] if self.participant_ids is not None else ""
+        return self.segments[idx], self.labels[idx], pid
 
 
 def raw_pad_collate_fn(batch):
     """Pad variable-length segments and return lengths for packing."""
-    segments, labels = zip(*batch)
+    segments, labels, pids = zip(*batch)
     lengths = torch.tensor([seg.shape[0] for seg in segments])
     # pad_sequence expects (T, C) tensors → pads along dim-0
     padded = rnn_utils.pad_sequence(segments, batch_first=True, padding_value=0.0)
     labels = torch.stack(labels)
-    return padded, labels, lengths
+    return padded, labels, lengths, list(pids)
 
 # ---------------------------------------------------------------------------
 # CNN Feature Extractor
@@ -76,11 +79,22 @@ class CNNFeatureExtractor(nn.Module):
         self.out_channels = cnn_filters[-1]
         self.pool_size = pool_size
         self.n_blocks = len(cnn_filters)
+        # projection head: used only during training for SupCon loss
+        self.projector = nn.Sequential(
+            nn.Linear(self.out_channels, 128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, 64),
+        )
 
-    def forward(self, x):
+    def forward(self, x, return_projection: bool = False):
         # x: (batch, n_channels, time)
         out = self.net(x)          # (batch, out_channels, reduced_time)
         out = out.transpose(1, 2)  # (batch, reduced_time, out_channels)
+        if return_projection:
+            # Global average pool → project → L2 normalise for SupCon
+            pooled = out.mean(dim=1)                          # (batch, out_channels)
+            z = F.normalize(self.projector(pooled), p=2, dim=-1)  # (batch, 64)
+            return out, z
         return out
 
 # ---------------------------------------------------------------------------
@@ -117,9 +131,13 @@ class CNNLSTMNetwork(nn.Module):
             adj = torch.floor(adj / self._pool_size)
         return adj.long().clamp(min=1)
 
-    def forward(self, x, lengths):
+    def forward(self, x, lengths, return_projection: bool = False):
         # x: (batch, n_channels, time_steps)
-        cnn_out = self.cnn(x)   # (batch, reduced_time, features)
+        if return_projection:
+            cnn_out, z = self.cnn(x, return_projection=True)
+        else:
+            cnn_out = self.cnn(x)
+            z = None
 
         # L2-normalise along the feature dim so all participants land on the
         # same unit hypersphere, removing between-participant magnitude offsets
@@ -137,6 +155,9 @@ class CNNLSTMNetwork(nn.Module):
         last_hidden = h_n[-1]           # (batch, hidden_size)
         last_hidden = self.dropout(last_hidden)
         out = self.fc(last_hidden)      # (batch, 1)
+
+        if return_projection:
+            return out, z
         return out
 
 # ---------------------------------------------------------------------------
@@ -160,6 +181,10 @@ class CNNLSTMRegressor:
                  scheduler_patience: int = CNN_LSTM_CONFIG.get('scheduler_patience', 10),
                  scheduler_factor: float = CNN_LSTM_CONFIG.get('scheduler_factor', 0.5),
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
+                 contrastive_enabled: bool = CNN_LSTM_CONFIG.get('contrastive_enabled', True),
+                 contrastive_weight: float = CNN_LSTM_CONFIG.get('contrastive_weight', 0.1),
+                 contrastive_temperature: float = CNN_LSTM_CONFIG.get('contrastive_temperature', 0.1),
+                 contrastive_cross_participant: bool = CNN_LSTM_CONFIG.get('contrastive_cross_participant', True),
                  random_state: int = CNN_LSTM_CONFIG['random_state']):
 
         self.cnn_filters = list(cnn_filters)
@@ -177,6 +202,10 @@ class CNNLSTMRegressor:
         self.scheduler_patience = scheduler_patience
         self.scheduler_factor = scheduler_factor
         self.loss_type = loss_type.lower()
+        self.contrastive_enabled = contrastive_enabled
+        self.contrastive_weight = contrastive_weight
+        self.contrastive_temperature = contrastive_temperature
+        self.contrastive_cross_participant = contrastive_cross_participant
         self.random_state = random_state
 
         # Tracking
@@ -270,7 +299,17 @@ class CNNLSTMRegressor:
             print(f"[CNNLSTMRegressor] Augmentation: {len(segs_train)} → "
                   f"{len(scaled_train)} segments (+{n_aug} synthetic)")
 
-        # Convert to tensors
+        # Build participant-ID list aligned to (possibly augmented) training set.
+        # Augmented samples appended by SequenceAugmenter share the same or a
+        # blended participant; we tag them as '' so SupCon skips them via the
+        # canonical-weight filter (blended labels) or simple absence.
+        if participant_ids_train is not None:
+            n_orig = len(segs_train)
+            n_total = len(scaled_train)
+            pids_aug = list(participant_ids_train) + [''] * (n_total - n_orig)
+        else:
+            pids_aug = None
+
         train_tensors = [torch.from_numpy(s) for s in scaled_train]
         y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
         val_tensors = [torch.from_numpy(s) for s in scaled_val]
@@ -304,14 +343,30 @@ class CNNLSTMRegressor:
             if self.loss_type != 'mse':
                 print(f"[CNNLSTMRegressor] Unknown loss '{self.loss_type}', defaulting to MSE.")
 
-        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
+        # 5. Build SupCon loss (if enabled)
+        if self.contrastive_enabled:
+            supcon_criterion = SupConLoss(
+                temperature=self.contrastive_temperature,
+                cross_participant_only=self.contrastive_cross_participant,
+                canonical_weights=CANONICAL_WEIGHTS,
+            ).to(self.device)
+            print(f"[CNNLSTMRegressor] SupCon enabled λ={self.contrastive_weight}, "
+                  f"τ={self.contrastive_temperature}, "
+                  f"cross_participant={self.contrastive_cross_participant}")
+        else:
+            supcon_criterion = None
+            print("[CNNLSTMRegressor] SupCon disabled — training with MSE only.")
+
+        # 6. Build datasets
+        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train,
+                                          participant_ids=pids_aug)
         _g = torch.Generator()
         _g.manual_seed(self.random_state)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
                                   shuffle=True, collate_fn=raw_pad_collate_fn,
                                   generator=_g)
 
-        dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)
+        dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # no pids needed for val
         loader_val = DataLoader(dataset_val, batch_size=self.batch_size,
                                 shuffle=False, collate_fn=raw_pad_collate_fn)
 
@@ -325,15 +380,33 @@ class CNNLSTMRegressor:
                 # --- TRAIN ---
                 self.model.train()
                 running_loss = 0.0
-                for batch_x, batch_y, lengths in loader_train:
+                for batch_x, batch_y, lengths, batch_pids in loader_train:
                     # batch_x: (B, T, C) → transpose to (B, C, T) for Conv1d
                     batch_x = batch_x.transpose(1, 2).to(self.device)
                     batch_y = batch_y.to(self.device)
                     lengths = lengths.to(self.device)
 
                     optimizer.zero_grad()
-                    outputs = self.model(batch_x, lengths)
-                    loss = criterion(outputs, batch_y)
+
+                    if supcon_criterion is not None:
+                        outputs, z = self.model(batch_x, lengths, return_projection=True)
+                        loss_mse = criterion(outputs, batch_y)
+                        weight_labels = batch_y.squeeze(1)  # (B,)
+                        # participant_ids as tensor of object dtype for string comparison
+                        pids_tensor = torch.tensor(
+                            [0] * len(batch_pids), dtype=torch.long  # dummy; SupConLoss uses raw list
+                        )
+                        loss_con = supcon_criterion(
+                            z, weight_labels,
+                            participant_ids=batch_pids,  # list[str]
+                        )
+                        loss = loss_mse + self.contrastive_weight * loss_con
+                    else:
+                        outputs = self.model(batch_x, lengths)
+                        loss_mse = criterion(outputs, batch_y)
+                        loss = loss_mse
+                        loss_con = torch.tensor(0.0)
+
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                     optimizer.step()
@@ -342,11 +415,11 @@ class CNNLSTMRegressor:
 
                 avg_train_loss = running_loss / len(dataset_train)
 
-                # --- VALIDATION ---
+                # Val loop — val set has no pids, so pass dummy pids
                 self.model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
-                    for batch_x, batch_y, lengths in loader_val:
+                    for batch_x, batch_y, lengths, _ in loader_val:
                         batch_x = batch_x.transpose(1, 2).to(self.device)
                         batch_y = batch_y.to(self.device)
                         lengths = lengths.to(self.device)
@@ -357,7 +430,8 @@ class CNNLSTMRegressor:
 
                 avg_val_loss = val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}",
-                                  "Val Loss": f"{avg_val_loss:.4f}"})
+                                  "Val Loss": f"{avg_val_loss:.4f}",
+                                  "Con": f"{loss_con.item():.4f}"})
 
                 scheduler.step(avg_val_loss)
 
@@ -399,7 +473,7 @@ class CNNLSTMRegressor:
         self.model.eval()
         all_preds = []
         with torch.no_grad():
-            for batch_x, _, lengths in loader:
+            for batch_x, _, lengths, _pids in loader:
                 batch_x = batch_x.transpose(1, 2).to(self.device)
                 lengths = lengths.to(self.device)
                 preds = self.model(batch_x, lengths).cpu().numpy()
@@ -456,6 +530,10 @@ class CNNLSTMRegressor:
                 'scheduler_patience': self.scheduler_patience,
                 'scheduler_factor': self.scheduler_factor,
                 'random_state': self.random_state,
+                'contrastive_enabled': self.contrastive_enabled,
+                'contrastive_weight': self.contrastive_weight,
+                'contrastive_temperature': self.contrastive_temperature,
+                'contrastive_cross_participant': self.contrastive_cross_participant,
             },
             'split_info': {
                 'train_samples': self.train_samples,
@@ -550,7 +628,7 @@ class CNNLSTMRegressor:
         self.model.eval()
         all_features = []
         with torch.no_grad():
-            for batch_x, _, lengths in tqdm(loader, desc="Extracting CNN features", unit="batch"):
+            for batch_x, _, lengths, _pids in tqdm(loader, desc="Extracting CNN features", unit="batch"):
                 # batch_x: (B, T, C) → (B, C, T) for Conv1d
                 batch_x = batch_x.transpose(1, 2).to(self.device)
 
