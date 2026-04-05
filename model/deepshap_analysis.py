@@ -44,7 +44,7 @@ from model.config_model import CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONF
 ###########################################################
 
 # Path to a saved CNN-LSTM model (.joblib produced by run_model.py)
-SAVED_MODEL_PATH: str | None = "model/model_results/run_20260404_121932/cnn_lstm_model.joblib"  # e.g. "model/model_results/run_20260331_120000/cnn_lstm_model.joblib"
+SAVED_MODEL_PATH: str | None = "model/model_results/run_20260404_094041/cnn_lstm_model.joblib"  # e.g. "model/model_results/run_20260331_120000/cnn_lstm_model.joblib"
 #  → set to None to train a fresh lightweight model on the fly (slow but convenient)
 
 # Number of background samples fed to DeepExplainer (30-100 is plenty)
@@ -249,31 +249,71 @@ def main():
         if len(channel_names) != n_channels:
             channel_names = [f"ch{i}" for i in range(n_channels)]
 
-    # Determine EMG / IMU boundary
+    # ── Grouping IMU channels for better interpretability ──────────────────
+    # EMG channels remain as-is. IMU channels are grouped by sensor and type.
+    imu_groups = {
+        # Sensor 1
+        'ax1': '$a_1$', 'ay1': '$a_1$', 'az1': '$a_1$',
+        'roll_rad1': '$\\alpha_1$', 'pitch_rad1': '$\\alpha_1$', 'yaw_rad1': '$\\alpha_1$',
+        # Sensor 2
+        'ax2': '$a_2$', 'ay2': '$a_2$', 'az2': '$a_2$',
+        'roll_rad2': '$\\alpha_2$', 'pitch_rad2': '$\\alpha_2$', 'yaw_rad2': '$\\alpha_2$',
+        # Differential
+        'ax_diff': '$a_{diff}$', 'ay_diff': '$a_{diff}$', 'az_diff': '$a_{diff}$',
+        'roll_rad_diff': '$\\alpha_{diff}$', 'pitch_rad_diff': '$\\alpha_{diff}$', 'yaw_rad_diff': '$\\alpha_{diff}$',
+    }
+
+    grouped_names = []
+    grouped_vals = []
+    grouped_is_emg = []
+    seen_groups = {}
+
     n_emg = sum(1 for v in CHANNEL_CONFIG.get('emg_channels', {}).values() if v)
-    emg_mask = np.array([i < n_emg for i in range(n_channels)])
-    imu_mask = ~emg_mask
+    
+    for i, name in enumerate(channel_names):
+        is_emg = i < n_emg
+        val = mean_abs_shap[i]
+        
+        if is_emg:
+            grouped_names.append(name)
+            grouped_vals.append(val)
+            grouped_is_emg.append(True)
+        else:
+            group_label = imu_groups.get(name, name)
+            if group_label in seen_groups:
+                idx = seen_groups[group_label]
+                grouped_vals[idx] += val
+            else:
+                seen_groups[group_label] = len(grouped_names)
+                grouped_names.append(group_label)
+                grouped_vals.append(val)
+                grouped_is_emg.append(False)
+
+    grouped_names = np.array(grouped_names)
+    grouped_vals = np.array(grouped_vals)
+    grouped_is_emg = np.array(grouped_is_emg)
+    n_grouped = len(grouped_names)
 
     # ── Plot 1: Bar chart sorted by importance ──────────────────────────────
-    order = np.argsort(mean_abs_shap)[::-1]
-    colors = ["#E05C5C" if emg_mask[i] else "#5C9BE0" for i in order]
+    order = np.argsort(grouped_vals)[::-1]
+    colors = ["#E05C5C" if grouped_is_emg[i] else "#5C9BE0" for i in order]
 
-    fig, ax = plt.subplots(figsize=(max(12, n_channels * 0.55), 6))
-    bars = ax.bar(range(n_channels), mean_abs_shap[order], color=colors, edgecolor="white", linewidth=0.5)
-    ax.set_xticks(range(n_channels))
+    fig, ax = plt.subplots(figsize=(max(10, n_grouped * 0.6), 6))
+    bars = ax.bar(range(n_grouped), grouped_vals[order], color=colors, edgecolor="white", linewidth=0.5)
+    ax.set_xticks(range(n_grouped))
     ax.set_xticklabels(
-        [channel_names[i] for i in order],
-        rotation=45, ha="right", fontsize=9
+        [grouped_names[i] for i in order],
+        rotation=45, ha="right", fontsize=10
     )
     ax.set_ylabel("Mean |SHAP value|", fontsize=11)
-    ax.set_title("DeepSHAP Channel Importance — CNN-LSTM", fontsize=13, fontweight="bold")
+    ax.set_title("DeepSHAP Channel Importance (Grouped IMU)", fontsize=13, fontweight="bold")
     ax.set_xlabel("Channel (sorted by importance)", fontsize=11)
     ax.spines[["top", "right"]].set_visible(False)
 
     # Legend
     from matplotlib.patches import Patch
     legend_elements = [Patch(facecolor="#E05C5C", label="EMG"),
-                       Patch(facecolor="#5C9BE0", label="IMU")]
+                       Patch(facecolor="#5C9BE0", label="IMU (Grouped)")]
     ax.legend(handles=legend_elements, loc="upper right")
 
     plt.tight_layout()
@@ -283,8 +323,8 @@ def main():
     print(f"Saved: {p1}")
 
     # ── Plot 2: EMG vs IMU modality split ───────────────────────────────────
-    emg_total = mean_abs_shap[emg_mask].sum()
-    imu_total = mean_abs_shap[imu_mask].sum()
+    emg_total = grouped_vals[grouped_is_emg].sum()
+    imu_total = grouped_vals[~grouped_is_emg].sum()
     total     = emg_total + imu_total
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
@@ -299,24 +339,24 @@ def main():
     )
     axes[0].set_title("Modality Share of Total |SHAP|", fontsize=12)
 
-    # Per-channel bar within each modality
-    emg_names  = [channel_names[i] for i in range(n_channels) if emg_mask[i]]
-    imu_names  = [channel_names[i] for i in range(n_channels) if imu_mask[i]]
-    emg_shap   = mean_abs_shap[emg_mask]
-    imu_shap   = mean_abs_shap[imu_mask]
+    # Per-channel bar within each modality (using grouped values)
+    emg_names_list  = [grouped_names[i] for i in range(n_grouped) if grouped_is_emg[i]]
+    imu_names_list  = [grouped_names[i] for i in range(n_grouped) if not grouped_is_emg[i]]
+    emg_vals        = grouped_vals[grouped_is_emg]
+    imu_vals        = grouped_vals[~grouped_is_emg]
 
-    emg_order  = np.argsort(emg_shap)[::-1]
-    imu_order  = np.argsort(imu_shap)[::-1]
+    emg_order_sub  = np.argsort(emg_vals)[::-1]
+    imu_order_sub  = np.argsort(imu_vals)[::-1]
 
-    all_names  = [emg_names[i] for i in emg_order] + [imu_names[i] for i in imu_order]
-    all_vals   = np.concatenate([emg_shap[emg_order], imu_shap[imu_order]])
-    all_colors = ["#E05C5C"] * len(emg_names) + ["#5C9BE0"] * len(imu_names)
+    all_names_plot  = [emg_names_list[i] for i in emg_order_sub] + [imu_names_list[i] for i in imu_order_sub]
+    all_vals_plot   = np.concatenate([emg_vals[emg_order_sub], imu_vals[imu_order_sub]])
+    all_colors_plot = ["#E05C5C"] * len(emg_names_list) + ["#5C9BE0"] * len(imu_names_list)
 
-    axes[1].barh(range(len(all_names)), all_vals[::-1], color=all_colors[::-1], edgecolor="white")
-    axes[1].set_yticks(range(len(all_names)))
-    axes[1].set_yticklabels(all_names[::-1], fontsize=8)
+    axes[1].barh(range(len(all_names_plot)), all_vals_plot[::-1], color=all_colors_plot[::-1], edgecolor="white")
+    axes[1].set_yticks(range(len(all_names_plot)))
+    axes[1].set_yticklabels(all_names_plot[::-1], fontsize=9)
     axes[1].set_xlabel("Mean |SHAP value|")
-    axes[1].set_title("Per-Channel Importance by Modality", fontsize=12)
+    axes[1].set_title("Importance by Modality (Grouped)", fontsize=12)
     axes[1].spines[["top", "right"]].set_visible(False)
 
     plt.tight_layout()
@@ -330,22 +370,25 @@ def main():
     np.savez(p3,
              shap_values=shap_values,
              channel_names=np.array(channel_names),
+             grouped_names=np.array(grouped_names),
+             grouped_vals=grouped_vals,
              mean_abs_shap=mean_abs_shap,
              n_emg=np.array(n_emg))
     print(f"Saved: {p3}")
 
     # ── Console summary ──────────────────────────────────────────────────────
     print("\n" + "=" * 55)
-    print("CHANNEL IMPORTANCE RANKING (Mean |SHAP|)")
+    print("RANKING (Mean |SHAP| per Grouped Channel)")
     print("=" * 55)
     for rank, idx in enumerate(order, 1):
-        modality = "EMG" if emg_mask[idx] else "IMU"
-        print(f"  {rank:>2}. [{modality}] {channel_names[idx]:<40s} {mean_abs_shap[idx]:.6f}")
+        modality = "EMG" if grouped_is_emg[idx] else "IMU"
+        print(f"  {rank:>2}. [{modality}] {grouped_names[idx]:<40s} {grouped_vals[idx]:.6f}")
 
     print("\n--- Modality Summary ---")
     print(f"  EMG total importance : {emg_total:.6f}  ({emg_total/total*100:.1f}%)")
     print(f"  IMU total importance : {imu_total:.6f}  ({imu_total/total*100:.1f}%)")
     print("=" * 55)
+
     print(f"\nAll outputs saved to: {out_dir}")
 
 
