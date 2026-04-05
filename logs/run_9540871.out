@@ -54,3 +54,52 @@ Early stopping at epoch 395. Best Val Loss: 0.0567
 Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
 [CNNLSTMRegressor] Using device: cuda
 [CNNLSTMRegressor] Augmentation: 7475 → 17921 segments (+10446 synthetic)
+
+Early stopping at epoch 250. Best Val Loss: 0.0672
+
+=======================================================
+CROSS-VALIDATION RESULTS (7 Folds)
+MAE: 0.5431 (±0.2966)
+MSE: 0.9743 (±1.0716)
+RMSE: 0.8822 (±0.4427)
+R2: 0.7007 (±0.3288)
+train_time: 6051.5524 (±2123.2402)
+inference_time_total: 1.4066 (±0.9445)
+inference_time_per_sample: 0.0011 (±0.0004)
+
+=======================================================
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 8272 → 19769 segments (+11497 synthetic)
+
+Early stopping at epoch 384. Best Val Loss: 0.0536
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/loss_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 10341 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 10341 samples in 0.002s...
+[t-SNE] Computed neighbors for 10341 samples in 1.940s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 10341
+[t-SNE] Computed conditional probabilities for sample 2000 / 10341
+[t-SNE] Computed conditional probabilities for sample 3000 / 10341
+[t-SNE] Computed conditional probabilities for sample 4000 / 10341
+[t-SNE] Computed conditional probabilities for sample 5000 / 10341
+[t-SNE] Computed conditional probabilities for sample 6000 / 10341
+[t-SNE] Computed conditional probabilities for sample 7000 / 10341
+[t-SNE] Computed conditional probabilities for sample 8000 / 10341
+[t-SNE] Computed conditional probabilities for sample 9000 / 10341
+[t-SNE] Computed conditional probabilities for sample 10000 / 10341
+[t-SNE] Computed conditional probabilities for sample 10341 / 10341
+[t-SNE] Mean sigma: 0.356802
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 84.259911
+[t-SNE] KL divergence after 1000 iterations: 1.542303
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/tsne_cnn_features.png
+t-SNE plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/participant_performance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260404_215352/performance_report.txt
