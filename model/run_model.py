@@ -482,8 +482,18 @@ def main():
     per_seqlen_stats = None
     if is_sequence and not is_raw_segment:
         if use_cv:
-            # For CV we don't easily have X at test time; skip for now
-            pass
+            # Extract number of windows for all samples from the sequence_dicts column
+            seq_col = 'sequence_dicts'
+            if seq_col in df.columns:
+                all_seq_lengths = np.array([len(row) for row in df[seq_col]])
+            else:
+                # Fallback: try the first column of X
+                all_seq_lengths = np.array([len(row) for row in X.iloc[:, 0]])
+
+            per_seqlen_stats = calculate_per_seqlen_metrics(
+                y.values, oof_predictions, all_seq_lengths
+            )
+            n_samples_plot = len(y)
         else:
             # Extract number of windows for each test sample from the sequence_dicts column
             seq_col = 'sequence_dicts'
@@ -496,7 +506,10 @@ def main():
             per_seqlen_stats = calculate_per_seqlen_metrics(
                 y_test.values, y_pred, test_seq_lengths
             )
-            # Annotate with the real-time elapsed seconds at prediction
+            n_samples_plot = len(y_test)
+
+        # Annotate with the real-time elapsed seconds at prediction
+        if per_seqlen_stats:
             step = FEATURE_CONFIG.get('window_step_sec', 0.1)
             max_win = max(FEATURE_CONFIG.get('emg_window_size_sec', 0.15),
                           FEATURE_CONFIG.get('imu_window_size_sec', 0.3))
@@ -505,31 +518,34 @@ def main():
                 row['TimeAtPrediction'] = f"{max_win + (row['SeqLen'] - 1) * step:.3f}s"
 
             # Save the segment-length performance plot
-            if per_seqlen_stats:
-                n_samples_test = len(y_test)
-                dynamic_min_count = max(5, int(n_samples_test * 0.01))
-                
-                seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
-                plotting_utils.plot_seqlen_performance(
-                    per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper(),
-                    min_count=dynamic_min_count
-                )
+            dynamic_min_count = max(5, int(n_samples_plot * 0.01))
+            
+            seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
+            plotting_utils.plot_seqlen_performance(
+                per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper(),
+                min_count=dynamic_min_count
+            )
 
     # CNN-LSTM: bin test samples by raw segment duration (elapsed time into lift)
     per_duration_stats = None
-    if is_raw_segment and not use_cv:
-        # segment_duration_sec was stored in df before prepare_for_ml dropped it
+    if is_raw_segment:
         if 'segment_duration_sec' in df.columns:
-            test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
-            
-            # n_bins=None triggers our smart binning logic for high-res proportional bins
-            per_duration_stats = calculate_per_duration_metrics(
-                y_test.values, y_pred, test_durations, n_bins=None
-            )
+            if use_cv:
+                all_durations = df['segment_duration_sec'].values
+                per_duration_stats = calculate_per_duration_metrics(
+                    y.values, oof_predictions, all_durations, n_bins=None
+                )
+                n_samples_plot = len(y)
+            else:
+                test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
+                per_duration_stats = calculate_per_duration_metrics(
+                    y_test.values, y_pred, test_durations, n_bins=None
+                )
+                n_samples_plot = len(y_test)
+
             if per_duration_stats:
-                n_samples_test = len(y_test)
-                # Exclude bins (min_count) proportional to the test set size to decrease noise
-                dynamic_min_count = max(5, int(n_samples_test * 0.01))
+                # Exclude bins (min_count) proportional to the dataset size to decrease noise
+                dynamic_min_count = max(5, int(n_samples_plot * 0.01))
                 
                 seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
                 plotting_utils.plot_seqlen_performance(
