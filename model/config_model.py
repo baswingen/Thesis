@@ -342,8 +342,8 @@ CNN_LSTM_CONFIG = {
     'random_state': GLOBAL_RANDOM_STATE,
     # ── Supervised Contrastive Loss ──────────────────────────────────
     'contrastive_enabled':          True,   # Set False to fall back to pure MSE
-    'contrastive_weight':           0.1,    # λ: contrastive loss scale (0.05–0.5)
-    'contrastive_temperature':      0.1,    # τ: lower → harder negatives
+    'contrastive_weight':           0.01,    # λ: contrastive loss scale (0.05–0.5)
+    'contrastive_temperature':      0.5,    # τ: lower → harder negatives
     'contrastive_cross_participant': True,  # Only allow cross-participant positives
 }
 
