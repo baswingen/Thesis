@@ -700,11 +700,6 @@ def main():
             f.write(f"Epochs: {model.epochs}\n")
             f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
             f.write(f"Input Channels: {model.n_channels}\n")
-            f.write(f"Contrastive Loss Enabled: {model.contrastive_enabled}\n")
-            if model.contrastive_enabled:
-                f.write(f"Contrastive Weight (λ): {model.contrastive_weight}\n")
-                f.write(f"Contrastive Temperature (τ): {model.contrastive_temperature}\n")
-                f.write(f"Cross-Participant Positives Only: {model.contrastive_cross_participant}\n")
             f.write(f"Random State: {model.random_state}\n\n")
         elif model_type == "transformer":
             f.write(f"D_Model: {model.d_model}\n")

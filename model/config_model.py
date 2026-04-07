@@ -7,9 +7,7 @@ ensures consistency across training and inference scripts.
 GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
 
-# Canonical (true) weight values used by SupConLoss to exclude MixUp-blended samples.
-# These match the TRUE_WEIGHTS values plus the 0 kg (no-load) class.
-CANONICAL_WEIGHTS = [0.0, 0.899, 0.979, 1.966, 2.238, 2.945, 4.142, 5.922]
+
 
 # ──────────────────────────────────────────────────────────
 # DATABASE & ENVIRONMENT CONFIGURATION
@@ -39,7 +37,7 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': 'all',  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': ['P01', 'P02', 'P03', 'P04', 'P06', 'P07'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
 }
 
 ###########################################################
@@ -340,11 +338,6 @@ CNN_LSTM_CONFIG = {
     'scheduler_patience': 50,
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE,
-    # ── Supervised Contrastive Loss ──────────────────────────────────
-    'contrastive_enabled':          True,   # Set False to fall back to pure MSE
-    'contrastive_weight':           0.01,    # λ: contrastive loss scale (0.05–0.5)
-    'contrastive_temperature':      0.5,    # τ: lower → harder negatives
-    'contrastive_cross_participant': True,  # Only allow cross-participant positives
 }
 
 # Lighter CNN-LSTM Configuration specifically for Sequential Backward Selection Ablation
