@@ -248,11 +248,17 @@ RBFNN_CONFIG = {
 }
 
 # SVR (Support Vector Regression) Configuration
+# RBF kernel is used instead of linear to prevent unbounded extrapolation
+# for out-of-distribution (unseen) participants in LOPO cross-validation.
+# A linear kernel defines a global hyperplane that can wildly extrapolate
+# when a test participant's features lie outside the training convex hull.
+# RBF predictions decay smoothly toward the training mean for OOD inputs.
 SVR_CONFIG = {
-    'kernel': 'linear',
-    'C': 0.1,
+    'kernel': 'rbf',
+    'C': 50.0,
     'epsilon': 0.05,
     'gamma': 'scale',
+    'balance_weights': True,
     'random_state': GLOBAL_RANDOM_STATE
 }
 

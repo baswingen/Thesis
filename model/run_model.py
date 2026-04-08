@@ -31,12 +31,13 @@ from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
     mean_absolute_error, mean_squared_error, r2_score
 )
+from sklearn.utils.class_weight import compute_sample_weight
 
 ###########################################################
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "svr"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
@@ -342,7 +343,12 @@ def main():
             
             # Train
             start_train = time.perf_counter()
-            model.fit(X_train_fold, y_train_fold)
+            
+            sample_weight = None
+            if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+                sample_weight = compute_sample_weight(class_weight='balanced', y=y_train_fold)
+                
+            model.fit(X_train_fold, y_train_fold, sample_weight=sample_weight)
             train_time = time.perf_counter() - start_train
             
             # Evaluate
@@ -388,7 +394,12 @@ def main():
         # For saving, train a final model on the full training set (or full dataset)
         print("\nTraining final model on full dataset for saving...")
         model = initialize_model(model_type)
-        model.fit(X, y)
+        
+        sample_weight = None
+        if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+            sample_weight = compute_sample_weight(class_weight='balanced', y=y)
+            
+        model.fit(X, y, sample_weight=sample_weight)
         
     else:
         # Train/Test Split
@@ -407,7 +418,12 @@ def main():
 
         # Train
         start_train = time.perf_counter()
-        model.fit(X_train, y_train)
+        
+        sample_weight = None
+        if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+            sample_weight = compute_sample_weight(class_weight='balanced', y=y_train)
+            
+        model.fit(X_train, y_train, sample_weight=sample_weight)
         train_time = time.perf_counter() - start_train
         
         # Evaluate model

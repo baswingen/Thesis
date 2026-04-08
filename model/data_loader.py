@@ -288,15 +288,26 @@ class DataLoader:
         Defaults to FEATURE_CONFIG for window properties if not provided.
         """
         # ── Try precomputed path first ─────────────────────────────────────
+        # ── Try precomputed path first ─────────────────────────────────────
         if use_precomputed:
             df = self.load_precomputed_features(h5_paths)
             if not df.empty:
-                return df
-            print(
-                "[DataLoader] No precomputed features found. "
-                "Falling back to live extraction.\n"
-                "  → Run 'python -m model.feature_extraction' to precompute features."
-            )
+                # Check if precomputed features match the requested format
+                has_sequence = "sequence_dicts" in df.columns
+                if is_sequence == has_sequence:
+                    return df
+                
+                print(
+                    f"[DataLoader] Precomputed features are in {'sequence' if has_sequence else 'scalar'} format, "
+                    f"but {'sequence' if is_sequence else 'scalar'} format was requested. "
+                    "Falling back to live extraction."
+                )
+            else:
+                print(
+                    "[DataLoader] No precomputed features found. "
+                    "Falling back to live extraction.\n"
+                    "  → Run 'python -m model.feature_extraction' to precompute features."
+                )
 
         # ── Live extraction ────────────────────────────────────────────────
         # Fallback to FEATURE_CONFIG if not provided as arguments
