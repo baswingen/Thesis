@@ -110,20 +110,37 @@ class RawTMSiThread(threading.Thread):
                 try: LegacyDevice.cleanup()
                 except Exception: pass
                 
-                devices = LegacyDevice.discover("usb")
-                
-                # Filter for "real" names. 
-                # "USB -" is a placeholder indicating the device is present but not fully ready.
-                valid_devices = [d for d in devices if d._device_name and len(d._device_name) > 5 and "-" not in d._device_name[4:]]
-                
-                if valid_devices:
-                    self.device = valid_devices[0]
-                    break
-                
-                if devices:
-                    print(f"[TMSi] Found {len(devices)} device(s), but names seem invalid (e.g. '{devices[0]._device_name}'). Device might be booting.")
+                try:
+                    devices = LegacyDevice.discover("usb")
+                except Exception as e:
+                    print(f"[TMSi] Discovery error on attempt {attempt+1}: {e}")
+                    time.sleep(1)
+                    continue
+
+                if not devices:
+                    print(f"[TMSi] No devices found on attempt {attempt+1}.")
                 else:
-                    print("[TMSi] No devices found.")
+                    # Refined filtering: 
+                    # Names like "USB -" are placeholders for undiscovered/opening devices.
+                    # Real device names can contain hyphens (e.g. "Porti7-1234").
+                    valid_devices = []
+                    for d in devices:
+                        name = getattr(d, "_device_name", "")
+                        print(f"[TMSi] Discovered: '{name}'")
+                        
+                        # Reject empty names or short placeholders
+                        if not name or len(name) < 4:
+                            continue
+                        
+                        # Specifically reject the "USB -" placeholder
+                        if name.strip() == "USB -":
+                            continue
+                            
+                        valid_devices.append(d)
+
+                    if valid_devices:
+                        self.device = valid_devices[0]
+                        break
                 
                 if attempt < MAX_DISCOVERY_RETRIES - 1:
                     time.sleep(2.0) # Wait for device to stabilize
