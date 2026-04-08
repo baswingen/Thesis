@@ -1,0 +1,77 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260404_105910
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P01_session_01_segments.h5']
+Total samples: 10341
+Evaluation Mode: Leave-One-Participant-Out Cross-Validation (7 Participants)
+Final Model Training samples: 9306
+Final Model Validation samples: 1035
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.2s, Step: 0.15s
+Enabled EMG Features: MAV, RMS, WL, ZC, SSC, VAR, WAMP, IEMG, LogDet, Skew, Kurt, HjMob, HjComp, Myopulse, MNF, MDF, Power, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Mean, Var, Std, Max, SMA, P2P, Skew, Kurt, Jerk, DomFreq, SpecEnergy, MNF, SVM_Mean
+
+--- DATA AUGMENTATION ---
+Enabled: False
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Hidden Size: 512
+Num Layers: 3
+Dropout Rate: 0.2
+Learning Rate: 0.0005
+Batch Size: 64
+Epochs: 600
+Loss Function: MSE
+EMG Window Size (s): 0.15
+IMU Window Size (s): 0.2
+Window Step (s): 0.15
+Random State: 245
+
+--- EVALUATION METRICS ---
+(Averaged over 7 folds)
+MAE: 0.7534 (±0.5697)
+MSE: 2.0068 (±2.2116)
+RMSE: 1.1875 (±0.7724)
+R2: 0.3825 (±0.6821)
+train_time: 265.2888 (±37.8055)
+inference_time_total: 0.5002 (±0.3526)
+inference_time_per_sample: 0.0004 (±0.0001)
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 5179     | 0.3631     | 1.0689    
+0.90 kg      | 735      | 0.4916     | 0.7930    
+0.98 kg      | 739      | 0.5272     | 0.8090    
+1.97 kg      | 736      | 0.7933     | 1.0568    
+2.24 kg      | 737      | 0.7175     | 1.0357    
+2.94 kg      | 742      | 0.8100     | 1.1180    
+4.14 kg      | 734      | 0.7423     | 1.2709    
+5.92 kg      | 739      | 0.6593     | 1.5546    
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 4429     | 0.2076     | 0.4751    
+P02          | 1428     | 0.1905     | 0.4557    
+P03          | 998      | 0.6297     | 1.0818    
+P04          | 998      | 0.2140     | 0.4676    
+P05          | 499      | 1.3492     | 2.2359    
+P06          | 992      | 0.9511     | 1.1821    
+P07          | 997      | 1.7316     | 2.4143    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)
+Total Parameters: 6,025,729
+Trainable Parameters: 6,025,729
+Estimated Inference GFLOPs (per sample): 0.076469
+Estimated Total Training GFLOPs: 1280921.0794
+Avg Training Time: 265.2888s
+Avg Inference Time (per sample): 0.3746ms
+
