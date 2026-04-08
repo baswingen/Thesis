@@ -12,8 +12,8 @@ from typing import List, Dict, Any
 # Pins as defined in STM32_all_in_python_binary.ino
 STM32_CONNECTIONS: Dict[str, str] = {
     "PRBS Output": "PA8 (Digital Out)",
-    "IMU 1 (I2C)": "SDA: PA10, SCL: PA9",
-    "IMU 2 (I2C)": "SDA: PA3, SCL: PA2",
+    "IMU 1 (UART-RX/TX)": "SDA: PA10, SCL: PA9",
+    "IMU 2 (UART-RX/TX)": "SDA: PA3, SCL: PA2",
     "Matrix Rows": "PA0, PA1, PA4",
     "Matrix Cols": "PB0, PB1, PB10, PA5",
 }
@@ -27,7 +27,7 @@ EMG_CONNECTIONS: List[str] = [
     "Biceps Brachii",
     "Triceps Brachii",
     "Brachioradialis",
-    "Flexor Carpi Radialis",
+    "Flexor Carpi Ulnaris",
     "Extensor Carpi Radialis",
 ]
 
@@ -38,23 +38,23 @@ EMG_PLOT_LABELS: List[str] = [
 
 # 3. Participant Configuration
 PARTICIPANT_CONFIG: Dict[str, str] = {
-    "ID": "P01",
-    "Trial": "04",
-    "Session": "1",
+    "ID": "P07",
+    "Trial": "01",
+    "Session": "01",
     "Gender": "Male",
-    "Age": "25",
+    "Age": "24",
     "Handedness": "Right",
-    "Total Arm Length [cm]": "82",
-    "Upper Arm Length [cm]": "38",
-    "Forearm Length [cm]": "33",
-    "Hand Length [cm]": "20",
-    "Upper Arm Circumference [cm]": "32",
+    "Total Arm Length [cm]": "78",
+    "Upper Arm Length [cm]": "36",
+    "Forearm Length [cm]": "29",
+    "Hand Length [cm]": "18",
+    "Upper Arm Circumference [cm]": "33",
     "Fore Arm Circumference [cm]": "28",
 }
 
 # 4. Trial Logic Configuration
 TRIAL_LOGIC_CONFIG: Dict[str, Any] = {
-    "Movements": 1000,
+    "Movements": 250,
     "Number of Weights": 7,
 }
 

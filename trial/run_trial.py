@@ -38,8 +38,8 @@ def main():
         age = 25
 
     handedness = PARTICIPANT_CONFIG.get("Handedness", "Right")
-    session = PARTICIPANT_CONFIG.get("Session", "1")
-
+    session = PARTICIPANT_CONFIG.get("Session", "3")
+    
     metadata = {
         'age': age,
         'dominant_arm': handedness,
