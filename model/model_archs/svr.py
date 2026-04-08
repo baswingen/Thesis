@@ -27,7 +27,8 @@ class SVRRegressor:
                  C: float = SVR_CONFIG['C'], 
                  epsilon: float = SVR_CONFIG['epsilon'],
                  gamma: str | float = SVR_CONFIG.get('gamma', 'scale'),
-                 random_state: int = SVR_CONFIG['random_state']):
+                 random_state: int = SVR_CONFIG['random_state'],
+                 **kwargs):
         self.kernel = kernel
         self.C = C
         self.epsilon = epsilon
@@ -41,18 +42,28 @@ class SVRRegressor:
             epsilon=self.epsilon,
             gamma=self.gamma
         )
+        # Will be set during fit() — used to clip predictions to the training range
+        self.y_train_max: float = np.inf
         
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+        
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight: np.ndarray | None = None):
         """Fit the scaler on features and train the SVR."""
+        self.y_train_max = float(y.max())
         X_scaled = self.scaler.fit_transform(_sanitise(X.values))
-        self.model.fit(X_scaled, y)
+        self.model.fit(X_scaled, y, sample_weight=sample_weight)
         
     def predict(self, X: pd.DataFrame):
-        """Scale test data based on fitted scaler and return non-negative predictions."""
+        """Scale test data based on fitted scaler and return clipped predictions.
+        
+        Predictions are clipped to [0, y_train_max] to prevent the SVR from
+        extrapolating to physically impossible values for out-of-distribution
+        participants (e.g. hundreds or thousands of kg in a 0–6 kg task).
+        """
         X_scaled = self.scaler.transform(_sanitise(X.values))
         y_pred = self.model.predict(X_scaled)
-        # Weight cannot be negative
-        return np.maximum(0.0, y_pred)
+        # Clip to [0, training max] — weight cannot be negative or beyond what
+        # the model was trained to predict.
+        return np.clip(y_pred, 0.0, self.y_train_max)
         
     def evaluate(self, X_test: pd.DataFrame, y_test: pd.Series):
         """
@@ -85,7 +96,7 @@ class SVRRegressor:
         """Save the model and scaler using joblib."""
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump({'model': self.model, 'scaler': self.scaler}, filepath)
+        joblib.dump({'model': self.model, 'scaler': self.scaler, 'y_train_max': self.y_train_max}, filepath)
         print(f"SVR Model saved to {filepath}")
         
     @classmethod
@@ -95,6 +106,7 @@ class SVRRegressor:
         regressor = cls()
         regressor.model = data['model']
         regressor.scaler = data['scaler']
+        regressor.y_train_max = data.get('y_train_max', np.inf)
         return regressor
 
     def plot_results(self, y_test: pd.Series, y_pred: np.ndarray, save_path: str | Path):

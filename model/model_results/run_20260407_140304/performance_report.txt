@@ -1,0 +1,73 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260407_140304
+=======================================================
+
+--- DATASET INFO ---
+Participants included: ['P01', 'P02', 'P03', 'P04', 'P06', 'P07']
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P01_session_03_segments.h5']
+Total samples: 9842
+Evaluation Mode: Leave-One-Participant-Out Cross-Validation (6 Participants)
+Final Model Training samples: 9842
+
+--- FEATURE CONFIGURATION ---
+EMG Window Size: 0.15s, IMU Window Size: 0.2s, Step: 0.15s
+Enabled EMG Features: MAV, RMS, WL, ZC, SSC, VAR, WAMP, IEMG, LogDet, Skew, Kurt, HjMob, HjComp, Myopulse, MNF, MDF, Power, SpecEntropy, PeakFreq, BW
+Enabled IMU Features: Mean, Var, Std, Max, SMA, P2P, Skew, Kurt, Jerk, DomFreq, SpecEnergy, MNF, SVM_Mean
+
+--- DATA AUGMENTATION ---
+Enabled: True
+Probability: 0.7
+Active Methods: noise, stretch, channel_dropout, magnitude_scale, mixup
+  - Noise Std: 0.05
+  - Stretch Range: (0.8, 1.2)
+  - Channel Dropout P: 0.1
+  - Magnitude Scale Range: (0.5, 2.0)
+  - MixUp Alpha: 0.2
+
+--- HYPERPARAMETERS ---
+Model: SVR
+Kernel: rbf
+C: 10.0
+Epsilon: 0.05
+Random State: 245
+
+--- EVALUATION METRICS ---
+(Averaged over 6 folds)
+MAE: 0.7380 (±0.2770)
+MSE: 1.0022 (±0.5900)
+RMSE: 0.9530 (±0.3066)
+R2: 0.6920 (±0.1809)
+train_time: 11.8348 (±4.8150)
+inference_time_total: 1.1527 (±0.5059)
+inference_time_per_sample: 0.0008 (±0.0002)
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 4929     | 0.5239     | 0.7093    
+0.90 kg      | 700      | 0.4798     | 0.5649    
+0.98 kg      | 703      | 0.4842     | 0.5744    
+1.97 kg      | 701      | 0.6345     | 0.7742    
+2.24 kg      | 701      | 0.5684     | 0.6809    
+2.94 kg      | 706      | 0.8680     | 1.0040    
+4.14 kg      | 699      | 1.0989     | 1.2732    
+5.92 kg      | 703      | 2.1063     | 2.4575    
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 4429     | 0.6806     | 1.0265    
+P02          | 1428     | 0.5043     | 0.6248    
+P03          | 998      | 0.7683     | 0.9180    
+P04          | 998      | 0.3361     | 0.5318    
+P06          | 992      | 1.1707     | 1.4069    
+P07          | 997      | 0.9680     | 1.2102    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Parameter count: N/A (Classical ML)
+GFLOPs estimate: N/A (Classical ML)
+Avg Training Time: 11.8348s
+Avg Inference Time (per sample): 0.8082ms
+

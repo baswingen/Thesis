@@ -155,24 +155,24 @@ class FeatureExtractor:
         # Existing features
         mav = np.mean(np.abs(active_emg), axis=0)
         rms = np.sqrt(np.mean(active_emg**2, axis=0))
-        wl = np.sum(np.abs(np.diff(active_emg, axis=0)), axis=0)
+        wl = np.sum(np.abs(np.diff(active_emg, axis=0)), axis=0) / N
         
         # Zero Crossings (ZC)
-        zc = np.sum((active_emg[:-1, :] * active_emg[1:, :]) < 0, axis=0)
+        zc = np.sum((active_emg[:-1, :] * active_emg[1:, :]) < 0, axis=0) / N
         
         # Slope Sign Changes (SSC)
         dx = np.diff(active_emg, axis=0)
-        ssc = np.sum((dx[:-1, :] * dx[1:, :]) < 0, axis=0)
+        ssc = np.sum((dx[:-1, :] * dx[1:, :]) < 0, axis=0) / N
         
         variance = np.var(active_emg, axis=0)
 
         # ── NEW Time Domain ─────────────────────────────────────────
-        # Willison Amplitude (WAMP): count of consecutive diffs exceeding threshold
+        # Willison Amplitude (WAMP): rate of consecutive diffs exceeding threshold
         diffs = np.abs(np.diff(active_emg, axis=0))
-        wamp = np.sum(diffs > self.emg_threshold, axis=0)
+        wamp = np.sum(diffs > self.emg_threshold, axis=0) / N
 
-        # Integrated EMG (IEMG): sum of absolute values
-        iemg = np.sum(np.abs(active_emg), axis=0)
+        # Integrated EMG (IEMG): mean of absolute values (MAV)
+        iemg = np.sum(np.abs(active_emg), axis=0) / N
 
         # Log Detector: geometric mean of absolute signal
         abs_emg = np.abs(active_emg)
@@ -292,7 +292,8 @@ class FeatureExtractor:
         max_val = np.max(imu_data, axis=0)
         min_val = np.min(imu_data, axis=0)
         rms_val = np.sqrt(np.mean(imu_data**2, axis=0))
-        sma_val = np.sum(np.abs(imu_data), axis=0) / self.imu_fs
+        # Signal Magnitude Area (SMA): mean absolute magnitude (duration-independent)
+        sma_val = np.mean(np.abs(imu_data), axis=0)
 
         # ── NEW Time Domain ─────────────────────────────────────────
         # Peak-to-Peak
@@ -312,9 +313,9 @@ class FeatureExtractor:
         # Mean Absolute Jerk (rate of change of signal)
         jerk = np.mean(np.abs(np.diff(imu_data, axis=0)), axis=0) * self.imu_fs
 
-        # Zero Crossings
+        # Zero Crossings (Rate)
         centered = imu_data - mean_val
-        zc = np.sum((centered[:-1, :] * centered[1:, :]) < 0, axis=0)
+        zc = np.sum((centered[:-1, :] * centered[1:, :]) < 0, axis=0) / N
 
         # Energy (sum of squared values / N)
         energy = np.sum(imu_data**2, axis=0) / N

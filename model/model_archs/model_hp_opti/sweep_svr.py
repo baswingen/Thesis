@@ -49,17 +49,18 @@ def main():
     
     print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.\n")
     
-    # 3. Define Parameter Grid and Base Model
-    param_grid = {
-        'model__C': [0.1, 1, 10, 100, 1000],
-        'model__epsilon': [0.01, 0.1, 0.2, 0.5],
-        'model__gamma': ['scale', 'auto', 0.001, 0.01, 0.1],
-        'model__kernel': ['rbf', 'linear', 'poly', 'sigmoid']
-    }
-    
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import StandardScaler
     from sklearn.svm import SVR
+    from sklearn.utils.class_weight import compute_sample_weight
+
+    # 3. Define Parameter Grid and Base Model
+    param_grid = {
+        'model__C': [0.1, 1, 5, 10, 20, 50, 100, 500, 1000],
+        'model__epsilon': [0.01, 0.05, 0.1, 0.2],
+        'model__gamma': ['scale', 'auto', 0.0001, 0.001, 0.01, 0.1, 0.5],
+        'model__kernel': ['rbf'] # RBF is preferred for LOPO stability
+    }
     
     # Create a proper sklearn pipeline since RandomizedSearchCV needs it
     pipeline = Pipeline([
@@ -71,7 +72,7 @@ def main():
     search = RandomizedSearchCV(
         estimator=pipeline,
         param_distributions=param_grid,
-        n_iter=20, # Number of random combinations
+        n_iter=40, # Increased from 20 for better coverage
         scoring='neg_mean_absolute_error',
         cv=3,      # 3-fold internal CV for the sweep
         random_state=42,
@@ -79,8 +80,12 @@ def main():
         verbose=1
     )
     
-    print("Running Randomized Search...")
-    search.fit(X_train, y_train)
+    print("Running Randomized Search with Balanced Sample Weights...")
+    
+    # Calculate weights for X_train
+    sample_weights = compute_sample_weight(class_weight='balanced', y=y_train)
+    
+    search.fit(X_train, y_train, model__sample_weight=sample_weights)
     
     # 4. Save best run results
     best_params = search.best_params_
