@@ -14,9 +14,10 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import CNN_LSTM_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG
+from model.config_model import CNN_LSTM_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG, GLOBAL_BALANCE_WEIGHTS
 from model import plotting_utils
 from model.data_augmentation import SequenceAugmenter
+from sklearn.utils.class_weight import compute_sample_weight
 
 # ---------------------------------------------------------------------------
 # Dataset & collate for variable-length raw segments
@@ -24,27 +25,31 @@ from model.data_augmentation import SequenceAugmenter
 
 class RawSegmentDataset(Dataset):
     """Holds raw segments as tensors of shape (time_steps, n_channels)."""
-    def __init__(self, segments, labels, participant_ids=None):
+    def __init__(self, segments, labels, participant_ids=None, sample_weights=None):
         self.segments = segments          # list of tensors (T_i, C)
         self.labels = labels              # tensor (N, 1)
         self.participant_ids = participant_ids  # list of str or None
+        self.sample_weights = sample_weights    # tensor (N, 1) or None
 
     def __len__(self):
         return len(self.segments)
 
     def __getitem__(self, idx):
         pid = self.participant_ids[idx] if self.participant_ids is not None else ""
-        return self.segments[idx], self.labels[idx], pid
+        # Return a weight of 1.0 if no weights are provided
+        weight = self.sample_weights[idx] if self.sample_weights is not None else torch.tensor([1.0], dtype=torch.float32)
+        return self.segments[idx], self.labels[idx], pid, weight
 
 
 def raw_pad_collate_fn(batch):
     """Pad variable-length segments and return lengths for packing."""
-    segments, labels, pids = zip(*batch)
+    segments, labels, pids, weights = zip(*batch)
     lengths = torch.tensor([seg.shape[0] for seg in segments])
     # pad_sequence expects (T, C) tensors → pads along dim-0
     padded = rnn_utils.pad_sequence(segments, batch_first=True, padding_value=0.0)
     labels = torch.stack(labels)
-    return padded, labels, lengths, list(pids)
+    weights = torch.stack(weights)
+    return padded, labels, lengths, list(pids), weights
 
 # ---------------------------------------------------------------------------
 # CNN Feature Extractor
@@ -162,6 +167,7 @@ class CNNLSTMRegressor:
                  scheduler_patience: int = CNN_LSTM_CONFIG.get('scheduler_patience', 10),
                  scheduler_factor: float = CNN_LSTM_CONFIG.get('scheduler_factor', 0.5),
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
+                 balance_weights: bool = CNN_LSTM_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
                  random_state: int = CNN_LSTM_CONFIG['random_state']):
 
         self.cnn_filters = list(cnn_filters)
@@ -179,6 +185,7 @@ class CNNLSTMRegressor:
         self.scheduler_patience = scheduler_patience
         self.scheduler_factor = scheduler_factor
         self.loss_type = loss_type.lower()
+        self.balance_weights = balance_weights
         self.random_state = random_state
 
         # Tracking
@@ -280,6 +287,17 @@ class CNNLSTMRegressor:
         self.train_samples = len(X_train)
         self.val_samples = len(X_val)
 
+        # 4. Handle sample weighting
+        train_weights_tensor = None
+        if self.balance_weights:
+            # Calculate balanced weights based on the original (pre-augmentation) distribution
+            # but applied to the augmented dataset. 
+            # Note: compute_sample_weight expects labels it can use to index the distribution.
+            # We use the y_np_train which includes augmented samples.
+            weights_np = compute_sample_weight(class_weight='balanced', y=y_np_train.flatten())
+            train_weights_tensor = torch.from_numpy(weights_np.astype(np.float32)).unsqueeze(1)
+            print(f"[CNNLSTMRegressor] Sample weighting enabled. Weights assigned to {len(weights_np)} training samples.")
+
         # 4. Build model
         self.model = CNNLSTMNetwork(
             n_channels=self.n_channels,
@@ -306,14 +324,15 @@ class CNNLSTMRegressor:
                 print(f"[CNNLSTMRegressor] Unknown loss '{self.loss_type}', defaulting to MSE.")
 
         # 5. Build datasets
-        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
+        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train, 
+                                            sample_weights=train_weights_tensor)
         _g = torch.Generator()
         _g.manual_seed(self.random_state)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
                                   shuffle=True, collate_fn=raw_pad_collate_fn,
                                   generator=_g)
 
-        dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # no pids needed for val
+        dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # val stays unweighted
         loader_val = DataLoader(dataset_val, batch_size=self.batch_size,
                                 shuffle=False, collate_fn=raw_pad_collate_fn)
 
@@ -327,15 +346,26 @@ class CNNLSTMRegressor:
                 # --- TRAIN ---
                 self.model.train()
                 running_loss = 0.0
-                for batch_x, batch_y, lengths, batch_pids in loader_train:
+                for batch_x, batch_y, lengths, batch_pids, batch_weights in loader_train:
                     # batch_x: (B, T, C) → transpose to (B, C, T) for Conv1d
                     batch_x = batch_x.transpose(1, 2).to(self.device)
                     batch_y = batch_y.to(self.device)
                     lengths = lengths.to(self.device)
+                    batch_weights = batch_weights.to(self.device)
 
                     optimizer.zero_grad()
                     outputs = self.model(batch_x, lengths)
-                    loss = criterion(outputs, batch_y)
+                    
+                    # Weighted loss calculation
+                    # criterion must have reduction='none' for per-sample weighting
+                    if self.balance_weights:
+                        criterion.reduction = 'none'
+                        loss_unweighted = criterion(outputs, batch_y)
+                        loss = (loss_unweighted * batch_weights).mean()
+                    else:
+                        criterion.reduction = 'mean'
+                        loss = criterion(outputs, batch_y)
+                        
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                     optimizer.step()
@@ -348,7 +378,7 @@ class CNNLSTMRegressor:
                 self.model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
-                    for batch_x, batch_y, lengths, _ in loader_val:
+                    for batch_x, batch_y, lengths, _, _ in loader_val:
                         batch_x = batch_x.transpose(1, 2).to(self.device)
                         batch_y = batch_y.to(self.device)
                         lengths = lengths.to(self.device)
@@ -401,7 +431,7 @@ class CNNLSTMRegressor:
         self.model.eval()
         all_preds = []
         with torch.no_grad():
-            for batch_x, _, lengths, _pids in loader:
+            for batch_x, _, lengths, _pids, _ in loader:
                 batch_x = batch_x.transpose(1, 2).to(self.device)
                 lengths = lengths.to(self.device)
                 preds = self.model(batch_x, lengths).cpu().numpy()
@@ -453,6 +483,7 @@ class CNNLSTMRegressor:
                 'batch_size': self.batch_size,
                 'epochs': self.epochs,
                 'loss_type': self.loss_type,
+                'balance_weights': self.balance_weights,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
                 'scheduler_patience': self.scheduler_patience,
@@ -486,6 +517,7 @@ class CNNLSTMRegressor:
         filtered_config = {k: v for k, v in state['config'].items() if k in valid_keys}
             
         regressor = cls(**filtered_config)
+        regressor.balance_weights = state['config'].get('balance_weights', False)
         regressor.scaler = state['scaler']
         
         # Infer n_channels for older models
@@ -552,7 +584,7 @@ class CNNLSTMRegressor:
         self.model.eval()
         all_features = []
         with torch.no_grad():
-            for batch_x, _, lengths, _pids in tqdm(loader, desc="Extracting CNN features", unit="batch"):
+            for batch_x, _, lengths, _pids, _ in tqdm(loader, desc="Extracting CNN features", unit="batch"):
                 # batch_x: (B, T, C) → (B, C, T) for Conv1d
                 batch_x = batch_x.transpose(1, 2).to(self.device)
 
