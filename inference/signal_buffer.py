@@ -72,11 +72,15 @@ from inference.inference_config import (
 # ---------------------------------------------------------------------------
 
 def _name_to_raw_idx(ch_name: str) -> int:
-    """Map 'ch1'..'ch32' to raw TMSi column indices 16..47 (BIP start)."""
+    """Map 'ch1'..'ch48' to raw TMSi column indices 0..47.
+    
+    Standard Porti7 mapping:
+    - ch1 .. ch16  -> UNI 1 .. UNI 16 (Indices 0-15)
+    - ch17 .. ch36 -> BIP 1 .. BIP 20 (Indices 16-35)
+    """
     try:
         num = int(ch_name.replace("ch", ""))
-        # Training used ch1-ch32. Assuming these map to the BIP block (col 16+).
-        return 15 + num
+        return num - 1
     except (ValueError, AttributeError):
         return -1
 

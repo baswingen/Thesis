@@ -93,10 +93,15 @@ from src.emg_processing import EMGProcessor
 EMG_MUSCLE_NAMES = list(EMG_CHANNEL_MAPPING.keys())
 
 def _name_to_raw_idx(ch_name: str) -> int:
-    """Map 'ch1'..'ch32' to raw TMSi column indices 16..47 (BIP start)."""
+    """Map 'ch1'..'ch48' to raw TMSi column indices 0..47.
+    
+    Standard Porti7 mapping:
+    - ch1 .. ch16  -> UNI 1 .. UNI 16 (Indices 0-15)
+    - ch17 .. ch36 -> BIP 1 .. BIP 20 (Indices 16-35)
+    """
     try:
         num = int(ch_name.replace("ch", ""))
-        return 15 + num
+        return num - 1
     except:
         return -1
 
@@ -574,20 +579,24 @@ class _EMGPanel(QtWidgets.QFrame):
         self.setStyleSheet(f"background-color: {BG_MID}; border-radius: 6px;")
         self.n_channels = n_channels
         
-        # Pre-load muscle names from mapping
-        self.channel_indices = []
+        # Pre-load muscle mappings (handles both single and differential pairs)
+        self.channel_mappings = []
         for name in EMG_MUSCLE_NAMES:
             mapping = EMG_CHANNEL_MAPPING[name]
             if isinstance(mapping, tuple):
-                idx = _name_to_raw_idx(mapping[0])
+                m = (_name_to_raw_idx(mapping[0]), _name_to_raw_idx(mapping[1]))
             else:
-                idx = _name_to_raw_idx(mapping)
-            self.channel_indices.append(idx)
+                m = _name_to_raw_idx(mapping)
+            self.channel_mappings.append(m)
         
-        # Ensure we have exactly n_channels
-        if len(self.channel_indices) < n_channels:
-            self.channel_indices.extend([i for i in range(n_channels - len(self.channel_indices))])
-        self.channel_indices = self.channel_indices[:n_channels]
+        # Backward compatibility for 'channel_indices' (used by spinners in config area)
+        # We store the first channel of the mapping for the spinner value
+        self.channel_indices = []
+        for m in self.channel_mappings:
+            if isinstance(m, tuple):
+                self.channel_indices.append(m[0])
+            else:
+                self.channel_indices.append(m)
         
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(10, 8, 10, 8)
@@ -732,9 +741,15 @@ class _EMGPanel(QtWidgets.QFrame):
             n_samples = samp.shape[0]
             n_cols = samp.shape[1]
             selected_samp = np.zeros((n_samples, self.n_channels), dtype=np.float32)
-            for i, idx in enumerate(self.channel_indices):
-                if 0 <= idx < n_cols:
-                    selected_samp[:, i] = samp[:, idx]
+            for i, mapping in enumerate(self.channel_mappings):
+                if isinstance(mapping, tuple):
+                    idx1, idx2 = mapping
+                    if 0 <= idx1 < n_cols and 0 <= idx2 < n_cols:
+                        selected_samp[:, i] = samp[:, idx1] - samp[:, idx2]
+                else:
+                    idx = mapping
+                    if 0 <= idx < n_cols:
+                        selected_samp[:, i] = samp[:, idx]
             chunks_t.append(t_arr)
             chunks_v.append(selected_samp)
 

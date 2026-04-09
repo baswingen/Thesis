@@ -38,18 +38,18 @@ EMG_PLOT_LABELS: List[str] = [
 
 # 3. Participant Configuration
 PARTICIPANT_CONFIG: Dict[str, str] = {
-    "ID": "P07",
-    "Trial": "01",
+    "ID": "P10",
+    "Trial": "02",
     "Session": "01",
     "Gender": "Male",
-    "Age": "24",
+    "Age": "22",
     "Handedness": "Right",
     "Total Arm Length [cm]": "78",
-    "Upper Arm Length [cm]": "36",
+    "Upper Arm Length [cm]": "32",
     "Forearm Length [cm]": "29",
-    "Hand Length [cm]": "18",
+    "Hand Length [cm]": "22",
     "Upper Arm Circumference [cm]": "33",
-    "Fore Arm Circumference [cm]": "28",
+    "Fore Arm Circumference [cm]": "30",
 }
 
 # 4. Trial Logic Configuration

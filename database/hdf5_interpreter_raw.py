@@ -14,7 +14,7 @@ Run:
 
 # Path to the .h5 file you want to inspect
 # Layout: database/participant_PXX/session_NN/trial_N_TIMESTAMP.h5
-FILE = r"database/participant_P01/session_01/trial_3_20260304_150704.h5"
+FILE = r"database\participant_P09\session_01\trial_2_20260408_164859.h5"
 
 # Dataset path inside the file.
 # Examples:

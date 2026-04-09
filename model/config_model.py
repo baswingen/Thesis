@@ -96,9 +96,9 @@ EMG_CHANNEL_CONFIG = {
     "Anterior Deltoid":  ("ch1", "ch2"),
     "Lateral Deltoid":   ("ch3", "ch4"),
     "Posterior Deltoid": ("ch5", "ch6"),
-    "Triceps Brachii":   ("ch7", "ch8"),
+    "Biceps Brachii":   ("ch7", "ch8"),
     # Single-channel muscles
-    "Biceps Brachii":    "ch17",
+    "Triceps Brachii":    "ch17",
     "Brachioradialis":   "ch18",
     "Flexor Carpi Ulnaris (FCU)":  "ch19",
     "Extensor Carpi Radialis (ECR)": "ch20",
