@@ -133,7 +133,7 @@ class GRURegressor:
         arr = np.where(np.isfinite(arr), arr, 0.0)
         return np.clip(arr, -clip, clip)
         
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
         from sklearn.model_selection import train_test_split
         from tqdm import tqdm
         import copy

@@ -1,0 +1,20 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260409_041621
+Found 9 segment file(s).
+Extracting features from HDF5 files. This may take a moment...
+[DataLoader] Filtered 9 files down to 8 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P06', 'P07']
+[DataLoader] Loaded 9842 raw segments (26 channels each)
+Extracted features dataframe shape: (9842, 9)
+Raw Segment Data Summary:
+  - Total Segments: 9842
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2522 samples
+  - Min / Max Segment Length: 470 / 135696 samples
+Label vector (y) shape: (9842,) (Target: weight)
+
+Starting 6-Fold Leave-One-Participant-Out Cross-Validation...
+--- Fold 1/6 (Left out Participant: P01) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [128, 256, 512], 'cnn_kernel_sizes': [7, 5, 3], 'pool_size': 4, 'lstm_hidden_size': 512, 'lstm_num_layers': 4, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': True, 'validation_split': 0.2, 'early_stopping_patience': 100, 'scheduler_patience': 50, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda

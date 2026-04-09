@@ -6,6 +6,7 @@ ensures consistency across training and inference scripts.
 
 GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
+GLOBAL_BALANCE_WEIGHTS = True
 
 
 
@@ -339,6 +340,7 @@ CNN_LSTM_CONFIG = {
     'weight_decay': 1e-05,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
     'epochs': 1000,
+    'balance_weights': True,
     'validation_split': 0.2,
     'early_stopping_patience': 100,
     'scheduler_patience': 50,
