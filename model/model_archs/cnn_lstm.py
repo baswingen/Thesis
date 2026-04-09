@@ -377,6 +377,7 @@ class CNNLSTMRegressor:
                 # Val loop — val set has no pids, so pass dummy pids
                 self.model.eval()
                 val_loss = 0.0
+                criterion.reduction = 'mean'
                 with torch.no_grad():
                     for batch_x, batch_y, lengths, _, _ in loader_val:
                         batch_x = batch_x.transpose(1, 2).to(self.device)
