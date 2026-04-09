@@ -94,7 +94,7 @@ class MLPRegressor:
             self.device = torch.device("cpu")
         print(f"[{self.__class__.__name__}] Using device: {self.device}")
         
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
         """Fit the scaler and train the MLP with early stopping."""
         from sklearn.model_selection import train_test_split
         from tqdm import tqdm

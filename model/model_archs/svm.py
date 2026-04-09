@@ -44,7 +44,7 @@ class SVMClassifier:
             probability=True
         )
         
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
         """Fit the scaler on features and train the SVM."""
         X_scaled = self.scaler.fit_transform(_sanitise(X.values))
         self.model.fit(X_scaled, y)

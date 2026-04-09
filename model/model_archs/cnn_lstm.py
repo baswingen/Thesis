@@ -244,7 +244,7 @@ class CNNLSTMRegressor:
     # Training
     # ------------------------------------------------------------------
 
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
         from sklearn.model_selection import train_test_split
         from tqdm import tqdm
         import copy

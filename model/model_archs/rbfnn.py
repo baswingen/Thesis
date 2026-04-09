@@ -55,7 +55,7 @@ class RBFNNClassifier:
         """Calculate the RBF kernel features (activations) given scaled input data."""
         return rbf_kernel(X_scaled, self.centers_, gamma=self.gamma)
 
-    def fit(self, X: pd.DataFrame, y: pd.Series):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
         """Fit the scaler, find RBF centers, map inputs to hidden layer, and train output layer."""
         # 1. Scale data
         X_scaled = self.scaler.fit_transform(_sanitise(X.values))
