@@ -38,7 +38,7 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': ['P01', 'P02', 'P03', 'P04', 'P06', 'P07'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': 'all',  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
 }
 
 ###########################################################
@@ -192,7 +192,7 @@ AUGMENTATION_CONFIG = {
     # Probability that any single training sample is augmented (0.0 – 1.0).
     # Each selected sample produces one additional augmented copy alongside
     # the original, so the dataset can grow up to 2× when p=1.0.
-    'p': 0.7,
+    'p': 0.5,
 
     # Active augmentation methods.  Remove a method name to disable it.
     # Available: 'noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'
@@ -210,7 +210,7 @@ AUGMENTATION_CONFIG = {
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
-    'channel_dropout_p': 0.10,
+    'channel_dropout_p': 0.2,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -220,7 +220,7 @@ AUGMENTATION_CONFIG = {
     # ── MixUp ────────────────────────────────────────────────────────
     # Alpha parameter of the Beta(α, α) distribution for λ.
     # 0.1 is very conservative — λ stays close to 0 or 1 (minimal blending).
-    'mixup_alpha': 0.2,
+    'mixup_alpha': 0.3,
 }
 
 # Cross-Validation Configuration
@@ -340,7 +340,7 @@ CNN_LSTM_CONFIG = {
     'weight_decay': 1e-05,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
     'epochs': 1000,
-    'balance_weights': True,
+    'balance_weights': False,
     'validation_split': 0.2,
     'early_stopping_patience': 100,
     'scheduler_patience': 50,
