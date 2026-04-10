@@ -340,8 +340,8 @@ CNN_LSTM_CONFIG = {
     'weight_decay': 1e-05,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
     'epochs': 1000,
-    'balance_weights': True,
-    'validation_split': 0.2,
+    'balance_weights': False,
+    'validation_split': 0.15,
     'early_stopping_patience': 100,
     'scheduler_patience': 50,
     'scheduler_factor': 0.5,
