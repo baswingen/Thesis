@@ -330,11 +330,11 @@ LSTM_CONFIG = {
 # CNN-LSTM Configuration (raw-segment end-to-end model)
 # Sweep Iteration 60 best params (R²=0.9905, MAE=0.0619)
 CNN_LSTM_CONFIG = {
-    'cnn_filters': [128, 256, 512],
-    'cnn_kernel_sizes': [7, 5, 3],
+    'cnn_filters': [64, 128, 256, 256],
+    'cnn_kernel_sizes': [7, 5, 3, 3],
     'pool_size': 4,
-    'lstm_hidden_size': 512,
-    'lstm_num_layers': 4,
+    'lstm_hidden_size': 256,
+    'lstm_num_layers': 3,
     'dropout_rate': 0.4,
     'learning_rate': 0.001,
     'weight_decay': 1e-05,

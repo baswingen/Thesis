@@ -31,13 +31,13 @@ from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
     mean_absolute_error, mean_squared_error, r2_score
 )
-from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.utils.class_weight import compute_sample_weight, compute_class_weight
 
 ###########################################################
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
@@ -210,6 +210,335 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
     return results
 
 
+def calculate_class_weights(y):
+    """Calculate the 'balanced' weight for each unique class in y."""
+    from sklearn.utils.class_weight import compute_class_weight
+    y_np = np.asarray(y)
+    unique_classes = np.sort(np.unique(y_np))
+    weights = compute_class_weight(class_weight='balanced', classes=unique_classes, y=y_np)
+    
+    # Calculate counts for context
+    counts = {c: int(np.sum(y_np == c)) for c in unique_classes}
+    
+    results = []
+    for i, c in enumerate(unique_classes):
+        results.append({
+            'Weight': f"{c:.2f} kg",
+            'Multiplier': f"{weights[i]:.4f}",
+            'Count': counts[c]
+        })
+    return results
+
+
+def setup_run_dir(base_dir):
+    """Create a unique timestamped folder for this run's results."""
+    results_dir = base_dir / "model" / "model_results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = results_dir / f"run_{timestamp}"
+    run_dir.mkdir(exist_ok=True)
+    return run_dir, timestamp
+
+
+def load_and_prepare_data(loader, h5_paths, model_type, is_raw_segment, is_sequence, use_precomputed):
+    """Load data and prepare X, y arrays."""
+    if is_raw_segment:
+        df = loader.load_raw_segments(h5_paths)
+    else:
+        df = loader.load_and_extract_features(
+            h5_paths,
+            is_sequence=is_sequence,
+            use_precomputed=use_precomputed,
+        )
+    
+    if df.empty:
+        return None, None, None, None
+
+    groups = df["subject"].astype(str).values if "subject" in df.columns else None
+    X, y = loader.prepare_for_ml(df, target_col="weight")
+    return X, y, groups, df
+
+
+def print_data_summary(X, y, is_raw_segment, is_sequence):
+    """Print statistics about the loaded dataset."""
+    if is_raw_segment:
+        seg_lengths = np.array([seg.shape[0] for seg in X['raw_segment']])
+        n_channels = X['raw_segment'].iloc[0].shape[1]
+        print(f"Raw Segment Data Summary:")
+        print(f"  - Total Segments: {len(X)}")
+        print(f"  - Channels (EMG + IMU): {n_channels}")
+        print(f"  - Avg Segment Length: {seg_lengths.mean():.0f} samples")
+        print(f"  - Min / Max Segment Length: {seg_lengths.min()} / {seg_lengths.max()} samples")
+    elif is_sequence:
+        avg_seq_len = np.mean([len(s) for s in X.iloc[:, 0]])
+        first_seq = X.iloc[0, 0]
+        num_feats_per_window = len(first_seq[0]) if first_seq else 0
+        print(f"Sequence Data Summary:")
+        print(f"  - Total Lifts (Sequences): {len(X)}")
+        print(f"  - Average Windows per Lift: {avg_seq_len:.1f}")
+        print(f"  - Features per Window: {num_feats_per_window}")
+    else:
+        print(f"Feature matrix (X) shape: {X.shape}")
+    print(f"Label vector (y) shape: {y.shape} (Target: weight)")
+
+
+def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds):
+    """Run cross-validation and return metrics and predictions."""
+    if cv_strategy == 'participant':
+        from sklearn.model_selection import LeaveOneGroupOut
+        logo = LeaveOneGroupOut()
+        cv_iterator = list(logo.split(X, y, groups))
+        n_folds = len(cv_iterator)
+        print(f"\nStarting {n_folds}-Fold Leave-One-Participant-Out Cross-Validation...")
+    else:
+        from sklearn.model_selection import StratifiedKFold
+        skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
+        strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
+        cv_iterator = list(skf.split(X, strat_labels))
+        print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
+
+    cv_metrics = []
+    fold_results = []
+    oof_predictions = np.zeros(len(X))
+    participant_stats = []
+
+    for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
+        if cv_strategy == 'participant':
+            left_out_participant = groups[test_idx[0]]
+            print(f"--- Fold {fold}/{n_folds} (Left out Participant: {left_out_participant}) ---")
+        else:
+            print(f"--- Fold {fold}/{n_folds} ---")
+        
+        X_train_fold, X_test_fold = X.iloc[train_idx], X.iloc[test_idx]
+        y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
+        
+        model = initialize_model(model_type)
+        if model is None: continue
+        
+        start_train = time.perf_counter()
+        sample_weight = None
+        if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+            sample_weight = compute_sample_weight(class_weight='balanced', y=y_train_fold)
+            
+        model.fit(X_train_fold, y_train_fold, sample_weight=sample_weight)
+        train_time = time.perf_counter() - start_train
+        
+        start_inf = time.perf_counter()
+        metrics, fold_report = model.evaluate(X_test_fold, y_test_fold)
+        inf_time = time.perf_counter() - start_inf
+        
+        metrics.update({
+            'train_time': train_time,
+            'inference_time_total': inf_time,
+            'inference_time_per_sample': inf_time / len(X_test_fold)
+        })
+        
+        cv_metrics.append(metrics)
+        fold_results.append(fold_report)
+        preds = model.predict(X_test_fold)
+        oof_predictions[test_idx] = preds
+        
+        if cv_strategy == 'participant':
+            participant_stats.append({
+                'Participant': left_out_participant,
+                'MAE': mean_absolute_error(y_test_fold, preds),
+                'RMSE': np.sqrt(mean_squared_error(y_test_fold, preds)),
+                'Samples': len(test_idx)
+            })
+
+    print("\nTraining final model on full dataset for saving...")
+    model = initialize_model(model_type)
+    sample_weight = None
+    if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+        sample_weight = compute_sample_weight(class_weight='balanced', y=y)
+    model.fit(X, y, sample_weight=sample_weight)
+
+    return model, cv_metrics, oof_predictions, participant_stats, n_folds
+
+
+def execute_single_split(X, y, df, model_type, split_val):
+    """Run a single train/test split and return metrics and predictions."""
+    stratify = df["weight"].astype(str) if "weight" in df.columns else None
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=split_val, random_state=GLOBAL_RANDOM_STATE, stratify=stratify
+    )
+    
+    print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
+    model = initialize_model(model_type)
+    
+    start_train = time.perf_counter()
+    sample_weight = None
+    if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+        sample_weight = compute_sample_weight(class_weight='balanced', y=y_train)
+    model.fit(X_train, y_train, sample_weight=sample_weight)
+    train_time = time.perf_counter() - start_train
+    
+    print(f"\nEvaluating {model_type.upper()} Model on unseen test set...")
+    start_inf = time.perf_counter()
+    metrics, report_str = model.evaluate(X_test, y_test)
+    inf_time = time.perf_counter() - start_inf
+    
+    metrics.update({
+        'train_time': train_time,
+        'inference_time_total': inf_time,
+        'inference_time_per_sample': inf_time / len(X_test)
+    })
+    
+    y_pred = model.predict(X_test)
+    return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred
+
+
+def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, oof_predictions):
+    """Save model file, regression plot, and loss plot."""
+    model_path = run_dir / f"{model_type}_model.joblib"
+    model.save(model_path)
+    
+    plot_path = run_dir / "regression_plot.png"
+    if use_cv:
+        model.plot_results(y, oof_predictions, plot_path)
+    else:
+        model.plot_results(y_test, y_pred, plot_path)
+        
+    if hasattr(model, 'plot_loss'):
+        loss_plot_path = run_dir / "loss_plot.png"
+        model.plot_loss(loss_plot_path)
+
+
+def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_test, y_pred, oof_predictions,
+                        is_raw_segment, is_sequence, groups, participant_stats):
+    """Save specialized plots: t-SNE, participant performance, seqlen/duration performance."""
+    if is_raw_segment and hasattr(model, 'plot_tsne') and groups is not None:
+        print("\nGenerating t-SNE plot of CNN feature space...")
+        try:
+            model.plot_tsne(X=X, participants=groups, weights=y.values, save_path=run_dir / "tsne_cnn_features.png")
+        except Exception as e:
+            print(f"[WARN] t-SNE plot failed: {e}")
+
+    if use_cv and participant_stats:
+        plotting_utils.plot_participant_performance(participant_stats, run_dir / "participant_performance.png", 
+                                                    model_name=model_type.upper())
+
+    per_seqlen_stats = None
+    per_duration_stats = None
+
+    if is_sequence and not is_raw_segment:
+        target_y = y.values if use_cv else y_test.values
+        target_preds = oof_predictions if use_cv else y_pred
+        target_X = X if use_cv else X_test
+        
+        seq_col = 'sequence_dicts'
+        if seq_col in df.columns:
+            seq_lens = np.array([len(row) for row in df.loc[target_X.index, seq_col]])
+        else:
+            seq_lens = np.array([len(row) for row in target_X.iloc[:, 0]])
+            
+        per_seqlen_stats = calculate_per_seqlen_metrics(target_y, target_preds, seq_lens)
+        if per_seqlen_stats:
+            step = FEATURE_CONFIG.get('window_step_sec', 0.1)
+            max_win = max(FEATURE_CONFIG.get('emg_window_size_sec', 0.15), FEATURE_CONFIG.get('imu_window_size_sec', 0.3))
+            for row in per_seqlen_stats:
+                row['TimeAtPrediction'] = f"{max_win + (row['SeqLen'] - 1) * step:.3f}s"
+            
+            plotting_utils.plot_seqlen_performance(per_seqlen_stats, run_dir / "seqlen_performance_plot.png", 
+                                                    model_name=model_type.upper(), min_count=max(5, int(len(target_y)*0.01)))
+
+    if is_raw_segment and 'segment_duration_sec' in df.columns:
+        target_y = y.values if use_cv else y_test.values
+        target_preds = oof_predictions if use_cv else y_pred
+        durations = df.loc[X.index if use_cv else X_test.index, 'segment_duration_sec'].values
+        
+        per_duration_stats = calculate_per_duration_metrics(target_y, target_preds, durations)
+        if per_duration_stats:
+            plotting_utils.plot_seqlen_performance(per_duration_stats, run_dir / "seqlen_performance_plot.png", 
+                                                    model_name="CNN-LSTM", min_count=max(5, int(len(target_y)*0.01)))
+            
+    return per_seqlen_stats, per_duration_stats
+
+
+def generate_report(run_dir, timestamp, h5_paths, X, use_cv, cv_strategy, n_folds, model, model_type,
+                    X_test, X_train, y, y_train, y_test, is_raw_segment, 
+                    avg_metrics, std_metrics, metrics, participant_stats, 
+                    per_seqlen_stats, per_duration_stats, oof_predictions, y_pred):
+    """Generate the detailed performance_report.txt."""
+    report_file = run_dir / "performance_report.txt"
+    with open(report_file, "w") as f:
+        f.write("=" * 55 + "\n")
+        f.write(f"MODEL PERFORMANCE REPORT\nRun Timestamp: {timestamp}\n")
+        f.write("=" * 55 + "\n\n")
+        
+        f.write("--- DATASET INFO ---\n")
+        f.write(f"Participants included: {PARTICIPANT_CONFIG.get('include', 'all')}\n")
+        f.write(f"Database segments used: {[p.name for p in h5_paths]}\n")
+        f.write(f"Total samples: {len(X)}\n")
+        if use_cv:
+            mode = f"Leave-One-Participant-Out CV ({n_folds} Participants)" if cv_strategy == 'participant' else f"{n_folds}-Fold Stratified CV"
+            f.write(f"Evaluation Mode: {mode}\n")
+            f.write(f"Final Model Training samples: {getattr(model, 'train_samples', len(X))}\n")
+        else:
+            f.write(f"Evaluation Mode: Train/Test Split\n")
+            f.write(f"Testing samples: {len(X_test)}\n")
+        f.write("\n")
+
+        if getattr(model, 'balance_weights', False):
+            f.write("--- BALANCE WEIGHTS ---\nSample weighting: enabled (class_weight='balanced')\n")
+            weights = calculate_class_weights(y if use_cv else y_train)
+            f.write(f"{'Weight':<12} | {'Count (Train)':<14} | {'Multiplier':<10}\n" + "-"*43 + "\n")
+            for cw in weights:
+                f.write(f"{cw['Weight']:<12} | {cw['Count']:<14} | {cw['Multiplier']:<10}\n")
+            f.write("\n")
+
+        f.write("--- FEATURE CONFIGURATION ---\n")
+        if is_raw_segment:
+            f.write(f"Input: Raw EMG + IMU segments (end-to-end CNN)\n")
+            emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
+            imu_ch = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if v]
+            f.write(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}\n")
+            f.write(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}\n")
+        else:
+            f.write(f"EMG Window: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
+        f.write("\n")
+
+        f.write("--- HYPERPARAMETERS ---\n")
+        f.write(f"Model: {model_type.upper()}\n")
+        # Write specific hyperparameters based on model type
+        if model_type == "svr":
+            f.write(f"Kernel: {model.kernel}\nC: {model.C}\nEpsilon: {model.epsilon}\n")
+        elif model_type == "rf":
+            f.write(f"N Estimators: {model.n_estimators}\nMax Depth: {model.max_depth}\n")
+        elif model_type in ["gru", "lstm", "cnn_lstm"]:
+            f.write(f"Learning Rate: {model.learning_rate}\nBatch Size: {model.batch_size}\nEpochs: {model.epochs}\n")
+        f.write("\n")
+
+        f.write("--- EVALUATION METRICS ---\n")
+        if use_cv:
+            f.write(f"(Averaged over {n_folds} folds)\n")
+            for k, v in avg_metrics.items(): f.write(f"{k}: {v:.4f} (±{std_metrics[k]:.4f})\n")
+        else:
+            for k, v in metrics.items(): f.write(f"{k}: {v:.4f}\n")
+        f.write("\n")
+
+        stats = calculate_per_weight_metrics(y if use_cv else y_test, oof_predictions if use_cv else y_pred)
+        f.write("--- PER-WEIGHT METRICS ---\n")
+        f.write(f"{'Weight':<12} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n" + "-"*50 + "\n")
+        for s in stats: f.write(f"{s['Weight']:<12} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
+        f.write("\n")
+
+        if per_seqlen_stats:
+            f.write("--- PER-SEQUENCE-LENGTH METRICS ---\n")
+            for s in per_seqlen_stats: f.write(f"{s['SeqLen']:<12} | {s['TimeAtPrediction']:<16} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
+            f.write("\n")
+            
+        f.write("--- COMPUTE & TIMING METRICS ---\n")
+        f.write(f"Device: {performance_utils.format_device_string(performance_utils.get_device_info())}\n")
+        if hasattr(model, 'model') and isinstance(model.model, torch.nn.Module):
+            tot, train = performance_utils.count_parameters(model.model)
+            f.write(f"Total Parameters: {tot:,}\nTrainable Parameters: {train:,}\n")
+        f.write("\n")
+
+    print(f"\nPerformance report saved to {report_file}")
+
+
 def main():
     # Define paths
     base_dir = Path(__file__).parent.parent
@@ -225,598 +554,54 @@ def main():
             print(f"Error: Grid search script {sweep_script.name} not found.")
         return
         
-    segments_dir = DATABASE_CONFIG['segments_dir']
-    results_dir = base_dir / "model" / "model_results"
-    
-    # Create results directory if it doesn't exist
-    results_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create a unique timestamped folder for this run's results
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = results_dir / f"run_{timestamp}"
-    run_dir.mkdir(exist_ok=True)
-    
+    # 1. Setup
+    run_dir, timestamp = setup_run_dir(base_dir)
     print(f"Results will be saved to: {run_dir}")
-    
-    # Get all h5 segments files
-    h5_paths = list(segments_dir.glob("*.h5"))
-    
-    if not h5_paths:
-        print(f"No HDF5 segment files found in {segments_dir}.")
-        return
-
-    print(f"Found {len(h5_paths)} segment file(s).")
-    
-    # Load and extract features
-    loader = DataLoader()
-    print("Extracting features from HDF5 files. This may take a moment...")
     
     model_type = MODEL_TYPE.lower()
     is_sequence = model_type in ["gru", "lstm", "transformer"]
     is_raw_segment = model_type == "cnn_lstm"
-    target_col = "weight"
     
-    # Load data — raw segments for CNN-LSTM, features for everything else
-    if is_raw_segment:
-        df = loader.load_raw_segments(h5_paths)
-    else:
-        df = loader.load_and_extract_features(
-            h5_paths,
-            is_sequence=is_sequence,
-            use_precomputed=USE_PRECOMPUTED_FEATURES,
-        )
-    
-    if df.empty:
+    # 2. Data Loading
+    loader = DataLoader()
+    h5_paths = list(DATABASE_CONFIG['segments_dir'].glob("*.h5"))
+    if not h5_paths:
+        print(f"No HDF5 segment files found in {DATABASE_CONFIG['segments_dir']}.")
+        return
+
+    X, y, groups, df = load_and_prepare_data(loader, h5_paths, model_type, is_raw_segment, is_sequence, USE_PRECOMPUTED_FEATURES)
+    if X is None: 
         print("Data extraction failed or produced an empty DataFrame.")
         return
-        
-    print(f"Extracted features dataframe shape: {df.shape}")
     
-    # Prepare data for ML
-    groups = df["subject"].astype(str).values if "subject" in df.columns else None
-    
-    X, y = loader.prepare_for_ml(df, target_col=target_col)
-    
-    if is_raw_segment:
-        seg_lengths = np.array([seg.shape[0] for seg in X['raw_segment']])
-        n_channels = X['raw_segment'].iloc[0].shape[1]
-        avg_seg_len = seg_lengths.mean()
-        print(f"Raw Segment Data Summary:")
-        print(f"  - Total Segments: {len(X)}")
-        print(f"  - Channels (EMG + IMU): {n_channels}")
-        print(f"  - Avg Segment Length: {avg_seg_len:.0f} samples")
-        print(f"  - Min / Max Segment Length: {seg_lengths.min()} / {seg_lengths.max()} samples")
-    elif is_sequence:
-        avg_seq_len = np.mean([len(s) for s in X.iloc[:, 0]])
-        # Access first window of first sequence to get feature count
-        first_seq = X.iloc[0, 0]
-        num_feats_per_window = len(first_seq[0]) if first_seq else 0
-        print(f"Sequence Data Summary:")
-        print(f"  - Total Lifts (Sequences): {len(X)}")
-        print(f"  - Average Windows per Lift: {avg_seq_len:.1f}")
-        print(f"  - Features per Window: {num_feats_per_window}")
-    else:
-        print(f"Feature matrix (X) shape: {X.shape}")
-        
-    print(f"Label vector (y) shape: {y.shape} (Target: {target_col})")
-    
-    # Determine if we use Cross-Validation or Single Split
-    use_cv = USE_CROSS_VAL
-    cv_strategy = CV_CONFIG.get('strategy', 'kfold')
-    
-    if use_cv:
-        if cv_strategy == 'participant':
-            from sklearn.model_selection import LeaveOneGroupOut
-            logo = LeaveOneGroupOut()
-            n_folds = logo.get_n_splits(X, y, groups)
-            print(f"\nStarting {n_folds}-Fold Leave-One-Participant-Out Cross-Validation...")
-            cv_iterator = list(logo.split(X, y, groups))
-            if groups is None:
-                print("Error: 'subject' column missing in DataFrame. Cannot do Participant CV.")
-                return
-        else:
-            n_folds = CV_CONFIG.get('n_folds', 5)
-            print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
-            from sklearn.model_selection import StratifiedKFold
-            skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
-            strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
-            cv_iterator = list(skf.split(X, strat_labels))
-        
-        cv_metrics = []
-        fold_results = []
-        oof_predictions = np.zeros(len(X))
-        participant_stats = []
-        
-        for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
-            if cv_strategy == 'participant':
-                left_out_participant = groups[test_idx[0]]
-                print(f"--- Fold {fold}/{n_folds} (Left out Participant: {left_out_participant}) ---")
-            else:
-                print(f"--- Fold {fold}/{n_folds} ---")
-            
-            X_train_fold, X_test_fold = X.iloc[train_idx], X.iloc[test_idx]
-            y_train_fold, y_test_fold = y.iloc[train_idx], y.iloc[test_idx]
-            
-            # Initialize Model
-            model = initialize_model(model_type)
-            if model is None: return
-            
-            # Train
-            start_train = time.perf_counter()
-            
-            sample_weight = None
-            if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
-                sample_weight = compute_sample_weight(class_weight='balanced', y=y_train_fold)
-                
-            model.fit(X_train_fold, y_train_fold, sample_weight=sample_weight)
-            train_time = time.perf_counter() - start_train
-            
-            # Evaluate
-            start_inf = time.perf_counter()
-            metrics, report_str = model.evaluate(X_test_fold, y_test_fold)
-            inf_time = time.perf_counter() - start_inf
-            
-            # Store times in metrics for reporting
-            metrics['train_time'] = train_time
-            metrics['inference_time_total'] = inf_time
-            metrics['inference_time_per_sample'] = inf_time / len(X_test_fold)
-            
-            cv_metrics.append(metrics)
-            fold_results.append(report_str)
-            
-            preds = model.predict(X_test_fold)
-            oof_predictions[test_idx] = preds
-            
-            if cv_strategy == 'participant':
-                mae_participant = mean_absolute_error(y_test_fold, preds)
-                rmse_participant = np.sqrt(mean_squared_error(y_test_fold, preds))
-                participant_stats.append({
-                    'Participant': left_out_participant,
-                    'MAE': mae_participant,
-                    'RMSE': rmse_participant,
-                    'Samples': len(test_idx)
-                })
-        
-        # Aggregate Results
-        print("\n" + "=" * 55)
-        print(f"CROSS-VALIDATION RESULTS ({n_folds} Folds)")
-        
+    # 3. Summary
+    print_data_summary(X, y, is_raw_segment, is_sequence)
+          # 4. Training & Evaluation
+    if USE_CROSS_VAL:
+        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds = execute_cross_validation(
+            X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
+        )
         avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
         std_metrics = {k: np.std([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
-        
-        report_str = ""
-        for k in avg_metrics:
-            report_str += f"{k}: {avg_metrics[k]:.4f} (±{std_metrics[k]:.4f})\n"
-        print(report_str)
-            
-        print("=" * 55)
-        
-        # For saving, train a final model on the full training set (or full dataset)
-        print("\nTraining final model on full dataset for saving...")
-        model = initialize_model(model_type)
-        
-        sample_weight = None
-        if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
-            sample_weight = compute_sample_weight(class_weight='balanced', y=y)
-            
-        model.fit(X, y, sample_weight=sample_weight)
-        
+        metrics, X_train, X_test, y_train, y_test, y_pred = {}, None, None, None, None, None
     else:
-        # Train/Test Split
-        # Always stratify by weight (cast to str) for regression
-        stratify = df["weight"].astype(str) if "weight" in df.columns else None
-        
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=TRAIN_TEST_SPLIT, random_state=GLOBAL_RANDOM_STATE, stratify=stratify
+        actual_n_folds = 0
+        model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred = execute_single_split(
+            X, y, df, model_type, TRAIN_TEST_SPLIT
         )
-        
-        print(f"\nTraining on {len(X_train)} samples, testing on {len(X_test)} samples.")
-        
-        # Initialize and train the selected Model
-        model = initialize_model(model_type)
-        if model is None: return
+        avg_metrics, std_metrics, oof_predictions, participant_stats = None, None, None, None
 
-        # Train
-        start_train = time.perf_counter()
-        
-        sample_weight = None
-        if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
-            sample_weight = compute_sample_weight(class_weight='balanced', y=y_train)
-            
-        model.fit(X_train, y_train, sample_weight=sample_weight)
-        train_time = time.perf_counter() - start_train
-        
-        # Evaluate model
-        print(f"\nEvaluating {model_type.upper()} Model on unseen test set...")
-        
-        start_inf = time.perf_counter()
-        metrics, report_str = model.evaluate(X_test, y_test)
-        inf_time = time.perf_counter() - start_inf
-        
-        # Add timing to metrics
-        metrics['train_time'] = train_time
-        metrics['inference_time_total'] = inf_time
-        metrics['inference_time_per_sample'] = inf_time / len(X_test)
-
-        print("=" * 55)
-        print("Regression Metrics:")
-        print(report_str)
-        print(f"Training Time: {train_time:.2f}s")
-        print(f"Inference Time (per sample): {metrics['inference_time_per_sample']*1000:.4f}ms")
-        print("=" * 55)
+    # 5. Artifacts & Specialized Plots
+    save_basic_artifacts(model, run_dir, model_type, USE_CROSS_VAL, y, y_test, y_pred, oof_predictions)
+    per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, USE_CROSS_VAL, df, X, X_test, y, y_test, y_pred, 
+                                             oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
     
-    # Save the Model structure
-    model_path = run_dir / f"{model_type}_model.joblib"
-    model.save(model_path)
-    
-    # Save regression plot if applicable (use out-of-fold predictions if CV)
-    plot_path = run_dir / "regression_plot.png"
-    if use_cv:
-        model.plot_results(y, oof_predictions, plot_path)
-    else:
-        y_pred = model.predict(X_test)
-        model.plot_results(y_test, y_pred, plot_path)
-    
-    # Save loss plot if applicable (for deep learning models)
-    if hasattr(model, 'plot_loss'):
-        loss_plot_path = run_dir / "loss_plot.png"
-        model.plot_loss(loss_plot_path)
-        print(f"Loss plot saved to {loss_plot_path}")
+    # 6. Final Report
+    generate_report(run_dir, timestamp, h5_paths, X, USE_CROSS_VAL, CV_CONFIG.get('strategy', 'kfold'), 
+                    actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
+                    is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
+                    per_seqlen, per_dur, oof_predictions, y_pred)
 
-    # CNN-LSTM: t-SNE of CNN feature space, coloured by participant and weight
-    if is_raw_segment and hasattr(model, 'plot_tsne') and groups is not None:
-        print("\nGenerating t-SNE plot of CNN feature space...")
-        tsne_plot_path = run_dir / "tsne_cnn_features.png"
-        # Use the full dataset so all participants are represented
-        tsne_participants = groups      # shape (N,) str participant IDs
-        tsne_weights = y.values         # shape (N,) float weight labels
-        try:
-            model.plot_tsne(
-                X=X,
-                participants=tsne_participants,
-                weights=tsne_weights,
-                save_path=tsne_plot_path,
-                perplexity=30,
-            )
-            print(f"t-SNE plot saved to {tsne_plot_path}")
-        except Exception as e:
-            print(f"[WARN] t-SNE plot failed: {e}")
-
-    if use_cv and cv_strategy == 'participant' and 'participant_stats' in locals():
-        participant_plot_path = run_dir / "participant_performance.png"
-        plotting_utils.plot_participant_performance(participant_stats, participant_plot_path, model_name=model_type.upper())
-    
-    # Calculate per-weight statistics for regression
-    per_weight_stats = None
-    if use_cv:
-        per_weight_stats = calculate_per_weight_metrics(y, oof_predictions)
-    else:
-        # Reuse y_pred already computed for the regression plot above
-        per_weight_stats = calculate_per_weight_metrics(y_test, y_pred)
-
-    # Calculate per-sequence-length statistics (sequence models only)
-    per_seqlen_stats = None
-    if is_sequence and not is_raw_segment:
-        if use_cv:
-            # Extract number of windows for all samples from the sequence_dicts column
-            seq_col = 'sequence_dicts'
-            if seq_col in df.columns:
-                all_seq_lengths = np.array([len(row) for row in df[seq_col]])
-            else:
-                # Fallback: try the first column of X
-                all_seq_lengths = np.array([len(row) for row in X.iloc[:, 0]])
-
-            per_seqlen_stats = calculate_per_seqlen_metrics(
-                y.values, oof_predictions, all_seq_lengths
-            )
-            n_samples_plot = len(y)
-        else:
-            # Extract number of windows for each test sample from the sequence_dicts column
-            seq_col = 'sequence_dicts'
-            if seq_col in X_test.columns:
-                test_seq_lengths = np.array([len(row) for row in X_test[seq_col]])
-            else:
-                # Fallback: try the first (and only) column
-                test_seq_lengths = np.array([len(row) for row in X_test.iloc[:, 0]])
-
-            per_seqlen_stats = calculate_per_seqlen_metrics(
-                y_test.values, y_pred, test_seq_lengths
-            )
-            n_samples_plot = len(y_test)
-
-        # Annotate with the real-time elapsed seconds at prediction
-        if per_seqlen_stats:
-            step = FEATURE_CONFIG.get('window_step_sec', 0.1)
-            max_win = max(FEATURE_CONFIG.get('emg_window_size_sec', 0.15),
-                          FEATURE_CONFIG.get('imu_window_size_sec', 0.3))
-            for row in per_seqlen_stats:
-                # time elapsed when the L-th window completes: max_window + (L-1)*step
-                row['TimeAtPrediction'] = f"{max_win + (row['SeqLen'] - 1) * step:.3f}s"
-
-            # Save the segment-length performance plot
-            dynamic_min_count = max(5, int(n_samples_plot * 0.01))
-            
-            seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
-            plotting_utils.plot_seqlen_performance(
-                per_seqlen_stats, seqlen_plot_path, model_name=model_type.upper(),
-                min_count=dynamic_min_count
-            )
-
-    # CNN-LSTM: bin test samples by raw segment duration (elapsed time into lift)
-    per_duration_stats = None
-    if is_raw_segment:
-        if 'segment_duration_sec' in df.columns:
-            if use_cv:
-                all_durations = df['segment_duration_sec'].values
-                per_duration_stats = calculate_per_duration_metrics(
-                    y.values, oof_predictions, all_durations, n_bins=None
-                )
-                n_samples_plot = len(y)
-            else:
-                test_durations = df.loc[X_test.index, 'segment_duration_sec'].values
-                per_duration_stats = calculate_per_duration_metrics(
-                    y_test.values, y_pred, test_durations, n_bins=None
-                )
-                n_samples_plot = len(y_test)
-
-            if per_duration_stats:
-                # Exclude bins (min_count) proportional to the dataset size to decrease noise
-                dynamic_min_count = max(5, int(n_samples_plot * 0.01))
-                
-                seqlen_plot_path = run_dir / "seqlen_performance_plot.png"
-                plotting_utils.plot_seqlen_performance(
-                    per_duration_stats, seqlen_plot_path, model_name="CNN-LSTM", 
-                    min_count=dynamic_min_count
-                )
-        else:
-            print("[WARN] segment_duration_sec not found in df — skipping CNN-LSTM seqlen plot.")
-
-    # Save detailed performance report
-    report_file = run_dir / "performance_report.txt"
-    with open(report_file, "w") as f:
-        f.write("=" * 55 + "\n")
-        f.write(f"MODEL PERFORMANCE REPORT\n")
-        f.write(f"Run Timestamp: {timestamp}\n")
-        f.write("=" * 55 + "\n\n")
-        
-        f.write("--- DATASET INFO ---\n")
-        f.write(f"Participants included: {PARTICIPANT_CONFIG.get('include', 'all')}\n")
-        f.write(f"Database segments used: {[p.name for p in h5_paths]}\n")
-        f.write(f"Total samples: {len(X)}\n")
-        if use_cv:
-            if cv_strategy == 'participant':
-                f.write(f"Evaluation Mode: Leave-One-Participant-Out Cross-Validation ({n_folds} Participants)\n")
-            else:
-                f.write(f"Evaluation Mode: {n_folds}-Fold Stratified Cross-Validation (Intra-Subject, Sequences Intact)\n")
-            f.write(f"Final Model Training samples: {getattr(model, 'train_samples', len(X))}\n")
-            if hasattr(model, 'val_samples') and model.val_samples > 0:
-                f.write(f"Final Model Validation samples: {model.val_samples}\n")
-        else:
-            # Determine split percentages
-            test_pct = round(len(X_test) / len(X) * 100)
-            train_samples = getattr(model, 'train_samples', len(X_train))
-            val_samples = getattr(model, 'val_samples', 0)
-            
-            if val_samples > 0:
-                train_pct = round(train_samples / len(X) * 100)
-                val_pct = round(val_samples / len(X) * 100)
-                f.write(f"Evaluation Mode: Train/Validation/Test Split ({train_pct}/{val_pct}/{test_pct})\n")
-            else:
-                train_pct = round(train_samples / len(X) * 100)
-                f.write(f"Evaluation Mode: Train/Test Split ({train_pct}/{test_pct})\n")
-            
-            f.write(f"Testing samples: {len(X_test)}\n")
-            f.write(f"Training samples: {train_samples}\n")
-            if val_samples > 0:
-                f.write(f"Validation samples: {val_samples}\n")
-        f.write("\n")
-
-        f.write("--- FEATURE CONFIGURATION ---\n")
-        if is_raw_segment:
-            f.write(f"Input: Raw EMG + IMU segments (end-to-end CNN feature extraction)\n")
-            emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
-            imu_ch = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if v]
-            f.write(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}\n")
-            f.write(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}\n")
-        else:
-            f.write(f"EMG Window Size: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window Size: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
-            
-            emg_enabled = [k for k, v in FEATURE_CONFIG['emg_features'].items() if v]
-            f.write(f"Enabled EMG Features: {', '.join(emg_enabled)}\n")
-            
-            imu_enabled = [k for k, v in FEATURE_CONFIG['imu_features'].items() if v]
-            f.write(f"Enabled IMU Features: {', '.join(imu_enabled)}\n")
-        f.write("\n")
-
-        f.write("--- DATA AUGMENTATION ---\n")
-        f.write(f"Enabled: {AUGMENTATION_CONFIG.get('enabled', False)}\n")
-        if AUGMENTATION_CONFIG.get('enabled', False):
-            f.write(f"Probability: {AUGMENTATION_CONFIG.get('p', 0)}\n")
-            f.write(f"Active Methods: {', '.join(AUGMENTATION_CONFIG.get('methods', []))}\n")
-            # Detailed parameters
-            if 'noise' in AUGMENTATION_CONFIG['methods']:
-                f.write(f"  - Noise Std: {AUGMENTATION_CONFIG.get('noise_std')}\n")
-            if 'stretch' in AUGMENTATION_CONFIG['methods']:
-                f.write(f"  - Stretch Range: {AUGMENTATION_CONFIG.get('stretch_factor_range')}\n")
-            if 'channel_dropout' in AUGMENTATION_CONFIG['methods']:
-                f.write(f"  - Channel Dropout P: {AUGMENTATION_CONFIG.get('channel_dropout_p')}\n")
-            if 'magnitude_scale' in AUGMENTATION_CONFIG['methods']:
-                f.write(f"  - Magnitude Scale Range: {AUGMENTATION_CONFIG.get('magnitude_scale_range')}\n")
-            if 'mixup' in AUGMENTATION_CONFIG['methods']:
-                f.write(f"  - MixUp Alpha: {AUGMENTATION_CONFIG.get('mixup_alpha')}\n")
-        f.write("\n")
-        
-        f.write("--- HYPERPARAMETERS ---\n")
-        f.write(f"Model: {model_type.upper()}\n")
-        if model_type == "svm":
-            f.write(f"Kernel: {model.kernel}\n")
-            f.write(f"C: {model.C}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "rbfnn":
-            f.write(f"Centers: {model.n_centers}\n")
-            f.write(f"Gamma: {model.gamma}\n")
-            f.write(f"C: {model.C}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "svr":
-            f.write(f"Kernel: {model.kernel}\n")
-            f.write(f"C: {model.C}\n")
-            f.write(f"Epsilon: {model.epsilon}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "rf":
-            f.write(f"N Estimators: {model.n_estimators}\n")
-            f.write(f"Max Depth: {model.max_depth}\n")
-            f.write(f"Min Samples Split: {model.min_samples_split}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "gb":
-            f.write(f"N Estimators: {model.n_estimators}\n")
-            f.write(f"Learning Rate: {model.learning_rate}\n")
-            f.write(f"Max Depth: {model.max_depth}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "mlp":
-            f.write(f"Hidden Layers: {model.hidden_layers}\n")
-            f.write(f"Dropout Rate: {model.dropout_rate}\n")
-            f.write(f"Learning Rate: {model.learning_rate}\n")
-            f.write(f"Batch Size: {model.batch_size}\n")
-            f.write(f"Epochs: {model.epochs}\n")
-            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "gru":
-            f.write(f"Hidden Size: {model.hidden_size}\n")
-            f.write(f"Num Layers: {model.num_layers}\n")
-            f.write(f"Dropout Rate: {model.dropout_rate}\n")
-            f.write(f"Learning Rate: {model.learning_rate}\n")
-            f.write(f"Batch Size: {model.batch_size}\n")
-            f.write(f"Epochs: {model.epochs}\n")
-            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
-            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
-            f.write(f"Window Step (s): {model.window_step_sec}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "lstm":
-            f.write(f"Hidden Size: {model.hidden_size}\n")
-            f.write(f"Num Layers: {model.num_layers}\n")
-            f.write(f"Dropout Rate: {model.dropout_rate}\n")
-            f.write(f"Learning Rate: {model.learning_rate}\n")
-            f.write(f"Batch Size: {model.batch_size}\n")
-            f.write(f"Epochs: {model.epochs}\n")
-            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
-            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
-            f.write(f"Window Step (s): {model.window_step_sec}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "cnn_lstm":
-            f.write(f"CNN Filters: {model.cnn_filters}\n")
-            f.write(f"CNN Kernel Sizes: {model.cnn_kernel_sizes}\n")
-            f.write(f"Pool Size: {model.pool_size}\n")
-            f.write(f"LSTM Hidden Size: {model.lstm_hidden_size}\n")
-            f.write(f"LSTM Num Layers: {model.lstm_num_layers}\n")
-            f.write(f"Dropout Rate: {model.dropout_rate}\n")
-            f.write(f"Learning Rate: {model.learning_rate}\n")
-            f.write(f"Batch Size: {model.batch_size}\n")
-            f.write(f"Epochs: {model.epochs}\n")
-            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"Input Channels: {model.n_channels}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        elif model_type == "transformer":
-            f.write(f"D_Model: {model.d_model}\n")
-            f.write(f"N_Heads: {model.nhead}\n")
-            f.write(f"Num Layers: {model.num_layers}\n")
-            f.write(f"Feedforward Dim: {model.dim_feedforward}\n")
-            f.write(f"Dropout Rate: {model.dropout_rate}\n")
-            f.write(f"Learning Rate: {model.learning_rate}\n")
-            f.write(f"Batch Size: {model.batch_size}\n")
-            f.write(f"Epochs: {model.epochs}\n")
-            f.write(f"Loss Function: {getattr(model, 'loss_type', 'mse').upper()}\n")
-            f.write(f"EMG Window Size (s): {model.emg_window_size_sec}\n")
-            f.write(f"IMU Window Size (s): {model.imu_window_size_sec}\n")
-            f.write(f"Window Step (s): {model.window_step_sec}\n")
-            f.write(f"Random State: {model.random_state}\n\n")
-        
-        f.write("--- EVALUATION METRICS ---\n")
-        if use_cv:
-            f.write(f"(Averaged over {n_folds} folds)\n")
-            f.write(report_str)
-        else:
-            f.write(report_str)
-        
-        if per_weight_stats:
-            f.write("\n--- PER-WEIGHT METRICS ---\n")
-            f.write(f"{'Weight':<12} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
-            f.write("-" * 50 + "\n")
-            for stats in per_weight_stats:
-                f.write(f"{stats['Weight']:<12} | {stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
-            f.write("\n")
-
-        if use_cv and cv_strategy == 'participant' and 'participant_stats' in locals():
-            f.write("--- PER-PARTICIPANT METRICS ---\n")
-            f.write(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10}\n")
-            f.write("-" * 50 + "\n")
-            for stats in participant_stats:
-                f.write(f"{stats['Participant']:<12} | {stats['Samples']:<8} | {stats['MAE']:<10.4f} | {stats['RMSE']:<10.4f}\n")
-            f.write("\n")
-
-        if per_seqlen_stats:
-            f.write("--- PER-SEQUENCE-LENGTH METRICS ---\n")
-            f.write("(How many sliding windows were available when the LSTM made its prediction)\n")
-            f.write(f"Window step: {FEATURE_CONFIG.get('window_step_sec', '?')}s  |  "
-                    f"First window ready at: {max(FEATURE_CONFIG.get('emg_window_size_sec', 0), FEATURE_CONFIG.get('imu_window_size_sec', 0)):.3f}s\n")
-            f.write(f"{'# Windows':<12} | {'Time into lift':<16} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
-            f.write("-" * 65 + "\n")
-            for stats in per_seqlen_stats:
-                f.write(f"{stats['SeqLen']:<12} | {stats['TimeAtPrediction']:<16} | "
-                        f"{stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
-            f.write("\n")
-
-        if per_duration_stats:
-            f.write("--- PER-SEGMENT-DURATION METRICS (CNN-LSTM) ---\n")
-            f.write("(Prediction error vs. elapsed time into lift, binned from raw segment duration)\n")
-            f.write(f"{'Bin':<6} | {'Time into lift (mid)':<22} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
-            f.write("-" * 68 + "\n")
-            for stats in per_duration_stats:
-                f.write(f"{stats['SeqLen']:<6} | {stats['TimeAtPrediction']:<22} | "
-                        f"{stats['Count']:<8} | {stats['MAE']:<10} | {stats['RMSE']:<10}\n")
-            f.write("\n")
-            
-        # Add Compute Metrics
-        f.write("--- COMPUTE & TIMING METRICS ---\n")
-        device_info = performance_utils.get_device_info()
-        f.write(f"Device: {performance_utils.format_device_string(device_info)}\n")
-        
-        if hasattr(model, 'model') and isinstance(model.model, torch.nn.Module):
-            total_params, trainable_params = performance_utils.count_parameters(model.model)
-            # Estimate GFLOPs
-            # For sequence models, we need seq_len
-            seq_len = None
-            if is_sequence:
-                # Try to get avg seq len from previous calculation
-                try:
-                    seq_len = int(avg_seq_len)
-                except:
-                    seq_len = 100 # Fallback
-            
-            gflops_per_sample = performance_utils.estimate_flops(model.model, seq_len=seq_len)
-            f.write(f"Total Parameters: {total_params:,}\n")
-            f.write(f"Trainable Parameters: {trainable_params:,}\n")
-            f.write(f"Estimated Inference GFLOPs (per sample): {gflops_per_sample:.6f}\n")
-            
-            # Training total GFLOPs estimate: GFLOPs * samples * epochs
-            total_train_gflops = gflops_per_sample * getattr(model, 'train_samples', 0) * getattr(model, 'epochs', 1) * 3 # 3x for backward pass approx
-            f.write(f"Estimated Total Training GFLOPs: {total_train_gflops:.4f}\n")
-        else:
-            f.write("Parameter count: N/A (Classical ML)\n")
-            f.write("GFLOPs estimate: N/A (Classical ML)\n")
-
-        if use_cv:
-            avg_train_time = np.mean([m['train_time'] for m in cv_metrics])
-            avg_inf_time_sample = np.mean([m['inference_time_per_sample'] for m in cv_metrics])
-            f.write(f"Avg Training Time: {avg_train_time:.4f}s\n")
-            f.write(f"Avg Inference Time (per sample): {avg_inf_time_sample*1000:.4f}ms\n")
-        else:
-            f.write(f"Training Time: {metrics['train_time']:.4f}s\n")
-            f.write(f"Inference Time (per sample): {metrics['inference_time_per_sample']*1000:.4f}ms\n")
-        f.write("\n")
-            
-    print(f"\nPerformance report saved to {report_file}")
 
 if __name__ == "__main__":
     main()
