@@ -6,7 +6,7 @@ ensures consistency across training and inference scripts.
 
 GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
-GLOBAL_BALANCE_WEIGHTS = True
+GLOBAL_BALANCE_WEIGHTS = False
 
 
 
@@ -364,6 +364,26 @@ CNN_LSTM_ABLATION_CONFIG = {
     'validation_split': 0.2,
     'early_stopping_patience': 40,
     'scheduler_patience': 10,
+    'scheduler_factor': 0.5,
+    'random_state': GLOBAL_RANDOM_STATE,
+}
+
+# TCN Configuration (causal raw-segment convolutional model)
+TCN_CONFIG = {
+    'cnn_filters': [64, 128, 256, 256],
+    'cnn_kernel_sizes': [7, 5, 3, 3],
+    'pool_size': 4,
+    'tcn_channels': [128, 128, 256],
+    'tcn_kernel_size': 3,
+    'dropout_rate': 0.4,
+    'learning_rate': 0.001,
+    'weight_decay': 1e-4,  # Increased regularisation for robust cross-participant performance
+    'batch_size': 64,
+    'epochs': 1000,
+    'balance_weights': False,
+    'validation_split': 0.15,
+    'early_stopping_patience': 100,
+    'scheduler_patience': 50,
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE,
 }

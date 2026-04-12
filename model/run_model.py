@@ -23,9 +23,10 @@ from model.model_archs.mlp import MLPRegressor
 from model.model_archs.gru import GRURegressor
 from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
+from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -37,7 +38,7 @@ from sklearn.utils.class_weight import compute_sample_weight, compute_class_weig
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "transformer"
+MODEL_TYPE = "tcn"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
@@ -87,6 +88,10 @@ def initialize_model(model_type: str):
         print(f"Initializing CNN-LSTM Regressor with config: {CNN_LSTM_CONFIG}")
         from model.model_archs.cnn_lstm import CNNLSTMRegressor
         return CNNLSTMRegressor(**CNN_LSTM_CONFIG)
+    elif model_type == "tcn":
+        print(f"Initializing TCN Regressor with config: {TCN_CONFIG}")
+        from model.model_archs.tcn import TCNRegressor
+        return TCNRegressor(**TCN_CONFIG)
     elif model_type == "transformer":
         print(f"Initializing Transformer Regressor with config: {TRANSFORMER_CONFIG}")
         from model.model_archs.transformer import TimeSeriesTransformerRegressor
@@ -524,9 +529,25 @@ def generate_report(run_dir, timestamp, h5_paths, X, use_cv, cv_strategy, n_fold
         for s in stats: f.write(f"{s['Weight']:<12} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
         f.write("\n")
 
+        if participant_stats:
+            f.write("--- PER-PARTICIPANT METRICS ---\n")
+            f.write(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10}\n" + "-"*50 + "\n")
+            for p in participant_stats:
+                f.write(f"{p['Participant']:<12} | {p['Samples']:<8} | {p['MAE']:<10.4f} | {p['RMSE']:<10.4f}\n")
+            f.write("\n")
+
         if per_seqlen_stats:
             f.write("--- PER-SEQUENCE-LENGTH METRICS ---\n")
             for s in per_seqlen_stats: f.write(f"{s['SeqLen']:<12} | {s['TimeAtPrediction']:<16} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
+            f.write("\n")
+
+        if per_duration_stats:
+            f.write("--- PER-SEGMENT-DURATION METRICS (CNN-LSTM) ---\n")
+            f.write("(Prediction error vs. elapsed time into lift, binned from raw segment duration)\n")
+            f.write(f"{'Bin':<6} | {'Time into lift (mid)':<22} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
+            f.write("-" * 68 + "\n")
+            for s in per_duration_stats:
+                f.write(f"{s['SeqLen']:<6} | {s['TimeAtPrediction']:<22} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
             f.write("\n")
             
         f.write("--- COMPUTE & TIMING METRICS ---\n")
@@ -560,7 +581,7 @@ def main():
     
     model_type = MODEL_TYPE.lower()
     is_sequence = model_type in ["gru", "lstm", "transformer"]
-    is_raw_segment = model_type == "cnn_lstm"
+    is_raw_segment = model_type in ["cnn_lstm", "tcn"]
     
     # 2. Data Loading
     loader = DataLoader()
