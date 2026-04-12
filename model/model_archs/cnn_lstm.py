@@ -164,8 +164,8 @@ class CNNLSTMRegressor:
                  epochs: int = CNN_LSTM_CONFIG['epochs'],
                  validation_split: float = CNN_LSTM_CONFIG.get('validation_split', 0.2),
                  early_stopping_patience: int = CNN_LSTM_CONFIG.get('early_stopping_patience', 30),
-                 scheduler_patience: int = CNN_LSTM_CONFIG.get('scheduler_patience', 10),
-                 scheduler_factor: float = CNN_LSTM_CONFIG.get('scheduler_factor', 0.5),
+                 scheduler_T_0: int = CNN_LSTM_CONFIG.get('scheduler_T_0', 50),
+                 scheduler_T_mult: int = CNN_LSTM_CONFIG.get('scheduler_T_mult', 2),
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  balance_weights: bool = CNN_LSTM_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
                  random_state: int = CNN_LSTM_CONFIG['random_state']):
@@ -182,8 +182,8 @@ class CNNLSTMRegressor:
         self.epochs = epochs
         self.validation_split = validation_split
         self.early_stopping_patience = early_stopping_patience
-        self.scheduler_patience = scheduler_patience
-        self.scheduler_factor = scheduler_factor
+        self.scheduler_T_0 = scheduler_T_0
+        self.scheduler_T_mult = scheduler_T_mult
         self.loss_type = loss_type.lower()
         self.balance_weights = balance_weights
         self.random_state = random_state
@@ -311,9 +311,8 @@ class CNNLSTMRegressor:
 
         optimizer = optim.AdamW(self.model.parameters(),
                                 lr=self.learning_rate, weight_decay=self.weight_decay)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='min',
-            patience=self.scheduler_patience, factor=self.scheduler_factor,
+        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=self.scheduler_T_0, T_mult=self.scheduler_T_mult, eta_min=1e-6
         )
 
         if self.loss_type == 'mae':
@@ -389,10 +388,12 @@ class CNNLSTMRegressor:
                         val_loss += loss.item() * batch_x.size(0)
 
                 avg_val_loss = val_loss / len(dataset_val)
+                current_lr = optimizer.param_groups[0]['lr']
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}",
-                                  "Val Loss": f"{avg_val_loss:.4f}"})
+                                  "Val Loss": f"{avg_val_loss:.4f}",
+                                  "LR": f"{current_lr:.1e}"})
 
-                scheduler.step(avg_val_loss)
+                scheduler.step()
 
                 self.loss_history["train"].append(avg_train_loss)
                 self.loss_history["val"].append(avg_val_loss)
@@ -487,8 +488,8 @@ class CNNLSTMRegressor:
                 'balance_weights': self.balance_weights,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
-                'scheduler_patience': self.scheduler_patience,
-                'scheduler_factor': self.scheduler_factor,
+                'scheduler_T_0': self.scheduler_T_0,
+                'scheduler_T_mult': self.scheduler_T_mult,
                 'random_state': self.random_state,
             },
             'split_info': {

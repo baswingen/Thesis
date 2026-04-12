@@ -205,8 +205,8 @@ AUGMENTATION_CONFIG = {
 
     # ── Temporal stretch ─────────────────────────────────────────────
     # Random scale factor applied to sequence length, then resampled back.
-    # (0.80, 1.20) = ±20% speed variation.
-    'stretch_factor_range': (0.80, 1.20),
+    # Increased to ±25% for more robust duration invariance.
+    'stretch_factor_range': (0.75, 1.25),
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
@@ -219,8 +219,9 @@ AUGMENTATION_CONFIG = {
 
     # ── MixUp ────────────────────────────────────────────────────────
     # Alpha parameter of the Beta(α, α) distribution for λ.
-    # 0.1 is very conservative — λ stays close to 0 or 1 (minimal blending).
-    'mixup_alpha': 0.3,
+    # Increased to 0.5 to strongly support interpolating out-of-distribution masses
+    # (like the underrepresented 5.92 kg).
+    'mixup_alpha': 0.5,
 }
 
 # Cross-Validation Configuration
@@ -343,8 +344,8 @@ CNN_LSTM_CONFIG = {
     'balance_weights': False,
     'validation_split': 0.15,
     'early_stopping_patience': 100,
-    'scheduler_patience': 50,
-    'scheduler_factor': 0.5,
+    'scheduler_T_0': 50,
+    'scheduler_T_mult': 2,
     'random_state': GLOBAL_RANDOM_STATE,
 }
 
@@ -363,8 +364,8 @@ CNN_LSTM_ABLATION_CONFIG = {
     'epochs': 300,
     'validation_split': 0.2,
     'early_stopping_patience': 40,
-    'scheduler_patience': 10,
-    'scheduler_factor': 0.5,
+    'scheduler_T_0': 50,
+    'scheduler_T_mult': 2,
     'random_state': GLOBAL_RANDOM_STATE,
 }
 
@@ -375,16 +376,16 @@ TCN_CONFIG = {
     'pool_size': 4,
     'tcn_channels': [128, 128, 256],
     'tcn_kernel_size': 3,
-    'dropout_rate': 0.4,
+    'dropout_rate': 0.45,
     'learning_rate': 0.001,
-    'weight_decay': 1e-4,  # Increased regularisation for robust cross-participant performance
+    'weight_decay': 1e-3,  # Heavily increased regularisation for robust cross-participant performance
     'batch_size': 64,
     'epochs': 1000,
     'balance_weights': False,
     'validation_split': 0.15,
     'early_stopping_patience': 100,
-    'scheduler_patience': 50,
-    'scheduler_factor': 0.5,
+    'scheduler_T_0': 50,       # Initial restart interval for CosineAnnealingWarmRestarts
+    'scheduler_T_mult': 2,     # Multiplier for subsequent intervals
     'random_state': GLOBAL_RANDOM_STATE,
 }
 
