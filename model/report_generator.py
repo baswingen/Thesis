@@ -53,8 +53,9 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
-    def _add_feature_configuration(self, is_raw_segment):
+    def _add_feature_configuration(self, is_raw_segment, ablation_modality):
         lines = ["--- FEATURE CONFIGURATION ---"]
+        lines.append(f"Ablation Modality: {ablation_modality.upper()}")
         if is_raw_segment:
             lines.append("Input: Raw EMG + IMU segments (end-to-end CNN)")
             emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
@@ -183,7 +184,7 @@ class ReportGenerator:
                  X_test, X_train, y, y_train, y_test, is_raw_segment, 
                  avg_metrics, std_metrics, metrics, participant_stats, 
                  per_seqlen_stats, per_duration_stats, oof_predictions, y_pred,
-                 permutation_importances=None):
+                 permutation_importances=None, ablation_modality="all"):
         """Assembles all sections and writes to the report file."""
         
         self._add_header()
@@ -192,7 +193,7 @@ class ReportGenerator:
         if getattr(model, 'balance_weights', False):
             self._add_balance_weights(y_train, use_cv, y)
             
-        self._add_feature_configuration(is_raw_segment)
+        self._add_feature_configuration(is_raw_segment, ablation_modality)
         self._add_hyperparameters(model, model_type)
         self._add_evaluation_metrics(use_cv, avg_metrics, std_metrics, metrics, n_folds)
         self._add_per_weight_metrics(y_test, y_pred, use_cv, y, oof_predictions)

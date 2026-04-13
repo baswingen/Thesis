@@ -39,7 +39,7 @@ from sklearn.utils.class_weight import compute_sample_weight, compute_class_weig
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "tcn"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
+MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
@@ -491,6 +491,22 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Run the model training and evaluation pipeline.")
+    parser.add_argument("--modality", type=str, choices=["all", "emg_only", "imu_only"], default="all",
+                        help="Select which sensor modalities to use. Useful for macro-ablation.")
+    args, unknown = parser.parse_known_args()
+    
+    # Apply modality overrides to the global configuration
+    if args.modality == "emg_only":
+        print("\n[MACRO ABLATION] Overriding config: Disabling all IMU channels.")
+        for k in CHANNEL_CONFIG['imu_channels']:
+            CHANNEL_CONFIG['imu_channels'][k] = False
+    elif args.modality == "imu_only":
+        print("\n[MACRO ABLATION] Overriding config: Disabling all EMG channels.")
+        for k in CHANNEL_CONFIG['emg_channels']:
+            CHANNEL_CONFIG['emg_channels'][k] = False
+
     # Define paths
     base_dir = Path(__file__).parent.parent
     
@@ -555,7 +571,8 @@ def main():
     generator.generate(h5_paths, X, USE_CROSS_VAL, CV_CONFIG.get('strategy', 'kfold'), 
                        actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
                        is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
-                       per_seqlen, per_dur, oof_predictions, y_pred, perm_imp)
+                       per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
+                       ablation_modality=args.modality)
 
 
 if __name__ == "__main__":
