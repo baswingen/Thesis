@@ -41,12 +41,11 @@ from model.config_model import CHANNEL_CONFIG
 # Configuration
 # ---------------------------------------------------------------------------
 
-H5_FILES = [
-    PROJECT_ROOT / "database" / "segments" / "participant_P01_session_01_segments.h5",
-    PROJECT_ROOT / "database" / "segments" / "participant_P01_session_02_segments.h5",
-    PROJECT_ROOT / "database" / "segments" / "participant_P01_session_03_segments.h5",
-    PROJECT_ROOT / "database" / "segments" / "participant_P02_session_01_segments.h5",
-]
+# Set to "all" to load all segments, or provide a list of specific Paths
+H5_FILES = "all"
+
+if H5_FILES == "all":
+    H5_FILES = sorted(list((PROJECT_ROOT / "database" / "segments").glob("*.h5")))
 
 OUT_DIR = PROJECT_ROOT / "data_analysis" / "results"
 

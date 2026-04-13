@@ -332,7 +332,7 @@ LSTM_CONFIG = {
 # Sweep Iteration 60 best params (R²=0.9905, MAE=0.0619)
 CNN_LSTM_CONFIG = {
     'cnn_filters': [64, 128, 256, 256],
-    'cnn_kernel_sizes': [7, 5, 3, 3],
+    'cnn_kernel_sizes': [64, 5, 3, 3],
     'pool_size': 4,
     'lstm_hidden_size': 256,
     'lstm_num_layers': 3,
@@ -353,7 +353,7 @@ CNN_LSTM_CONFIG = {
 # Designed to be faster to train but still representative of relative channel importance.
 CNN_LSTM_ABLATION_CONFIG = {
     'cnn_filters': [32, 64],
-    'cnn_kernel_sizes': [5, 3],
+    'cnn_kernel_sizes': [64, 3],
     'pool_size': 4,
     'lstm_hidden_size': 128,
     'lstm_num_layers': 1,

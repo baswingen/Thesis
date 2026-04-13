@@ -26,7 +26,7 @@ if str(project_root) not in sys.path:
 from src.emg_processing import BandpassFilter, NotchFilter, EMGEnvelopeExtractor
 from model.config_model import EMG_CHANNEL_CONFIG
 
-def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwrite: bool = True, channel_stats: dict = None):
+def process_emg_data(file_path: str | Path, fs_fallback: float = 2000.0, overwrite: bool = True, channel_stats: dict = None):
     """
     Reads the synced matrix from an HDF5 file, processes the EMG channels,
     and saves the processed data back to the file.
@@ -153,9 +153,8 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
             print(f"Warning: '_raw/emg' not found. Falling back to fs_orig = {fs_orig:.2f} Hz")
 
         # Initialize filters
-        bp_filter = BandpassFilter(lowcut=10.0, highcut=500.0, fs=fs, order=4)
+        bp_filter = BandpassFilter(lowcut=20.0, highcut=500.0, fs=fs, order=4)
         notch_filter = NotchFilter(freq=50.0, fs=fs)
-        envelope_extractor = EMGEnvelopeExtractor(fs=fs, cutoff=10.0)
         
         print("Applying filtering and normalization...")
         processed_emg = np.zeros_like(raw_emg)
@@ -169,8 +168,6 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
             bp_filter.reset()
             channel_data = notch_filter.filter(channel_data)
             notch_filter.reset()
-            channel_data = envelope_extractor.extract(channel_data)
-            envelope_extractor.reset()
             
             # Normalization (Robust Scaling)
             if channel_stats and emg_col_names[i] in channel_stats:
@@ -224,7 +221,7 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 4000.0, overwri
         )
         
         out_dset.attrs['column_names'] = [n.encode('utf-8') for n in final_col_names]
-        out_dset.attrs['description'] = "Postprocessed EMG: BP(10-500Hz) -> Notch(50Hz) -> Smoothed Envelope(10Hz) -> Normalized"
+        out_dset.attrs['description'] = "Postprocessed EMG: BP(20-500Hz) -> Notch(50Hz) -> Normalized (Unrectified Raw Oscillating)"
         out_dset.attrs['fs'] = fs
         out_dset.attrs['fs_orig'] = fs_orig
         out_dset.attrs['normalization'] = "robust_scaling_session_level" if channel_stats else "robust_scaling_per_trial"
@@ -396,7 +393,7 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
         print(f"Processed IMU data saved to {out_dataset_name} successfully.")
         
 
-def get_session_stats(session_dir: Path, fs: float = 4000.0) -> dict:
+def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
     """
     Scans a session directory and returns the session-wide Median and IQR
     for each muscle channel. Used for cross-trial Robust Scaling.
@@ -424,9 +421,8 @@ def get_session_stats(session_dir: Path, fs: float = 4000.0) -> dict:
                 dt = np.median(np.diff(data[:, cols.index("t_pc_common")]))
                 if dt > 0: fs_eff = 1.0 / dt
                 
-            bp = BandpassFilter(10.0, 500.0, fs_eff)
+            bp = BandpassFilter(20.0, 500.0, fs_eff)
             nt = NotchFilter(50.0, fs_eff)
-            env = EMGEnvelopeExtractor(fs_eff, 10.0)
             
             raw_emg = data[:, emg_indices]
             emg_col_names = [cols[i] for i in emg_indices]
@@ -445,8 +441,8 @@ def get_session_stats(session_dir: Path, fs: float = 4000.0) -> dict:
                 if signal is not None:
                     channel_data = np.nan_to_num(signal, nan=0.0)
                     if not np.all(channel_data == 0):
-                        processed = env.extract(nt.filter(bp.filter(channel_data)))
-                        bp.reset(); nt.reset(); env.reset()
+                        processed = nt.filter(bp.filter(channel_data))
+                        bp.reset(); nt.reset()
                         session_data[muscle_name].append(processed)
     
     session_stats = {}
@@ -461,7 +457,7 @@ def get_session_stats(session_dir: Path, fs: float = 4000.0) -> dict:
         
     return session_stats
 
-def process_session_data(session_dir: str | Path, fs: float = 4000.0, overwrite: bool = True):
+def process_session_data(session_dir: str | Path, fs: float = 2000.0, overwrite: bool = True):
     """
     Processes all trials in a session using session-level Robust Scaling (Median/IQR).
     """
@@ -479,7 +475,7 @@ def process_session_data(session_dir: str | Path, fs: float = 4000.0, overwrite:
         except Exception as e:
             print(f"Failed session process for {path.name}: {e}")
 
-def process_all_in_database(database_dir: str | Path, fs: float = 4000.0, overwrite: bool = True):
+def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwrite: bool = True):
     """
     Recursively finds session directories and processes them with session-level normalization.
     """
@@ -503,7 +499,7 @@ def process_all_in_database(database_dir: str | Path, fs: float = 4000.0, overwr
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process EMG/IMU channels with Robust Scaling (Median/IQR).")
     parser.add_argument("path", nargs="?", default="database", help="Path to trial file, session dir, or database.")
-    parser.add_argument("--fs", type=float, default=4000.0, help="Sampling frequency fallback (default: 4000.0)")
+    parser.add_argument("--fs", type=float, default=2000.0, help="Sampling frequency fallback (default: 2000.0)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing datasets")
     
     args = parser.parse_args()

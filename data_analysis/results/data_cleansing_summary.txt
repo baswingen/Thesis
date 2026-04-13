@@ -1,0 +1,11 @@
+=================================================================
+  DATA CLEANSING & QUALITY REPORT
+=================================================================
+
+Total Segments Analyzed: 13831
+Total Samples Analyzed:  36,496,521
+
+--- Potential Issues Detected ---
+  All channels look clean! No major NaN, Inf, flatline, or outlier issues detected.
+
+(See data_cleansing_report.csv for full channel statistics)

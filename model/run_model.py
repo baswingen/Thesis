@@ -39,7 +39,7 @@ from sklearn.utils.class_weight import compute_sample_weight, compute_class_weig
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
+MODEL_TYPE = "tcn"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
