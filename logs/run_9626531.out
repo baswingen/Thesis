@@ -1,0 +1,116 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602
+[DataLoader] Loaded 13831 raw segments (26 channels each)
+Raw Segment Data Summary:
+  - Total Segments: 13831
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2639 samples
+  - Min / Max Segment Length: 21 / 142433 samples
+Label vector (y) shape: (13831,) (Target: weight)
+
+Starting 11-Fold Leave-One-Participant-Out Cross-Validation...
+--- Fold 1/11 (Left out Participant: P01) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 7991 → 15948 segments (+7957 synthetic)
+
+Early stopping at epoch 216. Best Val Loss: 0.0747
+--- Fold 2/11 (Left out Participant: P02) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10542 → 20911 segments (+10369 synthetic)
+
+Early stopping at epoch 365. Best Val Loss: 0.0987
+--- Fold 3/11 (Left out Participant: P03) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10908 → 21845 segments (+10937 synthetic)
+
+Early stopping at epoch 190. Best Val Loss: 0.1110
+--- Fold 4/11 (Left out Participant: P04) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10908 → 21908 segments (+11000 synthetic)
+
+Early stopping at epoch 226. Best Val Loss: 0.1015
+--- Fold 5/11 (Left out Participant: P05) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 11332 → 22721 segments (+11389 synthetic)
+
+Early stopping at epoch 270. Best Val Loss: 0.1160
+--- Fold 6/11 (Left out Participant: P06) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10913 → 21747 segments (+10834 synthetic)
+
+Early stopping at epoch 369. Best Val Loss: 0.0847
+--- Fold 7/11 (Left out Participant: P07) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10908 → 21810 segments (+10902 synthetic)
+
+Early stopping at epoch 199. Best Val Loss: 0.0798
+--- Fold 8/11 (Left out Participant: P08) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10908 → 21872 segments (+10964 synthetic)
+
+Early stopping at epoch 192. Best Val Loss: 0.0847
+--- Fold 9/11 (Left out Participant: P09) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10908 → 21727 segments (+10819 synthetic)
+
+Early stopping at epoch 354. Best Val Loss: 0.0908
+--- Fold 10/11 (Left out Participant: P10) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 11333 → 22749 segments (+11416 synthetic)
+
+Early stopping at epoch 171. Best Val Loss: 0.0797
+--- Fold 11/11 (Left out Participant: P11) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10908 → 21812 segments (+10904 synthetic)
+
+Early stopping at epoch 207. Best Val Loss: 0.1160
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 11756 → 23474 segments (+11718 synthetic)
+
+Early stopping at epoch 199. Best Val Loss: 0.0773
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 13831 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 13831 samples in 0.002s...
+[t-SNE] Computed neighbors for 13831 samples in 1.003s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 13831
+[t-SNE] Computed conditional probabilities for sample 2000 / 13831
+[t-SNE] Computed conditional probabilities for sample 3000 / 13831
+[t-SNE] Computed conditional probabilities for sample 4000 / 13831
+[t-SNE] Computed conditional probabilities for sample 5000 / 13831
+[t-SNE] Computed conditional probabilities for sample 6000 / 13831
+[t-SNE] Computed conditional probabilities for sample 7000 / 13831
+[t-SNE] Computed conditional probabilities for sample 8000 / 13831
+[t-SNE] Computed conditional probabilities for sample 9000 / 13831
+[t-SNE] Computed conditional probabilities for sample 10000 / 13831
+[t-SNE] Computed conditional probabilities for sample 11000 / 13831
+[t-SNE] Computed conditional probabilities for sample 12000 / 13831
+[t-SNE] Computed conditional probabilities for sample 13000 / 13831
+[t-SNE] Computed conditional probabilities for sample 13831 / 13831
+[t-SNE] Mean sigma: 0.274407
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 84.779373
+[t-SNE] KL divergence after 1000 iterations: 2.149654
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260412_212602/performance_report.txt
