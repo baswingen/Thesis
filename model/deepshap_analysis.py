@@ -44,7 +44,7 @@ from model.config_model import CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONF
 ###########################################################
 
 # Path to a saved CNN-LSTM model (.joblib produced by run_model.py)
-SAVED_MODEL_PATH: str | None = "model/model_results/run_20260411_065608/cnn_lstm_model.joblib"  # e.g. "model/model_results/run_20260331_120000/cnn_lstm_model.joblib"
+SAVED_MODEL_PATH: str | None = "model/model_results/run_20260412_212602/cnn_lstm_model.joblib"  # e.g. "model/model_results/run_20260331_120000/cnn_lstm_model.joblib"
 #  → set to None to train a fresh lightweight model on the fly (slow but convenient)
 
 # Number of background samples fed to DeepExplainer (30-100 is plenty)

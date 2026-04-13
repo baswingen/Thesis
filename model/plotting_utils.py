@@ -259,6 +259,63 @@ def plot_participant_performance(per_participant_stats: list, save_path: str | P
     print(f"Participant performance plot saved to {save_path}")
 
 
+
+def plot_permutation_importance(importances: dict, save_path: str | Path, model_name: str = "Model"):
+    """
+    Plots a horizontal bar chart of permutation feature/channel importance.
+    
+    Parameters
+    ----------
+    importances: dict
+        Dictionary mapping channel/feature names to importance scores (MSE drop).
+    save_path: str or Path
+        Where to save the plot.
+    model_name: str
+        Name of the model for the title.
+    """
+    if not importances:
+        return
+
+    set_style()
+    
+    # Sort by importance (highest first)
+    sorted_items = sorted(importances.items(), key=lambda x: x[1])
+    features = [k for k, v in sorted_items]
+    scores = [v for k, v in sorted_items]
+
+    fig, ax = plt.subplots(figsize=(10, max(6, len(features) * 0.3)))
+    
+    # Choose color based on whether the score is positive or negative
+    colors = ['#1F77B4' if s >= 0 else '#D62728' for s in scores]
+    
+    y = np.arange(len(features))
+    ax.barh(y, scores, color=colors, alpha=0.85)
+    
+    ax.set_yticks(y)
+    ax.set_yticklabels(features)
+    ax.set_xlabel('Change in MSE (Error Increase on Permutation)', labelpad=12)
+    ax.set_title(f'{model_name}: Permutation Channel Importance'.upper(), pad=15, fontsize=14, fontweight='bold')
+    
+    # Add vertical line at 0
+    ax.axvline(0, color='black', linewidth=1, linestyle='-', alpha=0.5)
+    
+    # Annotate bars with values
+    for i, score in enumerate(scores):
+        ha = 'left' if score >= 0 else 'right'
+        offset = 0.01 * max(np.abs(scores)) * (1 if score >= 0 else -1)
+        ax.text(score + offset, i, f"{score:.4f}", va='center', ha=ha, fontsize=9, color='#333333')
+
+    # Add margins to prevent text cutoff
+    x_min = min(0, min(scores))
+    x_max = max(0, max(scores))
+    margin = (x_max - x_min) * 0.15
+    ax.set_xlim(x_min - margin if x_min < 0 else 0, x_max + margin)
+
+    fig.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Permutation importance plot saved to {save_path}")
+
 def plot_cnn_tsne(
     features: np.ndarray,
     participants: np.ndarray,

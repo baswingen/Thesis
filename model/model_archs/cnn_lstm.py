@@ -422,6 +422,13 @@ class CNNLSTMRegressor:
             raise ValueError("Model not fitted.")
 
         segments = self._extract_raw_segments(X)
+        return self._predict_from_segments(segments)
+
+    def _predict_from_segments(self, segments: list[np.ndarray]):
+        """Helper to predict from a list of raw segments directly (bypassing DataFrame extraction)."""
+        if self.model is None:
+            raise ValueError("Model not fitted.")
+            
         scaled = self._scale_segments(segments, fit=False)
         tensors = [torch.from_numpy(s) for s in scaled]
 
@@ -440,6 +447,41 @@ class CNNLSTMRegressor:
                 all_preds.extend(preds.flatten())
 
         return np.maximum(0.0, np.array(all_preds))
+
+    def permutation_importance(self, X_test: pd.DataFrame, y_test: pd.Series, n_repeats: int = 1) -> dict:
+        """
+        Calculate permutation importance for each channel in the raw time-series segments.
+        Randomly shuffles each channel along the time axis to break temporal information 
+        and computes the drop in performance (MSE).
+        """
+        y_test_np = y_test.values
+        baseline_pred = self.predict(X_test)
+        baseline_mse = mean_squared_error(y_test_np, baseline_pred)
+        
+        segments = self._extract_raw_segments(X_test)
+        
+        channel_names = X_test.attrs.get("channel_names")
+        if channel_names is None or len(channel_names) != self.n_channels:
+            channel_names = [f"Ch_{i}" for i in range(self.n_channels)]
+            
+        importances = {}
+        for c, ch_name in enumerate(channel_names):
+            channel_mse_diffs = []
+            for _ in range(n_repeats):
+                permuted_segments = []
+                for seg in segments:
+                    # Permute the c-th channel along the time dimension
+                    seg_copy = seg.copy()
+                    np.random.shuffle(seg_copy[:, c]) 
+                    permuted_segments.append(seg_copy)
+                    
+                perm_pred = self._predict_from_segments(permuted_segments)
+                perm_mse = mean_squared_error(y_test_np, perm_pred)
+                channel_mse_diffs.append(perm_mse - baseline_mse)
+                
+            importances[ch_name] = np.mean(channel_mse_diffs)
+            
+        return importances
 
     # ------------------------------------------------------------------
     # Evaluation

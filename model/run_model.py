@@ -13,6 +13,7 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 sys.path.append(str(Path(__file__).parent.parent))
 
 from model import performance_utils, plotting_utils
+from model.report_generator import ReportGenerator
 from model.data_loader import DataLoader
 from model.model_archs.svm import SVMClassifier
 from model.model_archs.rbfnn import RBFNNClassifier
@@ -307,6 +308,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     fold_results = []
     oof_predictions = np.zeros(len(X))
     participant_stats = []
+    permutation_importances = []
 
     for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
         if cv_strategy == 'participant':
@@ -344,6 +346,14 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         preds = model.predict(X_test_fold)
         oof_predictions[test_idx] = preds
         
+        if hasattr(model, 'permutation_importance'):
+            try:
+                print("Computing permutation importance for fold...")
+                imp = model.permutation_importance(X_test_fold, y_test_fold)
+                permutation_importances.append(imp)
+            except Exception as e:
+                print(f"[WARN] Permutation importance computation failed: {e}")
+                
         if cv_strategy == 'participant':
             participant_stats.append({
                 'Participant': left_out_participant,
@@ -359,7 +369,13 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         sample_weight = compute_sample_weight(class_weight='balanced', y=y)
     model.fit(X, y, sample_weight=sample_weight)
 
-    return model, cv_metrics, oof_predictions, participant_stats, n_folds
+    avg_permutation_importance = None
+    if permutation_importances:
+        avg_permutation_importance = {}
+        for k in permutation_importances[0].keys():
+            avg_permutation_importance[k] = np.mean([pi[k] for pi in permutation_importances])
+
+    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance
 
 
 def execute_single_split(X, y, df, model_type, split_val):
@@ -391,7 +407,16 @@ def execute_single_split(X, y, df, model_type, split_val):
     })
     
     y_pred = model.predict(X_test)
-    return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred
+    
+    perm_imp = None
+    if hasattr(model, 'permutation_importance'):
+        try:
+            print("Computing permutation importance for test set...")
+            perm_imp = model.permutation_importance(X_test, y_test)
+        except Exception as e:
+            print(f"[WARN] Permutation importance computation failed: {e}")
+            
+    return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp
 
 
 def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, oof_predictions):
@@ -461,103 +486,8 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
     return per_seqlen_stats, per_duration_stats
 
 
-def generate_report(run_dir, timestamp, h5_paths, X, use_cv, cv_strategy, n_folds, model, model_type,
-                    X_test, X_train, y, y_train, y_test, is_raw_segment, 
-                    avg_metrics, std_metrics, metrics, participant_stats, 
-                    per_seqlen_stats, per_duration_stats, oof_predictions, y_pred):
-    """Generate the detailed performance_report.txt."""
-    report_file = run_dir / "performance_report.txt"
-    with open(report_file, "w") as f:
-        f.write("=" * 55 + "\n")
-        f.write(f"MODEL PERFORMANCE REPORT\nRun Timestamp: {timestamp}\n")
-        f.write("=" * 55 + "\n\n")
-        
-        f.write("--- DATASET INFO ---\n")
-        f.write(f"Participants included: {PARTICIPANT_CONFIG.get('include', 'all')}\n")
-        f.write(f"Database segments used: {[p.name for p in h5_paths]}\n")
-        f.write(f"Total samples: {len(X)}\n")
-        if use_cv:
-            mode = f"Leave-One-Participant-Out CV ({n_folds} Participants)" if cv_strategy == 'participant' else f"{n_folds}-Fold Stratified CV"
-            f.write(f"Evaluation Mode: {mode}\n")
-            f.write(f"Final Model Training samples: {getattr(model, 'train_samples', len(X))}\n")
-        else:
-            f.write(f"Evaluation Mode: Train/Test Split\n")
-            f.write(f"Testing samples: {len(X_test)}\n")
-        f.write("\n")
+    return per_seqlen_stats, per_duration_stats
 
-        if getattr(model, 'balance_weights', False):
-            f.write("--- BALANCE WEIGHTS ---\nSample weighting: enabled (class_weight='balanced')\n")
-            weights = calculate_class_weights(y if use_cv else y_train)
-            f.write(f"{'Weight':<12} | {'Count (Train)':<14} | {'Multiplier':<10}\n" + "-"*43 + "\n")
-            for cw in weights:
-                f.write(f"{cw['Weight']:<12} | {cw['Count']:<14} | {cw['Multiplier']:<10}\n")
-            f.write("\n")
-
-        f.write("--- FEATURE CONFIGURATION ---\n")
-        if is_raw_segment:
-            f.write(f"Input: Raw EMG + IMU segments (end-to-end CNN)\n")
-            emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
-            imu_ch = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if v]
-            f.write(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}\n")
-            f.write(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}\n")
-        else:
-            f.write(f"EMG Window: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s\n")
-        f.write("\n")
-
-        f.write("--- HYPERPARAMETERS ---\n")
-        f.write(f"Model: {model_type.upper()}\n")
-        # Write specific hyperparameters based on model type
-        if model_type == "svr":
-            f.write(f"Kernel: {model.kernel}\nC: {model.C}\nEpsilon: {model.epsilon}\n")
-        elif model_type == "rf":
-            f.write(f"N Estimators: {model.n_estimators}\nMax Depth: {model.max_depth}\n")
-        elif model_type in ["gru", "lstm", "cnn_lstm"]:
-            f.write(f"Learning Rate: {model.learning_rate}\nBatch Size: {model.batch_size}\nEpochs: {model.epochs}\n")
-        f.write("\n")
-
-        f.write("--- EVALUATION METRICS ---\n")
-        if use_cv:
-            f.write(f"(Averaged over {n_folds} folds)\n")
-            for k, v in avg_metrics.items(): f.write(f"{k}: {v:.4f} (±{std_metrics[k]:.4f})\n")
-        else:
-            for k, v in metrics.items(): f.write(f"{k}: {v:.4f}\n")
-        f.write("\n")
-
-        stats = calculate_per_weight_metrics(y if use_cv else y_test, oof_predictions if use_cv else y_pred)
-        f.write("--- PER-WEIGHT METRICS ---\n")
-        f.write(f"{'Weight':<12} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n" + "-"*50 + "\n")
-        for s in stats: f.write(f"{s['Weight']:<12} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
-        f.write("\n")
-
-        if participant_stats:
-            f.write("--- PER-PARTICIPANT METRICS ---\n")
-            f.write(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10}\n" + "-"*50 + "\n")
-            for p in participant_stats:
-                f.write(f"{p['Participant']:<12} | {p['Samples']:<8} | {p['MAE']:<10.4f} | {p['RMSE']:<10.4f}\n")
-            f.write("\n")
-
-        if per_seqlen_stats:
-            f.write("--- PER-SEQUENCE-LENGTH METRICS ---\n")
-            for s in per_seqlen_stats: f.write(f"{s['SeqLen']:<12} | {s['TimeAtPrediction']:<16} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
-            f.write("\n")
-
-        if per_duration_stats:
-            f.write("--- PER-SEGMENT-DURATION METRICS (CNN-LSTM) ---\n")
-            f.write("(Prediction error vs. elapsed time into lift, binned from raw segment duration)\n")
-            f.write(f"{'Bin':<6} | {'Time into lift (mid)':<22} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10}\n")
-            f.write("-" * 68 + "\n")
-            for s in per_duration_stats:
-                f.write(f"{s['SeqLen']:<6} | {s['TimeAtPrediction']:<22} | {s['Count']:<8} | {s['MAE']:<10} | {s['RMSE']:<10}\n")
-            f.write("\n")
-            
-        f.write("--- COMPUTE & TIMING METRICS ---\n")
-        f.write(f"Device: {performance_utils.format_device_string(performance_utils.get_device_info())}\n")
-        if hasattr(model, 'model') and isinstance(model.model, torch.nn.Module):
-            tot, train = performance_utils.count_parameters(model.model)
-            f.write(f"Total Parameters: {tot:,}\nTrainable Parameters: {train:,}\n")
-        f.write("\n")
-
-    print(f"\nPerformance report saved to {report_file}")
 
 
 def main():
@@ -597,9 +527,9 @@ def main():
     
     # 3. Summary
     print_data_summary(X, y, is_raw_segment, is_sequence)
-          # 4. Training & Evaluation
+    # 4. Training & Evaluation
     if USE_CROSS_VAL:
-        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds = execute_cross_validation(
+        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp = execute_cross_validation(
             X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
         )
         avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
@@ -607,7 +537,7 @@ def main():
         metrics, X_train, X_test, y_train, y_test, y_pred = {}, None, None, None, None, None
     else:
         actual_n_folds = 0
-        model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred = execute_single_split(
+        model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp = execute_single_split(
             X, y, df, model_type, TRAIN_TEST_SPLIT
         )
         avg_metrics, std_metrics, oof_predictions, participant_stats = None, None, None, None
@@ -617,11 +547,15 @@ def main():
     per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, USE_CROSS_VAL, df, X, X_test, y, y_test, y_pred, 
                                              oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
     
+    if perm_imp:
+        plotting_utils.plot_permutation_importance(perm_imp, run_dir / "permutation_importance.png", model_name=model_type.upper())
+    
     # 6. Final Report
-    generate_report(run_dir, timestamp, h5_paths, X, USE_CROSS_VAL, CV_CONFIG.get('strategy', 'kfold'), 
-                    actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
-                    is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
-                    per_seqlen, per_dur, oof_predictions, y_pred)
+    generator = ReportGenerator(run_dir, timestamp)
+    generator.generate(h5_paths, X, USE_CROSS_VAL, CV_CONFIG.get('strategy', 'kfold'), 
+                       actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
+                       is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
+                       per_seqlen, per_dur, oof_predictions, y_pred, perm_imp)
 
 
 if __name__ == "__main__":
