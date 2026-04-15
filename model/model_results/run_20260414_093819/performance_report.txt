@@ -1,0 +1,116 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260414_093819
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P01_session_01_segments.h5']
+Total samples: 13831
+Evaluation Mode: Leave-One-Participant-Out CV (11 Participants)
+Final Model Training samples: 11756
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: ALL
+Input: Raw EMG + IMU segments (end-to-end CNN)
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (18): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- HYPERPARAMETERS ---
+Model: TCN
+Learning Rate: 0.001
+Batch Size: 64
+Epochs: 1000
+
+--- EVALUATION METRICS ---
+(Averaged over 11 folds)
+MAE: 0.4052 (±0.1266)
+MSE: 0.5485 (±0.3216)
+RMSE: 0.7090 (±0.2138)
+R2: 0.8314 (±0.0988)
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 6927     | 0.0610     | 0.2160    
+0.90 kg      | 984      | 0.3892     | 0.5843    
+0.98 kg      | 988      | 0.4192     | 0.6039    
+1.97 kg      | 985      | 0.7263     | 0.8992    
+2.24 kg      | 988      | 0.6623     | 0.8254    
+2.94 kg      | 990      | 0.9684     | 1.1833    
+4.14 kg      | 978      | 1.0443     | 1.2467    
+5.92 kg      | 991      | 1.3645     | 1.6980    
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 4429     | 0.4813     | 0.8322    
+P02          | 1428     | 0.3956     | 0.6896    
+P03          | 998      | 0.3003     | 0.5152    
+P04          | 998      | 0.2490     | 0.4744    
+P05          | 499      | 0.2993     | 0.5125    
+P06          | 992      | 0.4420     | 0.7913    
+P07          | 997      | 0.4502     | 0.8030    
+P08          | 997      | 0.6257     | 1.0865    
+P09          | 998      | 0.6014     | 1.0335    
+P10          | 497      | 0.3887     | 0.6510    
+P11          | 998      | 0.2235     | 0.4103    
+
+--- PER-SEGMENT-DURATION METRICS (CNN-LSTM) ---
+(Prediction error vs. elapsed time into lift, binned from raw segment duration)
+Bin    | Time into lift (mid)   | Count    | MAE        | RMSE      
+--------------------------------------------------------------------
+1      | 0.153s                 | 3        | 1.4170     | 1.9677    
+2      | 0.438s                 | 272      | 0.8225     | 1.1453    
+3      | 0.723s                 | 2174     | 0.6435     | 0.9875    
+4      | 1.007s                 | 3922     | 0.4695     | 0.8286    
+5      | 1.292s                 | 3802     | 0.3550     | 0.6711    
+6      | 1.577s                 | 1835     | 0.2818     | 0.5601    
+7      | 1.862s                 | 803      | 0.2710     | 0.5710    
+8      | 2.147s                 | 368      | 0.3649     | 0.7206    
+9      | 2.432s                 | 204      | 0.3567     | 0.7329    
+10     | 2.716s                 | 121      | 0.3879     | 0.7786    
+11     | 3.001s                 | 94       | 0.3789     | 0.6668    
+12     | 3.286s                 | 59       | 0.3951     | 0.7591    
+13     | 3.571s                 | 39       | 0.3563     | 0.6030    
+14     | 3.856s                 | 29       | 0.2261     | 0.4881    
+15     | 4.140s                 | 22       | 0.2563     | 0.4773    
+16     | 4.425s                 | 13       | 0.3851     | 0.8216    
+17     | 4.710s                 | 11       | 0.3997     | 0.7206    
+18     | 4.995s                 | 11       | 0.1349     | 0.3437    
+19     | 5.280s                 | 6        | 0.8058     | 1.2348    
+20     | 5.565s                 | 5        | 0.4131     | 0.5086    
+21     | 5.849s                 | 4        | 0.3797     | 0.5971    
+22     | 6.134s                 | 2        | 1.0388     | 1.4691    
+23     | 6.419s                 | 6        | 0.5426     | 0.8538    
+24     | 6.704s                 | 1        | 0.1734     | 0.1734    
+25     | 6.989s                 | 3        | 0.0109     | 0.0189    
+26     | 7.274s                 | 2        | 0.1341     | 0.1672    
+27     | 7.558s                 | 1        | 0.0574     | 0.0574    
+29     | 8.128s                 | 1        | 0.0000     | 0.0000    
+31     | 8.698s                 | 2        | 0.0063     | 0.0089    
+34     | 9.552s                 | 1        | 0.0343     | 0.0343    
+41     | 11.546s                | 1        | 1.1567     | 1.1567    
+45     | 12.685s                | 1        | 0.0185     | 0.0185    
+48     | 13.540s                | 1        | 0.0000     | 0.0000    
+53     | 14.964s                | 1        | 0.0531     | 0.0531    
+61     | 17.242s                | 2        | 0.0180     | 0.0254    
+74     | 20.945s                | 1        | 0.0359     | 0.0359    
+102    | 28.920s                | 1        | 0.0181     | 0.0181    
+110    | 31.199s                | 1        | 2.6353     | 2.6353    
+132    | 37.465s                | 1        | 0.0000     | 0.0000    
+146    | 41.452s                | 1        | 0.0000     | 0.0000    
+157    | 44.585s                | 1        | 0.0035     | 0.0035    
+158    | 44.870s                | 1        | 0.8093     | 0.8093    
+239    | 67.941s                | 1        | 0.0301     | 0.0301    
+250    | 71.074s                | 1        | 0.0000     | 0.0000    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)
+Total Parameters: 958,529
+Trainable Parameters: 958,529
+
+Average timings:
+train_time: 4657.422396s (±1436.972964s)
+inference_time_total: 1.186474s (±0.598826s)
+inference_time_per_sample: 0.001111s (±0.000398s)

@@ -1,0 +1,58 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+
+[MACRO ABLATION] Overriding config: Disabling all EMG channels.
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260414_214834
+[DataLoader] Loaded 13831 raw segments (18 channels each)
+Raw Segment Data Summary:
+  - Total Segments: 13831
+  - Channels (EMG + IMU): 18
+  - Avg Segment Length: 2639 samples
+  - Min / Max Segment Length: 21 / 142433 samples
+Label vector (y) shape: (13831,) (Target: weight)
+
+Starting 11-Fold Leave-One-Participant-Out Cross-Validation...
+--- Fold 1/11 (Left out Participant: P01) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 219. Best Val Loss: 0.5104
+--- Fold 2/11 (Left out Participant: P02) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 363. Best Val Loss: 0.5162
+--- Fold 3/11 (Left out Participant: P03) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 272. Best Val Loss: 0.5185
+--- Fold 4/11 (Left out Participant: P04) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 393. Best Val Loss: 0.5304
+--- Fold 5/11 (Left out Participant: P05) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 379. Best Val Loss: 0.4443
+--- Fold 6/11 (Left out Participant: P06) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 366. Best Val Loss: 0.4904
+--- Fold 7/11 (Left out Participant: P07) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 343. Best Val Loss: 0.3996
+--- Fold 8/11 (Left out Participant: P08) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
+
+Early stopping at epoch 327. Best Val Loss: 0.4327
+--- Fold 9/11 (Left out Participant: P09) ---
+Initializing TCN Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [7, 5, 3, 3], 'pool_size': 4, 'tcn_channels': [128, 128, 256], 'tcn_kernel_size': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 1000, 'balance_weights': False, 'validation_split': 0.15, 'early_stopping_patience': 100, 'scheduler_T_0': 50, 'scheduler_T_mult': 2, 'random_state': 245}
+[TCNRegressor] Using device: cuda
