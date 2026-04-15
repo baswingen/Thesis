@@ -292,11 +292,13 @@ def print_data_summary(X, y, is_raw_segment, is_sequence):
 def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds):
     """Run cross-validation and return metrics and predictions."""
     if cv_strategy == 'participant':
-        from sklearn.model_selection import LeaveOneGroupOut
-        logo = LeaveOneGroupOut()
-        cv_iterator = list(logo.split(X, y, groups))
+        from sklearn.model_selection import GroupKFold
+        n_unique_groups = len(np.unique(groups))
+        n_splits = max(2, n_unique_groups // 2)
+        gkf = GroupKFold(n_splits=n_splits)
+        cv_iterator = list(gkf.split(X, y, groups))
         n_folds = len(cv_iterator)
-        print(f"\nStarting {n_folds}-Fold Leave-One-Participant-Out Cross-Validation...")
+        print(f"\nStarting {n_folds}-Fold Cross-Participant Validation (approx 2 participants per fold)...")
     else:
         from sklearn.model_selection import StratifiedKFold
         skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
@@ -312,8 +314,9 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
 
     for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
         if cv_strategy == 'participant':
-            left_out_participant = groups[test_idx[0]]
-            print(f"--- Fold {fold}/{n_folds} (Left out Participant: {left_out_participant}) ---")
+            test_participants = np.unique(groups[test_idx])
+            left_out_participants_str = ", ".join(test_participants)
+            print(f"--- Fold {fold}/{n_folds} (Left out Participants: {left_out_participants_str}) ---")
         else:
             print(f"--- Fold {fold}/{n_folds} ---")
         
@@ -356,7 +359,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
                 
         if cv_strategy == 'participant':
             participant_stats.append({
-                'Participant': left_out_participant,
+                'Participant': left_out_participants_str,
                 'MAE': mean_absolute_error(y_test_fold, preds),
                 'RMSE': np.sqrt(mean_squared_error(y_test_fold, preds)),
                 'Samples': len(test_idx)
