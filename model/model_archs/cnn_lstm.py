@@ -164,8 +164,6 @@ class CNNLSTMRegressor:
                  epochs: int = CNN_LSTM_CONFIG['epochs'],
                  validation_split: float = CNN_LSTM_CONFIG.get('validation_split', 0.2),
                  early_stopping_patience: int = CNN_LSTM_CONFIG.get('early_stopping_patience', 30),
-                 scheduler_T_0: int = CNN_LSTM_CONFIG.get('scheduler_T_0', 50),
-                 scheduler_T_mult: int = CNN_LSTM_CONFIG.get('scheduler_T_mult', 2),
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  balance_weights: bool = CNN_LSTM_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
                  random_state: int = CNN_LSTM_CONFIG['random_state']):
@@ -182,8 +180,6 @@ class CNNLSTMRegressor:
         self.epochs = epochs
         self.validation_split = validation_split
         self.early_stopping_patience = early_stopping_patience
-        self.scheduler_T_0 = scheduler_T_0
-        self.scheduler_T_mult = scheduler_T_mult
         self.loss_type = loss_type.lower()
         self.balance_weights = balance_weights
         self.random_state = random_state
@@ -311,9 +307,6 @@ class CNNLSTMRegressor:
 
         optimizer = optim.AdamW(self.model.parameters(),
                                 lr=self.learning_rate, weight_decay=self.weight_decay)
-        scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
-            optimizer, T_0=self.scheduler_T_0, T_mult=self.scheduler_T_mult, eta_min=1e-6
-        )
 
         if self.loss_type == 'mae':
             criterion = nn.L1Loss()
@@ -330,6 +323,14 @@ class CNNLSTMRegressor:
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
                                   shuffle=True, collate_fn=raw_pad_collate_fn,
                                   generator=_g)
+
+        # OneCycleLR must be defined after loader_train to know steps_per_epoch
+        scheduler = optim.lr_scheduler.OneCycleLR(
+            optimizer, 
+            max_lr=self.learning_rate,
+            epochs=self.epochs, 
+            steps_per_epoch=len(loader_train)
+        )
 
         dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # val stays unweighted
         loader_val = DataLoader(dataset_val, batch_size=self.batch_size,
@@ -368,6 +369,7 @@ class CNNLSTMRegressor:
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                     optimizer.step()
+                    scheduler.step()
 
                     running_loss += loss.item() * batch_x.size(0)
 
@@ -386,18 +388,14 @@ class CNNLSTMRegressor:
                         outputs = self.model(batch_x, lengths)
                         loss = criterion(outputs, batch_y)
                         val_loss += loss.item() * batch_x.size(0)
-
                 avg_val_loss = val_loss / len(dataset_val)
                 current_lr = optimizer.param_groups[0]['lr']
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}",
                                   "Val Loss": f"{avg_val_loss:.4f}",
                                   "LR": f"{current_lr:.1e}"})
 
-                scheduler.step()
-
                 self.loss_history["train"].append(avg_train_loss)
                 self.loss_history["val"].append(avg_val_loss)
-
                 if avg_val_loss < best_val_loss:
                     best_val_loss = avg_val_loss
                     patience_counter = 0
@@ -412,6 +410,53 @@ class CNNLSTMRegressor:
 
         self.model.load_state_dict(best_weights)
         self.model.eval()
+
+    # ------------------------------------------------------------------
+    # Learning Rate Finder
+    # ------------------------------------------------------------------
+
+    def lr_find(self, X: pd.DataFrame, y: pd.Series, end_lr=10.0, num_iter=100, save_path=None):
+        """Runs the LR Finder range test and plots the result."""
+        from model.lr_finder import LRFinder
+
+        # 1. Extract raw segments
+        segs = self._extract_raw_segments(X)
+        self.n_channels = segs[0].shape[1]
+
+        # 2. Fit scaler on training data
+        scaled_train = self._scale_segments(segs, fit=True)
+        y_np_train = y.values.astype(np.float32)
+
+        train_tensors = [torch.from_numpy(s) for s in scaled_train]
+        y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
+
+        # 3. Build model
+        self.model = CNNLSTMNetwork(
+            n_channels=self.n_channels,
+            cnn_filters=self.cnn_filters,
+            cnn_kernel_sizes=self.cnn_kernel_sizes,
+            pool_size=self.pool_size,
+            lstm_hidden_size=self.lstm_hidden_size,
+            lstm_num_layers=self.lstm_num_layers,
+            dropout_rate=self.dropout_rate,
+        ).to(self.device)
+
+        # Set a very low initial LR for the finder
+        optimizer = optim.AdamW(self.model.parameters(), lr=1e-7, weight_decay=self.weight_decay)
+
+        if self.loss_type == 'mae':
+            criterion = nn.L1Loss()
+        else:
+            criterion = nn.MSELoss()
+
+        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
+        loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
+                                  shuffle=True, collate_fn=raw_pad_collate_fn)
+
+        finder = LRFinder(self.model, optimizer, criterion, self.device)
+        finder.range_test(loader_train, end_lr=end_lr, num_iter=num_iter)
+        finder.plot(save_path=save_path)
+
 
     # ------------------------------------------------------------------
     # Prediction
@@ -450,9 +495,8 @@ class CNNLSTMRegressor:
 
     def permutation_importance(self, X_test: pd.DataFrame, y_test: pd.Series, n_repeats: int = 1) -> dict:
         """
-        Calculate permutation importance for each channel in the raw time-series segments.
-        Randomly shuffles each channel along the time axis to break temporal information 
-        and computes the drop in performance (MSE).
+        Calculate permutation importance for each channel or group of channels.
+        IMU vector channels are grouped together and permuted simultaneously.
         """
         y_test_np = y_test.values
         baseline_pred = self.predict(X_test)
@@ -464,22 +508,37 @@ class CNNLSTMRegressor:
         if channel_names is None or len(channel_names) != self.n_channels:
             channel_names = [f"Ch_{i}" for i in range(self.n_channels)]
             
-        importances = {}
+        imu_groups = {
+            'ax1': '$a_1$', 'ay1': '$a_1$', 'az1': '$a_1$',
+            'roll_rad1': '$\\alpha_1$', 'pitch_rad1': '$\\alpha_1$', 'yaw_rad1': '$\\alpha_1$',
+            'ax2': '$a_2$', 'ay2': '$a_2$', 'az2': '$a_2$',
+            'roll_rad2': '$\\alpha_2$', 'pitch_rad2': '$\\alpha_2$', 'yaw_rad2': '$\\alpha_2$',
+            'ax_diff': '$a_{diff}$', 'ay_diff': '$a_{diff}$', 'az_diff': '$a_{diff}$',
+            'roll_rad_diff': '$\\alpha_{diff}$', 'pitch_rad_diff': '$\\alpha_{diff}$', 'yaw_rad_diff': '$\\alpha_{diff}$',
+        }
+        
+        from collections import defaultdict
+        grouped_indices = defaultdict(list)
         for c, ch_name in enumerate(channel_names):
+            group_label = imu_groups.get(ch_name, ch_name)
+            grouped_indices[group_label].append(c)
+            
+        importances = {}
+        for group_label, indices in grouped_indices.items():
             channel_mse_diffs = []
             for _ in range(n_repeats):
                 permuted_segments = []
                 for seg in segments:
-                    # Permute the c-th channel along the time dimension
                     seg_copy = seg.copy()
-                    np.random.shuffle(seg_copy[:, c]) 
+                    for c in indices:
+                        np.random.shuffle(seg_copy[:, c]) 
                     permuted_segments.append(seg_copy)
                     
                 perm_pred = self._predict_from_segments(permuted_segments)
                 perm_mse = mean_squared_error(y_test_np, perm_pred)
                 channel_mse_diffs.append(perm_mse - baseline_mse)
                 
-            importances[ch_name] = np.mean(channel_mse_diffs)
+            importances[group_label] = np.mean(channel_mse_diffs)
             
         return importances
 
@@ -530,8 +589,6 @@ class CNNLSTMRegressor:
                 'balance_weights': self.balance_weights,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
-                'scheduler_T_0': self.scheduler_T_0,
-                'scheduler_T_mult': self.scheduler_T_mult,
                 'random_state': self.random_state,
             },
             'split_info': {

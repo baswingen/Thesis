@@ -39,7 +39,7 @@ from sklearn.utils.class_weight import compute_sample_weight, compute_class_weig
 # CONFIGURATION
 ###########################################################
 # Choose model to train:
-MODEL_TYPE = "tcn"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
+MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
 TRAIN_TEST_SPLIT = 0.2
 USE_CROSS_VAL = True
 RUN_GRID_SEARCH = False
@@ -180,11 +180,11 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
         max_dur = durations_sec.max()
         n_samples = len(durations_sec)
         
-        # Base of 4 bins per second, scaled up by the density of the dataset
+        # Base of 10 bins per second, scaled up by the density of the dataset
         density_multiplier = max(1.0, np.sqrt(n_samples / 300.0))
-        n_bins = int(np.ceil(max_dur * 4 * density_multiplier))
+        n_bins = int(np.ceil(max_dur * 10 * density_multiplier))
         # Put a sane limit so we don't create thousands of bins
-        n_bins = min(250, max(10, n_bins))
+        n_bins = min(500, max(10, n_bins))
 
     # Build equal-width bins spanning the full duration range
     bin_edges = np.linspace(durations_sec.min(), durations_sec.max(), n_bins + 1)
@@ -471,7 +471,7 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
                 row['TimeAtPrediction'] = f"{max_win + (row['SeqLen'] - 1) * step:.3f}s"
             
             plotting_utils.plot_seqlen_performance(per_seqlen_stats, run_dir / "seqlen_performance_plot.png", 
-                                                    model_name=model_type.upper(), min_count=max(5, int(len(target_y)*0.01)))
+                                                    model_name=model_type.upper(), min_count=max(2, int(len(target_y)*0.005)))
 
     if is_raw_segment and 'segment_duration_sec' in df.columns:
         target_y = y.values if use_cv else y_test.values
@@ -481,7 +481,7 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
         per_duration_stats = calculate_per_duration_metrics(target_y, target_preds, durations)
         if per_duration_stats:
             plotting_utils.plot_seqlen_performance(per_duration_stats, run_dir / "seqlen_performance_plot.png", 
-                                                    model_name="CNN-LSTM", min_count=max(5, int(len(target_y)*0.01)))
+                                                    model_name="CNN-LSTM", min_count=max(2, int(len(target_y)*0.005)))
             
     return per_seqlen_stats, per_duration_stats
 

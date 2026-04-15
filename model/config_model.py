@@ -337,15 +337,13 @@ CNN_LSTM_CONFIG = {
     'lstm_hidden_size': 256,
     'lstm_num_layers': 3,
     'dropout_rate': 0.4,
-    'learning_rate': 0.001,
+    'learning_rate': 10e-3,
     'weight_decay': 1e-05,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
-    'epochs': 1000,
+    'epochs': 200,
     'balance_weights': False,
     'validation_split': 0.15,
-    'early_stopping_patience': 100,
-    'scheduler_T_0': 50,
-    'scheduler_T_mult': 2,
+    'early_stopping_patience': 200,
     'random_state': GLOBAL_RANDOM_STATE,
 }
 

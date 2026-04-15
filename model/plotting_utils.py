@@ -53,11 +53,22 @@ def plot_regression_results(y_true: pd.Series | np.ndarray, y_pred: np.ndarray, 
     # Unity line (Actual = Predicted)
     ax.plot([min_val, max_val], [min_val, max_val], color='#D62728', linestyle='--', linewidth=1.5, alpha=0.8, label='Perfect Prediction', zorder=1)
     
-    # Plot individual points STRICTLY on the actual weight line (clean on the line)
+    # Plot individual OUTLIER points STRICTLY on the actual weight line
+    first_outlier = True
     for i, w in enumerate(actual_weights):
         preds = pred_groups[i]
-        ax.scatter(np.full_like(preds, w), preds, 
-                    alpha=0.15, s=20, color='#1F77B4', edgecolors='none', zorder=2)
+        if len(preds) > 0:
+            q1 = np.percentile(preds, 25)
+            q3 = np.percentile(preds, 75)
+            iqr = q3 - q1
+            outliers = preds[(preds < q1 - 1.5 * iqr) | (preds > q3 + 1.5 * iqr)]
+            
+            if len(outliers) > 0:
+                label = "Outliers" if first_outlier else ""
+                ax.scatter(np.full_like(outliers, w), outliers, 
+                            alpha=0.35, s=25, color='#1F77B4', edgecolors='none', 
+                            zorder=2, label=label)
+                first_outlier = False
 
     # Create boxplot
     bp = ax.boxplot(pred_groups, positions=actual_weights, widths=0.4, 
@@ -189,8 +200,22 @@ def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path,
     ax1.set_title(f"{model_name}: Prediction Error vs. Available Segment Length".upper(),
                   pad=18, fontsize=13, fontweight='bold')
     ax1.set_ylim(bottom=0)
+    
+    # Tick management: if too many bins, only show a subset of labels to prevent overlap
     ax1.set_xticks(times)
-    ax1.set_xticklabels([f"{t:.2f}s" for t in times], rotation=30, ha='right')
+    if len(times) > 20:
+        # Show every Nth label
+        n_show = 15  # aim for around 15 labels
+        step = max(1, len(times) // n_show)
+        visible_labels = []
+        for i, t in enumerate(times):
+            if i % step == 0 or i == len(times) - 1:
+                visible_labels.append(f"{t:.2f}s")
+            else:
+                visible_labels.append("")
+        ax1.set_xticklabels(visible_labels, rotation=30, ha='right')
+    else:
+        ax1.set_xticklabels([f"{t:.2f}s" for t in times], rotation=30, ha='right')
 
     # Combined legend
     lines1, labels1 = ax1.get_legend_handles_labels()
