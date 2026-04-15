@@ -358,12 +358,17 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
                 print(f"[WARN] Permutation importance computation failed: {e}")
                 
         if cv_strategy == 'participant':
-            participant_stats.append({
-                'Participant': left_out_participants_str,
-                'MAE': mean_absolute_error(y_test_fold, preds),
-                'RMSE': np.sqrt(mean_squared_error(y_test_fold, preds)),
-                'Samples': len(test_idx)
-            })
+            fold_groups = groups[test_idx]
+            for p in test_participants:
+                p_mask = (fold_groups == p)
+                p_y_true = y_test_fold[p_mask]
+                p_preds = preds[p_mask]
+                participant_stats.append({
+                    'Participant': p,
+                    'MAE': mean_absolute_error(p_y_true, p_preds),
+                    'RMSE': np.sqrt(mean_squared_error(p_y_true, p_preds)),
+                    'Samples': sum(p_mask)
+                })
 
     print("\nTraining final model on full dataset for saving...")
     model = initialize_model(model_type)
