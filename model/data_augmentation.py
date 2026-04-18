@@ -278,5 +278,5 @@ class SequenceAugmenter:
 
         aug_labels_arr = np.array(aug_labels, dtype=np.float32)
         if return_pids:
-            return aug_sequences, aug_labels_arr, np.array(aug_pids)
+            return aug_sequences, aug_labels_arr, (np.array(aug_pids) if aug_pids is not None else None)
         return aug_sequences, aug_labels_arr

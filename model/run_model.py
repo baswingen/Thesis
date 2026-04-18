@@ -263,6 +263,11 @@ def load_and_prepare_data(loader, h5_paths, model_type, is_raw_segment, is_seque
 
     groups = df["subject"].astype(str).values if "subject" in df.columns else None
     X, y = loader.prepare_for_ml(df, target_col="weight")
+    
+    # Pass along subject column for neural networks taking raw data for participant balancing
+    if is_raw_segment and groups is not None:
+        X['subject'] = groups
+        
     return X, y, groups, df
 
 
