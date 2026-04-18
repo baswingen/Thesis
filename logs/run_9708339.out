@@ -1,0 +1,17 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260418_155202
+[DataLoader] Loaded 16820 raw segments (26 channels each)
+Raw Segment Data Summary:
+  - Total Segments: 16820
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2697 samples
+  - Min / Max Segment Length: 21 / 142433 samples
+Label vector (y) shape: (16820,) (Target: weight)
+
+Starting 8-Fold Cross-Participant Validation (approx 2 participants per fold)...
+--- Fold 1/8 (Left out Participants: P01) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 1e-05, 'batch_size': 64, 'epochs': 400, 'balance_weights': False, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+[CNNLSTMRegressor] Augmentation: 10532 → 20960 segments (+10428 synthetic)
