@@ -149,6 +149,7 @@ class SequenceAugmenter:
         sequences: List[np.ndarray],
         labels: np.ndarray,
         participant_ids: np.ndarray = None,
+        return_pids: bool = False,
     ) -> Tuple[List[np.ndarray], np.ndarray]:
         """
         Apply augmentations to the training dataset.
@@ -181,6 +182,8 @@ class SequenceAugmenter:
         aug_labels    : np.ndarray
         """
         if not self.config.get('enabled', True):
+            if return_pids:
+                return sequences, labels, participant_ids
             return sequences, labels
 
         p = self.config.get('p', 0.5)
@@ -191,6 +194,7 @@ class SequenceAugmenter:
 
         aug_sequences = list(sequences)           # start with originals
         aug_labels = list(labels_flat)
+        aug_pids = list(participant_ids) if participant_ids is not None else None
 
         for i, seq in enumerate(sequences):
             if rng.random() > p:
@@ -218,6 +222,8 @@ class SequenceAugmenter:
 
             aug_sequences.append(aug_seq)
             aug_labels.append(labels_flat[i])
+            if aug_pids is not None:
+                aug_pids.append(aug_pids[i])
 
         # ── MixUp pass (if enabled and alpha > 0) ────────────────────
         if 'mixup' in methods and self.config.get('mixup_alpha', 0.2) > 0:
@@ -253,6 +259,8 @@ class SequenceAugmenter:
                     )
                     aug_sequences.append(mixed_seq)
                     aug_labels.append(mixed_label)
+                    if aug_pids is not None:
+                        aug_pids.append(aug_pids[i])
             else:
                 # ── Original random-partner MixUp ────────────────────
                 for i in range(n_orig):
@@ -265,6 +273,10 @@ class SequenceAugmenter:
                     )
                     aug_sequences.append(mixed_seq)
                     aug_labels.append(mixed_label)
+                    if aug_pids is not None:
+                        aug_pids.append(aug_pids[i])
 
         aug_labels_arr = np.array(aug_labels, dtype=np.float32)
+        if return_pids:
+            return aug_sequences, aug_labels_arr, np.array(aug_pids)
         return aug_sequences, aug_labels_arr

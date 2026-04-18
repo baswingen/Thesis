@@ -164,8 +164,11 @@ class CNNLSTMRegressor:
                  epochs: int = CNN_LSTM_CONFIG['epochs'],
                  validation_split: float = CNN_LSTM_CONFIG.get('validation_split', 0.2),
                  early_stopping_patience: int = CNN_LSTM_CONFIG.get('early_stopping_patience', 30),
+                 scheduler_patience: int = CNN_LSTM_CONFIG.get('scheduler_patience', 10),
+                 scheduler_factor: float = CNN_LSTM_CONFIG.get('scheduler_factor', 0.5),
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  balance_weights: bool = CNN_LSTM_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
+                 balance_participants: bool = CNN_LSTM_CONFIG.get('balance_participants', False),
                  random_state: int = CNN_LSTM_CONFIG['random_state']):
 
         self.cnn_filters = list(cnn_filters)
@@ -180,8 +183,11 @@ class CNNLSTMRegressor:
         self.epochs = epochs
         self.validation_split = validation_split
         self.early_stopping_patience = early_stopping_patience
+        self.scheduler_patience = scheduler_patience
+        self.scheduler_factor = scheduler_factor
         self.loss_type = loss_type.lower()
         self.balance_weights = balance_weights
+        self.balance_participants = balance_participants
         self.random_state = random_state
 
         # Tracking
@@ -267,8 +273,8 @@ class CNNLSTMRegressor:
         participant_ids_train = (
             X_train['subject'].values if 'subject' in X_train.columns else None
         )
-        scaled_train, y_np_train = augmenter.augment_dataset(
-            scaled_train, y_np_train, participant_ids=participant_ids_train
+        scaled_train, y_np_train, aug_pids = augmenter.augment_dataset(
+            scaled_train, y_np_train, participant_ids=participant_ids_train, return_pids=True
         )
         if AUGMENTATION_CONFIG.get('enabled', False):
             n_aug = len(scaled_train) - len(segs_train)
@@ -285,14 +291,18 @@ class CNNLSTMRegressor:
 
         # 4. Handle sample weighting
         train_weights_tensor = None
-        if self.balance_weights:
-            # Calculate balanced weights based on the original (pre-augmentation) distribution
-            # but applied to the augmented dataset. 
-            # Note: compute_sample_weight expects labels it can use to index the distribution.
-            # We use the y_np_train which includes augmented samples.
+        if self.balance_weights and self.balance_participants:
+            raise ValueError("Cannot enable both balance_weights and balance_participants.")
+        elif self.balance_weights:
             weights_np = compute_sample_weight(class_weight='balanced', y=y_np_train.flatten())
             train_weights_tensor = torch.from_numpy(weights_np.astype(np.float32)).unsqueeze(1)
-            print(f"[CNNLSTMRegressor] Sample weighting enabled. Weights assigned to {len(weights_np)} training samples.")
+            print(f"[CNNLSTMRegressor] Sample weighting enabled (Target Class). Weights assigned to {len(weights_np)} training samples.")
+        elif self.balance_participants:
+            if aug_pids is None:
+                raise ValueError("balance_participants is True but no participant IDs were provided in data.")
+            weights_np = compute_sample_weight(class_weight='balanced', y=aug_pids)
+            train_weights_tensor = torch.from_numpy(weights_np.astype(np.float32)).unsqueeze(1)
+            print(f"[CNNLSTMRegressor] Sample weighting enabled (Participants). Weights assigned to {len(weights_np)} training samples.")
 
         # 4. Build model
         self.model = CNNLSTMNetwork(
@@ -324,12 +334,13 @@ class CNNLSTMRegressor:
                                   shuffle=True, collate_fn=raw_pad_collate_fn,
                                   generator=_g)
 
-        # OneCycleLR must be defined after loader_train to know steps_per_epoch
-        scheduler = optim.lr_scheduler.OneCycleLR(
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, 
-            max_lr=self.learning_rate,
-            epochs=self.epochs, 
-            steps_per_epoch=len(loader_train)
+            mode='min', 
+            factor=self.scheduler_factor,
+            patience=self.scheduler_patience,
+            min_lr=1e-6,
+            verbose=True
         )
 
         dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # val stays unweighted
@@ -357,8 +368,7 @@ class CNNLSTMRegressor:
                     outputs = self.model(batch_x, lengths)
                     
                     # Weighted loss calculation
-                    # criterion must have reduction='none' for per-sample weighting
-                    if self.balance_weights:
+                    if self.balance_weights or self.balance_participants:
                         criterion.reduction = 'none'
                         loss_unweighted = criterion(outputs, batch_y)
                         loss = (loss_unweighted * batch_weights).mean()
@@ -369,7 +379,6 @@ class CNNLSTMRegressor:
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                     optimizer.step()
-                    scheduler.step()
 
                     running_loss += loss.item() * batch_x.size(0)
 
@@ -396,6 +405,9 @@ class CNNLSTMRegressor:
 
                 self.loss_history["train"].append(avg_train_loss)
                 self.loss_history["val"].append(avg_val_loss)
+                
+                scheduler.step(avg_val_loss)
+                
                 if avg_val_loss < best_val_loss:
                     best_val_loss = avg_val_loss
                     patience_counter = 0
@@ -587,8 +599,11 @@ class CNNLSTMRegressor:
                 'epochs': self.epochs,
                 'loss_type': self.loss_type,
                 'balance_weights': self.balance_weights,
+                'balance_participants': self.balance_participants,
                 'validation_split': self.validation_split,
                 'early_stopping_patience': self.early_stopping_patience,
+                'scheduler_patience': self.scheduler_patience,
+                'scheduler_factor': self.scheduler_factor,
                 'random_state': self.random_state,
             },
             'split_info': {
@@ -619,6 +634,7 @@ class CNNLSTMRegressor:
             
         regressor = cls(**filtered_config)
         regressor.balance_weights = state['config'].get('balance_weights', False)
+        regressor.balance_participants = state['config'].get('balance_participants', False)
         regressor.scaler = state['scaler']
         
         # Infer n_channels for older models

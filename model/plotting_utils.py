@@ -246,6 +246,9 @@ def plot_participant_performance(per_participant_stats: list, save_path: str | P
 
     set_style()
     
+    # Sort by RMSE ascending
+    per_participant_stats = sorted(per_participant_stats, key=lambda x: x['RMSE'])
+    
     participants = [stat['Participant'] for stat in per_participant_stats]
     maes = [stat['MAE'] for stat in per_participant_stats]
     rmses = [stat['RMSE'] for stat in per_participant_stats]
