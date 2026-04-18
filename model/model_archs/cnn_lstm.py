@@ -339,8 +339,7 @@ class CNNLSTMRegressor:
             mode='min', 
             factor=self.scheduler_factor,
             patience=self.scheduler_patience,
-            min_lr=1e-6,
-            verbose=True
+            min_lr=1e-6
         )
 
         dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # val stays unweighted
