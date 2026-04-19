@@ -338,10 +338,10 @@ CNN_LSTM_CONFIG = {
     'lstm_num_layers': 3,
     'dropout_rate': 0.4,
     'learning_rate': 0.001,
-    'weight_decay': 1e-05,
+    'weight_decay': 1e-3,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
     'epochs': 400,
-    'balance_weights': False,
+    'balance_weights': True,
     'balance_participants': True,
     'validation_split': 0.15,
     'early_stopping_patience': 200,

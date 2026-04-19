@@ -292,7 +292,14 @@ class CNNLSTMRegressor:
         # 4. Handle sample weighting
         train_weights_tensor = None
         if self.balance_weights and self.balance_participants:
-            raise ValueError("Cannot enable both balance_weights and balance_participants.")
+            if aug_pids is None:
+                raise ValueError("balance_participants is True but no participant IDs were provided in data.")
+            w_class = compute_sample_weight(class_weight='balanced', y=y_np_train.flatten())
+            w_part = compute_sample_weight(class_weight='balanced', y=aug_pids)
+            combined = w_class * w_part
+            combined = combined / np.mean(combined)
+            train_weights_tensor = torch.from_numpy(combined.astype(np.float32)).unsqueeze(1)
+            print(f"[CNNLSTMRegressor] Hybrid sample weighting enabled (Target Class * Participants). Weights assigned to {len(combined)} training samples.")
         elif self.balance_weights:
             weights_np = compute_sample_weight(class_weight='balanced', y=y_np_train.flatten())
             train_weights_tensor = torch.from_numpy(weights_np.astype(np.float32)).unsqueeze(1)
