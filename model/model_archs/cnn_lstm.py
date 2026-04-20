@@ -246,17 +246,21 @@ class CNNLSTMRegressor:
     # Training
     # ------------------------------------------------------------------
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None, X_val=None, y_val=None):
         from sklearn.model_selection import train_test_split
         from tqdm import tqdm
         import copy
 
         # 1. Train / validation split
-        stratify = X["label"] if "label" in X.columns else None
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=self.validation_split,
-            random_state=self.random_state, stratify=stratify,
-        )
+        if X_val is not None and y_val is not None:
+            X_train, y_train = X, y
+            print(f"[CNNLSTMRegressor] Using explicitly provided validation set ({len(X_val)} samples).")
+        else:
+            stratify = X["label"] if "label" in X.columns else None
+            X_train, X_val, y_train, y_val = train_test_split(
+                X, y, test_size=self.validation_split,
+                random_state=self.random_state, stratify=stratify,
+            )
 
         # 2. Extract raw segments
         segs_train = self._extract_raw_segments(X_train)
