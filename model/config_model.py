@@ -5,7 +5,7 @@ ensures consistency across training and inference scripts.
 """
 
 GLOBAL_RANDOM_STATE = 245
-GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse' or 'mae'
+GLOBAL_LOSS_FUNCTION = 'huber'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 
 

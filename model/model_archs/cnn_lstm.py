@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn.utils.rnn as rnn_utils
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 import pandas as pd
 import numpy as np
 import sys
@@ -289,8 +289,11 @@ class CNNLSTMRegressor:
         self.train_samples = len(X_train)
         self.val_samples = len(X_val)
 
-        # 4. Handle sample weighting
-        train_weights_tensor = None
+        # 4. Compute sampling weights for WeightedRandomSampler
+        # Unlike loss-weighting, this ensures each mini-batch contains
+        # balanced class representation so the model sees equal examples
+        # of each weight class during forward passes.
+        sampler = None
         if self.balance_weights and self.balance_participants:
             if aug_pids is None:
                 raise ValueError("balance_participants is True but no participant IDs were provided in data.")
@@ -298,18 +301,30 @@ class CNNLSTMRegressor:
             w_part = compute_sample_weight(class_weight='balanced', y=aug_pids)
             combined = w_class * w_part
             combined = combined / np.mean(combined)
-            train_weights_tensor = torch.from_numpy(combined.astype(np.float32)).unsqueeze(1)
-            print(f"[CNNLSTMRegressor] Hybrid sample weighting enabled (Target Class * Participants). Weights assigned to {len(combined)} training samples.")
+            sampler_weights = torch.from_numpy(combined.astype(np.float64))
+            print(f"[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). {len(combined)} training samples.")
         elif self.balance_weights:
             weights_np = compute_sample_weight(class_weight='balanced', y=y_np_train.flatten())
-            train_weights_tensor = torch.from_numpy(weights_np.astype(np.float32)).unsqueeze(1)
-            print(f"[CNNLSTMRegressor] Sample weighting enabled (Target Class). Weights assigned to {len(weights_np)} training samples.")
+            sampler_weights = torch.from_numpy(weights_np.astype(np.float64))
+            print(f"[CNNLSTMRegressor] Balanced sampling enabled (Target Class). {len(weights_np)} training samples.")
         elif self.balance_participants:
             if aug_pids is None:
                 raise ValueError("balance_participants is True but no participant IDs were provided in data.")
             weights_np = compute_sample_weight(class_weight='balanced', y=aug_pids)
-            train_weights_tensor = torch.from_numpy(weights_np.astype(np.float32)).unsqueeze(1)
-            print(f"[CNNLSTMRegressor] Sample weighting enabled (Participants). Weights assigned to {len(weights_np)} training samples.")
+            sampler_weights = torch.from_numpy(weights_np.astype(np.float64))
+            print(f"[CNNLSTMRegressor] Balanced sampling enabled (Participants). {len(weights_np)} training samples.")
+        else:
+            sampler_weights = None
+
+        if sampler_weights is not None:
+            _g_sampler = torch.Generator()
+            _g_sampler.manual_seed(self.random_state)
+            sampler = WeightedRandomSampler(
+                weights=sampler_weights,
+                num_samples=len(sampler_weights),
+                replacement=True,
+                generator=_g_sampler
+            )
 
         # 4. Build model
         self.model = CNNLSTMNetwork(
@@ -325,21 +340,25 @@ class CNNLSTMRegressor:
         optimizer = optim.AdamW(self.model.parameters(),
                                 lr=self.learning_rate, weight_decay=self.weight_decay)
 
-        if self.loss_type == 'mae':
+        if self.loss_type == 'huber':
+            criterion = nn.SmoothL1Loss()
+            print(f"[CNNLSTMRegressor] Using Huber (SmoothL1) loss.")
+        elif self.loss_type == 'mae':
             criterion = nn.L1Loss()
         else:
             criterion = nn.MSELoss()
             if self.loss_type != 'mse':
                 print(f"[CNNLSTMRegressor] Unknown loss '{self.loss_type}', defaulting to MSE.")
 
-        # 5. Build datasets
-        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train, 
-                                            sample_weights=train_weights_tensor)
+        # 5. Build datasets — no per-sample loss weights needed; sampling handles balance
+        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
         _g = torch.Generator()
         _g.manual_seed(self.random_state)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
-                                  shuffle=True, collate_fn=raw_pad_collate_fn,
-                                  generator=_g)
+                                  shuffle=(sampler is None),
+                                  sampler=sampler,
+                                  collate_fn=raw_pad_collate_fn,
+                                  generator=_g if sampler is None else None)
 
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, 
@@ -372,15 +391,7 @@ class CNNLSTMRegressor:
 
                     optimizer.zero_grad()
                     outputs = self.model(batch_x, lengths)
-                    
-                    # Weighted loss calculation
-                    if self.balance_weights or self.balance_participants:
-                        criterion.reduction = 'none'
-                        loss_unweighted = criterion(outputs, batch_y)
-                        loss = (loss_unweighted * batch_weights).mean()
-                    else:
-                        criterion.reduction = 'mean'
-                        loss = criterion(outputs, batch_y)
+                    loss = criterion(outputs, batch_y)
                         
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
