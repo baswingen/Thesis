@@ -8,7 +8,12 @@ GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'huber'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 
-
+# ──────────────────────────────────────────────────────────
+# RUN_MODEL PIPELINE TOGGLES
+# ──────────────────────────────────────────────────────────
+MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
+RUN_GRID_SEARCH = False
+USE_PRECOMPUTED_FEATURES = True
 
 # ──────────────────────────────────────────────────────────
 # DATABASE & ENVIRONMENT CONFIGURATION
@@ -227,8 +232,11 @@ AUGMENTATION_CONFIG = {
 # Cross-Validation Configuration
 CV_CONFIG = {
     'use_cross_val': True,
-    'n_folds': 5,
-    'strategy': 'participant'  # Options: 'kfold', 'participant'
+    'train_test_split': 0.2,    # Only used if use_cross_val is False
+    'n_folds': 5,               # Only used if strategy is 'kfold'
+    'strategy': 'participant',  # Options: 'kfold', 'participant'
+    'strict_val_split': True,   # Toggles strict cross-participant early stopping
+    'strict_val_participants': 2 # Number of participants to hold out for early stopping
 }
 
 # SVM Configuration

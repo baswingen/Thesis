@@ -169,6 +169,8 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
+        self.sections.append("\n".join(lines))
+
     def _add_permutation_importance(self, permutation_importances):
         if not permutation_importances:
             return
@@ -179,6 +181,30 @@ class ReportGenerator:
             lines.append(f"{k}: {v:.6f}")
         lines.append("")
         self.sections.append("\n".join(lines))
+
+    def _add_deepshap_summary(self):
+        shap_p = self.run_dir / "deepshap_values.npz"
+        if not shap_p.exists():
+            return
+            
+        import numpy as np
+        try:
+            data = np.load(shap_p, allow_pickle=True)
+            grouped_names = data['grouped_names']
+            grouped_vals = data['grouped_vals']
+            
+            lines = ["--- DEEPSHAP CHANNEL IMPORTANCE ---"]
+            lines.append("(Mean absolute SHAP value per grouped channel)")
+            
+            # Sort by importance
+            order = np.argsort(grouped_vals)[::-1]
+            for idx in order:
+                lines.append(f"{str(grouped_names[idx]):<15}: {grouped_vals[idx]:.6f}")
+            
+            lines.append("")
+            self.sections.append("\n".join(lines))
+        except Exception as e:
+            print(f"[WARN] Failed to add DeepSHAP to report: {e}")
 
     def generate(self, h5_paths, X, use_cv, cv_strategy, n_folds, model, model_type,
                  X_test, X_train, y, y_train, y_test, is_raw_segment, 
@@ -202,6 +228,7 @@ class ReportGenerator:
         self._add_per_duration_metrics(per_duration_stats)
         self._add_compute_metrics(model, use_cv, avg_metrics, std_metrics, metrics)
         self._add_permutation_importance(permutation_importances)
+        self._add_deepshap_summary()
 
         with open(self.report_file, "w") as f:
             f.write("\n".join(self.sections))

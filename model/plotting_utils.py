@@ -4,6 +4,22 @@ import pandas as pd
 from pathlib import Path
 from sklearn.metrics import r2_score, mean_absolute_error
 
+MODALITY_COLORS = {
+    "EMG": "#E05C5C",  # Reddish/Coral
+    "IMU": "#5C9BE0",  # Blueish/Sky
+}
+
+def get_modality_color(label: str) -> str:
+    """
+    Identifies the modality from a label and returns the standard color.
+    IMU labels are typically mapped to LaTeX symbols (containing '$') 
+    or contain 'ax', 'ay', etc.
+    """
+    label_lower = label.lower()
+    if "$" in label or any(x in label_lower for x in ["ax", "ay", "az", "roll", "pitch", "yaw", "imu"]):
+        return MODALITY_COLORS["IMU"]
+    return MODALITY_COLORS["EMG"]
+
 def set_style():
     """Sets a professional style for paper-ready plots."""
     try:
@@ -313,8 +329,8 @@ def plot_permutation_importance(importances: dict, save_path: str | Path, model_
 
     fig, ax = plt.subplots(figsize=(10, max(6, len(features) * 0.3)))
     
-    # Choose color based on whether the score is positive or negative
-    colors = ['#1F77B4' if s >= 0 else '#D62728' for s in scores]
+    # Color by modality (EMG vs IMU)
+    colors = [get_modality_color(f) for f in features]
     
     y = np.arange(len(features))
     ax.barh(y, scores, color=colors, alpha=0.85)
@@ -338,6 +354,12 @@ def plot_permutation_importance(importances: dict, save_path: str | Path, model_
     x_max = max(0, max(scores))
     margin = (x_max - x_min) * 0.15
     ax.set_xlim(x_min - margin if x_min < 0 else 0, x_max + margin)
+
+    # Add legend
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor=MODALITY_COLORS["EMG"], label='EMG'),
+                       Patch(facecolor=MODALITY_COLORS["IMU"], label='IMU (Grouped)')]
+    ax.legend(handles=legend_elements, loc='lower right', fontsize=10)
 
     fig.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')

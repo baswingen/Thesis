@@ -12,7 +12,7 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 # Add project root to sys.path so 'model' package can be found
 sys.path.append(str(Path(__file__).parent.parent))
 
-from model import performance_utils, plotting_utils
+from model import performance_utils, plotting_utils, deepshap_analysis
 from model.report_generator import ReportGenerator
 from model.data_loader import DataLoader
 from model.model_archs.svm import SVMClassifier
@@ -27,7 +27,7 @@ from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -35,20 +35,7 @@ from sklearn.metrics import (
 )
 from sklearn.utils.class_weight import compute_sample_weight, compute_class_weight
 
-###########################################################
-# CONFIGURATION
-###########################################################
-# Choose model to train:
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
-TRAIN_TEST_SPLIT = 0.2
-USE_CROSS_VAL = True
-RUN_GRID_SEARCH = False
 
-# Use pre-extracted features stored in the segment HDF5 files.
-# Run 'python -m model.feature_extraction' to compute and store them.
-# Falls back to live extraction automatically if no precomputed features exist.
-USE_PRECOMPUTED_FEATURES = True
-###########################################################
 
 def initialize_model(model_type: str):
     """Factory function to initialize the correct model based on type."""
@@ -336,7 +323,38 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
             sample_weight = compute_sample_weight(class_weight='balanced', y=y_train_fold)
             
-        model.fit(X_train_fold, y_train_fold, sample_weight=sample_weight)
+        kwargs = {'sample_weight': sample_weight}
+        
+        # Apply Strict Cross-Participant Early Stopping if enabled
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type == 'cnn_lstm':
+            from sklearn.model_selection import GroupShuffleSplit
+            groups_train = groups[train_idx]
+            val_p = CV_CONFIG.get('strict_val_participants', 2)
+            
+            n_train_groups = len(np.unique(groups_train))
+            if val_p >= n_train_groups:
+                val_p = max(1, n_train_groups - 1)
+                
+            gss = GroupShuffleSplit(n_splits=1, test_size=val_p, random_state=GLOBAL_RANDOM_STATE)
+            inner_train_idx, inner_val_idx = next(gss.split(X_train_fold, y_train_fold, groups=groups_train))
+            
+            X_val_fold = X_train_fold.iloc[inner_val_idx]
+            y_val_fold = y_train_fold.iloc[inner_val_idx]
+            
+            val_participants = np.unique(groups_train[inner_val_idx])
+            print(f"    [Strict Validation] Holding out {len(val_participants)} participants for early stopping: {', '.join(val_participants)}")
+            
+            X_train_fold = X_train_fold.iloc[inner_train_idx]
+            y_train_fold = y_train_fold.iloc[inner_train_idx]
+            
+            if sample_weight is not None:
+                sample_weight = sample_weight[inner_train_idx]
+            kwargs['sample_weight'] = sample_weight
+                
+            kwargs['X_val'] = X_val_fold
+            kwargs['y_val'] = y_val_fold
+            
+        model.fit(X_train_fold, y_train_fold, **kwargs)
         train_time = time.perf_counter() - start_train
         
         start_inf = time.perf_counter()
@@ -557,7 +575,7 @@ def main():
     # 3. Summary
     print_data_summary(X, y, is_raw_segment, is_sequence)
     # 4. Training & Evaluation
-    if USE_CROSS_VAL:
+    if CV_CONFIG.get('use_cross_val', True):
         model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp = execute_cross_validation(
             X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
         )
@@ -567,21 +585,43 @@ def main():
     else:
         actual_n_folds = 0
         model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp = execute_single_split(
-            X, y, df, model_type, TRAIN_TEST_SPLIT
+            X, y, df, model_type, CV_CONFIG.get('train_test_split', 0.2)
         )
         avg_metrics, std_metrics, oof_predictions, participant_stats = None, None, None, None
 
     # 5. Artifacts & Specialized Plots
-    save_basic_artifacts(model, run_dir, model_type, USE_CROSS_VAL, y, y_test, y_pred, oof_predictions)
-    per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, USE_CROSS_VAL, df, X, X_test, y, y_test, y_pred, 
+    save_basic_artifacts(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions)
+    per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), df, X, X_test, y, y_test, y_pred, 
                                              oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
     
     if perm_imp:
         plotting_utils.plot_permutation_importance(perm_imp, run_dir / "permutation_importance.png", model_name=model_type.upper())
     
-    # 6. Final Report
+    # 6. Automated DeepSHAP Analysis (High-Fidelity)
+    if model_type == "cnn_lstm":
+        print("\n" + "-"*50)
+        print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
+        print("-"*50)
+        try:
+            # If we used CV, the final model is trained on the whole dataset X.
+            # We split it here for the purposes of SHAP analysis.
+            if CV_CONFIG.get('use_cross_val', True):
+                from sklearn.model_selection import train_test_split
+                strat = df["weight"].astype(str) if "weight" in df.columns else None
+                X_train_shap, X_test_shap = train_test_split(X, test_size=0.2, random_state=42, stratify=strat)
+            else:
+                X_train_shap, X_test_shap = X_train, X_test
+                
+            deepshap_analysis.run_deep_shap_analysis(
+                model, X_train_shap, X_test_shap, run_dir, 
+                n_bg=200, n_exp=100
+            )
+        except Exception as e:
+            print(f"[WARN] Automated DeepSHAP analysis failed: {e}")
+
+    # 7. Final Report
     generator = ReportGenerator(run_dir, timestamp)
-    generator.generate(h5_paths, X, USE_CROSS_VAL, CV_CONFIG.get('strategy', 'kfold'), 
+    generator.generate(h5_paths, X, CV_CONFIG.get('use_cross_val', True), CV_CONFIG.get('strategy', 'kfold'), 
                        actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
                        is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
                        per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,

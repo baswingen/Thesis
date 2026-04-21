@@ -28,4 +28,4 @@ echo "Database found at $DB_ROOT"
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
 
-srun $ENV_PYTHON -u -m model.model_archs.model_hp_opti.sweep_cnn_lstm_gen "$@"
+srun $ENV_PYTHON -u -m model.run_model "$@"
