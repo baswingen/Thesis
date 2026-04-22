@@ -239,7 +239,7 @@ class SegmentedDataset:
         return all_segments
 
     def segment_database(
-        self, database_dir: str | Path
+        self, database_dir: str | Path, participants: list[str] = None
     ) -> dict[str, list[dict[str, Any]]]:
         """
         Segment all HDF5 trial files grouped by session directory.
@@ -264,6 +264,10 @@ class SegmentedDataset:
             p for p in base.rglob("session_*") if p.is_dir()
         )
 
+        if participants:
+            session_dirs = [p for p in session_dirs if p.parent.name in participants]
+
+
         # Fallback: if no session_* dirs exist, treat every participant dir as
         # a flat collection (backwards compat with old layout)
         if not session_dirs:
@@ -272,6 +276,8 @@ class SegmentedDataset:
                 "falling back to flat scan."
             )
             h5_files = sorted(base.rglob("*.h5"))
+            if participants:
+                h5_files = [fp for fp in h5_files if any(p in fp.parts for p in participants)]
             if not h5_files:
                 print(f"[SEGMENTER] No HDF5 files found under {database_dir}")
                 return {}
@@ -797,12 +803,16 @@ def _run_cli(args):
         session_dirs = sorted(
             p for p in target.rglob("session_*") if p.is_dir()
         )
+        if args.participants:
+            session_dirs = [p for p in session_dirs if p.parent.name in args.participants]
 
         all_segments = []
         
         if not session_dirs:
             # Fallback to flat scan (single participant directory or similar)
             h5_files = sorted(target.rglob("*.h5"))
+            if args.participants:
+                h5_files = [fp for fp in h5_files if any(p in fp.parts for p in args.participants)]
             if h5_files:
                 name = target.name
                 if not _check_exists(name):
@@ -1059,6 +1069,12 @@ if __name__ == "__main__":
         "--skip-existing",
         action="store_true",
         help="Skip processing if the output segment file already exists.",
+    )
+    parser.add_argument(
+        "--participants",
+        type=str,
+        nargs="+",
+        help="List of participants to process",
     )
     _args = parser.parse_args()
     _run_cli(_args)

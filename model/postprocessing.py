@@ -475,13 +475,17 @@ def process_session_data(session_dir: str | Path, fs: float = 2000.0, overwrite:
         except Exception as e:
             print(f"Failed session process for {path.name}: {e}")
 
-def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwrite: bool = True):
+def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwrite: bool = True, participants: list[str] = None):
     """
     Recursively finds session directories and processes them with session-level normalization.
     """
     base_dir = Path(database_dir)
     # Find all session_NN directories
     session_dirs = sorted(p for p in base_dir.rglob("session_*") if p.is_dir())
+    
+    if participants:
+        session_dirs = [p for p in session_dirs if p.parent.name in participants]
+
     
     if not session_dirs:
         print(f"No session directories found in {database_dir}. Falling back to per-trial.")
@@ -501,6 +505,7 @@ if __name__ == "__main__":
     parser.add_argument("path", nargs="?", default="database", help="Path to trial file, session dir, or database.")
     parser.add_argument("--fs", type=float, default=2000.0, help="Sampling frequency fallback (default: 2000.0)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing datasets")
+    parser.add_argument("--participants", type=str, nargs="+", help="List of participants to process")
     
     args = parser.parse_args()
     target = Path(args.path)
@@ -511,6 +516,6 @@ if __name__ == "__main__":
     elif target.name.startswith("session_") and target.is_dir():
         process_session_data(target, fs=args.fs, overwrite=args.overwrite)
     elif target.is_dir():
-        process_all_in_database(target, fs=args.fs, overwrite=args.overwrite)
+        process_all_in_database(target, fs=args.fs, overwrite=args.overwrite, participants=args.participants)
     else:
         print(f"Error: Path {args.path} not found.")

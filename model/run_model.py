@@ -24,10 +24,11 @@ from model.model_archs.mlp import MLPRegressor
 from model.model_archs.gru import GRURegressor
 from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
+from model.model_archs.cnn_gru import CNNGRURegressor
 from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -76,6 +77,10 @@ def initialize_model(model_type: str):
         print(f"Initializing CNN-LSTM Regressor with config: {CNN_LSTM_CONFIG}")
         from model.model_archs.cnn_lstm import CNNLSTMRegressor
         return CNNLSTMRegressor(**CNN_LSTM_CONFIG)
+    elif model_type == "cnn_gru":
+        print(f"Initializing CNN-GRU Regressor with config: {CNN_GRU_CONFIG}")
+        from model.model_archs.cnn_gru import CNNGRURegressor
+        return CNNGRURegressor(**CNN_GRU_CONFIG)
     elif model_type == "tcn":
         print(f"Initializing TCN Regressor with config: {TCN_CONFIG}")
         from model.model_archs.tcn import TCNRegressor
@@ -326,7 +331,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         kwargs = {'sample_weight': sample_weight}
         
         # Apply Strict Cross-Participant Early Stopping if enabled
-        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type == 'cnn_lstm':
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru']:
             from sklearn.model_selection import GroupShuffleSplit
             groups_train = groups[train_idx]
             val_p = CV_CONFIG.get('strict_val_participants', 2)
@@ -512,7 +517,7 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
         per_duration_stats = calculate_per_duration_metrics(target_y, target_preds, durations)
         if per_duration_stats:
             plotting_utils.plot_seqlen_performance(per_duration_stats, run_dir / "seqlen_performance_plot.png", 
-                                                    model_name="CNN-LSTM", min_count=max(2, int(len(target_y)*0.005)))
+                                                    model_name=model_type.upper().replace("_", "-"), min_count=max(2, int(len(target_y)*0.005)))
             
     return per_seqlen_stats, per_duration_stats
 
@@ -558,7 +563,7 @@ def main():
     
     model_type = MODEL_TYPE.lower()
     is_sequence = model_type in ["gru", "lstm", "transformer"]
-    is_raw_segment = model_type in ["cnn_lstm", "tcn"]
+    is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "tcn"]
     
     # 2. Data Loading
     loader = DataLoader()
@@ -598,7 +603,7 @@ def main():
         plotting_utils.plot_permutation_importance(perm_imp, run_dir / "permutation_importance.png", model_name=model_type.upper())
     
     # 6. Automated DeepSHAP Analysis (High-Fidelity)
-    if model_type == "cnn_lstm":
+    if model_type in ["cnn_lstm", "cnn_gru"]:
         print("\n" + "-"*50)
         print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
         print("-"*50)
