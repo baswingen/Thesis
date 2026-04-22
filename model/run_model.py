@@ -403,7 +403,39 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     sample_weight = None
     if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
         sample_weight = compute_sample_weight(class_weight='balanced', y=y)
-    model.fit(X, y, sample_weight=sample_weight)
+        
+    kwargs = {'sample_weight': sample_weight}
+    
+    # Apply Strict Cross-Participant Early Stopping for the final model
+    if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru']:
+        from sklearn.model_selection import GroupShuffleSplit
+        val_p = CV_CONFIG.get('strict_val_participants', 2)
+        
+        n_train_groups = len(np.unique(groups))
+        if val_p >= n_train_groups:
+            val_p = max(1, n_train_groups - 1)
+            
+        gss = GroupShuffleSplit(n_splits=1, test_size=val_p, random_state=GLOBAL_RANDOM_STATE)
+        inner_train_idx, inner_val_idx = next(gss.split(X, y, groups=groups))
+        
+        X_val_final = X.iloc[inner_val_idx]
+        y_val_final = y.iloc[inner_val_idx]
+        
+        val_participants = np.unique(groups[inner_val_idx])
+        print(f"    [Strict Validation] Holding out {len(val_participants)} participants from final dataset for early stopping: {', '.join(val_participants)}")
+        
+        X_train_final = X.iloc[inner_train_idx]
+        y_train_final = y.iloc[inner_train_idx]
+        
+        if sample_weight is not None:
+            kwargs['sample_weight'] = sample_weight[inner_train_idx]
+            
+        kwargs['X_val'] = X_val_final
+        kwargs['y_val'] = y_val_final
+        
+        model.fit(X_train_final, y_train_final, **kwargs)
+    else:
+        model.fit(X, y, **kwargs)
 
     avg_permutation_importance = None
     if permutation_importances:
