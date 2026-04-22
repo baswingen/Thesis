@@ -11,7 +11,7 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "tcn", "transformer"
+MODEL_TYPE = "cnn_gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "tcn", "transformer"
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
@@ -348,6 +348,27 @@ CNN_LSTM_CONFIG = {
     'learning_rate': 0.001,
     'weight_decay': 1e-3,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
+    'epochs': 400,
+    'balance_weights': True,
+    'balance_participants': True,
+    'validation_split': 0.15,
+    'early_stopping_patience': 200,
+    'scheduler_patience': 10,
+    'scheduler_factor': 0.5,
+    'random_state': GLOBAL_RANDOM_STATE,
+}
+
+# CNN-GRU Configuration (raw-segment end-to-end model)
+CNN_GRU_CONFIG = {
+    'cnn_filters': [64, 128, 256, 256],
+    'cnn_kernel_sizes': [64, 5, 3, 3],
+    'pool_size': 4,
+    'gru_hidden_size': 256,
+    'gru_num_layers': 3,
+    'dropout_rate': 0.4,
+    'learning_rate': 0.001,
+    'weight_decay': 1e-3,
+    'batch_size': 64,
     'epochs': 400,
     'balance_weights': True,
     'balance_participants': True,
