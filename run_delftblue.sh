@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=sweep_cnn_lstm_gen
+#SBATCH --job-name=run_model
 #SBATCH --partition=gpu-a100
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
