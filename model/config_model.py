@@ -5,13 +5,13 @@ ensures consistency across training and inference scripts.
 """
 
 GLOBAL_RANDOM_STATE = 245
-GLOBAL_LOSS_FUNCTION = 'huber'  # Options: 'mse', 'mae', or 'huber'
+GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "cnn_gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "tcn", "transformer"
+MODEL_TYPE = "cnn_lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "tcn", "transformer"
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
