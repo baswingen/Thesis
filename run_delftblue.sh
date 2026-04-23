@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=run_model
+#SBATCH --job-name=sweep_cnn_lstm_gen
 #SBATCH --partition=gpu-a100
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
@@ -28,4 +28,4 @@ echo "Database found at $DB_ROOT"
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
 
-srun $ENV_PYTHON -u -m model.run_model "$@"
+srun $ENV_PYTHON -u -m model.model_archs.model_hp_opti.sweep_cnn_lstm_gen "$@"
