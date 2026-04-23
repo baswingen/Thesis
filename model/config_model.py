@@ -215,7 +215,7 @@ AUGMENTATION_CONFIG = {
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
-    'channel_dropout_p': 0.2,
+    'channel_dropout_p': 0.25,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -344,7 +344,7 @@ CNN_LSTM_CONFIG = {
     'pool_size': 4,
     'lstm_hidden_size': 256,
     'lstm_num_layers': 3,
-    'dropout_rate': 0.4,
+    'dropout_rate': 0.45,
     'learning_rate': 0.001,
     'weight_decay': 1e-3,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts

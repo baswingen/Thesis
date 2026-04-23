@@ -634,8 +634,16 @@ def main():
     if perm_imp:
         plotting_utils.plot_permutation_importance(perm_imp, run_dir / "permutation_importance.png", model_name=model_type.upper())
     
-    # 6. Automated DeepSHAP Analysis (High-Fidelity)
-    if model_type in ["cnn_lstm", "cnn_gru"]:
+    # 6. Final Report (Moved before DeepSHAP to safeguard against OOM crashes)
+    generator = ReportGenerator(run_dir, timestamp)
+    generator.generate(h5_paths, X, CV_CONFIG.get('use_cross_val', True), CV_CONFIG.get('strategy', 'kfold'), 
+                       actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
+                       is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
+                       per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
+                       ablation_modality=args.modality)
+                       
+    # 7. Automated DeepSHAP Analysis (High-Fidelity)
+    if model_type in ["cnn_lstm"]:  # Removed 'cnn_gru' since SHAP does not support PyTorch GRU modules
         print("\n" + "-"*50)
         print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
         print("-"*50)
@@ -655,14 +663,6 @@ def main():
             )
         except Exception as e:
             print(f"[WARN] Automated DeepSHAP analysis failed: {e}")
-
-    # 7. Final Report
-    generator = ReportGenerator(run_dir, timestamp)
-    generator.generate(h5_paths, X, CV_CONFIG.get('use_cross_val', True), CV_CONFIG.get('strategy', 'kfold'), 
-                       actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
-                       is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
-                       per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
-                       ablation_modality=args.modality)
 
 
 if __name__ == "__main__":

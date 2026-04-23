@@ -231,15 +231,22 @@ class CNNLSTMRegressor:
         return np.clip(arr, -clip, clip)
 
     def _scale_segments(self, segments: list[np.ndarray], fit: bool = False) -> list[np.ndarray]:
-        """Per-channel z-score standardisation."""
-        if fit:
-            # Flatten all time-steps across all segments to fit one scaler
-            all_data = self._sanitise(np.vstack(segments))
-            self.scaler.fit(all_data)
-
+        """Per-segment, per-channel z-score standardisation to erase baseline physiological offsets."""
         scaled = []
         for seg in segments:
-            scaled.append(self.scaler.transform(self._sanitise(seg)).astype(np.float32))
+            clean_seg = self._sanitise(seg)
+            
+            # Standardize each channel independently for this specific segment
+            # This erases absolute amplitude and baseline offsets natively
+            means = np.mean(clean_seg, axis=0, keepdims=True)
+            stds = np.std(clean_seg, axis=0, keepdims=True)
+            
+            # Prevent division by zero if a channel is perfectly flat/dead
+            stds[stds == 0] = 1.0
+            
+            scaled_seg = ((clean_seg - means) / stds).astype(np.float32)
+            scaled.append(scaled_seg)
+            
         return scaled
 
     # ------------------------------------------------------------------
@@ -275,7 +282,7 @@ class CNNLSTMRegressor:
         # 3b. Data augmentation (training only)
         augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
         participant_ids_train = (
-            X_train['subject'].values if 'subject' in X_train.columns else None
+            X_train['subject'].astype(str).values if 'subject' in X_train.columns else None
         )
         scaled_train, y_np_train, aug_pids = augmenter.augment_dataset(
             scaled_train, y_np_train, participant_ids=participant_ids_train, return_pids=True
