@@ -1,15 +1,14 @@
 """
-EMG Data Postprocessing for Machine Learning
+EMG Data Preprocessing for Machine Learning
 =============================================
-This script processes the raw synced EMG data from HDF5 trial files.
+This script prepares the raw synced EMG data from HDF5 trial files.
 
 Processing steps (applied per channel):
-1. Bandpass filter (10-500 Hz)
+1. Bandpass filter (20-500 Hz)
 2. Notch filter (50 Hz)
-3. Full-wave rectification
-4. Normalization (divide by maximum peak of the channel)
+3. MVC-Style Normalization (divide Unrectified Oscillating signal by 99th percentile of Envelope)
 
-The processed data is saved back into the HDF5 file under a new dataset: `synced/emg_processed`.
+The preprocessed data is saved back into the HDF5 file under a new dataset: `synced/emg_processed`.
 """
 
 import h5py
@@ -25,6 +24,7 @@ if str(project_root) not in sys.path:
 
 from src.emg_processing import BandpassFilter, NotchFilter, EMGEnvelopeExtractor
 from model.config_model import EMG_CHANNEL_CONFIG
+import json
 
 def process_emg_data(file_path: str | Path, fs_fallback: float = 2000.0, overwrite: bool = True, channel_stats: dict = None):
     """
@@ -169,23 +169,18 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 2000.0, overwri
             channel_data = notch_filter.filter(channel_data)
             notch_filter.reset()
             
-            # Normalization (Robust Scaling)
+            # Normalization (MVC-like Robust Peak Scaling)
             if channel_stats and emg_col_names[i] in channel_stats:
                 stat = channel_stats[emg_col_names[i]]
-                median = stat['median']
-                iqr = stat['iqr']
+                peak = stat['peak']
             else:
                 # Per-trial fallback
-                median = np.nanmedian(channel_data)
-                q1 = np.nanpercentile(channel_data, 25)
-                q3 = np.nanpercentile(channel_data, 75)
-                iqr = q3 - q1
+                env_ext = EMGEnvelopeExtractor(fs)
+                env = env_ext.extract(channel_data)
+                peak = np.nanpercentile(env, 99.0)
                 
-            if iqr > 1e-9:
-                channel_data = (channel_data - median) / iqr
-            else:
-                # Fallback to centering only if signal is flat
-                channel_data = channel_data - median
+            if peak > 1e-9:
+                channel_data = channel_data / peak
                 
             processed_emg[:, i] = channel_data
             
@@ -221,10 +216,12 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 2000.0, overwri
         )
         
         out_dset.attrs['column_names'] = [n.encode('utf-8') for n in final_col_names]
-        out_dset.attrs['description'] = "Postprocessed EMG: BP(20-500Hz) -> Notch(50Hz) -> Normalized (Unrectified Raw Oscillating)"
+        out_dset.attrs['description'] = "Postprocessed EMG: BP(20-500Hz) -> Notch(50Hz) -> MVC Normalized (Unrectified Raw Oscillating)"
         out_dset.attrs['fs'] = fs
         out_dset.attrs['fs_orig'] = fs_orig
-        out_dset.attrs['normalization'] = "robust_scaling_session_level" if channel_stats else "robust_scaling_per_trial"
+        out_dset.attrs['normalization'] = "mvc_peak_session_level" if channel_stats else "mvc_peak_per_trial"
+        if channel_stats:
+            out_dset.attrs['mvc_peaks'] = json.dumps({k: v['peak'] for k, v in channel_stats.items()})
         
         print(f"Processed data saved to {out_dataset_name} successfully.")
         
@@ -395,8 +392,8 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
 
 def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
     """
-    Scans a session directory and returns the session-wide Median and IQR
-    for each muscle channel. Used for cross-trial Robust Scaling.
+    Scans a session directory and returns the session-wide MVC Peak
+    (99th percentile of envelope) for each muscle channel.
     """
     h5_files = list(session_dir.glob("*.h5"))
     if not h5_files: return {}
@@ -424,6 +421,8 @@ def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
             bp = BandpassFilter(20.0, 500.0, fs_eff)
             nt = NotchFilter(50.0, fs_eff)
             
+            env_extractor = EMGEnvelopeExtractor(fs_eff)
+            
             raw_emg = data[:, emg_indices]
             emg_col_names = [cols[i] for i in emg_indices]
             
@@ -443,17 +442,15 @@ def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
                     if not np.all(channel_data == 0):
                         processed = nt.filter(bp.filter(channel_data))
                         bp.reset(); nt.reset()
-                        session_data[muscle_name].append(processed)
+                        env = env_extractor.extract(processed)
+                        session_data[muscle_name].append(env)
     
     session_stats = {}
     for name, data_list in session_data.items():
         if not data_list: continue
         all_data = np.concatenate(data_list)
-        median = np.nanmedian(all_data)
-        q1 = np.nanpercentile(all_data, 25)
-        q3 = np.nanpercentile(all_data, 75)
-        iqr = q3 - q1
-        session_stats[name] = {'median': float(median), 'iqr': float(iqr)}
+        peak = np.nanpercentile(all_data, 99.0)
+        session_stats[name] = {'peak': float(peak)}
         
     return session_stats
 
@@ -463,9 +460,9 @@ def process_session_data(session_dir: str | Path, fs: float = 2000.0, overwrite:
     """
     session_dir = Path(session_dir)
     stats = get_session_stats(session_dir, fs=fs)
-    print(f"Session {session_dir.name} stats (median/iqr):")
+    print(f"Session {session_dir.name} stats (MVC peak):")
     for k, v in stats.items():
-        print(f"  {k}: {v['median']:.2e} / {v['iqr']:.2e}")
+        print(f"  {k}: {v['peak']:.2e}")
     
     h5_files = list(session_dir.glob("*.h5"))
     for path in h5_files:
@@ -501,7 +498,7 @@ def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwr
         process_session_data(sdir, fs=fs, overwrite=overwrite)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process EMG/IMU channels with Robust Scaling (Median/IQR).")
+    parser = argparse.ArgumentParser(description="Process EMG/IMU channels with MVC Peak Normalization.")
     parser.add_argument("path", nargs="?", default="database", help="Path to trial file, session dir, or database.")
     parser.add_argument("--fs", type=float, default=2000.0, help="Sampling frequency fallback (default: 2000.0)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing datasets")

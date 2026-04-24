@@ -114,6 +114,17 @@ class ReportGenerator:
     def _add_per_participant_metrics(self, participant_stats):
         if not participant_stats:
             return
+            
+        gen_stats = performance_utils.get_generalization_metrics(participant_stats)
+        if gen_stats:
+            lines = ["--- DETAILED GENERALIZATION PERFORMANCE ---"]
+            lines.append(f"Mean MAE across participants: {gen_stats['mean_mae']:.4f} ± {gen_stats['std_mae']:.4f}")
+            lines.append(f"Min / Max MAE:                {gen_stats['min_mae']:.4f} / {gen_stats['max_mae']:.4f}")
+            lines.append(f"Mean RMSE across participants:{gen_stats['mean_rmse']:.4f} ± {gen_stats['std_rmse']:.4f}")
+            lines.append(f"Min / Max RMSE:               {gen_stats['min_rmse']:.4f} / {gen_stats['max_rmse']:.4f}")
+            lines.append("")
+            self.sections.append("\n".join(lines))
+            
         lines = ["--- PER-PARTICIPANT METRICS ---"]
         lines.append(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10}")
         lines.append("-" * 50)

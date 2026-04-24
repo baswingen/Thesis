@@ -73,7 +73,7 @@ class CNNFeatureExtractor(nn.Module):
             padding = ks // 2  # 'same'-like padding
             layers.extend([
                 nn.Conv1d(in_ch, filters, kernel_size=ks, padding=padding),
-                nn.InstanceNorm1d(filters, affine=True),  # per-sample norm → strips participant-level statistics
+                nn.BatchNorm1d(filters),
                 nn.ReLU(inplace=False),
                 nn.MaxPool1d(kernel_size=pool_size),
                 nn.Dropout(dropout_rate),
@@ -127,10 +127,6 @@ class CNNLSTMNetwork(nn.Module):
     def forward(self, x, lengths):
         # x: (batch, n_channels, time_steps)
         cnn_out = self.cnn(x)
-
-        # L2-normalise along the feature dim so all participants land on the
-        # same unit hypersphere, removing between-participant magnitude offsets
-        cnn_out = F.normalize(cnn_out, p=2, dim=-1)
 
         # Compute adjusted lengths for packing
         adj_lengths = self._adjust_lengths(lengths)
@@ -231,22 +227,15 @@ class CNNLSTMRegressor:
         return np.clip(arr, -clip, clip)
 
     def _scale_segments(self, segments: list[np.ndarray], fit: bool = False) -> list[np.ndarray]:
-        """Per-segment, per-channel z-score standardisation to erase baseline physiological offsets."""
+        """Per-channel z-score standardisation across the entire dataset."""
+        if fit:
+            # Flatten all time-steps across all segments to fit one scaler
+            all_data = self._sanitise(np.vstack(segments))
+            self.scaler.fit(all_data)
+
         scaled = []
         for seg in segments:
-            clean_seg = self._sanitise(seg)
-            
-            # Standardize each channel independently for this specific segment
-            # This erases absolute amplitude and baseline offsets natively
-            means = np.mean(clean_seg, axis=0, keepdims=True)
-            stds = np.std(clean_seg, axis=0, keepdims=True)
-            
-            # Prevent division by zero if a channel is perfectly flat/dead
-            stds[stds == 0] = 1.0
-            
-            scaled_seg = ((clean_seg - means) / stds).astype(np.float32)
-            scaled.append(scaled_seg)
-            
+            scaled.append(self.scaler.transform(self._sanitise(seg)).astype(np.float32))
         return scaled
 
     # ------------------------------------------------------------------
@@ -681,12 +670,11 @@ class CNNLSTMRegressor:
             lstm_num_layers=state['config'].get('lstm_num_layers', filtered_config.get('lstm_num_layers')),
             dropout_rate=state['config'].get('dropout_rate', filtered_config.get('dropout_rate')),
         ).to(regressor.device)
-        # Load weights with strict=False to handle the transition from BatchNorm to InstanceNorm
-        # (InstanceNorm doesn't use running statistics which are present in BN checkpoints)
+        # Load weights with strict=False to handle potential architectural transitions (e.g. InstanceNorm <-> BatchNorm)
         missing_keys, unexpected_keys = regressor.model.load_state_dict(state['model_state'], strict=False)
         if unexpected_keys:
             print(f"[CNNLSTMRegressor] Note: ignored {len(unexpected_keys)} unexpected keys during load "
-                  f"(likely BatchNorm statistics being skipped for InstanceNorm layers).")
+                  f"(likely normalization layer mismatch from older checkpoints).")
         if missing_keys:
             print(f"[CNNLSTMRegressor] WARNING: Missing keys during load: {missing_keys}")
         

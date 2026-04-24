@@ -69,3 +69,24 @@ def get_device_info():
 
 def format_device_string(info):
     return f"{info['torch_device']} on {info['processor']} ({info['machine']})"
+
+def get_generalization_metrics(participant_stats):
+    """
+    Calculate detailed generalization performance metrics across participants.
+    """
+    if not participant_stats:
+        return None
+        
+    maes = [p['MAE'] for p in participant_stats]
+    rmses = [p['RMSE'] for p in participant_stats]
+    
+    return {
+        'mean_mae': np.mean(maes),
+        'std_mae': np.std(maes),
+        'min_mae': np.min(maes),
+        'max_mae': np.max(maes),
+        'mean_rmse': np.mean(rmses),
+        'std_rmse': np.std(rmses),
+        'min_rmse': np.min(rmses),
+        'max_rmse': np.max(rmses),
+    }

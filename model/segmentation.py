@@ -647,7 +647,7 @@ class SegmentedDataset:
         # ---- EMG: from synced/emg_processed ----
         if "synced/emg_processed" not in f:
             raise KeyError("'synced/emg_processed' not found in HDF5 file. "
-                           "Run model/postprocessing.py first.")
+                           "Run model/preprocessing.py first.")
 
         ds_emg = f["synced/emg_processed"]
         raw_emg_cols = list(ds_emg.attrs.get("column_names", []))

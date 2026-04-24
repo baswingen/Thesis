@@ -73,7 +73,7 @@ class CNNFeatureExtractor(nn.Module):
             padding = ks // 2  # 'same'-like padding
             layers.extend([
                 nn.Conv1d(in_ch, filters, kernel_size=ks, padding=padding),
-                nn.InstanceNorm1d(filters, affine=True),  # per-sample norm → strips participant-level statistics
+                nn.BatchNorm1d(filters),
                 nn.ReLU(inplace=False),
                 nn.MaxPool1d(kernel_size=pool_size),
                 nn.Dropout(dropout_rate),
@@ -127,10 +127,6 @@ class CNNGRUNetwork(nn.Module):
     def forward(self, x, lengths):
         # x: (batch, n_channels, time_steps)
         cnn_out = self.cnn(x)
-
-        # L2-normalise along the feature dim so all participants land on the
-        # same unit hypersphere, removing between-participant magnitude offsets
-        cnn_out = F.normalize(cnn_out, p=2, dim=-1)
 
         # Compute adjusted lengths for packing
         adj_lengths = self._adjust_lengths(lengths)
@@ -655,7 +651,13 @@ class CNNGRURegressor:
             dropout_rate=state['config'].get('dropout_rate', filtered_config.get('dropout_rate')),
         ).to(regressor.device)
 
+        # Load weights with strict=False to handle potential architectural transitions (e.g. InstanceNorm <-> BatchNorm)
         missing_keys, unexpected_keys = regressor.model.load_state_dict(state['model_state'], strict=False)
+        if unexpected_keys:
+            print(f"[CNNGRURegressor] Note: ignored {len(unexpected_keys)} unexpected keys during load "
+                  f"(likely normalization layer mismatch from older checkpoints).")
+        if missing_keys:
+            print(f"[CNNGRURegressor] WARNING: Missing keys during load: {missing_keys}")
         
         regressor.model.eval()
 
