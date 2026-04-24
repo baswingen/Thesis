@@ -1,0 +1,157 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932
+[DataLoader] Loaded 18316 raw segments (26 channels each)
+Raw Segment Data Summary:
+  - Total Segments: 18316
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2716 samples
+  - Min / Max Segment Length: 21 / 142433 samples
+Label vector (y) shape: (18316,) (Target: weight)
+
+Starting 9-Fold Cross-Participant Validation (approx 2 participants per fold)...
+--- Fold 1/9 (Left out Participants: P01) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[CNNLSTMRegressor] Using explicitly provided validation set (996 samples).
+[CNNLSTMRegressor] Augmentation: 12891 → 25738 segments (+12847 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 25738 training samples.
+
+Early stopping at epoch 232. Best Val Loss: 0.8455
+Computing permutation importance for fold...
+--- Fold 2/9 (Left out Participants: P02, P10) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P11
+[CNNLSTMRegressor] Using explicitly provided validation set (1497 samples).
+[CNNLSTMRegressor] Augmentation: 14894 → 29951 segments (+15057 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 29951 training samples.
+
+Early stopping at epoch 264. Best Val Loss: 0.6698
+Computing permutation importance for fold...
+--- Fold 3/9 (Left out Participants: P03, P18) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[CNNLSTMRegressor] Using explicitly provided validation set (996 samples).
+[CNNLSTMRegressor] Augmentation: 15823 → 31602 segments (+15779 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 31602 training samples.
+
+Early stopping at epoch 243. Best Val Loss: 0.7859
+Computing permutation importance for fold...
+--- Fold 4/9 (Left out Participants: P04, P14) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[CNNLSTMRegressor] Using explicitly provided validation set (996 samples).
+[CNNLSTMRegressor] Augmentation: 15823 → 31630 segments (+15807 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 31630 training samples.
+
+Early stopping at epoch 264. Best Val Loss: 0.6553
+Computing permutation importance for fold...
+--- Fold 5/9 (Left out Participants: P05, P11) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P10
+[CNNLSTMRegressor] Using explicitly provided validation set (1495 samples).
+[CNNLSTMRegressor] Augmentation: 15324 → 30665 segments (+15341 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 30665 training samples.
+
+Early stopping at epoch 264. Best Val Loss: 0.8004
+Computing permutation importance for fold...
+--- Fold 6/9 (Left out Participants: P09, P13, P16) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P01, P11
+[CNNLSTMRegressor] Using explicitly provided validation set (5427 samples).
+[CNNLSTMRegressor] Augmentation: 10897 → 21848 segments (+10951 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 21848 training samples.
+
+Early stopping at epoch 261. Best Val Loss: 0.5911
+Computing permutation importance for fold...
+--- Fold 7/9 (Left out Participants: P12, P15) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P09
+[CNNLSTMRegressor] Using explicitly provided validation set (1996 samples).
+[CNNLSTMRegressor] Augmentation: 14824 → 29806 segments (+14982 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 29806 training samples.
+
+Early stopping at epoch 219. Best Val Loss: 0.6798
+Computing permutation importance for fold...
+--- Fold 8/9 (Left out Participants: P07, P17) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P10
+[CNNLSTMRegressor] Using explicitly provided validation set (1495 samples).
+[CNNLSTMRegressor] Augmentation: 14827 → 29524 segments (+14697 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 29524 training samples.
+
+Early stopping at epoch 220. Best Val Loss: 0.8664
+Computing permutation importance for fold...
+--- Fold 9/9 (Left out Participants: P06, P08) ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P11
+[CNNLSTMRegressor] Using explicitly provided validation set (1996 samples).
+[CNNLSTMRegressor] Augmentation: 14331 → 28699 segments (+14368 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 28699 training samples.
+
+Early stopping at epoch 249. Best Val Loss: 0.7272
+Computing permutation importance for fold...
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 400, 'balance_weights': True, 'balance_participants': True, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNLSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants from final dataset for early stopping: P07, P14
+[CNNLSTMRegressor] Using explicitly provided validation set (1496 samples).
+[CNNLSTMRegressor] Augmentation: 16820 → 33790 segments (+16970 synthetic)
+[CNNLSTMRegressor] Hybrid balanced sampling enabled (Target Class × Participants). 33790 training samples.
+
+Early stopping at epoch 283. Best Val Loss: 1.2788
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 18316 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 18316 samples in 0.078s...
+[t-SNE] Computed neighbors for 18316 samples in 1.925s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 18316
+[t-SNE] Computed conditional probabilities for sample 2000 / 18316
+[t-SNE] Computed conditional probabilities for sample 3000 / 18316
+[t-SNE] Computed conditional probabilities for sample 4000 / 18316
+[t-SNE] Computed conditional probabilities for sample 5000 / 18316
+[t-SNE] Computed conditional probabilities for sample 6000 / 18316
+[t-SNE] Computed conditional probabilities for sample 7000 / 18316
+[t-SNE] Computed conditional probabilities for sample 8000 / 18316
+[t-SNE] Computed conditional probabilities for sample 9000 / 18316
+[t-SNE] Computed conditional probabilities for sample 10000 / 18316
+[t-SNE] Computed conditional probabilities for sample 11000 / 18316
+[t-SNE] Computed conditional probabilities for sample 12000 / 18316
+[t-SNE] Computed conditional probabilities for sample 13000 / 18316
+[t-SNE] Computed conditional probabilities for sample 14000 / 18316
+[t-SNE] Computed conditional probabilities for sample 15000 / 18316
+[t-SNE] Computed conditional probabilities for sample 16000 / 18316
+[t-SNE] Computed conditional probabilities for sample 17000 / 18316
+[t-SNE] Computed conditional probabilities for sample 18000 / 18316
+[t-SNE] Computed conditional probabilities for sample 18316 / 18316
+[t-SNE] Mean sigma: 0.229597
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 89.245850
+[t-SNE] KL divergence after 1000 iterations: 2.652779
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/seqlen_performance_plot.png
+Permutation importance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/permutation_importance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260423_172932/performance_report.txt
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+[DeepSHAP] Using GPU acceleration (CUDA).
+
+Running shap.DeepExplainer with 200 background and 100 test samples …
+[WARN] Automated DeepSHAP analysis failed: cudnn RNN backward can only be called in training mode
