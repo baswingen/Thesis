@@ -25,10 +25,11 @@ from model.model_archs.gru import GRURegressor
 from model.model_archs.lstm import LSTMRegressor
 from model.model_archs.cnn_lstm import CNNLSTMRegressor
 from model.model_archs.cnn_gru import CNNGRURegressor
+from model.model_archs.cnn_bilstm_attention import CNNBiLSTMAttentionRegressor
 from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -81,6 +82,10 @@ def initialize_model(model_type: str):
         print(f"Initializing CNN-GRU Regressor with config: {CNN_GRU_CONFIG}")
         from model.model_archs.cnn_gru import CNNGRURegressor
         return CNNGRURegressor(**CNN_GRU_CONFIG)
+    elif model_type == "cnn_bilstm_attention":
+        print(f"Initializing CNN-BiLSTM-Attention Regressor with config: {CNN_BILSTM_ATTENTION_CONFIG}")
+        from model.model_archs.cnn_bilstm_attention import CNNBiLSTMAttentionRegressor
+        return CNNBiLSTMAttentionRegressor(**CNN_BILSTM_ATTENTION_CONFIG)
     elif model_type == "tcn":
         print(f"Initializing TCN Regressor with config: {TCN_CONFIG}")
         from model.model_archs.tcn import TCNRegressor
@@ -331,7 +336,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         kwargs = {'sample_weight': sample_weight}
         
         # Apply Strict Cross-Participant Early Stopping if enabled
-        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru']:
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention']:
             from sklearn.model_selection import GroupShuffleSplit
             groups_train = groups[train_idx]
             val_p = CV_CONFIG.get('strict_val_participants', 2)
@@ -407,7 +412,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     kwargs = {'sample_weight': sample_weight}
     
     # Apply Strict Cross-Participant Early Stopping for the final model
-    if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru']:
+    if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention']:
         from sklearn.model_selection import GroupShuffleSplit
         val_p = CV_CONFIG.get('strict_val_participants', 2)
         
@@ -595,7 +600,7 @@ def main():
     
     model_type = MODEL_TYPE.lower()
     is_sequence = model_type in ["gru", "lstm", "transformer"]
-    is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "tcn"]
+    is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn"]
     
     # 2. Data Loading
     loader = DataLoader()
