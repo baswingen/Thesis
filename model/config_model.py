@@ -11,7 +11,7 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "cnn_gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer"
+MODEL_TYPE = "cnn_bilstm_attention"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer"
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
@@ -349,8 +349,8 @@ CNN_LSTM_CONFIG = {
     'weight_decay': 1e-3,
     'batch_size': 64,            # Raw segments padded per-batch; higher values OOM with long lifts
     'epochs': 400,
-    'balance_weights': True,
-    'balance_participants': True,
+    'balance_weights': False,
+    'balance_participants': False,
     'validation_split': 0.15,
     'early_stopping_patience': 200,
     'scheduler_patience': 10,
