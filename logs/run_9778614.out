@@ -1,0 +1,878 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+
+--- GRID SEARCH ENABLED ---
+Launching hyperparameter sweep for CNN_GRU...
+============================================================
+CNN-GRU ANTI-OVERFITTING SWEEP
+============================================================
+Configurations to test : 60
+Max segments/participant: 300
+Test participants       : 4
+Results directory       : /home/bwingen/thesis/Thesis/model/model_results/sweep_cnn_gru_20260428_133031
+============================================================
+
+Loading raw segments for sweep...
+[DataLoader] Loaded 19314 raw segments (26 channels each)
+Loaded 19314 total segments.
+
+Participant split:
+  Training (14 subjects): P03, P04, P05, P07, P08, P10, P11, P12, P13, P14, P15, P16, P17, P18
+  Validation (4 subjects): P01, P02, P06, P09
+
+Sub-sampling complete:
+  Training : 11467 → 4200 segments (max 300/participant)
+  Validation: 7847 segments (full, unseen participants)
+
+============================================================
+--- Iteration 1/60 [Elapsed: 0.0h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8397 segments (+4197 synthetic)
+
+Early stopping at epoch 29. Best Val Loss: 0.0670
+  MAE: 0.4007 | RMSE: 0.7273 | R²: 0.8373
+  Epochs: 29 | Train/Val gap: 2.6x | Time: 362s
+  >>> NEW BEST MODEL! RMSE: 0.7273
+
+============================================================
+--- Iteration 2/60 [Elapsed: 0.1h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8345 segments (+4145 synthetic)
+
+Early stopping at epoch 19. Best Val Loss: 0.0509
+  MAE: 0.4397 | RMSE: 0.7126 | R²: 0.8438
+  Epochs: 19 | Train/Val gap: 1.4x | Time: 168s
+  >>> NEW BEST MODEL! RMSE: 0.7126
+
+============================================================
+--- Iteration 3/60 [Elapsed: 0.1h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8387 segments (+4187 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 19. Best Val Loss: 0.0794
+  MAE: 0.5678 | RMSE: 0.9781 | R²: 0.7057
+  Epochs: 19 | Train/Val gap: 3.6x | Time: 189s
+
+============================================================
+--- Iteration 4/60 [Elapsed: 0.2h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 3, 'gru_hidden_size': 192, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8360 segments (+4160 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 24. Best Val Loss: 0.0358
+  MAE: 0.3952 | RMSE: 0.7003 | R²: 0.8491
+  Epochs: 24 | Train/Val gap: 2.1x | Time: 280s
+  >>> NEW BEST MODEL! RMSE: 0.7003
+
+============================================================
+--- Iteration 5/60 [Elapsed: 0.3h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8393 segments (+4193 synthetic)
+
+Early stopping at epoch 40. Best Val Loss: 0.4760
+  MAE: 0.3858 | RMSE: 0.6898 | R²: 0.8536
+  Epochs: 40 | Train/Val gap: 3.2x | Time: 330s
+  >>> NEW BEST MODEL! RMSE: 0.6898
+
+============================================================
+--- Iteration 6/60 [Elapsed: 0.4h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8412 segments (+4212 synthetic)
+
+Early stopping at epoch 47. Best Val Loss: 0.4003
+  MAE: 0.4000 | RMSE: 0.7484 | R²: 0.8277
+  Epochs: 47 | Train/Val gap: 1.7x | Time: 434s
+
+============================================================
+--- Iteration 7/60 [Elapsed: 0.5h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8446 segments (+4246 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 21. Best Val Loss: 0.4457
+  MAE: 0.6967 | RMSE: 1.1720 | R²: 0.5774
+  Epochs: 21 | Train/Val gap: 2.9x | Time: 180s
+
+============================================================
+--- Iteration 8/60 [Elapsed: 0.5h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8351 segments (+4151 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 29. Best Val Loss: 0.0233
+  MAE: 0.4123 | RMSE: 0.6996 | R²: 0.8494
+  Epochs: 29 | Train/Val gap: 2.3x | Time: 282s
+
+============================================================
+--- Iteration 9/60 [Elapsed: 0.6h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8390 segments (+4190 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 64. Best Val Loss: 0.0404
+  MAE: 0.4352 | RMSE: 0.7645 | R²: 0.8202
+  Epochs: 64 | Train/Val gap: 3.0x | Time: 513s
+
+============================================================
+--- Iteration 10/60 [Elapsed: 0.8h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8377 segments (+4177 synthetic)
+
+Early stopping at epoch 17. Best Val Loss: 0.6058
+  MAE: 0.4901 | RMSE: 0.7740 | R²: 0.8157
+  Epochs: 17 | Train/Val gap: 2.1x | Time: 171s
+
+============================================================
+--- Iteration 11/60 [Elapsed: 0.8h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 3, 'gru_hidden_size': 192, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8437 segments (+4237 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 28. Best Val Loss: 0.0369
+  MAE: 0.3925 | RMSE: 0.7220 | R²: 0.8396
+  Epochs: 28 | Train/Val gap: 3.2x | Time: 307s
+
+============================================================
+--- Iteration 12/60 [Elapsed: 0.9h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8402 segments (+4202 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 41. Best Val Loss: 0.1961
+  MAE: 0.4032 | RMSE: 0.6866 | R²: 0.8549
+  Epochs: 41 | Train/Val gap: 2.7x | Time: 369s
+  >>> NEW BEST MODEL! RMSE: 0.6866
+
+============================================================
+--- Iteration 13/60 [Elapsed: 1.0h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8433 segments (+4233 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 24. Best Val Loss: 0.0326
+  MAE: 0.4957 | RMSE: 0.8232 | R²: 0.7915
+  Epochs: 24 | Train/Val gap: 3.0x | Time: 270s
+
+============================================================
+--- Iteration 14/60 [Elapsed: 1.1h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8403 segments (+4203 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 53. Best Val Loss: 0.0744
+  MAE: 0.6185 | RMSE: 1.1131 | R²: 0.6189
+  Epochs: 53 | Train/Val gap: 4.3x | Time: 509s
+
+============================================================
+--- Iteration 15/60 [Elapsed: 1.2h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.0005, 'gru_num_layers': 3, 'gru_hidden_size': 256, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8396 segments (+4196 synthetic)
+
+Early stopping at epoch 32. Best Val Loss: 0.1508
+  MAE: 0.4179 | RMSE: 0.7757 | R²: 0.8149
+  Epochs: 32 | Train/Val gap: 2.1x | Time: 369s
+
+============================================================
+--- Iteration 16/60 [Elapsed: 1.3h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8403 segments (+4203 synthetic)
+
+Early stopping at epoch 30. Best Val Loss: 0.1385
+  MAE: 0.4343 | RMSE: 0.7613 | R²: 0.8217
+  Epochs: 30 | Train/Val gap: 1.6x | Time: 297s
+
+============================================================
+--- Iteration 17/60 [Elapsed: 1.4h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8354 segments (+4154 synthetic)
+
+Early stopping at epoch 27. Best Val Loss: 0.0825
+  MAE: 0.3815 | RMSE: 0.6619 | R²: 0.8652
+  Epochs: 27 | Train/Val gap: 3.3x | Time: 230s
+  >>> NEW BEST MODEL! RMSE: 0.6619
+
+============================================================
+--- Iteration 18/60 [Elapsed: 1.5h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 3, 'gru_hidden_size': 256, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8451 segments (+4251 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 20. Best Val Loss: 0.2463
+  MAE: 0.5366 | RMSE: 0.7618 | R²: 0.8215
+  Epochs: 20 | Train/Val gap: 1.9x | Time: 189s
+
+============================================================
+--- Iteration 19/60 [Elapsed: 1.5h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.001, 'gru_num_layers': 3, 'gru_hidden_size': 192, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8487 segments (+4287 synthetic)
+
+Early stopping at epoch 23. Best Val Loss: 0.1513
+  MAE: 0.5587 | RMSE: 0.9500 | R²: 0.7224
+  Epochs: 23 | Train/Val gap: 3.1x | Time: 224s
+
+============================================================
+--- Iteration 20/60 [Elapsed: 1.6h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8480 segments (+4280 synthetic)
+
+Early stopping at epoch 26. Best Val Loss: 0.1865
+  MAE: 0.4323 | RMSE: 0.7631 | R²: 0.8208
+  Epochs: 26 | Train/Val gap: 1.8x | Time: 258s
+
+============================================================
+--- Iteration 21/60 [Elapsed: 1.6h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.001, 'gru_num_layers': 2, 'gru_hidden_size': 256, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8398 segments (+4198 synthetic)
+
+Early stopping at epoch 28. Best Val Loss: 0.0574
+  MAE: 0.4755 | RMSE: 0.7871 | R²: 0.8094
+  Epochs: 28 | Train/Val gap: 2.9x | Time: 250s
+
+============================================================
+--- Iteration 22/60 [Elapsed: 1.7h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8391 segments (+4191 synthetic)
+
+Early stopping at epoch 35. Best Val Loss: 0.2007
+  MAE: 0.5252 | RMSE: 0.9265 | R²: 0.7359
+  Epochs: 35 | Train/Val gap: 1.5x | Time: 300s
+
+============================================================
+--- Iteration 23/60 [Elapsed: 1.8h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8405 segments (+4205 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 21. Best Val Loss: 0.0332
+  MAE: 0.4610 | RMSE: 0.7526 | R²: 0.8258
+  Epochs: 21 | Train/Val gap: 2.0x | Time: 210s
+
+============================================================
+--- Iteration 24/60 [Elapsed: 1.9h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 3, 'gru_hidden_size': 192, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8373 segments (+4173 synthetic)
+
+Early stopping at epoch 23. Best Val Loss: 0.2155
+  MAE: 0.4978 | RMSE: 0.8531 | R²: 0.7761
+  Epochs: 23 | Train/Val gap: 1.4x | Time: 240s
+
+============================================================
+--- Iteration 25/60 [Elapsed: 1.9h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8317 segments (+4117 synthetic)
+
+Early stopping at epoch 23. Best Val Loss: 0.0698
+  MAE: 0.4281 | RMSE: 0.7731 | R²: 0.8161
+  Epochs: 23 | Train/Val gap: 1.8x | Time: 220s
+
+============================================================
+--- Iteration 26/60 [Elapsed: 2.0h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8324 segments (+4124 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 21. Best Val Loss: 0.0626
+  MAE: 0.5000 | RMSE: 0.8335 | R²: 0.7862
+  Epochs: 21 | Train/Val gap: 3.9x | Time: 207s
+
+============================================================
+--- Iteration 27/60 [Elapsed: 2.0h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.0005, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8331 segments (+4131 synthetic)
+
+Early stopping at epoch 22. Best Val Loss: 0.7153
+  MAE: 0.6867 | RMSE: 1.1151 | R²: 0.6174
+  Epochs: 22 | Train/Val gap: 1.7x | Time: 198s
+
+============================================================
+--- Iteration 28/60 [Elapsed: 2.1h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8385 segments (+4185 synthetic)
+
+Early stopping at epoch 25. Best Val Loss: 0.1616
+  MAE: 0.4101 | RMSE: 0.7447 | R²: 0.8294
+  Epochs: 25 | Train/Val gap: 1.6x | Time: 199s
+
+============================================================
+--- Iteration 29/60 [Elapsed: 2.2h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8360 segments (+4160 synthetic)
+
+Early stopping at epoch 43. Best Val Loss: 0.4409
+  MAE: 0.4399 | RMSE: 0.8080 | R²: 0.7992
+  Epochs: 43 | Train/Val gap: 1.9x | Time: 441s
+
+============================================================
+--- Iteration 30/60 [Elapsed: 2.3h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.001, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8430 segments (+4230 synthetic)
+
+Early stopping at epoch 24. Best Val Loss: 0.1607
+  MAE: 0.4547 | RMSE: 0.7726 | R²: 0.8164
+  Epochs: 24 | Train/Val gap: 1.9x | Time: 266s
+
+============================================================
+--- Iteration 31/60 [Elapsed: 2.4h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8395 segments (+4195 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 64. Best Val Loss: 0.0405
+  MAE: 0.5851 | RMSE: 1.0257 | R²: 0.6763
+  Epochs: 64 | Train/Val gap: 2.4x | Time: 651s
+
+============================================================
+--- Iteration 32/60 [Elapsed: 2.5h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8374 segments (+4174 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 26. Best Val Loss: 0.3772
+  MAE: 0.6910 | RMSE: 1.0096 | R²: 0.6864
+  Epochs: 26 | Train/Val gap: 2.9x | Time: 238s
+
+============================================================
+--- Iteration 33/60 [Elapsed: 2.6h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 256, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8402 segments (+4202 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 27. Best Val Loss: 0.0283
+  MAE: 0.4347 | RMSE: 0.7841 | R²: 0.8109
+  Epochs: 27 | Train/Val gap: 2.8x | Time: 248s
+
+============================================================
+--- Iteration 34/60 [Elapsed: 2.7h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 256, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8387 segments (+4187 synthetic)
+
+Early stopping at epoch 27. Best Val Loss: 0.1724
+  MAE: 0.4309 | RMSE: 0.7470 | R²: 0.8283
+  Epochs: 27 | Train/Val gap: 1.5x | Time: 224s
+
+============================================================
+--- Iteration 35/60 [Elapsed: 2.7h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8441 segments (+4241 synthetic)
+
+Early stopping at epoch 39. Best Val Loss: 0.0521
+  MAE: 0.4357 | RMSE: 0.8056 | R²: 0.8003
+  Epochs: 39 | Train/Val gap: 3.0x | Time: 347s
+
+============================================================
+--- Iteration 36/60 [Elapsed: 2.8h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.0005, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8315 segments (+4115 synthetic)
+
+Early stopping at epoch 28. Best Val Loss: 0.0904
+  MAE: 0.4380 | RMSE: 0.7492 | R²: 0.8273
+  Epochs: 28 | Train/Val gap: 2.7x | Time: 263s
+
+============================================================
+--- Iteration 37/60 [Elapsed: 2.9h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.001, 'gru_num_layers': 2, 'gru_hidden_size': 256, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8346 segments (+4146 synthetic)
+
+Early stopping at epoch 31. Best Val Loss: 0.2357
+  MAE: 0.6009 | RMSE: 1.0677 | R²: 0.6493
+  Epochs: 31 | Train/Val gap: 2.1x | Time: 340s
+
+============================================================
+--- Iteration 38/60 [Elapsed: 3.0h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8420 segments (+4220 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 36. Best Val Loss: 0.0324
+  MAE: 0.4229 | RMSE: 0.7372 | R²: 0.8328
+  Epochs: 36 | Train/Val gap: 3.1x | Time: 368s
+
+============================================================
+--- Iteration 39/60 [Elapsed: 3.1h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 2, 'gru_hidden_size': 192, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8304 segments (+4104 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 19. Best Val Loss: 0.2648
+  MAE: 0.5066 | RMSE: 0.7888 | R²: 0.8086
+  Epochs: 19 | Train/Val gap: 2.3x | Time: 199s
+
+============================================================
+--- Iteration 40/60 [Elapsed: 3.1h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8313 segments (+4113 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 34. Best Val Loss: 0.0242
+  MAE: 0.4174 | RMSE: 0.7277 | R²: 0.8371
+  Epochs: 34 | Train/Val gap: 3.6x | Time: 350s
+
+============================================================
+--- Iteration 41/60 [Elapsed: 3.2h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 256, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8398 segments (+4198 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 56. Best Val Loss: 0.0426
+  MAE: 0.5848 | RMSE: 1.0464 | R²: 0.6631
+  Epochs: 56 | Train/Val gap: 4.4x | Time: 446s
+
+============================================================
+--- Iteration 42/60 [Elapsed: 3.4h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.0005, 'gru_num_layers': 3, 'gru_hidden_size': 192, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8443 segments (+4243 synthetic)
+
+Early stopping at epoch 47. Best Val Loss: 0.0454
+  MAE: 0.4016 | RMSE: 0.7075 | R²: 0.8460
+  Epochs: 47 | Train/Val gap: 3.0x | Time: 544s
+
+============================================================
+--- Iteration 43/60 [Elapsed: 3.5h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8409 segments (+4209 synthetic)
+
+Early stopping at epoch 21. Best Val Loss: 0.1445
+  MAE: 0.3923 | RMSE: 0.7249 | R²: 0.8383
+  Epochs: 21 | Train/Val gap: 1.2x | Time: 213s
+
+============================================================
+--- Iteration 44/60 [Elapsed: 3.6h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.0005, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8351 segments (+4151 synthetic)
+
+Early stopping at epoch 27. Best Val Loss: 0.1636
+  MAE: 0.4777 | RMSE: 0.8414 | R²: 0.7822
+  Epochs: 27 | Train/Val gap: 1.7x | Time: 234s
+
+============================================================
+--- Iteration 45/60 [Elapsed: 3.6h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 256, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8312 segments (+4112 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 21. Best Val Loss: 0.2435
+  MAE: 0.5314 | RMSE: 0.7605 | R²: 0.8221
+  Epochs: 21 | Train/Val gap: 2.1x | Time: 176s
+
+============================================================
+--- Iteration 46/60 [Elapsed: 3.7h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8343 segments (+4143 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 33. Best Val Loss: 0.0251
+  MAE: 0.3981 | RMSE: 0.6786 | R²: 0.8583
+  Epochs: 33 | Train/Val gap: 2.8x | Time: 270s
+
+============================================================
+--- Iteration 47/60 [Elapsed: 3.8h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.3, 3.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8368 segments (+4168 synthetic)
+
+Early stopping at epoch 36. Best Val Loss: 0.1604
+  MAE: 0.4814 | RMSE: 0.8391 | R²: 0.7834
+  Epochs: 36 | Train/Val gap: 1.5x | Time: 374s
+
+============================================================
+--- Iteration 48/60 [Elapsed: 3.9h] ---
+Model params: {'weight_decay': 0.01, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 256, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8398 segments (+4198 synthetic)
+
+Early stopping at epoch 20. Best Val Loss: 0.7367
+  MAE: 0.7345 | RMSE: 1.2000 | R²: 0.5570
+  Epochs: 20 | Train/Val gap: 2.7x | Time: 165s
+
+============================================================
+--- Iteration 49/60 [Elapsed: 3.9h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 2, 'gru_hidden_size': 256, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.3, 3.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8428 segments (+4228 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 20. Best Val Loss: 0.4164
+  MAE: 0.6601 | RMSE: 1.0845 | R²: 0.6381
+  Epochs: 20 | Train/Val gap: 2.4x | Time: 203s
+
+============================================================
+--- Iteration 50/60 [Elapsed: 4.0h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.3, 3.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8328 segments (+4128 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 22. Best Val Loss: 0.5313
+  MAE: 0.7633 | RMSE: 1.2896 | R²: 0.4884
+  Epochs: 22 | Train/Val gap: 3.3x | Time: 182s
+
+============================================================
+--- Iteration 51/60 [Elapsed: 4.0h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 3, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8399 segments (+4199 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 39. Best Val Loss: 0.0413
+  MAE: 0.4639 | RMSE: 0.8032 | R²: 0.8015
+  Epochs: 39 | Train/Val gap: 3.2x | Time: 376s
+
+============================================================
+--- Iteration 52/60 [Elapsed: 4.1h] ---
+Model params: {'weight_decay': 0.0001, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.0005, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8400 segments (+4200 synthetic)
+
+Early stopping at epoch 57. Best Val Loss: 0.1625
+  MAE: 0.4302 | RMSE: 0.7682 | R²: 0.8184
+  Epochs: 57 | Train/Val gap: 2.0x | Time: 547s
+
+============================================================
+--- Iteration 53/60 [Elapsed: 4.3h] ---
+Model params: {'weight_decay': 0.001, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.0005, 'gru_num_layers': 3, 'gru_hidden_size': 256, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8416 segments (+4216 synthetic)
+
+Early stopping at epoch 53. Best Val Loss: 0.0726
+  MAE: 0.4237 | RMSE: 0.7720 | R²: 0.8166
+  Epochs: 53 | Train/Val gap: 5.0x | Time: 468s
+
+============================================================
+--- Iteration 54/60 [Elapsed: 4.4h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.5, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8365 segments (+4165 synthetic)
+
+Early stopping at epoch 38. Best Val Loss: 0.1508
+  MAE: 0.4101 | RMSE: 0.7709 | R²: 0.8172
+  Epochs: 38 | Train/Val gap: 1.7x | Time: 324s
+
+============================================================
+--- Iteration 55/60 [Elapsed: 4.5h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'mse', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [64, 128, 256], 'batch_size': 32}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.3, 3.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8408 segments (+4208 synthetic)
+
+Early stopping at epoch 34. Best Val Loss: 0.6020
+  MAE: 0.4676 | RMSE: 0.7758 | R²: 0.8148
+  Epochs: 34 | Train/Val gap: 2.9x | Time: 316s
+
+============================================================
+--- Iteration 56/60 [Elapsed: 4.6h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 256, 'dropout_rate': 0.4, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8287 segments (+4087 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 32. Best Val Loss: 0.0418
+  MAE: 0.4525 | RMSE: 0.7800 | R²: 0.8128
+  Epochs: 32 | Train/Val gap: 2.9x | Time: 266s
+
+============================================================
+--- Iteration 57/60 [Elapsed: 4.7h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.002, 'gru_num_layers': 2, 'gru_hidden_size': 128, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3, 3], 'cnn_filters': [64, 128, 256, 256], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.5, magnitude_scale_range=(0.5, 2.0)
+Target transform: log1p
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8387 segments (+4187 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 25. Best Val Loss: 0.0252
+  MAE: 0.3962 | RMSE: 0.6949 | R²: 0.8514
+  Epochs: 25 | Train/Val gap: 2.4x | Time: 250s
+
+============================================================
+--- Iteration 58/60 [Elapsed: 4.7h] ---
+Model params: {'weight_decay': 0.0005, 'pool_size': 4, 'loss_type': 'mae', 'learning_rate': 0.002, 'gru_num_layers': 1, 'gru_hidden_size': 128, 'dropout_rate': 0.6, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 128}
+Aug overrides: channel_dropout_p=0.15, magnitude_scale_range=(0.5, 2.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8421 segments (+4221 synthetic)
+
+Early stopping at epoch 24. Best Val Loss: 0.2769
+  MAE: 0.6297 | RMSE: 1.0787 | R²: 0.6420
+  Epochs: 24 | Train/Val gap: 2.2x | Time: 219s
+
+============================================================
+--- Iteration 59/60 [Elapsed: 4.8h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.0005, 'gru_num_layers': 1, 'gru_hidden_size': 192, 'dropout_rate': 0.7, 'cnn_kernel_sizes': [32, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.35, magnitude_scale_range=(0.5, 2.0)
+Target transform: none
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8411 segments (+4211 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 26. Best Val Loss: 0.5857
+  MAE: 0.8309 | RMSE: 1.3755 | R²: 0.4179
+  Epochs: 26 | Train/Val gap: 4.0x | Time: 194s
+
+============================================================
+--- Iteration 60/60 [Elapsed: 4.8h] ---
+Model params: {'weight_decay': 0.005, 'pool_size': 4, 'loss_type': 'huber', 'learning_rate': 0.001, 'gru_num_layers': 1, 'gru_hidden_size': 256, 'dropout_rate': 0.3, 'cnn_kernel_sizes': [64, 5, 3], 'cnn_filters': [32, 64, 128], 'batch_size': 64}
+Aug overrides: channel_dropout_p=0.25, magnitude_scale_range=(0.3, 3.0)
+Target transform: sqrt
+[CNNGRURegressor] Using device: cuda
+[CNNGRURegressor] Using explicitly provided validation set (7847 samples).
+[CNNGRURegressor] Augmentation: 4200 → 8460 segments (+4260 synthetic)
+[CNNGRURegressor] Using Huber (SmoothL1) loss.
+
+Early stopping at epoch 39. Best Val Loss: 0.0367
+  MAE: 0.4304 | RMSE: 0.7894 | R²: 0.8083
+  Epochs: 39 | Train/Val gap: 4.0x | Time: 332s
+
+============================================================
+CNN-GRU ANTI-OVERFITTING SWEEP COMPLETE
+Total time: 4.94 hours
+============================================================
+
+Top-5 Configurations:
+  #1: RMSE=0.6619 MAE=0.3815 R²=0.8652 gap=3.3x (dropout=0.6, wd=0.0005, gru=128×2, loss=mse, transform=sqrt)
+  #2: RMSE=0.6786 MAE=0.3981 R²=0.8583 gap=2.8x (dropout=0.4, wd=0.001, gru=192×1, loss=huber, transform=log1p)
+  #3: RMSE=0.6866 MAE=0.4032 R²=0.8549 gap=2.7x (dropout=0.5, wd=0.005, gru=128×1, loss=huber, transform=none)
+  #4: RMSE=0.6898 MAE=0.3858 R²=0.8536 gap=3.2x (dropout=0.3, wd=0.005, gru=192×1, loss=mse, transform=none)
+  #5: RMSE=0.6949 MAE=0.3962 R²=0.8514 gap=2.4x (dropout=0.3, wd=0.0005, gru=128×2, loss=huber, transform=log1p)
+
+Best Parameters:
+  weight_decay: 0.0005
+  pool_size: 4
+  loss_type: mse
+  learning_rate: 0.002
+  gru_num_layers: 2
+  gru_hidden_size: 128
+  dropout_rate: 0.6
+  cnn_kernel_sizes: [32, 5, 3]
+  cnn_filters: [32, 64, 128]
+  batch_size: 128
+  channel_dropout_p: 0.35
+  magnitude_scale_range: (0.5, 2.0)
+  target_transform: sqrt
+
+Best Validation Metrics:
+Mean Absolute Error: 0.3815
+Mean Squared Error: 0.4381
+Root Mean Squared Error: 0.6619
+R-squared Score: 0.8652
+
+
+Report saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_cnn_gru_20260428_133031/sweep_report.txt
+Best model saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_cnn_gru_20260428_133031/best_cnn_gru_sweep_model.joblib
+CSV results saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_cnn_gru_20260428_133031/sweep_results.csv

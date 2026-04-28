@@ -1,0 +1,1176 @@
+CNN-GRU ANTI-OVERFITTING SWEEP REPORT
+============================================================
+Date: 2026-04-28 18:30:58
+Total time: 4.94 hours
+Configurations tested: 60/60
+Training subjects (14): P03, P04, P05, P07, P08, P10, P11, P12, P13, P14, P15, P16, P17, P18
+Validation subjects (4): P01, P02, P06, P09
+Training samples (subsampled): 4200
+Validation samples: 7847
+
+BEST PARAMETERS (lowest RMSE):
+----------------------------------------
+  weight_decay: 0.0005
+  pool_size: 4
+  loss_type: mse
+  learning_rate: 0.002
+  gru_num_layers: 2
+  gru_hidden_size: 128
+  dropout_rate: 0.6
+  cnn_kernel_sizes: [32, 5, 3]
+  cnn_filters: [32, 64, 128]
+  batch_size: 128
+  channel_dropout_p: 0.35
+  magnitude_scale_range: (0.5, 2.0)
+  target_transform: sqrt
+
+Validation metrics on unseen participants (P01, P02, P06, P09):
+Mean Absolute Error: 0.3815
+Mean Squared Error: 0.4381
+Root Mean Squared Error: 0.6619
+R-squared Score: 0.8652
+
+
+============================================================
+ALL CONFIGURATIONS RANKED BY RMSE
+============================================================
+
+--- Rank 1 (Iteration 17) ---
+  RMSE: 0.6619 | MAE: 0.3815 | R²: 0.8652
+  Epochs: 27 | Overfit ratio: 3.3x | Best val loss: 0.0825
+  Time: 230s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 128
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 2 (Iteration 46) ---
+  RMSE: 0.6786 | MAE: 0.3981 | R²: 0.8583
+  Epochs: 33 | Overfit ratio: 2.8x | Best val loss: 0.0251
+  Time: 270s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 3 (Iteration 12) ---
+  RMSE: 0.6866 | MAE: 0.4032 | R²: 0.8549
+  Epochs: 41 | Overfit ratio: 2.7x | Best val loss: 0.1961
+  Time: 369s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 4 (Iteration 5) ---
+  RMSE: 0.6898 | MAE: 0.3858 | R²: 0.8536
+  Epochs: 40 | Overfit ratio: 3.2x | Best val loss: 0.4760
+  Time: 330s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: none
+
+--- Rank 5 (Iteration 57) ---
+  RMSE: 0.6949 | MAE: 0.3962 | R²: 0.8514
+  Epochs: 25 | Overfit ratio: 2.4x | Best val loss: 0.0252
+  Time: 250s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 6 (Iteration 8) ---
+  RMSE: 0.6996 | MAE: 0.4123 | R²: 0.8494
+  Epochs: 29 | Overfit ratio: 2.3x | Best val loss: 0.0233
+  Time: 282s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 7 (Iteration 4) ---
+  RMSE: 0.7003 | MAE: 0.3952 | R²: 0.8491
+  Epochs: 24 | Overfit ratio: 2.1x | Best val loss: 0.0358
+  Time: 280s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 3
+    gru_hidden_size: 192
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 8 (Iteration 42) ---
+  RMSE: 0.7075 | MAE: 0.4016 | R²: 0.8460
+  Epochs: 47 | Overfit ratio: 3.0x | Best val loss: 0.0454
+  Time: 544s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.0005
+    gru_num_layers: 3
+    gru_hidden_size: 192
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 9 (Iteration 2) ---
+  RMSE: 0.7126 | MAE: 0.4397 | R²: 0.8438
+  Epochs: 19 | Overfit ratio: 1.4x | Best val loss: 0.0509
+  Time: 168s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 10 (Iteration 11) ---
+  RMSE: 0.7220 | MAE: 0.3925 | R²: 0.8396
+  Epochs: 28 | Overfit ratio: 3.2x | Best val loss: 0.0369
+  Time: 307s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 3
+    gru_hidden_size: 192
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 11 (Iteration 43) ---
+  RMSE: 0.7249 | MAE: 0.3923 | R²: 0.8383
+  Epochs: 21 | Overfit ratio: 1.2x | Best val loss: 0.1445
+  Time: 213s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 12 (Iteration 1) ---
+  RMSE: 0.7273 | MAE: 0.4007 | R²: 0.8373
+  Epochs: 29 | Overfit ratio: 2.6x | Best val loss: 0.0670
+  Time: 362s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 13 (Iteration 40) ---
+  RMSE: 0.7277 | MAE: 0.4174 | R²: 0.8371
+  Epochs: 34 | Overfit ratio: 3.6x | Best val loss: 0.0242
+  Time: 350s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 32
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 14 (Iteration 38) ---
+  RMSE: 0.7372 | MAE: 0.4229 | R²: 0.8328
+  Epochs: 36 | Overfit ratio: 3.1x | Best val loss: 0.0324
+  Time: 368s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 15 (Iteration 28) ---
+  RMSE: 0.7447 | MAE: 0.4101 | R²: 0.8294
+  Epochs: 25 | Overfit ratio: 1.6x | Best val loss: 0.1616
+  Time: 199s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 16 (Iteration 34) ---
+  RMSE: 0.7470 | MAE: 0.4309 | R²: 0.8283
+  Epochs: 27 | Overfit ratio: 1.5x | Best val loss: 0.1724
+  Time: 224s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 256
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 17 (Iteration 6) ---
+  RMSE: 0.7484 | MAE: 0.4000 | R²: 0.8277
+  Epochs: 47 | Overfit ratio: 1.7x | Best val loss: 0.4003
+  Time: 434s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 18 (Iteration 36) ---
+  RMSE: 0.7492 | MAE: 0.4380 | R²: 0.8273
+  Epochs: 28 | Overfit ratio: 2.7x | Best val loss: 0.0904
+  Time: 263s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.0005
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 19 (Iteration 23) ---
+  RMSE: 0.7526 | MAE: 0.4610 | R²: 0.8258
+  Epochs: 21 | Overfit ratio: 2.0x | Best val loss: 0.0332
+  Time: 210s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 20 (Iteration 45) ---
+  RMSE: 0.7605 | MAE: 0.5314 | R²: 0.8221
+  Epochs: 21 | Overfit ratio: 2.1x | Best val loss: 0.2435
+  Time: 176s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 256
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 21 (Iteration 16) ---
+  RMSE: 0.7613 | MAE: 0.4343 | R²: 0.8217
+  Epochs: 30 | Overfit ratio: 1.6x | Best val loss: 0.1385
+  Time: 297s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 22 (Iteration 18) ---
+  RMSE: 0.7618 | MAE: 0.5366 | R²: 0.8215
+  Epochs: 20 | Overfit ratio: 1.9x | Best val loss: 0.2463
+  Time: 189s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 3
+    gru_hidden_size: 256
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 23 (Iteration 20) ---
+  RMSE: 0.7631 | MAE: 0.4323 | R²: 0.8208
+  Epochs: 26 | Overfit ratio: 1.8x | Best val loss: 0.1865
+  Time: 258s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 24 (Iteration 9) ---
+  RMSE: 0.7645 | MAE: 0.4352 | R²: 0.8202
+  Epochs: 64 | Overfit ratio: 3.0x | Best val loss: 0.0404
+  Time: 513s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 128
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 25 (Iteration 52) ---
+  RMSE: 0.7682 | MAE: 0.4302 | R²: 0.8184
+  Epochs: 57 | Overfit ratio: 2.0x | Best val loss: 0.1625
+  Time: 547s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.0005
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 26 (Iteration 54) ---
+  RMSE: 0.7709 | MAE: 0.4101 | R²: 0.8172
+  Epochs: 38 | Overfit ratio: 1.7x | Best val loss: 0.1508
+  Time: 324s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 27 (Iteration 53) ---
+  RMSE: 0.7720 | MAE: 0.4237 | R²: 0.8166
+  Epochs: 53 | Overfit ratio: 5.0x | Best val loss: 0.0726
+  Time: 468s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.0005
+    gru_num_layers: 3
+    gru_hidden_size: 256
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 28 (Iteration 30) ---
+  RMSE: 0.7726 | MAE: 0.4547 | R²: 0.8164
+  Epochs: 24 | Overfit ratio: 1.9x | Best val loss: 0.1607
+  Time: 266s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.001
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 29 (Iteration 25) ---
+  RMSE: 0.7731 | MAE: 0.4281 | R²: 0.8161
+  Epochs: 23 | Overfit ratio: 1.8x | Best val loss: 0.0698
+  Time: 220s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 30 (Iteration 10) ---
+  RMSE: 0.7740 | MAE: 0.4901 | R²: 0.8157
+  Epochs: 17 | Overfit ratio: 2.1x | Best val loss: 0.6058
+  Time: 171s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 31 (Iteration 15) ---
+  RMSE: 0.7757 | MAE: 0.4179 | R²: 0.8149
+  Epochs: 32 | Overfit ratio: 2.1x | Best val loss: 0.1508
+  Time: 369s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.0005
+    gru_num_layers: 3
+    gru_hidden_size: 256
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 32 (Iteration 55) ---
+  RMSE: 0.7758 | MAE: 0.4676 | R²: 0.8148
+  Epochs: 34 | Overfit ratio: 2.9x | Best val loss: 0.6020
+  Time: 316s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: none
+
+--- Rank 33 (Iteration 56) ---
+  RMSE: 0.7800 | MAE: 0.4525 | R²: 0.8128
+  Epochs: 32 | Overfit ratio: 2.9x | Best val loss: 0.0418
+  Time: 266s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 256
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 34 (Iteration 33) ---
+  RMSE: 0.7841 | MAE: 0.4347 | R²: 0.8109
+  Epochs: 27 | Overfit ratio: 2.8x | Best val loss: 0.0283
+  Time: 248s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 256
+    dropout_rate: 0.4
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 35 (Iteration 21) ---
+  RMSE: 0.7871 | MAE: 0.4755 | R²: 0.8094
+  Epochs: 28 | Overfit ratio: 2.9x | Best val loss: 0.0574
+  Time: 250s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.001
+    gru_num_layers: 2
+    gru_hidden_size: 256
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 36 (Iteration 39) ---
+  RMSE: 0.7888 | MAE: 0.5066 | R²: 0.8086
+  Epochs: 19 | Overfit ratio: 2.3x | Best val loss: 0.2648
+  Time: 199s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 37 (Iteration 60) ---
+  RMSE: 0.7894 | MAE: 0.4304 | R²: 0.8083
+  Epochs: 39 | Overfit ratio: 4.0x | Best val loss: 0.0367
+  Time: 332s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 256
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 38 (Iteration 51) ---
+  RMSE: 0.8032 | MAE: 0.4639 | R²: 0.8015
+  Epochs: 39 | Overfit ratio: 3.2x | Best val loss: 0.0413
+  Time: 376s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 39 (Iteration 35) ---
+  RMSE: 0.8056 | MAE: 0.4357 | R²: 0.8003
+  Epochs: 39 | Overfit ratio: 3.0x | Best val loss: 0.0521
+  Time: 347s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 40 (Iteration 29) ---
+  RMSE: 0.8080 | MAE: 0.4399 | R²: 0.7992
+  Epochs: 43 | Overfit ratio: 1.9x | Best val loss: 0.4409
+  Time: 441s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 41 (Iteration 13) ---
+  RMSE: 0.8232 | MAE: 0.4957 | R²: 0.7915
+  Epochs: 24 | Overfit ratio: 3.0x | Best val loss: 0.0326
+  Time: 270s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.3
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: log1p
+
+--- Rank 42 (Iteration 26) ---
+  RMSE: 0.8335 | MAE: 0.5000 | R²: 0.7862
+  Epochs: 21 | Overfit ratio: 3.9x | Best val loss: 0.0626
+  Time: 207s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 128
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 43 (Iteration 47) ---
+  RMSE: 0.8391 | MAE: 0.4814 | R²: 0.7834
+  Epochs: 36 | Overfit ratio: 1.5x | Best val loss: 0.1604
+  Time: 374s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 128
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 44 (Iteration 44) ---
+  RMSE: 0.8414 | MAE: 0.4777 | R²: 0.7822
+  Epochs: 27 | Overfit ratio: 1.7x | Best val loss: 0.1636
+  Time: 234s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.0005
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 64
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 45 (Iteration 24) ---
+  RMSE: 0.8531 | MAE: 0.4978 | R²: 0.7761
+  Epochs: 23 | Overfit ratio: 1.4x | Best val loss: 0.2155
+  Time: 240s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 3
+    gru_hidden_size: 192
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 46 (Iteration 22) ---
+  RMSE: 0.9265 | MAE: 0.5252 | R²: 0.7359
+  Epochs: 35 | Overfit ratio: 1.5x | Best val loss: 0.2007
+  Time: 300s
+  Params:
+    weight_decay: 0.0001
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.5
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 32
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 47 (Iteration 19) ---
+  RMSE: 0.9500 | MAE: 0.5587 | R²: 0.7224
+  Epochs: 23 | Overfit ratio: 3.1x | Best val loss: 0.1513
+  Time: 224s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: mse
+    learning_rate: 0.001
+    gru_num_layers: 3
+    gru_hidden_size: 192
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 32
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 48 (Iteration 3) ---
+  RMSE: 0.9781 | MAE: 0.5678 | R²: 0.7057
+  Epochs: 19 | Overfit ratio: 3.6x | Best val loss: 0.0794
+  Time: 189s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 3
+    gru_hidden_size: 128
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 49 (Iteration 32) ---
+  RMSE: 1.0096 | MAE: 0.6910 | R²: 0.6864
+  Epochs: 26 | Overfit ratio: 2.9x | Best val loss: 0.3772
+  Time: 238s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 50 (Iteration 31) ---
+  RMSE: 1.0257 | MAE: 0.5851 | R²: 0.6763
+  Epochs: 64 | Overfit ratio: 2.4x | Best val loss: 0.0405
+  Time: 651s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 128
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 51 (Iteration 41) ---
+  RMSE: 1.0464 | MAE: 0.5848 | R²: 0.6631
+  Epochs: 56 | Overfit ratio: 4.4x | Best val loss: 0.0426
+  Time: 446s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 256
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.25
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: log1p
+
+--- Rank 52 (Iteration 37) ---
+  RMSE: 1.0677 | MAE: 0.6009 | R²: 0.6493
+  Epochs: 31 | Overfit ratio: 2.1x | Best val loss: 0.2357
+  Time: 340s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.001
+    gru_num_layers: 2
+    gru_hidden_size: 256
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: sqrt
+
+--- Rank 53 (Iteration 58) ---
+  RMSE: 1.0787 | MAE: 0.6297 | R²: 0.6420
+  Epochs: 24 | Overfit ratio: 2.2x | Best val loss: 0.2769
+  Time: 219s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 128
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 54 (Iteration 49) ---
+  RMSE: 1.0845 | MAE: 0.6601 | R²: 0.6381
+  Epochs: 20 | Overfit ratio: 2.4x | Best val loss: 0.4164
+  Time: 203s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 2
+    gru_hidden_size: 256
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 32
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: none
+
+--- Rank 55 (Iteration 14) ---
+  RMSE: 1.1131 | MAE: 0.6185 | R²: 0.6189
+  Epochs: 53 | Overfit ratio: 4.3x | Best val loss: 0.0744
+  Time: 509s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 2
+    gru_hidden_size: 192
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [64, 128, 256]
+    batch_size: 32
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: sqrt
+
+--- Rank 56 (Iteration 27) ---
+  RMSE: 1.1151 | MAE: 0.6867 | R²: 0.6174
+  Epochs: 22 | Overfit ratio: 1.7x | Best val loss: 0.7153
+  Time: 198s
+  Params:
+    weight_decay: 0.0005
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.0005
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.6
+    cnn_kernel_sizes: [64, 5, 3, 3]
+    cnn_filters: [64, 128, 256, 256]
+    batch_size: 128
+    channel_dropout_p: 0.5
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 57 (Iteration 7) ---
+  RMSE: 1.1720 | MAE: 0.6967 | R²: 0.5774
+  Epochs: 21 | Overfit ratio: 2.9x | Best val loss: 0.4457
+  Time: 180s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 128
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 58 (Iteration 48) ---
+  RMSE: 1.2000 | MAE: 0.7345 | R²: 0.5570
+  Epochs: 20 | Overfit ratio: 2.7x | Best val loss: 0.7367
+  Time: 165s
+  Params:
+    weight_decay: 0.01
+    pool_size: 4
+    loss_type: mae
+    learning_rate: 0.002
+    gru_num_layers: 1
+    gru_hidden_size: 256
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.15
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
+
+--- Rank 59 (Iteration 50) ---
+  RMSE: 1.2896 | MAE: 0.7633 | R²: 0.4884
+  Epochs: 22 | Overfit ratio: 3.3x | Best val loss: 0.5313
+  Time: 182s
+  Params:
+    weight_decay: 0.001
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.001
+    gru_num_layers: 1
+    gru_hidden_size: 128
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [64, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.3, 3.0)
+    target_transform: none
+
+--- Rank 60 (Iteration 59) ---
+  RMSE: 1.3755 | MAE: 0.8309 | R²: 0.4179
+  Epochs: 26 | Overfit ratio: 4.0x | Best val loss: 0.5857
+  Time: 194s
+  Params:
+    weight_decay: 0.005
+    pool_size: 4
+    loss_type: huber
+    learning_rate: 0.0005
+    gru_num_layers: 1
+    gru_hidden_size: 192
+    dropout_rate: 0.7
+    cnn_kernel_sizes: [32, 5, 3]
+    cnn_filters: [32, 64, 128]
+    batch_size: 64
+    channel_dropout_p: 0.35
+    magnitude_scale_range: (0.5, 2.0)
+    target_transform: none
