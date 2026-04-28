@@ -165,6 +165,7 @@ class CNNGRURegressor:
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  balance_weights: bool = CNN_GRU_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
                  balance_participants: bool = CNN_GRU_CONFIG.get('balance_participants', False),
+                 target_transform: str = CNN_GRU_CONFIG.get('target_transform', 'none'),
                  random_state: int = CNN_GRU_CONFIG['random_state']):
 
         self.cnn_filters = list(cnn_filters)
@@ -184,6 +185,7 @@ class CNNGRURegressor:
         self.loss_type = loss_type.lower()
         self.balance_weights = balance_weights
         self.balance_participants = balance_participants
+        self.target_transform = target_transform.lower()
         self.random_state = random_state
 
         # Tracking
@@ -239,6 +241,26 @@ class CNNGRURegressor:
         return scaled
 
     # ------------------------------------------------------------------
+    # Target transformation helpers
+    # ------------------------------------------------------------------
+
+    def _apply_target_transform(self, y: np.ndarray) -> np.ndarray:
+        """Forward transform on targets before training."""
+        if self.target_transform == 'sqrt':
+            return np.sqrt(np.maximum(0.0, y))
+        elif self.target_transform == 'log1p':
+            return np.log1p(np.maximum(0.0, y))
+        return y  # 'none'
+
+    def _inverse_target_transform(self, preds: np.ndarray) -> np.ndarray:
+        """Inverse transform on predictions to return to original scale."""
+        if self.target_transform == 'sqrt':
+            return np.square(preds)
+        elif self.target_transform == 'log1p':
+            return np.expm1(preds)
+        return preds  # 'none'
+
+    # ------------------------------------------------------------------
     # Training
     # ------------------------------------------------------------------
 
@@ -268,6 +290,13 @@ class CNNGRURegressor:
         scaled_val = self._scale_segments(segs_val, fit=False)
         y_np_train = y_train.values.astype(np.float32)
 
+        # 3a. Apply target transform (sqrt/log1p to reduce regression-to-mean)
+        y_np_train = self._apply_target_transform(y_np_train)
+        y_np_val = self._apply_target_transform(y_val.values.astype(np.float32))
+        if self.target_transform != 'none':
+            print(f"[CNNGRURegressor] Target transform: {self.target_transform} "
+                  f"(y range: {y_np_train.min():.3f}–{y_np_train.max():.3f})")
+
         # 3b. Data augmentation (training only)
         augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
         participant_ids_train = (
@@ -284,7 +313,7 @@ class CNNGRURegressor:
         train_tensors = [torch.from_numpy(s) for s in scaled_train]
         y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
         val_tensors = [torch.from_numpy(s) for s in scaled_val]
-        y_tensor_val = torch.from_numpy(y_val.values.astype(np.float32)).unsqueeze(1)
+        y_tensor_val = torch.from_numpy(y_np_val).unsqueeze(1)
 
         self.train_samples = len(X_train)
         self.val_samples = len(X_val)
@@ -512,7 +541,7 @@ class CNNGRURegressor:
                 preds = self.model(batch_x, lengths).cpu().numpy()
                 all_preds.extend(preds.flatten())
 
-        return np.maximum(0.0, np.array(all_preds))
+        return np.maximum(0.0, self._inverse_target_transform(np.array(all_preds)))
 
     def permutation_importance(self, X_test: pd.DataFrame, y_test: pd.Series, n_repeats: int = 1) -> dict:
         y_test_np = y_test.values
@@ -609,6 +638,7 @@ class CNNGRURegressor:
                 'early_stopping_patience': self.early_stopping_patience,
                 'scheduler_patience': self.scheduler_patience,
                 'scheduler_factor': self.scheduler_factor,
+                'target_transform': self.target_transform,
                 'random_state': self.random_state,
             },
             'split_info': {

@@ -12,7 +12,7 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "cnn_gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer"
-RUN_GRID_SEARCH = True
+RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
 # ──────────────────────────────────────────────────────────
@@ -359,17 +359,20 @@ CNN_LSTM_CONFIG = {
 }
 
 # CNN-GRU Configuration (raw-segment end-to-end model)
+# Sweep 20260428_133031 winner — lighter model + sqrt target transform
+# RMSE 0.662 | R² 0.865 | overfit 3.3× (was 20×)
 CNN_GRU_CONFIG = {
-    'cnn_filters': [64, 128, 256, 256],
-    'cnn_kernel_sizes': [64, 5, 3, 3],
+    'cnn_filters': [32, 64, 128],
+    'cnn_kernel_sizes': [32, 5, 3],
     'pool_size': 4,
-    'gru_hidden_size': 256,
-    'gru_num_layers': 3,
-    'dropout_rate': 0.4,
-    'learning_rate': 0.001,
-    'weight_decay': 1e-3,
-    'batch_size': 64,
+    'gru_hidden_size': 128,
+    'gru_num_layers': 2,
+    'dropout_rate': 0.5,
+    'learning_rate': 0.002,
+    'weight_decay': 5e-4,
+    'batch_size': 128,
     'epochs': 400,
+    'target_transform': 'sqrt',    # Options: 'none', 'sqrt', 'log1p'
     'balance_weights': False,
     'balance_participants': False,
     'validation_split': 0.15,
