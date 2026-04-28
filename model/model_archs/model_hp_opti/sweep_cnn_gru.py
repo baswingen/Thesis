@@ -37,6 +37,28 @@ from model.model_archs.cnn_gru import CNNGRURegressor
 from model.config_model import CNN_GRU_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG
 
 
+# ---------------------------------------------------------------------------
+# Target transformation helpers
+# ---------------------------------------------------------------------------
+
+def apply_target_transform(y: pd.Series, method: str) -> pd.Series:
+    """Forward transform on targets before training."""
+    if method == 'sqrt':
+        return y.apply(np.sqrt)
+    elif method == 'log1p':
+        return y.apply(np.log1p)
+    return y  # 'none'
+
+
+def inverse_target_transform(preds: np.ndarray, method: str) -> np.ndarray:
+    """Inverse transform on predictions to return to original scale."""
+    if method == 'sqrt':
+        return np.square(preds)
+    elif method == 'log1p':
+        return np.expm1(preds)
+    return preds  # 'none'
+
+
 def main():
     # ------------------------------------------------------------------
     # CLI
@@ -96,6 +118,9 @@ def main():
         # ── Augmentation ────────────────────────────────────────────
         'channel_dropout_p': [0.15, 0.25, 0.35, 0.5],
         'magnitude_scale_range': [(0.5, 2.0), (0.3, 3.0)],
+
+        # ── Target transformation (anti regression-to-mean) ────────
+        'target_transform': ['none', 'sqrt', 'log1p'],
     }
 
     print("=" * 60)
@@ -197,9 +222,10 @@ def main():
         params['cnn_filters'] = params['cnn_filters'][:n_blocks]
         params['cnn_kernel_sizes'] = params['cnn_kernel_sizes'][:n_blocks]
 
-        # Extract augmentation overrides (not passed to model constructor)
+        # Extract non-model-constructor overrides
         aug_channel_dropout_p = params.pop('channel_dropout_p')
         aug_magnitude_scale_range = params.pop('magnitude_scale_range')
+        target_transform = params.pop('target_transform')
 
         elapsed = time.time() - sweep_start
         print(f"\n{'='*60}")
@@ -208,6 +234,7 @@ def main():
         print(f"Model params: { {k: v for k, v in params.items()} }")
         print(f"Aug overrides: channel_dropout_p={aug_channel_dropout_p}, "
               f"magnitude_scale_range={aug_magnitude_scale_range}")
+        print(f"Target transform: {target_transform}")
 
         try:
             # Override augmentation config for this iteration
@@ -242,14 +269,33 @@ def main():
                 random_state=CNN_GRU_CONFIG.get('random_state', 42),
             )
 
+            # Apply target transform to training and validation labels
+            y_train_t = apply_target_transform(y_train_sampled, target_transform)
+            y_val_t = apply_target_transform(y_val, target_transform)
+
             # Train with explicit cross-participant validation set
-            model.fit(X_train_sampled, y_train_sampled, X_val=X_val, y_val=y_val)
+            # Note: model sees transformed targets — it learns to predict sqrt(y) or log1p(y)
+            model.fit(X_train_sampled, y_train_t, X_val=X_val, y_val=y_val_t)
 
             # Restore original augmentation config
             _cnn_gru_mod.AUGMENTATION_CONFIG = original_aug
 
-            # Evaluate
-            metrics, report_str = model.evaluate(X_val, y_val)
+            # Evaluate: predict in transformed space, then inverse-transform
+            # back to original kg scale for fair metric comparison
+            preds_transformed = model.predict(X_val)
+            preds_original = inverse_target_transform(preds_transformed, target_transform)
+            preds_original = np.maximum(0.0, preds_original)  # clamp negatives
+
+            y_val_np = y_val.values
+            mae = mean_absolute_error(y_val_np, preds_original)
+            mse = mean_squared_error(y_val_np, preds_original)
+            rmse = np.sqrt(mse)
+            r2 = r2_score(y_val_np, preds_original)
+            metrics = {'MAE': mae, 'MSE': mse, 'RMSE': rmse, 'R2': r2}
+            report_str = (f"Mean Absolute Error: {mae:.4f}\n"
+                          f"Mean Squared Error: {mse:.4f}\n"
+                          f"Root Mean Squared Error: {rmse:.4f}\n"
+                          f"R-squared Score: {r2:.4f}\n")
             iter_time = time.time() - iter_start
 
             # Extract the train/val gap as an overfitting indicator
@@ -269,7 +315,8 @@ def main():
                 'iteration': i,
                 'params': {**params,
                            'channel_dropout_p': aug_channel_dropout_p,
-                           'magnitude_scale_range': aug_magnitude_scale_range},
+                           'magnitude_scale_range': aug_magnitude_scale_range,
+                           'target_transform': target_transform},
                 'metrics': metrics,
                 'epochs_trained': epochs_trained,
                 'final_train_loss': final_train_loss,
@@ -321,7 +368,7 @@ def main():
               f"gap={res['overfit_ratio']:.1f}x "
               f"(dropout={p['dropout_rate']}, wd={p['weight_decay']}, "
               f"gru={p['gru_hidden_size']}×{p['gru_num_layers']}, "
-              f"loss={p['loss_type']})")
+              f"loss={p['loss_type']}, transform={p['target_transform']})")
 
     print(f"\nBest Parameters:")
     for k, v in best_params.items():
