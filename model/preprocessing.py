@@ -310,8 +310,8 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
 
         processed_sensors = {}
         
-        from scipy.signal import butter, filtfilt
-        # Design a zero-phase lowpass filter to smooth the zero-order hold stair-steps
+        from scipy.signal import butter, lfilter
+        # Design a causal lowpass filter to smooth the zero-order hold stair-steps
         # A 15 Hz cutoff clears the steps while preserving human movement frequencies
         nyq = 0.5 * fs_imu
         cutoff = 15.0
@@ -329,7 +329,7 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
                     raw_acc = data[:, imu_cols_dict[s][axis]]
                     raw_acc = np.nan_to_num(raw_acc, nan=0.0)
                     if len(raw_acc) > 18:
-                        raw_acc = filtfilt(b, a, raw_acc)
+                        raw_acc = lfilter(b, a, raw_acc)
                     s_data[f'{axis}{s}'] = raw_acc
                     
             # Euler angles: convert degrees → radians (one signal per orientation)
@@ -341,7 +341,7 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
                     rad_ang = np.deg2rad(raw_ang)
                     if len(rad_ang) > 18:
                         unwrapped = np.unwrap(rad_ang)
-                        smoothed = filtfilt(b, a, unwrapped)
+                        smoothed = lfilter(b, a, unwrapped)
                         rad_ang = (smoothed + np.pi) % (2 * np.pi) - np.pi
                     s_data[f'{angle}_rad{s}'] = rad_ang
                     
