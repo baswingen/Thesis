@@ -1,0 +1,148 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719
+[DataLoader] Loaded 19314 raw segments (26 channels each)
+Raw Segment Data Summary:
+  - Total Segments: 19314
+  - Channels (EMG + IMU): 26
+  - Avg Segment Length: 2735 samples
+  - Min / Max Segment Length: 21 / 142433 samples
+Label vector (y) shape: (19314,) (Target: weight)
+
+Starting 9-Fold Cross-Participant Validation (approx 2 participants per fold)...
+--- Fold 1/9 (Left out Participants: P01) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[CNNGRURegressor] Using explicitly provided validation set (996 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 13889 → 27628 segments (+13739 synthetic)
+
+Early stopping at epoch 221. Best Val Loss: 0.0546
+Computing permutation importance for fold...
+--- Fold 2/9 (Left out Participants: P02, P13) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[CNNGRURegressor] Using explicitly provided validation set (996 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 16392 → 32785 segments (+16393 synthetic)
+Computing permutation importance for fold...
+--- Fold 3/9 (Left out Participants: P03, P16) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[CNNGRURegressor] Using explicitly provided validation set (996 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 16325 → 32773 segments (+16448 synthetic)
+
+Early stopping at epoch 234. Best Val Loss: 0.0397
+Computing permutation importance for fold...
+--- Fold 4/9 (Left out Participants: P04, P06) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P11
+[CNNGRURegressor] Using explicitly provided validation set (1497 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 15827 → 31714 segments (+15887 synthetic)
+
+Early stopping at epoch 219. Best Val Loss: 0.0401
+Computing permutation importance for fold...
+--- Fold 5/9 (Left out Participants: P10, P11, P18) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P01, P12
+[CNNGRURegressor] Using explicitly provided validation set (5427 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 11893 → 23881 segments (+11988 synthetic)
+
+Early stopping at epoch 225. Best Val Loss: 0.1167
+Computing permutation importance for fold...
+--- Fold 6/9 (Left out Participants: P09, P14) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P10
+[CNNGRURegressor] Using explicitly provided validation set (1495 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 16322 → 32837 segments (+16515 synthetic)
+
+Early stopping at epoch 207. Best Val Loss: 0.0502
+Computing permutation importance for fold...
+--- Fold 7/9 (Left out Participants: P05, P12) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P10
+[CNNGRURegressor] Using explicitly provided validation set (1495 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 16322 → 32602 segments (+16280 synthetic)
+
+Early stopping at epoch 232. Best Val Loss: 0.0571
+Computing permutation importance for fold...
+--- Fold 8/9 (Left out Participants: P15, P17) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P09
+[CNNGRURegressor] Using explicitly provided validation set (1996 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 15324 → 30933 segments (+15609 synthetic)
+
+Early stopping at epoch 202. Best Val Loss: 0.0474
+Computing permutation importance for fold...
+--- Fold 9/9 (Left out Participants: P07, P08) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P11
+[CNNGRURegressor] Using explicitly provided validation set (1996 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 15324 → 30692 segments (+15368 synthetic)
+
+Early stopping at epoch 212. Best Val Loss: 0.0663
+Computing permutation importance for fold...
+
+Training final model on full dataset for saving...
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 128, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 400, 'target_transform': 'sqrt', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'random_state': 245}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants from final dataset for early stopping: P07, P14
+[CNNGRURegressor] Using explicitly provided validation set (1496 samples).
+[CNNGRURegressor] Target transform: sqrt (y range: 0.000–2.434)
+[CNNGRURegressor] Augmentation: 17818 → 35645 segments (+17827 synthetic)
+
+Early stopping at epoch 266. Best Val Loss: 0.1067
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 19314 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 19314 samples in 0.054s...
+[t-SNE] Computed neighbors for 19314 samples in 4.079s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 19314
+[t-SNE] Computed conditional probabilities for sample 2000 / 19314
+[t-SNE] Computed conditional probabilities for sample 3000 / 19314
+[t-SNE] Computed conditional probabilities for sample 4000 / 19314
+[t-SNE] Computed conditional probabilities for sample 5000 / 19314
+[t-SNE] Computed conditional probabilities for sample 6000 / 19314
+[t-SNE] Computed conditional probabilities for sample 7000 / 19314
+[t-SNE] Computed conditional probabilities for sample 8000 / 19314
+[t-SNE] Computed conditional probabilities for sample 9000 / 19314
+[t-SNE] Computed conditional probabilities for sample 10000 / 19314
+[t-SNE] Computed conditional probabilities for sample 11000 / 19314
+[t-SNE] Computed conditional probabilities for sample 12000 / 19314
+[t-SNE] Computed conditional probabilities for sample 13000 / 19314
+[t-SNE] Computed conditional probabilities for sample 14000 / 19314
+[t-SNE] Computed conditional probabilities for sample 15000 / 19314
+[t-SNE] Computed conditional probabilities for sample 16000 / 19314
+[t-SNE] Computed conditional probabilities for sample 17000 / 19314
+[t-SNE] Computed conditional probabilities for sample 18000 / 19314
+[t-SNE] Computed conditional probabilities for sample 19000 / 19314
+[t-SNE] Computed conditional probabilities for sample 19314 / 19314
+[t-SNE] Mean sigma: 0.033533
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 89.956665
+[t-SNE] KL divergence after 1000 iterations: 1.855856
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/seqlen_performance_plot.png
+Permutation importance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/permutation_importance.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260428_192719/performance_report.txt
