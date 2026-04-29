@@ -9,6 +9,12 @@ import os
 from model.feature_extraction import FeatureExtractor
 from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, TRUE_WEIGHTS
 
+#: Anthropometric attribute names stored as file-level attrs in segment HDF5
+_ANTHRO_ATTR_NAMES = [
+    "total_arm_length", "upper_arm_length", "forearm_length",
+    "hand_length", "upper_arm_circumference", "forearm_circumference",
+]
+
 class DataLoader:
     """
     DataLoader handles taking segmented HDF5 files, iterating through their segments,
@@ -180,6 +186,13 @@ class DataLoader:
             with h5py.File(path, "r") as f:
                 segment_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
 
+                # Read file-level anthropometric attributes (once per file)
+                anthro_vec = np.array(
+                    [float(f.attrs.get(a, 0.0)) for a in _ANTHRO_ATTR_NAMES],
+                    dtype=np.float32,
+                )
+                has_anthro = np.any(anthro_vec != 0.0)
+
                 for key in tqdm(segment_keys, desc=f"Loading raw ({path.name})", unit="seg"):
                     grp = f[key]
 
@@ -249,6 +262,11 @@ class DataLoader:
                         # Duration of the raw segment in seconds (= elapsed time into lift)
                         "segment_duration_sec": raw.shape[0] / emg_fs_eff,
                     }
+
+                    # Anthropometric conditioning vector (6 floats)
+                    if has_anthro:
+                        row["anthropometrics"] = anthro_vec.copy()
+
                     all_rows.append(row)
 
         if not all_rows:

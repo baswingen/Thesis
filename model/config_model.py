@@ -355,6 +355,7 @@ CNN_LSTM_CONFIG = {
     'early_stopping_patience': 50,
     'scheduler_patience': 10,
     'scheduler_factor': 0.5,
+    'use_anthropometrics': True,    # Feed participant body measurements as conditioning
     'random_state': GLOBAL_RANDOM_STATE,
 }
 
@@ -379,6 +380,7 @@ CNN_GRU_CONFIG = {
     'early_stopping_patience': 50,
     'scheduler_patience': 20,
     'scheduler_factor': 0.5,
+    'use_anthropometrics': True,    # Feed participant body measurements as conditioning
     'random_state': GLOBAL_RANDOM_STATE,
 }
 

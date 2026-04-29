@@ -25,11 +25,13 @@ from sklearn.utils.class_weight import compute_sample_weight
 
 class RawSegmentDataset(Dataset):
     """Holds raw segments as tensors of shape (time_steps, n_channels)."""
-    def __init__(self, segments, labels, participant_ids=None, sample_weights=None):
+    def __init__(self, segments, labels, participant_ids=None, sample_weights=None,
+                 static_features=None):
         self.segments = segments          # list of tensors (T_i, C)
         self.labels = labels              # tensor (N, 1)
         self.participant_ids = participant_ids  # list of str or None
         self.sample_weights = sample_weights    # tensor (N, 1) or None
+        self.static_features = static_features  # tensor (N, D_static) or None
 
     def __len__(self):
         return len(self.segments)
@@ -38,18 +40,24 @@ class RawSegmentDataset(Dataset):
         pid = self.participant_ids[idx] if self.participant_ids is not None else ""
         # Return a weight of 1.0 if no weights are provided
         weight = self.sample_weights[idx] if self.sample_weights is not None else torch.tensor([1.0], dtype=torch.float32)
-        return self.segments[idx], self.labels[idx], pid, weight
+        static = self.static_features[idx] if self.static_features is not None else torch.empty(0)
+        return self.segments[idx], self.labels[idx], pid, weight, static
 
 
 def raw_pad_collate_fn(batch):
     """Pad variable-length segments and return lengths for packing."""
-    segments, labels, pids, weights = zip(*batch)
+    segments, labels, pids, weights, statics = zip(*batch)
     lengths = torch.tensor([seg.shape[0] for seg in segments])
     # pad_sequence expects (T, C) tensors → pads along dim-0
     padded = rnn_utils.pad_sequence(segments, batch_first=True, padding_value=0.0)
     labels = torch.stack(labels)
     weights = torch.stack(weights)
-    return padded, labels, lengths, list(pids), weights
+    # Stack static features only if they are non-empty
+    if statics[0].numel() > 0:
+        statics = torch.stack(statics)
+    else:
+        statics = None
+    return padded, labels, lengths, list(pids), weights, statics
 
 # ---------------------------------------------------------------------------
 # CNN Feature Extractor
@@ -98,7 +106,7 @@ class CNNGRUNetwork(nn.Module):
     def __init__(self, n_channels: int, cnn_filters: list[int],
                  cnn_kernel_sizes: list[int], pool_size: int,
                  gru_hidden_size: int, gru_num_layers: int,
-                 dropout_rate: float):
+                 dropout_rate: float, n_static_features: int = 0):
         super().__init__()
         self.cnn = CNNFeatureExtractor(
             n_channels, cnn_filters, cnn_kernel_sizes, pool_size, dropout_rate
@@ -111,7 +119,8 @@ class CNNGRUNetwork(nn.Module):
             dropout=dropout_rate if gru_num_layers > 1 else 0.0,
         )
         self.dropout = nn.Dropout(dropout_rate)
-        self.fc = nn.Linear(gru_hidden_size, 1)
+        self.n_static_features = n_static_features
+        self.fc = nn.Linear(gru_hidden_size + n_static_features, 1)
 
         # Store for length adjustment
         self._pool_size = pool_size
@@ -124,7 +133,7 @@ class CNNGRUNetwork(nn.Module):
             adj = torch.floor(adj / self._pool_size)
         return adj.long().clamp(min=1)
 
-    def forward(self, x, lengths):
+    def forward(self, x, lengths, static_features=None):
         # x: (batch, n_channels, time_steps)
         cnn_out = self.cnn(x)
 
@@ -139,6 +148,11 @@ class CNNGRUNetwork(nn.Module):
         _, h_n = self.gru(packed)
         last_hidden = h_n[-1]           # (batch, hidden_size)
         last_hidden = self.dropout(last_hidden)
+
+        # Concatenate static features (anthropometrics) if available
+        if static_features is not None and self.n_static_features > 0:
+            last_hidden = torch.cat([last_hidden, static_features], dim=1)
+
         out = self.fc(last_hidden)      # (batch, 1)
         return out
 
@@ -166,6 +180,7 @@ class CNNGRURegressor:
                  balance_weights: bool = CNN_GRU_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
                  balance_participants: bool = CNN_GRU_CONFIG.get('balance_participants', False),
                  target_transform: str = CNN_GRU_CONFIG.get('target_transform', 'none'),
+                 use_anthropometrics: bool = CNN_GRU_CONFIG.get('use_anthropometrics', False),
                  random_state: int = CNN_GRU_CONFIG['random_state']):
 
         self.cnn_filters = list(cnn_filters)
@@ -186,6 +201,7 @@ class CNNGRURegressor:
         self.balance_weights = balance_weights
         self.balance_participants = balance_participants
         self.target_transform = target_transform.lower()
+        self.use_anthropometrics = use_anthropometrics
         self.random_state = random_state
 
         # Tracking
@@ -196,8 +212,10 @@ class CNNGRURegressor:
         torch.manual_seed(self.random_state)
 
         self.scaler = StandardScaler()
+        self.anthro_scaler = StandardScaler()  # separate scaler for anthropometrics
         self.model = None
         self.n_channels = None
+        self.n_static_features = 0
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -220,6 +238,13 @@ class CNNGRURegressor:
                 "Use DataLoader.load_raw_segments() to prepare data."
             )
         return X['raw_segment'].tolist()
+
+    @staticmethod
+    def _extract_anthropometrics(X: pd.DataFrame) -> np.ndarray | None:
+        """Extract anthropometric conditioning vectors from the DataFrame."""
+        if 'anthropometrics' not in X.columns:
+            return None
+        return np.vstack(X['anthropometrics'].values).astype(np.float32)
 
     @staticmethod
     def _sanitise(arr: np.ndarray, clip: float = 1e9) -> np.ndarray:
@@ -310,6 +335,32 @@ class CNNGRURegressor:
             print(f"[CNNGRURegressor] Augmentation: {len(segs_train)} → "
                   f"{len(scaled_train)} segments (+{n_aug} synthetic)")
 
+        # 3c. Anthropometric conditioning
+        anthro_train_tensor = None
+        anthro_val_tensor = None
+        anthro_raw = self._extract_anthropometrics(X_train) if self.use_anthropometrics else None
+        if anthro_raw is not None:
+            self.n_static_features = anthro_raw.shape[1]
+            anthro_scaled = self.anthro_scaler.fit_transform(anthro_raw)
+            # Replicate anthropometrics for augmented samples
+            if len(anthro_scaled) < len(scaled_train):
+                n_orig = len(anthro_raw)
+                n_total = len(scaled_train)
+                anthro_scaled = np.vstack([
+                    anthro_scaled,
+                    anthro_scaled[np.random.choice(n_orig, n_total - n_orig, replace=True)]
+                ])
+            anthro_train_tensor = torch.from_numpy(anthro_scaled.astype(np.float32))
+            # Scale validation anthropometrics
+            anthro_val_raw = self._extract_anthropometrics(X_val)
+            if anthro_val_raw is not None:
+                anthro_val_scaled = self.anthro_scaler.transform(anthro_val_raw)
+                anthro_val_tensor = torch.from_numpy(anthro_val_scaled.astype(np.float32))
+            print(f"[CNNGRURegressor] Anthropometric conditioning enabled "
+                  f"({self.n_static_features} features)")
+        else:
+            self.n_static_features = 0
+
         train_tensors = [torch.from_numpy(s) for s in scaled_train]
         y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
         val_tensors = [torch.from_numpy(s) for s in scaled_val]
@@ -361,6 +412,7 @@ class CNNGRURegressor:
             gru_hidden_size=self.gru_hidden_size,
             gru_num_layers=self.gru_num_layers,
             dropout_rate=self.dropout_rate,
+            n_static_features=self.n_static_features,
         ).to(self.device)
 
         optimizer = optim.AdamW(self.model.parameters(),
@@ -377,7 +429,10 @@ class CNNGRURegressor:
                 print(f"[CNNGRURegressor] Unknown loss '{self.loss_type}', defaulting to MSE.")
 
         # 5. Build datasets
-        dataset_train = RawSegmentDataset(train_tensors, y_tensor_train)
+        dataset_train = RawSegmentDataset(
+            train_tensors, y_tensor_train,
+            static_features=anthro_train_tensor,
+        )
         _g = torch.Generator()
         _g.manual_seed(self.random_state)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size,
@@ -394,7 +449,10 @@ class CNNGRURegressor:
             min_lr=1e-6
         )
 
-        dataset_val = RawSegmentDataset(val_tensors, y_tensor_val)  # val stays unweighted
+        dataset_val = RawSegmentDataset(
+            val_tensors, y_tensor_val,
+            static_features=anthro_val_tensor,
+        )
         loader_val = DataLoader(dataset_val, batch_size=self.batch_size,
                                 shuffle=False, collate_fn=raw_pad_collate_fn)
 
@@ -408,15 +466,16 @@ class CNNGRURegressor:
                 # --- TRAIN ---
                 self.model.train()
                 running_loss = 0.0
-                for batch_x, batch_y, lengths, batch_pids, batch_weights in loader_train:
+                for batch_x, batch_y, lengths, batch_pids, batch_weights, batch_static in loader_train:
                     # batch_x: (B, T, C) → transpose to (B, C, T) for Conv1d
                     batch_x = batch_x.transpose(1, 2).to(self.device)
                     batch_y = batch_y.to(self.device)
                     lengths = lengths.to(self.device)
                     batch_weights = batch_weights.to(self.device)
+                    batch_static_dev = batch_static.to(self.device) if batch_static is not None else None
 
                     optimizer.zero_grad()
-                    outputs = self.model(batch_x, lengths)
+                    outputs = self.model(batch_x, lengths, static_features=batch_static_dev)
                     loss = criterion(outputs, batch_y)
                         
                     loss.backward()
@@ -432,12 +491,13 @@ class CNNGRURegressor:
                 val_loss = 0.0
                 criterion.reduction = 'mean'
                 with torch.no_grad():
-                    for batch_x, batch_y, lengths, _, _ in loader_val:
+                    for batch_x, batch_y, lengths, _, _, batch_static in loader_val:
                         batch_x = batch_x.transpose(1, 2).to(self.device)
                         batch_y = batch_y.to(self.device)
                         lengths = lengths.to(self.device)
+                        batch_static_dev = batch_static.to(self.device) if batch_static is not None else None
 
-                        outputs = self.model(batch_x, lengths)
+                        outputs = self.model(batch_x, lengths, static_features=batch_static_dev)
                         loss = criterion(outputs, batch_y)
                         val_loss += loss.item() * batch_x.size(0)
                 avg_val_loss = val_loss / len(dataset_val)
@@ -518,27 +578,35 @@ class CNNGRURegressor:
             raise ValueError("Model not fitted.")
 
         segments = self._extract_raw_segments(X)
-        return self._predict_from_segments(segments)
+        anthro = self._extract_anthropometrics(X) if self.use_anthropometrics and self.n_static_features > 0 else None
+        return self._predict_from_segments(segments, anthro_raw=anthro)
 
-    def _predict_from_segments(self, segments: list[np.ndarray]):
+    def _predict_from_segments(self, segments: list[np.ndarray], anthro_raw: np.ndarray | None = None):
         if self.model is None:
             raise ValueError("Model not fitted.")
             
         scaled = self._scale_segments(segments, fit=False)
         tensors = [torch.from_numpy(s) for s in scaled]
 
+        # Scale anthropometrics if available
+        anthro_tensor = None
+        if anthro_raw is not None and self.n_static_features > 0:
+            anthro_scaled = self.anthro_scaler.transform(anthro_raw)
+            anthro_tensor = torch.from_numpy(anthro_scaled.astype(np.float32))
+
         dummy_y = torch.zeros((len(tensors), 1))
-        dataset = RawSegmentDataset(tensors, dummy_y)
+        dataset = RawSegmentDataset(tensors, dummy_y, static_features=anthro_tensor)
         loader = DataLoader(dataset, batch_size=self.batch_size,
                             shuffle=False, collate_fn=raw_pad_collate_fn)
 
         self.model.eval()
         all_preds = []
         with torch.no_grad():
-            for batch_x, _, lengths, _pids, _ in loader:
+            for batch_x, _, lengths, _pids, _, batch_static in loader:
                 batch_x = batch_x.transpose(1, 2).to(self.device)
                 lengths = lengths.to(self.device)
-                preds = self.model(batch_x, lengths).cpu().numpy()
+                batch_static_dev = batch_static.to(self.device) if batch_static is not None else None
+                preds = self.model(batch_x, lengths, static_features=batch_static_dev).cpu().numpy()
                 all_preds.extend(preds.flatten())
 
         return np.maximum(0.0, self._inverse_target_transform(np.array(all_preds)))
@@ -619,7 +687,9 @@ class CNNGRURegressor:
         state = {
             'model_state': self.model.state_dict(),
             'scaler': self.scaler,
+            'anthro_scaler': self.anthro_scaler,
             'n_channels': self.n_channels,
+            'n_static_features': self.n_static_features,
             'config': {
                 'cnn_filters': self.cnn_filters,
                 'cnn_kernel_sizes': self.cnn_kernel_sizes,
@@ -639,6 +709,7 @@ class CNNGRURegressor:
                 'scheduler_patience': self.scheduler_patience,
                 'scheduler_factor': self.scheduler_factor,
                 'target_transform': self.target_transform,
+                'use_anthropometrics': self.use_anthropometrics,
                 'random_state': self.random_state,
             },
             'split_info': {
@@ -664,6 +735,8 @@ class CNNGRURegressor:
         regressor.balance_weights = state['config'].get('balance_weights', False)
         regressor.balance_participants = state['config'].get('balance_participants', False)
         regressor.scaler = state['scaler']
+        regressor.anthro_scaler = state.get('anthro_scaler', StandardScaler())
+        regressor.n_static_features = state.get('n_static_features', 0)
         
         if 'n_channels' in state:
             n_channels = state['n_channels']
@@ -671,6 +744,7 @@ class CNNGRURegressor:
             n_channels = state['model_state']['cnn.net.0.weight'].shape[1]
         
         regressor.n_channels = n_channels
+        n_static = state.get('n_static_features', 0)
         regressor.model = CNNGRUNetwork(
             n_channels=n_channels,
             cnn_filters=state['config'].get('cnn_filters', filtered_config.get('cnn_filters')),
@@ -679,6 +753,7 @@ class CNNGRURegressor:
             gru_hidden_size=state['config'].get('gru_hidden_size', filtered_config.get('gru_hidden_size')),
             gru_num_layers=state['config'].get('gru_num_layers', filtered_config.get('gru_num_layers')),
             dropout_rate=state['config'].get('dropout_rate', filtered_config.get('dropout_rate')),
+            n_static_features=n_static,
         ).to(regressor.device)
 
         # Load weights with strict=False to handle potential architectural transitions (e.g. InstanceNorm <-> BatchNorm)
@@ -721,7 +796,7 @@ class CNNGRURegressor:
         self.model.eval()
         all_features = []
         with torch.no_grad():
-            for batch_x, _, lengths, _pids, _ in tqdm(loader, desc="Extracting CNN features", unit="batch"):
+            for batch_x, _, lengths, _pids, _, _static in tqdm(loader, desc="Extracting CNN features", unit="batch"):
                 batch_x = batch_x.transpose(1, 2).to(self.device)
 
                 cnn_out = self.model.cnn(batch_x)

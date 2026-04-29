@@ -395,7 +395,7 @@ def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
     Scans a session directory and returns the session-wide MVC Peak
     (99th percentile of envelope) for each muscle channel.
     """
-    h5_files = list(session_dir.glob("*.h5"))
+    h5_files = [p for p in session_dir.glob("*.h5") if not p.name.startswith("._")]
     if not h5_files: return {}
     
     # Store processed envelope data temporarily to compute statistics
@@ -464,7 +464,7 @@ def process_session_data(session_dir: str | Path, fs: float = 2000.0, overwrite:
     for k, v in stats.items():
         print(f"  {k}: {v['peak']:.2e}")
     
-    h5_files = list(session_dir.glob("*.h5"))
+    h5_files = [p for p in session_dir.glob("*.h5") if not p.name.startswith("._")]
     for path in h5_files:
         try:
             process_emg_data(path, fs_fallback=fs, overwrite=overwrite, channel_stats=stats)
@@ -486,7 +486,7 @@ def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwr
     
     if not session_dirs:
         print(f"No session directories found in {database_dir}. Falling back to per-trial.")
-        h5_files = list(base_dir.rglob("*.h5"))
+        h5_files = [p for p in base_dir.rglob("*.h5") if not p.name.startswith("._")]
         for file_path in h5_files:
             process_emg_data(file_path, fs_fallback=fs, overwrite=overwrite)
             process_imu_data(file_path, overwrite=overwrite)
@@ -499,7 +499,7 @@ def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process EMG/IMU channels with MVC Peak Normalization.")
-    parser.add_argument("path", nargs="?", default="database", help="Path to trial file, session dir, or database.")
+    parser.add_argument("path", nargs="?", default="/Volumes/Laurens SSD/BasData", help="Path to trial file, session dir, or database.")
     parser.add_argument("--fs", type=float, default=2000.0, help="Sampling frequency fallback (default: 2000.0)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing datasets")
     parser.add_argument("--participants", type=str, nargs="+", help="List of participants to process")

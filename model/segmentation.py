@@ -62,11 +62,11 @@ As a module::
 
     from model.segmentation import SegmentedDataset
     ds = SegmentedDataset(margin_s=0.1)
-    segments = ds.segment_database("database/")
+    segments = ds.segment_database("/Volumes/Laurens SSD/BasData/")
 
 As a script::
 
-    python model/segmentation.py database/participant_P01/trial_1.h5 \\
+    python model/segmentation.py "/Volumes/Laurens SSD/BasData/participant_P01/trial_1.h5" \\
         --margin 0.1 --out /tmp/segs --format hdf5
 """
 
@@ -106,6 +106,16 @@ _ERROR_STATES = {
 _STATE_TO_LABEL = {
     "PHASE_2_AWAITING_PICKUP": "free_movement",
     "PHASE_2_AWAITING_PLACEMENT": "carrying",
+}
+
+#: Anthropometric trial-file attributes to propagate into segment files
+_ANTHRO_KEYS = {
+    "Total Arm Length [cm]": "total_arm_length",
+    "Upper Arm Length [cm]": "upper_arm_length",
+    "Forearm Length [cm]":   "forearm_length",
+    "Hand Length [cm]":      "hand_length",
+    "Upper Arm Circumference [cm]": "upper_arm_circumference",
+    "Fore Arm Circumference [cm]":  "forearm_circumference",
 }
 
 
@@ -188,11 +198,20 @@ class SegmentedDataset:
 
             t_common, imu_data, emg_data, imu_cols, emg_cols, fs_info = self._load_signal_matrix(f)
 
+            # Extract anthropometric metadata from trial file attributes
+            anthro = {}
+            for src_key, dst_key in _ANTHRO_KEYS.items():
+                val = f.attrs.get(src_key, None)
+                if val is not None:
+                    anthro[dst_key] = float(val)
+
         segments = []
         for meta in segments_meta:
             seg = self._slice_segment(meta, t_common, imu_data, emg_data,
                                       imu_cols, emg_cols, fs_info, str(file_path))
             if seg is not None:
+                # Attach participant anthropometrics to every segment
+                seg["anthropometrics"] = anthro
                 segments.append(seg)
 
         print(
@@ -218,7 +237,7 @@ class SegmentedDataset:
             Combined segments from every trial in the session.
         """
         session_dir = Path(session_dir)
-        h5_files = sorted(session_dir.glob("*.h5"))
+        h5_files = sorted(p for p in session_dir.glob("*.h5") if not p.name.startswith("._"))
 
         if not h5_files:
             print(f"[SEGMENTER] No HDF5 files found in {session_dir}")
@@ -275,7 +294,7 @@ class SegmentedDataset:
                 "[SEGMENTER] No session_* directories found — "
                 "falling back to flat scan."
             )
-            h5_files = sorted(base.rglob("*.h5"))
+            h5_files = sorted(p for p in base.rglob("*.h5") if not p.name.startswith("._"))
             if participants:
                 h5_files = [fp for fp in h5_files if any(p in fp.parts for p in participants)]
             if not h5_files:
@@ -339,6 +358,12 @@ class SegmentedDataset:
             with h5py.File(temp_path, "w") as f:
                 f.attrs["n_segments"] = len(segments)
                 f.attrs["margin_s"] = self.margin_s
+
+                # Write anthropometric metadata as file-level attributes
+                # (same for every segment in this file — comes from the participant)
+                anthro = segments[0].get("anthropometrics", {}) if segments else {}
+                for attr_name, value in anthro.items():
+                    f.attrs[attr_name] = value
 
                 for i, seg in enumerate(segments):
                     grp = f.create_group(f"segment_{i:04d}")
@@ -810,7 +835,7 @@ def _run_cli(args):
         
         if not session_dirs:
             # Fallback to flat scan (single participant directory or similar)
-            h5_files = sorted(target.rglob("*.h5"))
+            h5_files = sorted(p for p in target.rglob("*.h5") if not p.name.startswith("._"))
             if args.participants:
                 h5_files = [fp for fp in h5_files if any(p in fp.parts for p in args.participants)]
             if h5_files:
@@ -1043,9 +1068,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "path",
         nargs="?",
-        default="database",
+        default="/Volumes/Laurens SSD/BasData",
         help="Path to a single .h5 trial file or a directory of trial files. "
-             "Defaults to 'database'.",
+             "Defaults to '/Volumes/Laurens SSD/BasData'.",
     )
     parser.add_argument(
         "--margin",
@@ -1056,8 +1081,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--out",
-        default="database/segments",
-        help="Output directory for the segment files (default: database/segments).",
+        default="/Volumes/Laurens SSD/BasData/segments",
+        help="Output directory for the segment files (default: /Volumes/Laurens SSD/BasData/segments).",
     )
     parser.add_argument(
         "--format",

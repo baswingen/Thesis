@@ -3,7 +3,7 @@
 # ──────────────────────────────────────────────────────────
 # CONFIGURATION
 # ──────────────────────────────────────────────────────────
-LOCAL_DB_DIR="./database"
+LOCAL_DB_DIR="/Volumes/Laurens SSD/BasData"
 REMOTE_USER="bwingen"
 REMOTE_HOST="login.delftblue.tudelft.nl"
 REMOTE_DEST="/scratch/bwingen/thesis/database/"

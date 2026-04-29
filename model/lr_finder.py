@@ -36,9 +36,10 @@ class LRFinder:
                 loader_iter = iter(train_loader)
                 batch = next(loader_iter)
                 
-            # Match the return signature of raw_pad_collate_fn
-            if len(batch) == 5:
-                batch_x, batch_y, lengths, _pids, batch_weights = batch
+            # Match the return signature of raw_pad_collate_fn (5 or 6 elements)
+            if len(batch) >= 5:
+                batch_x, batch_y, lengths = batch[0], batch[1], batch[2]
+                batch_weights = batch[4]
                 batch_x = batch_x.transpose(1, 2).to(self.device)  # (B, C, T)
                 batch_y = batch_y.to(self.device)
                 lengths = lengths.to(self.device)
