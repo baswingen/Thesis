@@ -629,6 +629,7 @@ class CNNLSTMRegressor:
         baseline_mse = mean_squared_error(y_test_np, baseline_pred)
         
         segments = self._extract_raw_segments(X_test)
+        anthro = self._extract_anthropometrics(X_test) if self.use_anthropometrics and self.n_static_features > 0 else None
         
         channel_names = X_test.attrs.get("channel_names")
         if channel_names is None or len(channel_names) != self.n_channels:
@@ -660,7 +661,7 @@ class CNNLSTMRegressor:
                         np.random.shuffle(seg_copy[:, c]) 
                     permuted_segments.append(seg_copy)
                     
-                perm_pred = self._predict_from_segments(permuted_segments)
+                perm_pred = self._predict_from_segments(permuted_segments, anthro_raw=anthro)
                 perm_mse = mean_squared_error(y_test_np, perm_pred)
                 channel_mse_diffs.append(perm_mse - baseline_mse)
                 

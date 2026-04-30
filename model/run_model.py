@@ -6,6 +6,7 @@ from pathlib import Path
 from datetime import datetime
 import time
 import torch
+import copy
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
 
@@ -28,8 +29,9 @@ from model.model_archs.cnn_gru import CNNGRURegressor
 from model.model_archs.cnn_bilstm_attention import CNNBiLSTMAttentionRegressor
 from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
+from model.model_archs.spatio_temporal_transformer import SpatioTemporalTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -94,6 +96,10 @@ def initialize_model(model_type: str):
         print(f"Initializing Transformer Regressor with config: {TRANSFORMER_CONFIG}")
         from model.model_archs.transformer import TimeSeriesTransformerRegressor
         return TimeSeriesTransformerRegressor(**TRANSFORMER_CONFIG)
+    elif model_type == "spatio_temporal_transformer":
+        print(f"Initializing Spatio-Temporal Transformer Regressor with config: {SPATIO_TEMPORAL_TRANSFORMER_CONFIG}")
+        from model.model_archs.spatio_temporal_transformer import SpatioTemporalTransformerRegressor
+        return SpatioTemporalTransformerRegressor(**SPATIO_TEMPORAL_TRANSFORMER_CONFIG)
     else:
         print(f"Unknown model type: {model_type}")
         return None
@@ -296,11 +302,16 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     if cv_strategy == 'participant':
         from sklearn.model_selection import GroupKFold
         n_unique_groups = len(np.unique(groups))
-        n_splits = max(2, n_unique_groups // 2)
+        
+        if DEV_MODE:
+            n_splits = min(DEV_CV_FOLDS, n_unique_groups)
+        else:
+            n_splits = max(2, n_unique_groups // 2)
+            
         gkf = GroupKFold(n_splits=n_splits)
         cv_iterator = list(gkf.split(X, y, groups))
         n_folds = len(cv_iterator)
-        print(f"\nStarting {n_folds}-Fold Cross-Participant Validation (approx 2 participants per fold)...")
+        print(f"\nStarting {n_folds}-Fold Cross-Participant Validation...")
     else:
         from sklearn.model_selection import StratifiedKFold
         skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
@@ -313,6 +324,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     oof_predictions = np.zeros(len(X))
     participant_stats = []
     permutation_importances = []
+    cv_histories = []
 
     for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
         if cv_strategy == 'participant':
@@ -377,8 +389,22 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             'inference_time_per_sample': inf_time / len(X_test_fold)
         })
         
+        # Calculate Train metrics for Generalization Gap
+        train_preds = model.predict(X_train_fold)
+        train_mae = mean_absolute_error(y_train_fold, train_preds)
+        train_rmse = np.sqrt(mean_squared_error(y_train_fold, train_preds))
+        
+        metrics['Train MAE'] = train_mae
+        metrics['Train RMSE'] = train_rmse
+        metrics['Generalization Gap (MAE)'] = metrics['MAE'] - train_mae
+        metrics['Overfit Ratio (RMSE)'] = metrics['RMSE'] / (train_rmse + 1e-8)
+
+        print(f"    Train MAE: {train_mae:.4f} | Test MAE: {metrics['MAE']:.4f} | Gap: {metrics['Generalization Gap (MAE)']:.4f}")
+        print(f"    Train RMSE: {train_rmse:.4f} | Test RMSE: {metrics['RMSE']:.4f} | Ratio: {metrics['Overfit Ratio (RMSE)']:.2f}x")
+        
         cv_metrics.append(metrics)
         fold_results.append(fold_report)
+        cv_histories.append(copy.deepcopy(model.loss_history))
         preds = model.predict(X_test_fold)
         oof_predictions[test_idx] = preds
         
@@ -403,44 +429,47 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
                     'Samples': sum(p_mask)
                 })
 
-    print("\nTraining final model on full dataset for saving...")
-    model = initialize_model(model_type)
-    sample_weight = None
-    if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
-        sample_weight = compute_sample_weight(class_weight='balanced', y=y)
-        
-    kwargs = {'sample_weight': sample_weight}
-    
-    # Apply Strict Cross-Participant Early Stopping for the final model
-    if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention']:
-        from sklearn.model_selection import GroupShuffleSplit
-        val_p = CV_CONFIG.get('strict_val_participants', 2)
-        
-        n_train_groups = len(np.unique(groups))
-        if val_p >= n_train_groups:
-            val_p = max(1, n_train_groups - 1)
-            
-        gss = GroupShuffleSplit(n_splits=1, test_size=val_p, random_state=GLOBAL_RANDOM_STATE)
-        inner_train_idx, inner_val_idx = next(gss.split(X, y, groups=groups))
-        
-        X_val_final = X.iloc[inner_val_idx]
-        y_val_final = y.iloc[inner_val_idx]
-        
-        val_participants = np.unique(groups[inner_val_idx])
-        print(f"    [Strict Validation] Holding out {len(val_participants)} participants from final dataset for early stopping: {', '.join(val_participants)}")
-        
-        X_train_final = X.iloc[inner_train_idx]
-        y_train_final = y.iloc[inner_train_idx]
-        
-        if sample_weight is not None:
-            kwargs['sample_weight'] = sample_weight[inner_train_idx]
-            
-        kwargs['X_val'] = X_val_final
-        kwargs['y_val'] = y_val_final
-        
-        model.fit(X_train_final, y_train_final, **kwargs)
+    if DEV_MODE:
+        print("\n[DEV MODE] Skipping final full-dataset training since model parameters are not needed.")
     else:
-        model.fit(X, y, **kwargs)
+        print("\nTraining final model on full dataset for saving...")
+        model = initialize_model(model_type)
+        sample_weight = None
+        if model_type == "svr" and SVR_CONFIG.get('balance_weights', False):
+            sample_weight = compute_sample_weight(class_weight='balanced', y=y)
+            
+        kwargs = {'sample_weight': sample_weight}
+        
+        # Apply Strict Cross-Participant Early Stopping for the final model
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer']:
+            from sklearn.model_selection import GroupShuffleSplit
+            val_p = CV_CONFIG.get('strict_val_participants', 2)
+            
+            n_train_groups = len(np.unique(groups))
+            if val_p >= n_train_groups:
+                val_p = max(1, n_train_groups - 1)
+                
+            gss = GroupShuffleSplit(n_splits=1, test_size=val_p, random_state=GLOBAL_RANDOM_STATE)
+            inner_train_idx, inner_val_idx = next(gss.split(X, y, groups=groups))
+            
+            X_val_final = X.iloc[inner_val_idx]
+            y_val_final = y.iloc[inner_val_idx]
+            
+            val_participants = np.unique(groups[inner_val_idx])
+            print(f"    [Strict Validation] Holding out {len(val_participants)} participants from final dataset for early stopping: {', '.join(val_participants)}")
+            
+            X_train_final = X.iloc[inner_train_idx]
+            y_train_final = y.iloc[inner_train_idx]
+            
+            if sample_weight is not None:
+                kwargs['sample_weight'] = sample_weight[inner_train_idx]
+                
+            kwargs['X_val'] = X_val_final
+            kwargs['y_val'] = y_val_final
+            
+            model.fit(X_train_final, y_train_final, **kwargs)
+        else:
+            model.fit(X, y, **kwargs)
 
     avg_permutation_importance = None
     if permutation_importances:
@@ -448,7 +477,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         for k in permutation_importances[0].keys():
             avg_permutation_importance[k] = np.mean([pi[k] for pi in permutation_importances])
 
-    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance
+    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories
 
 
 def execute_single_split(X, y, df, model_type, split_val):
@@ -492,7 +521,7 @@ def execute_single_split(X, y, df, model_type, split_val):
     return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp
 
 
-def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, oof_predictions):
+def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, oof_predictions, all_histories=None):
     """Save model file, regression plot, and loss plot."""
     model_path = run_dir / f"{model_type}_model.joblib"
     model.save(model_path)
@@ -505,7 +534,10 @@ def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, 
         
     if hasattr(model, 'plot_loss'):
         loss_plot_path = run_dir / "loss_plot.png"
-        model.plot_loss(loss_plot_path)
+        if all_histories and len(all_histories) > 0:
+            plotting_utils.plot_training_loss(all_histories, loss_plot_path, model_name=model_type.upper().replace("_", " "))
+        else:
+            model.plot_loss(loss_plot_path)
 
 
 def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_test, y_pred, oof_predictions,
@@ -599,7 +631,7 @@ def main():
     print(f"Results will be saved to: {run_dir}")
     
     model_type = MODEL_TYPE.lower()
-    is_sequence = model_type in ["gru", "lstm", "transformer"]
+    is_sequence = model_type in ["gru", "lstm", "transformer", "spatio_temporal_transformer"]
     is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn"]
     
     # 2. Data Loading
@@ -613,12 +645,37 @@ def main():
     if X is None: 
         print("Data extraction failed or produced an empty DataFrame.")
         return
+        
+    if DEV_MODE:
+        print(f"\n[DEV MODE] Subsampling dataset to {DEV_FRACTION*100}% for rapid testing...")
+        stratify_key = None
+        if groups is not None and "weight" in df.columns:
+            stratify_key = [f"{g}_{w}" for g, w in zip(groups, df["weight"])]
+        elif groups is not None:
+            stratify_key = groups
+        elif "weight" in df.columns:
+            stratify_key = df["weight"]
+            
+        try:
+            _, X, _, y, _, groups, _, df = train_test_split(
+                X, y, groups, df, 
+                test_size=DEV_FRACTION, 
+                random_state=GLOBAL_RANDOM_STATE, 
+                stratify=stratify_key
+            )
+        except ValueError as e:
+            print(f"[WARN] Stratified split failed ({e}), falling back to random split.")
+            _, X, _, y, _, groups, _, df = train_test_split(
+                X, y, groups, df, 
+                test_size=DEV_FRACTION, 
+                random_state=GLOBAL_RANDOM_STATE
+            )
     
     # 3. Summary
     print_data_summary(X, y, is_raw_segment, is_sequence)
     # 4. Training & Evaluation
     if CV_CONFIG.get('use_cross_val', True):
-        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp = execute_cross_validation(
+        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories = execute_cross_validation(
             X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
         )
         avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
@@ -629,12 +686,19 @@ def main():
         model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp = execute_single_split(
             X, y, df, model_type, CV_CONFIG.get('train_test_split', 0.2)
         )
-        avg_metrics, std_metrics, oof_predictions, participant_stats = None, None, None, None
+        avg_metrics, std_metrics, oof_predictions, participant_stats, all_histories = None, None, None, None, None
 
     # 5. Artifacts & Specialized Plots
-    save_basic_artifacts(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions)
+    save_basic_artifacts(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions, all_histories=all_histories)
     per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), df, X, X_test, y, y_test, y_pred, 
                                              oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
+                                             
+    if DEV_MODE and participant_stats:
+        print("\n[DEV MODE] Instant Participant Breakdown:")
+        import pandas as pd
+        stats_df = pd.DataFrame(participant_stats)
+        agg_stats = stats_df.groupby('Participant').agg({'MAE': 'mean', 'RMSE': 'mean', 'Samples': 'sum'})
+        print(agg_stats.to_string())
     
     if perm_imp:
         plotting_utils.plot_permutation_importance(perm_imp, run_dir / "permutation_importance.png", model_name=model_type.upper())
@@ -656,7 +720,6 @@ def main():
             # If we used CV, the final model is trained on the whole dataset X.
             # We split it here for the purposes of SHAP analysis.
             if CV_CONFIG.get('use_cross_val', True):
-                from sklearn.model_selection import train_test_split
                 strat = df["weight"].astype(str) if "weight" in df.columns else None
                 X_train_shap, X_test_shap = train_test_split(X, test_size=0.2, random_state=42, stratify=strat)
             else:
