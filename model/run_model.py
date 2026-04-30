@@ -604,7 +604,7 @@ def main():
     
     # 2. Data Loading
     loader = DataLoader()
-    h5_paths = list(DATABASE_CONFIG['segments_dir'].glob("*.h5"))
+    h5_paths = [p for p in DATABASE_CONFIG['segments_dir'].glob("*.h5") if not p.name.startswith("._")]
     if not h5_paths:
         print(f"No HDF5 segment files found in {DATABASE_CONFIG['segments_dir']}.")
         return
