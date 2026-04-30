@@ -133,28 +133,64 @@ def plot_regression_results(y_true: pd.Series | np.ndarray, y_pred: np.ndarray, 
     plt.close()
     print(f"Regression plot saved to {save_path}")
 
-def plot_training_loss(loss_history: dict, save_path: str | Path, model_name: str = "Model"):
+def plot_training_loss(loss_history: dict | list[dict], save_path: str | Path, model_name: str = "Model"):
     """
     Plots the training and validation loss history in log scale.
+    Supports a single history dict or a list of histories (for cross-validation folds).
     """
-    if not loss_history.get("train"):
+    if not loss_history:
         return
         
     set_style()
     plt.figure(figsize=(10, 6))
     
-    plt.plot(loss_history["train"], label="Training Loss", color='#1F77B4', linewidth=2)
-    if loss_history.get("val"):
-        plt.plot(loss_history["val"], label="Validation Loss", color='#FF7F0E', linewidth=2)
+    if isinstance(loss_history, dict):
+        histories = [loss_history]
+        is_cv = False
+    else:
+        histories = loss_history
+        is_cv = len(histories) > 1
+        
+    # Standard colors for consistency
+    train_color = '#1F77B4' # Blue
+    val_color = '#FF7F0E'   # Orange
+    
+    for i, hist in enumerate(histories):
+        if not hist.get("train"):
+            continue
+            
+        fold_idx = i + 1
+        # If multiple folds, use lighter lines for individual folds
+        alpha = 0.5 if is_cv else 1.0
+        lw = 1.5 if is_cv else 2.0
+        
+        train_label = f"Train Fold {fold_idx}" if is_cv else "Training Loss"
+        val_label = f"Val Fold {fold_idx}" if is_cv else "Validation Loss"
+        
+        # Plot training loss
+        plt.plot(hist["train"], label=train_label, color=train_color, 
+                 alpha=alpha, linewidth=lw, linestyle='-' if not is_cv else '-')
+        
+        # Plot validation loss
+        if hist.get("val"):
+            plt.plot(hist["val"], label=val_label, color=val_color, 
+                     alpha=alpha, linewidth=lw, linestyle='--')
         
     plt.yscale('log')
     plt.xlabel("Epoch", labelpad=10)
     plt.ylabel("Loss (log scale)", labelpad=10)
-    plt.title(f"{model_name}: Training Progress", pad=15)
     
-    plt.legend(loc='upper right', frameon=True, facecolor='white', framealpha=0.9)
+    title = f"{model_name}: Training Progress"
+    if is_cv:
+        title += f" ({len(histories)} Folds)"
+    plt.title(title.upper(), pad=15, fontsize=14, fontweight='bold')
+    
+    # Handle potentially large legend
+    ncol = 2 if is_cv else 1
+    plt.legend(loc='upper right', frameon=True, facecolor='white', framealpha=0.9, 
+               fontsize=9 if is_cv else 11, ncol=ncol)
+    
     plt.tight_layout()
-    
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
     print(f"Loss plot saved to {save_path}")

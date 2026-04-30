@@ -11,9 +11,15 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "cnn_gru"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer"
+MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
+
+DEV_MODE = False
+DEV_FRACTION = 0.10
+DEV_CV_FOLDS = 3
+DEV_EPOCHS = 50
+DEV_EARLY_STOPPING_PATIENCE = 10
 
 # ──────────────────────────────────────────────────────────
 # DATABASE & ENVIRONMENT CONFIGURATION
@@ -30,7 +36,7 @@ ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
 if ON_DELFTBLUE:
     DATABASE_ROOT = Path("/scratch/bwingen/thesis/database")
 else:
-    DATABASE_ROOT = Path(__file__).parent.parent / "database"
+    DATABASE_ROOT = Path("/Volumes/Laurens SSD/BasData")
 
 DATABASE_CONFIG = {
     'root': DATABASE_ROOT,
@@ -122,7 +128,7 @@ FEATURE_CONFIG = {
     # Updated to match LSTM sweep Iteration 68 best params
     'emg_window_size_sec': 0.15,
     'imu_window_size_sec': 0.2,
-    'window_step_sec': 0.15,
+    'window_step_sec': 0.10,
 
     # Channel toggles have been moved to the top-level CHANNEL_CONFIG dict.
 
@@ -467,3 +473,92 @@ TRANSFORMER_CONFIG = {
     'scheduler_factor': 0.5,
     'random_state': GLOBAL_RANDOM_STATE
 }
+
+# Spatio-Temporal Transformer Configuration
+SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
+    'd_model': 256,
+    'nhead_spatial': 8,
+    'num_layers_spatial': 4,
+    'nhead_temporal': 8,
+    'num_layers_temporal': 4,
+    'dim_feedforward': 1024,
+    'dropout_rate': 0.4,
+    'learning_rate': 0.001,
+    'weight_decay': 1e-4,
+    'batch_size': 128,
+    'epochs': 150,
+    'validation_split': 0.1,
+    'early_stopping_patience': 50,
+    'scheduler_patience': 5,
+    'scheduler_factor': 0.5,
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
+# ──────────────────────────────────────────────────────────
+# DEV MODE OVERRIDES
+# ──────────────────────────────────────────────────────────
+if DEV_MODE:
+    print(f"\n[CONFIG] DEV_MODE is ACTIVE! Subsampling {DEV_FRACTION*100}% of data for rapid iteration.")
+    CV_CONFIG['strict_val_split'] = True
+    
+    # Cap epochs and patience for fast deep learning runs
+    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG]:
+        if 'epochs' in cfg:
+            cfg['epochs'] = min(cfg['epochs'], DEV_EPOCHS)
+        if 'early_stopping_patience' in cfg:
+            cfg['early_stopping_patience'] = min(cfg['early_stopping_patience'], DEV_EARLY_STOPPING_PATIENCE)
+            
+    # Downscale architecture dimensions to prevent massive overfitting on the small subset
+    LSTM_CONFIG.update({
+        'hidden_size': 64,
+        'num_layers': 1,
+    })
+    
+    GRU_CONFIG.update({
+        'hidden_size': 64,
+        'num_layers': 1,
+    })
+    
+    TRANSFORMER_CONFIG.update({
+        'd_model': 16,
+        'nhead': 2,
+        'num_layers': 1,
+        'dim_feedforward': 32,
+    })
+    
+    SPATIO_TEMPORAL_TRANSFORMER_CONFIG.update({
+        'd_model': 64,
+        'nhead_spatial': 4,
+        'num_layers_spatial': 2,
+        'nhead_temporal': 4,
+        'num_layers_temporal': 2,
+        'dim_feedforward': 128,
+    })
+    
+    CNN_LSTM_CONFIG.update({
+        'cnn_filters': [16, 32, 64],
+        'cnn_kernel_sizes': [16, 5, 3],
+        'lstm_hidden_size': 64,
+        'lstm_num_layers': 1,
+    })
+    
+    CNN_GRU_CONFIG.update({
+        'cnn_filters': [16, 32, 64],
+        'cnn_kernel_sizes': [16, 5, 3],
+        'gru_hidden_size': 64,
+        'gru_num_layers': 1,
+    })
+    
+    CNN_BILSTM_ATTENTION_CONFIG.update({
+        'cnn_filters': [16, 32, 64],
+        'cnn_kernel_sizes': [16, 5, 3],
+        'lstm_hidden_size': 32,
+        'lstm_num_layers': 1,
+        'fc_units': 64,
+    })
+    
+    TCN_CONFIG.update({
+        'cnn_filters': [16, 32, 64],
+        'cnn_kernel_sizes': [7, 5, 3],
+        'tcn_channels': [32, 64],
+    })

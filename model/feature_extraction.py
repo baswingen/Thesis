@@ -452,7 +452,7 @@ class FeatureExtractor:
 # Standalone runner
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
+def _run_extraction(segments_dir: Path, dry_run: bool = False, participants: Optional[List[str]] = None, skip_existing: bool = False) -> None:
     """
     Extract features from every ``*.h5`` segment file in *segments_dir* and
     write the results back into each file.
@@ -484,9 +484,17 @@ def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
                 raise e
         return False
 
-    h5_paths = sorted(segments_dir.glob("*.h5"))
+    # Use rglob for recursive scan and exclude macOS metadata files, matching segmentation.py
+    h5_paths = sorted(p for p in segments_dir.rglob("*.h5") if not p.name.startswith("._"))
+    
+    if participants:
+        # Filter by participant string in path or filename
+        h5_paths = [p for p in h5_paths if any(part in str(p) for part in participants)]
+
     if not h5_paths:
         print(f"[feature_extraction] No .h5 files found in {segments_dir}")
+        if participants:
+            print(f"  (Filters: participants={participants})")
         return
 
     print(
@@ -501,6 +509,19 @@ def _run_extraction(segments_dir: Path, dry_run: bool = False) -> None:
 
     for h5_path in h5_paths:
         print(f"\n→ Processing: {h5_path.name}")
+
+        # Check if features already exist if skip_existing is enabled
+        if skip_existing:
+            try:
+                with h5py.File(h5_path, 'r') as f:
+                    # If any segment already has a 'features' group, we assume the file is processed
+                    seg_keys = [k for k in f.keys() if k.startswith("segment_")]
+                    if seg_keys and all("features" in f[k] for k in seg_keys):
+                        print(f"  [SKIP] All segments already contain features.")
+                        continue
+            except Exception as e:
+                # If we can't open it (e.g. iCloud lock), we'll try robust_copy below anyway
+                pass
 
         # Collect all segment keys and their raw signal data using a local temp copy
         # to avoid iCloud Drive 'Operation timed out' errors on evicted files.
@@ -610,9 +631,20 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--segments-dir",
-        default=str(_root / "database" / "segments"),
+        default="/Volumes/Laurens SSD/BasData/segments",
         help="Directory containing the segmented *.h5 files "
-             "(default: <project_root>/database/segments).",
+             "(default: /Volumes/Laurens SSD/BasData/segments).",
+    )
+    parser.add_argument(
+        "--participants",
+        type=str,
+        nargs="+",
+        help="List of participants to process (e.g. participant_P01)",
+    )
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip files that already contain precomputed features.",
     )
     parser.add_argument(
         "--dry-run",
@@ -621,4 +653,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    _run_extraction(Path(args.segments_dir), dry_run=args.dry_run)
+    _run_extraction(
+        Path(args.segments_dir),
+        dry_run=args.dry_run,
+        participants=args.participants,
+        skip_existing=args.skip_existing
+    )
