@@ -135,7 +135,7 @@ def main():
     # ------------------------------------------------------------------
     # 1. Load Data
     # ------------------------------------------------------------------
-    h5_paths = sorted(segments_dir.glob("*.h5"))
+    h5_paths = sorted([p for p in segments_dir.glob("*.h5") if not p.name.startswith("._")])
     if not h5_paths:
         print(f"No HDF5 segment files found in {segments_dir}.")
         return
