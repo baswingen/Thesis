@@ -11,15 +11,15 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
+MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = False
-DEV_FRACTION = 0.10
+DEV_MODE = True
+DEV_FRACTION = 0.1
 DEV_CV_FOLDS = 3
 DEV_EPOCHS = 50
-DEV_EARLY_STOPPING_PATIENCE = 10
+DEV_EARLY_STOPPING_PATIENCE = 5
 
 # ──────────────────────────────────────────────────────────
 # DATABASE & ENVIRONMENT CONFIGURATION
@@ -510,13 +510,13 @@ if DEV_MODE:
             
     # Downscale architecture dimensions to prevent massive overfitting on the small subset
     LSTM_CONFIG.update({
-        'hidden_size': 64,
-        'num_layers': 1,
+        'hidden_size': 256,
+        'num_layers': 2,
     })
     
     GRU_CONFIG.update({
-        'hidden_size': 64,
-        'num_layers': 1,
+        'hidden_size': 128,
+        'num_layers': 2,
     })
     
     TRANSFORMER_CONFIG.update({

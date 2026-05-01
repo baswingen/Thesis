@@ -1,0 +1,144 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260430_191617
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P02_session_01_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P18_session_01_segments.h5']
+Total samples: 1931
+Evaluation Mode: Leave-One-Participant-Out CV (3 Participants)
+Final Model Training samples: 1158
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: ALL
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+
+--- HYPERPARAMETERS ---
+Model: LSTM
+Learning Rate: 0.0005
+Batch Size: 64
+Epochs: 50
+
+--- EVALUATION METRICS ---
+(Averaged over 3 folds)
+MAE: 0.4516 (±0.0795)
+MSE: 0.5726 (±0.1468)
+RMSE: 0.7508 (±0.0941)
+R2: 0.8239 (±0.0455)
+Train MAE: 0.0660 (±0.0152)
+Train RMSE: 0.1889 (±0.0206)
+Generalization Gap (MAE): 0.3856 (±0.0649)
+Overfit Ratio (RMSE): 4.0403 (±0.7879)
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 968      | 0.1774     | 0.3931    
+0.90 kg      | 136      | 0.4825     | 0.6051    
+0.98 kg      | 138      | 0.5454     | 0.6899    
+1.97 kg      | 138      | 0.7347     | 0.9524    
+2.24 kg      | 137      | 0.5937     | 0.7345    
+2.94 kg      | 138      | 0.7886     | 1.0101    
+4.14 kg      | 138      | 0.9077     | 1.1578    
+5.92 kg      | 138      | 1.0371     | 1.5141    
+
+--- DETAILED GENERALIZATION PERFORMANCE ---
+Mean MAE across participants: 0.4807 ± 0.2196
+Min / Max MAE:                0.2277 / 1.1223
+Mean RMSE across participants:0.7645 ± 0.3081
+Min / Max RMSE:               0.3833 / 1.6469
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 446      | 0.5046     | 0.7634    
+P05          | 50       | 0.5998     | 0.8305    
+P13          | 51       | 1.1223     | 1.6469    
+P16          | 99       | 0.5253     | 0.8383    
+P02          | 142      | 0.2721     | 0.4822    
+P04          | 99       | 0.2302     | 0.3966    
+P08          | 99       | 0.7299     | 0.9831    
+P10          | 52       | 0.6127     | 1.1507    
+P11          | 99       | 0.3519     | 0.5036    
+P14          | 51       | 0.5483     | 1.0073    
+P15          | 99       | 0.2877     | 0.5460    
+P03          | 99       | 0.3770     | 0.5069    
+P06          | 98       | 0.3219     | 0.5408    
+P07          | 99       | 0.5889     | 0.9166    
+P09          | 99       | 0.2277     | 0.3833    
+P12          | 99       | 0.2726     | 0.6295    
+P17          | 99       | 0.4100     | 0.7067    
+P18          | 51       | 0.6694     | 0.9292    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+2            | 0.300s           | 1        | 0.4085     | 0.4085    
+3            | 0.400s           | 15       | 0.6918     | 0.9527    
+4            | 0.500s           | 25       | 0.5824     | 0.8469    
+5            | 0.600s           | 60       | 0.5331     | 0.6951    
+6            | 0.700s           | 103      | 0.4940     | 0.7168    
+7            | 0.800s           | 145      | 0.5942     | 0.9146    
+8            | 0.900s           | 167      | 0.5803     | 0.8891    
+9            | 1.000s           | 202      | 0.4568     | 0.6982    
+10           | 1.100s           | 242      | 0.4093     | 0.6382    
+11           | 1.200s           | 202      | 0.3793     | 0.5957    
+12           | 1.300s           | 146      | 0.2995     | 0.5829    
+13           | 1.400s           | 130      | 0.3765     | 0.6320    
+14           | 1.500s           | 110      | 0.3415     | 0.5807    
+15           | 1.600s           | 91       | 0.2857     | 0.4999    
+16           | 1.700s           | 59       | 0.3215     | 0.6787    
+17           | 1.800s           | 46       | 0.2859     | 0.5103    
+18           | 1.900s           | 34       | 0.3733     | 0.8159    
+19           | 2.000s           | 18       | 0.3093     | 0.4478    
+20           | 2.100s           | 27       | 0.4560     | 0.8040    
+21           | 2.200s           | 14       | 0.7624     | 1.1468    
+22           | 2.300s           | 10       | 0.9548     | 1.8439    
+23           | 2.400s           | 7        | 1.1336     | 1.3537    
+24           | 2.500s           | 13       | 0.7399     | 1.6164    
+25           | 2.600s           | 4        | 1.2014     | 1.5692    
+26           | 2.700s           | 8        | 0.9950     | 1.7205    
+27           | 2.800s           | 5        | 1.7323     | 2.3016    
+28           | 2.900s           | 6        | 0.2229     | 0.3502    
+29           | 3.000s           | 2        | 1.0775     | 1.0902    
+30           | 3.100s           | 4        | 0.3310     | 0.6166    
+31           | 3.200s           | 3        | 1.6291     | 2.4529    
+32           | 3.300s           | 4        | 0.9028     | 0.9557    
+33           | 3.400s           | 1        | 0.1118     | 0.1118    
+34           | 3.500s           | 2        | 1.3719     | 1.3844    
+35           | 3.600s           | 2        | 1.6236     | 1.6984    
+36           | 3.700s           | 2        | 0.0771     | 0.1090    
+37           | 3.800s           | 2        | 0.9173     | 1.1674    
+38           | 3.900s           | 1        | 0.0357     | 0.0357    
+39           | 4.000s           | 2        | 0.1651     | 0.1790    
+42           | 4.300s           | 1        | 1.4322     | 1.4322    
+44           | 4.500s           | 2        | 1.0403     | 1.0451    
+46           | 4.700s           | 1        | 0.6782     | 0.6782    
+48           | 4.900s           | 1        | 0.0148     | 0.0148    
+50           | 5.100s           | 1        | 0.3167     | 0.3167    
+55           | 5.600s           | 3        | 1.2699     | 1.5577    
+58           | 5.900s           | 2        | 2.3181     | 2.8526    
+63           | 6.400s           | 1        | 0.0844     | 0.0844    
+67           | 6.800s           | 1        | 0.0280     | 0.0280    
+68           | 6.900s           | 1        | 0.0000     | 0.0000    
+99           | 10.000s          | 1        | 0.0822     | 0.0822    
+179          | 18.000s          | 1        | 0.1988     | 0.1988    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 391,297
+Trainable Parameters: 391,297
+
+Average timings:
+train_time: 208.484800s (±51.249154s)
+inference_time_total: 0.462801s (±0.055355s)
+inference_time_per_sample: 0.000719s (±0.000085s)
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 391,297
+Trainable Parameters: 391,297
+
+Average timings:
+train_time: 208.484800s (±51.249154s)
+inference_time_total: 0.462801s (±0.055355s)
+inference_time_per_sample: 0.000719s (±0.000085s)
