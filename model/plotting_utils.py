@@ -133,7 +133,7 @@ def plot_regression_results(y_true: pd.Series | np.ndarray, y_pred: np.ndarray, 
     plt.close()
     print(f"Regression plot saved to {save_path}")
 
-def plot_training_loss(loss_history: dict | list[dict], save_path: str | Path, model_name: str = "Model"):
+def plot_training_loss(loss_history: dict | list[dict], save_path: str | Path, model_name: str = "Model", val_participants: list[list[str]] = None):
     """
     Plots the training and validation loss history in log scale.
     Supports a single history dict or a list of histories (for cross-validation folds).
@@ -152,29 +152,51 @@ def plot_training_loss(loss_history: dict | list[dict], save_path: str | Path, m
         is_cv = len(histories) > 1
         
     # Standard colors for consistency
-    train_color = '#1F77B4' # Blue
-    val_color = '#FF7F0E'   # Orange
+    train_base_color = '#1F77B4' # Blue
+    val_base_color = '#FF7F0E'   # Orange
     
+    import matplotlib.cm as cm
+    import numpy as np
+
+    n_folds = len(histories)
+    if is_cv:
+        # Generate shades: more distinguishable than just alpha
+        train_colors = [cm.Blues(i) for i in np.linspace(0.5, 0.9, n_folds)]
+        val_colors = [cm.Oranges(i) for i in np.linspace(0.5, 0.9, n_folds)]
+    else:
+        train_colors = [train_base_color]
+        val_colors = [val_base_color]
+
     for i, hist in enumerate(histories):
         if not hist.get("train"):
             continue
             
         fold_idx = i + 1
-        # If multiple folds, use lighter lines for individual folds
-        alpha = 0.5 if is_cv else 1.0
-        lw = 1.5 if is_cv else 2.0
+        color_idx = i % n_folds
         
+        # Determine labels
+        p_str = ""
+        if val_participants and i < len(val_participants):
+            p_str = f" ({', '.join(val_participants[i])})"
+            
         train_label = f"Train Fold {fold_idx}" if is_cv else "Training Loss"
-        val_label = f"Val Fold {fold_idx}" if is_cv else "Validation Loss"
+        val_label = f"Val Fold {fold_idx}{p_str}" if is_cv else "Validation Loss"
+        
+        # If we have participant names, use them for the Val label
+        if p_str and is_cv:
+            # Optionally shorten if too long
+            if len(p_str) > 30:
+                p_str = p_str[:27] + "...)"
+            val_label = f"Val{p_str}"
         
         # Plot training loss
-        plt.plot(hist["train"], label=train_label, color=train_color, 
-                 alpha=alpha, linewidth=lw, linestyle='-' if not is_cv else '-')
+        plt.plot(hist["train"], label=train_label, color=train_colors[color_idx], 
+                 alpha=0.8, linewidth=1.5 if is_cv else 2.0)
         
         # Plot validation loss
         if hist.get("val"):
-            plt.plot(hist["val"], label=val_label, color=val_color, 
-                     alpha=alpha, linewidth=lw, linestyle='--')
+            plt.plot(hist["val"], label=val_label, color=val_colors[color_idx], 
+                     alpha=0.8, linewidth=1.5 if is_cv else 2.0, linestyle='--')
         
     plt.yscale('log')
     plt.xlabel("Epoch", labelpad=10)
@@ -182,13 +204,15 @@ def plot_training_loss(loss_history: dict | list[dict], save_path: str | Path, m
     
     title = f"{model_name}: Training Progress"
     if is_cv:
-        title += f" ({len(histories)} Folds)"
+        title += f" ({n_folds} Folds)"
     plt.title(title.upper(), pad=15, fontsize=14, fontweight='bold')
     
     # Handle potentially large legend
     ncol = 2 if is_cv else 1
+    # Adjust legend position and size if many folds
+    fontsize = 8 if n_folds > 5 else 9
     plt.legend(loc='upper right', frameon=True, facecolor='white', framealpha=0.9, 
-               fontsize=9 if is_cv else 11, ncol=ncol)
+               fontsize=fontsize if is_cv else 11, ncol=ncol)
     
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')

@@ -325,6 +325,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     participant_stats = []
     permutation_importances = []
     cv_histories = []
+    cv_val_participants = []
 
     for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
         if cv_strategy == 'participant':
@@ -348,7 +349,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         kwargs = {'sample_weight': sample_weight}
         
         # Apply Strict Cross-Participant Early Stopping if enabled
-        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention']:
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer', 'lstm', 'gru']:
             from sklearn.model_selection import GroupShuffleSplit
             groups_train = groups[train_idx]
             val_p = CV_CONFIG.get('strict_val_participants', 2)
@@ -369,6 +370,8 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             X_train_fold = X_train_fold.iloc[inner_train_idx]
             y_train_fold = y_train_fold.iloc[inner_train_idx]
             
+            cv_val_participants.append(list(val_participants))
+            
             if sample_weight is not None:
                 sample_weight = sample_weight[inner_train_idx]
             kwargs['sample_weight'] = sample_weight
@@ -377,6 +380,11 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             kwargs['y_val'] = y_val_fold
             
         model.fit(X_train_fold, y_train_fold, **kwargs)
+        
+        # If we didn't use strict val split, we might still want to track the test participants for labeling
+        if not CV_CONFIG.get('strict_val_split', False) and cv_strategy == 'participant':
+            cv_val_participants.append(list(test_participants))
+            
         train_time = time.perf_counter() - start_train
         
         start_inf = time.perf_counter()
@@ -441,7 +449,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         kwargs = {'sample_weight': sample_weight}
         
         # Apply Strict Cross-Participant Early Stopping for the final model
-        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer']:
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer', 'lstm', 'gru']:
             from sklearn.model_selection import GroupShuffleSplit
             val_p = CV_CONFIG.get('strict_val_participants', 2)
             
@@ -477,7 +485,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         for k in permutation_importances[0].keys():
             avg_permutation_importance[k] = np.mean([pi[k] for pi in permutation_importances])
 
-    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories
+    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories, cv_val_participants
 
 
 def execute_single_split(X, y, df, model_type, split_val):
@@ -521,7 +529,8 @@ def execute_single_split(X, y, df, model_type, split_val):
     return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp
 
 
-def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, oof_predictions, all_histories=None):
+def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, oof_predictions, 
+                         all_histories=None, val_participants=None):
     """Save model file, regression plot, and loss plot."""
     model_path = run_dir / f"{model_type}_model.joblib"
     model.save(model_path)
@@ -535,7 +544,9 @@ def save_basic_artifacts(model, run_dir, model_type, use_cv, y, y_test, y_pred, 
     if hasattr(model, 'plot_loss'):
         loss_plot_path = run_dir / "loss_plot.png"
         if all_histories and len(all_histories) > 0:
-            plotting_utils.plot_training_loss(all_histories, loss_plot_path, model_name=model_type.upper().replace("_", " "))
+            plotting_utils.plot_training_loss(all_histories, loss_plot_path, 
+                                              model_name=model_type.upper().replace("_", " "),
+                                              val_participants=val_participants)
         else:
             model.plot_loss(loss_plot_path)
 
@@ -675,7 +686,7 @@ def main():
     print_data_summary(X, y, is_raw_segment, is_sequence)
     # 4. Training & Evaluation
     if CV_CONFIG.get('use_cross_val', True):
-        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories = execute_cross_validation(
+        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p = execute_cross_validation(
             X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
         )
         avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
@@ -689,7 +700,8 @@ def main():
         avg_metrics, std_metrics, oof_predictions, participant_stats, all_histories = None, None, None, None, None
 
     # 5. Artifacts & Specialized Plots
-    save_basic_artifacts(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions, all_histories=all_histories)
+    save_basic_artifacts(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions, 
+                         all_histories=all_histories, val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None)
     per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), df, X, X_test, y, y_test, y_pred, 
                                              oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
                                              

@@ -254,14 +254,18 @@ class TCNRegressor:
             self.scaler.fit(all_data)
         return [self.scaler.transform(self._sanitise(seg)).astype(np.float32) for seg in segments]
 
-    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None, X_val=None, y_val=None):
         from sklearn.model_selection import train_test_split
         
-        stratify = X["label"] if "label" in X.columns else None
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=self.validation_split,
-            random_state=self.random_state, stratify=stratify,
-        )
+        if X_val is not None and y_val is not None:
+            X_train, y_train = X, y
+            print(f"[{self.__class__.__name__}] Using explicitly provided validation set ({len(X_val)} samples).")
+        else:
+            stratify = X["label"] if "label" in X.columns else None
+            X_train, X_val, y_train, y_val = train_test_split(
+                X, y, test_size=self.validation_split,
+                random_state=self.random_state, stratify=stratify,
+            )
 
         segs_train = self._extract_raw_segments(X_train)
         segs_val = self._extract_raw_segments(X_val)

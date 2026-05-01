@@ -133,17 +133,21 @@ class LSTMRegressor:
         arr = np.where(np.isfinite(arr), arr, 0.0)
         return np.clip(arr, -clip, clip)
         
-    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None):
+    def fit(self, X: pd.DataFrame, y: pd.Series, sample_weight=None, X_val=None, y_val=None):
         from sklearn.model_selection import train_test_split
         from tqdm import tqdm
         import copy
         
         # 1. Split data into train and validation sets
-        stratify = X["label"] if "label" in X.columns else None # Optional if labels are present in X, otherwise None
-        # X and y indices must align
-        X_train, X_val, y_train, y_val = train_test_split(
-            X, y, test_size=self.validation_split, random_state=self.random_state, stratify=stratify
-        )
+        if X_val is not None and y_val is not None:
+            X_train, y_train = X, y
+            print(f"[{self.__class__.__name__}] Using explicitly provided validation set ({len(X_val)} samples).")
+        else:
+            stratify = X["label"] if "label" in X.columns else None # Optional if labels are present in X, otherwise None
+            # X and y indices must align
+            X_train, X_val, y_train, y_val = train_test_split(
+                X, y, test_size=self.validation_split, random_state=self.random_state, stratify=stratify
+            )
         
         # 2. Extract sequences
         sequences_train = self._extract_sequences(X_train)
