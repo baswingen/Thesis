@@ -55,10 +55,12 @@ class PositionalEncoding(nn.Module):
 
 class SpatioTemporalTransformerNetwork(nn.Module):
     def __init__(self, channel_indices: dict, d_model: int, nhead_spatial: int, num_layers_spatial: int, 
-                 nhead_temporal: int, num_layers_temporal: int, dim_feedforward: int, dropout_rate: float):
+                 nhead_temporal: int, num_layers_temporal: int, dim_feedforward: int, dropout_rate: float,
+                 use_checkpointing: bool = False):
         super().__init__()
         
         self.d_model = d_model
+        self.use_checkpointing = use_checkpointing
         
         # 1. Channel Projections
         self.channel_projections = nn.ModuleDict()
@@ -80,7 +82,7 @@ class SpatioTemporalTransformerNetwork(nn.Module):
             dropout=dropout_rate, batch_first=True
         )
         self.spatial_transformer = nn.TransformerEncoder(
-            spatial_layer, num_layers=num_layers_spatial, enable_nested_tensor=False
+            spatial_layer, num_layers=num_layers_spatial, enable_nested_tensor=True
         )
         
         # 4. Temporal Positional Encoding
@@ -92,7 +94,7 @@ class SpatioTemporalTransformerNetwork(nn.Module):
             dropout=dropout_rate, batch_first=True
         )
         self.temporal_transformer = nn.TransformerEncoder(
-            temporal_layer, num_layers=num_layers_temporal, enable_nested_tensor=False
+            temporal_layer, num_layers=num_layers_temporal, enable_nested_tensor=True
         )
         
         # 6. Final Regressor
@@ -123,8 +125,21 @@ class SpatioTemporalTransformerNetwork(nn.Module):
         # Reshape for Spatial Transformer: [B*T, C, d_model]
         x_spatial = x_spatial.view(B * T, C, self.d_model)
         
-        # Pass through Spatial Transformer (NO CAUSAL MASK here, channels can all see each other)
-        x_spatial_out = self.spatial_transformer(x_spatial)
+        # Pass through Spatial Transformer
+        if self.use_checkpointing and self.training:
+            def create_custom_forward(module):
+                def custom_forward(*inputs):
+                    return module(*inputs)
+                return custom_forward
+            
+            # Use checkpointing for the whole spatial encoder
+            x_spatial_out = torch.utils.checkpoint.checkpoint(
+                create_custom_forward(self.spatial_transformer), 
+                x_spatial, 
+                use_reentrant=False
+            )
+        else:
+            x_spatial_out = self.spatial_transformer(x_spatial)
         
         # Pool spatial tokens (mean pooling across channels) to create one spatio-temporal token per timestep
         x_temporal_input = x_spatial_out.mean(dim=1) # [B*T, d_model]
@@ -140,9 +155,21 @@ class SpatioTemporalTransformerNetwork(nn.Module):
         causal_mask = nn.Transformer.generate_square_subsequent_mask(T).to(torch.bool).to(x.device)
         
         # Pass through Temporal Transformer
-        x_temporal_out = self.temporal_transformer(
-            x_temporal, mask=causal_mask, src_key_padding_mask=padding_mask
-        )
+        if self.use_checkpointing and self.training:
+            def create_custom_forward(module):
+                def custom_forward(src, mask, src_key_padding_mask):
+                    return module(src, mask=mask, src_key_padding_mask=src_key_padding_mask)
+                return custom_forward
+            
+            x_temporal_out = torch.utils.checkpoint.checkpoint(
+                create_custom_forward(self.temporal_transformer),
+                x_temporal, causal_mask, padding_mask,
+                use_reentrant=False
+            )
+        else:
+            x_temporal_out = self.temporal_transformer(
+                x_temporal, mask=causal_mask, src_key_padding_mask=padding_mask
+            )
         
         # Pull last valid token for regression
         last_tokens = x_temporal_out[torch.arange(B), lengths - 1, :]
@@ -173,6 +200,8 @@ class SpatioTemporalTransformerRegressor:
                  imu_window_size_sec: float = FEATURE_CONFIG['imu_window_size_sec'],
                  window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
+                 use_checkpointing: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_checkpointing', True),
+                 use_amp: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_amp', True),
                  random_state: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['random_state']):
                  
         self.d_model = d_model
@@ -194,6 +223,8 @@ class SpatioTemporalTransformerRegressor:
         self.imu_window_size_sec = imu_window_size_sec
         self.window_step_sec = window_step_sec
         self.loss_type = loss_type.lower()
+        self.use_checkpointing = use_checkpointing
+        self.use_amp = use_amp
         self.random_state = random_state
         
         self.loss_history = {"train": [], "val": []}
@@ -300,7 +331,8 @@ class SpatioTemporalTransformerRegressor:
             nhead_temporal=self.nhead_temporal,
             num_layers_temporal=self.num_layers_temporal,
             dim_feedforward=self.dim_feedforward, 
-            dropout_rate=self.dropout_rate
+            dropout_rate=self.dropout_rate,
+            use_checkpointing=self.use_checkpointing
         ).to(self.device)
         
         optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
@@ -321,6 +353,8 @@ class SpatioTemporalTransformerRegressor:
         patience_counter = 0
         best_model_weights = copy.deepcopy(self.model.state_dict())
         
+        scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
+        
         with tqdm(range(self.epochs), desc="Training Spatio-Temporal Transformer", unit="epoch") as pbar:
             for epoch in pbar:
                 self.model.train()
@@ -330,11 +364,22 @@ class SpatioTemporalTransformerRegressor:
                     lengths = lengths.to(self.device)
                     
                     optimizer.zero_grad()
-                    outputs = self.model(batch_x, lengths)
-                    loss = criterion(outputs, batch_y)
-                    loss.backward()
+                    
+                    # Use AMP for forward pass
+                    with torch.cuda.amp.autocast(enabled=self.use_amp):
+                        outputs = self.model(batch_x, lengths)
+                        loss = criterion(outputs, batch_y)
+                    
+                    # Scales loss, and calls backward() to create scaled gradients
+                    scaler.scale(loss).backward()
+                    
+                    # Unscales gradients and clips them
+                    scaler.unscale_(optimizer)
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                    optimizer.step()
+                    
+                    # Optimizer step and scaler update
+                    scaler.step(optimizer)
+                    scaler.update()
                     
                     running_loss += loss.item() * batch_x.size(0)
                     
@@ -343,12 +388,13 @@ class SpatioTemporalTransformerRegressor:
                 self.model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
-                    for batch_x, batch_y, lengths in loader_val:
-                        batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
-                        lengths = lengths.to(self.device)
-                        outputs = self.model(batch_x, lengths)
-                        loss = criterion(outputs, batch_y)
-                        val_loss += loss.item() * batch_x.size(0)
+                    with torch.cuda.amp.autocast(enabled=self.use_amp):
+                        for batch_x, batch_y, lengths in loader_val:
+                            batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                            lengths = lengths.to(self.device)
+                            outputs = self.model(batch_x, lengths)
+                            loss = criterion(outputs, batch_y)
+                            val_loss += loss.item() * batch_x.size(0)
                 
                 avg_val_loss = val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
@@ -443,6 +489,8 @@ class SpatioTemporalTransformerRegressor:
                 'emg_window_size_sec': self.emg_window_size_sec,
                 'imu_window_size_sec': self.imu_window_size_sec,
                 'window_step_sec': self.window_step_sec,
+                'use_checkpointing': self.use_checkpointing,
+                'use_amp': self.use_amp,
                 'random_state': self.random_state
             },
             'split_info': {
@@ -469,7 +517,8 @@ class SpatioTemporalTransformerRegressor:
             nhead_temporal=state['config']['nhead_temporal'],
             num_layers_temporal=state['config']['num_layers_temporal'],
             dim_feedforward=state['config']['dim_feedforward'],
-            dropout_rate=state['config']['dropout_rate']
+            dropout_rate=state['config']['dropout_rate'],
+            use_checkpointing=state['config'].get('use_checkpointing', False)
         ).to(regressor.device)
         
         regressor.model.load_state_dict(state['model_state'])

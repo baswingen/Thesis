@@ -476,21 +476,23 @@ TRANSFORMER_CONFIG = {
 
 # Spatio-Temporal Transformer Configuration
 SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
-    'd_model': 256,
-    'nhead_spatial': 8,
-    'num_layers_spatial': 4,
-    'nhead_temporal': 8,
-    'num_layers_temporal': 4,
-    'dim_feedforward': 1024,
+    'd_model': 192,             # Slightly reduced from 256
+    'nhead_spatial': 6,         # Adjusted for d_model=192 (must divide d_model)
+    'num_layers_spatial': 3,    # Slightly reduced from 4
+    'nhead_temporal': 6,
+    'num_layers_temporal': 3,
+    'dim_feedforward': 512,     # Reduced from 1024 (major memory saver)
     'dropout_rate': 0.4,
     'learning_rate': 0.001,
     'weight_decay': 1e-4,
-    'batch_size': 128,
+    'batch_size': 32,           # Reduced from 128 (CRITICAL for memory)
     'epochs': 150,
     'validation_split': 0.1,
     'early_stopping_patience': 50,
     'scheduler_patience': 5,
     'scheduler_factor': 0.5,
+    'use_checkpointing': True,  # Memory-compute trade-off
+    'use_amp': True,            # Mixed precision (saves 50% activation memory)
     'random_state': GLOBAL_RANDOM_STATE
 }
 
@@ -533,6 +535,8 @@ if DEV_MODE:
         'nhead_temporal': 4,
         'num_layers_temporal': 2,
         'dim_feedforward': 128,
+        'use_checkpointing': False, # Disable for dev mode for speed
+        'use_amp': True,
     })
     
     CNN_LSTM_CONFIG.update({
