@@ -11,11 +11,11 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "lstm"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
+MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = True
+DEV_MODE = False
 DEV_FRACTION = 0.1
 DEV_CV_FOLDS = 3
 DEV_EPOCHS = 50
