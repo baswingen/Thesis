@@ -1,7 +1,7 @@
 Database found at /scratch/bwingen/thesis/database
 Using Python: /scratch/bwingen/thesis_env/bin/python
 Python 3.10.20
-Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260501_155619
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260502_071911
 [DataLoader] No precomputed features found. Falling back to live extraction.
   → Run 'python -m model.feature_extraction' to precompute features.
 Sequence Data Summary:
@@ -14,77 +14,105 @@ Starting 9-Fold Cross-Participant Validation...
 --- Fold 1/9 (Left out Participants: P01) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (996 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 64. Best Val Loss: 0.9877
-    Train MAE: 0.5955 | Test MAE: 0.6817 | Gap: 0.0862
-    Train RMSE: 1.0271 | Test RMSE: 1.2216 | Ratio: 1.19x
+Early stopping triggered at epoch 52. Best Val Loss: 0.7820
+    Train MAE: 0.4475 | Test MAE: 0.5125 | Gap: 0.0650
+    Train RMSE: 0.8240 | Test RMSE: 0.9430 | Ratio: 1.14x
 --- Fold 2/9 (Left out Participants: P02, P10) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P11
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1497 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 60. Best Val Loss: 3.3028
-    Train MAE: 1.5154 | Test MAE: 1.5150 | Gap: -0.0004
-    Train RMSE: 1.8063 | Test RMSE: 1.8062 | Ratio: 1.00x
+Early stopping triggered at epoch 53. Best Val Loss: 3.2577
+    Train MAE: 1.4956 | Test MAE: 1.4952 | Gap: -0.0004
+    Train RMSE: 1.8033 | Test RMSE: 1.8034 | Ratio: 1.00x
 --- Fold 3/9 (Left out Participants: P03, P18) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (996 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 55. Best Val Loss: 3.2864
-    Train MAE: 1.5194 | Test MAE: 1.5253 | Gap: 0.0059
-    Train RMSE: 1.8068 | Test RMSE: 1.8129 | Ratio: 1.00x
+Early stopping triggered at epoch 51. Best Val Loss: 0.8388
+    Train MAE: 0.5077 | Test MAE: 0.5010 | Gap: -0.0068
+    Train RMSE: 0.8896 | Test RMSE: 0.9077 | Ratio: 1.02x
 --- Fold 4/9 (Left out Participants: P04, P05) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P06, P11
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1990 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 60. Best Val Loss: 3.2921
-    Train MAE: 1.5248 | Test MAE: 1.5238 | Gap: -0.0010
-    Train RMSE: 1.8086 | Test RMSE: 1.8075 | Ratio: 1.00x
+Early stopping triggered at epoch 51. Best Val Loss: 1.2855
+    Train MAE: 0.5934 | Test MAE: 0.5682 | Gap: -0.0253
+    Train RMSE: 0.9709 | Test RMSE: 0.9419 | Ratio: 0.97x
 --- Fold 5/9 (Left out Participants: P11, P13, P14) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P01, P10
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (4926 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 67. Best Val Loss: 1.0533
-    Train MAE: 0.5714 | Test MAE: 0.7282 | Gap: 0.1568
-    Train RMSE: 0.9738 | Test RMSE: 1.2467 | Ratio: 1.28x
+Early stopping triggered at epoch 51. Best Val Loss: 0.7058
+    Train MAE: 0.5091 | Test MAE: 0.6422 | Gap: 0.1331
+    Train RMSE: 0.8946 | Test RMSE: 1.1369 | Ratio: 1.27x
 --- Fold 6/9 (Left out Participants: P09, P17) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P10
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1495 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 75. Best Val Loss: 1.3686
-    Train MAE: 0.6946 | Test MAE: 0.6682 | Gap: -0.0263
-    Train RMSE: 1.1854 | Test RMSE: 1.1535 | Ratio: 0.97x
+Early stopping triggered at epoch 51. Best Val Loss: 0.7059
+    Train MAE: 0.6262 | Test MAE: 0.6515 | Gap: 0.0254
+    Train RMSE: 0.9121 | Test RMSE: 0.9826 | Ratio: 1.08x
 --- Fold 7/9 (Left out Participants: P07, P08) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P11
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1996 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 51. Best Val Loss: 1.0626
-    Train MAE: 0.6429 | Test MAE: 0.7605 | Gap: 0.1176
-    Train RMSE: 1.0334 | Test RMSE: 1.2264 | Ratio: 1.19x
+Early stopping triggered at epoch 52. Best Val Loss: 0.5991
+    Train MAE: 0.5993 | Test MAE: 0.5156 | Gap: -0.0837
+    Train RMSE: 1.0266 | Test RMSE: 0.8902 | Ratio: 0.87x
 --- Fold 8/9 (Left out Participants: P15, P16) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P09
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1995 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 65. Best Val Loss: 1.2347
-    Train MAE: 0.6218 | Test MAE: 0.7821 | Gap: 0.1604
-    Train RMSE: 1.0903 | Test RMSE: 1.3907 | Ratio: 1.28x
+Early stopping triggered at epoch 52. Best Val Loss: 0.7618
+    Train MAE: 0.7250 | Test MAE: 0.6318 | Gap: -0.0933
+    Train RMSE: 1.0157 | Test RMSE: 0.9251 | Ratio: 0.91x
 --- Fold 9/9 (Left out Participants: P06, P12) ---
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P04, P10
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1495 samples).
 [SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
 
-Early stopping triggered at epoch 51. Best Val Loss: 0.9289
-    Train MAE: 0.5415 | Test MAE: 0.4735 | Gap: -0.0680
-    Train RMSE: 0.9660 | Test RMSE: 0.8422 | Ratio: 0.87x
+Early stopping triggered at epoch 51. Best Val Loss: 0.8548
+    Train MAE: 0.4628 | Test MAE: 0.4497 | Gap: -0.0130
+    Train RMSE: 0.8319 | Test RMSE: 0.7888 | Ratio: 0.95x
 
 Training final model on full dataset for saving...
 Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'random_state': 245}
 [SpatioTemporalTransformerRegressor] Using device: cuda
     [Strict Validation] Holding out 2 participants from final dataset for early stopping: P07, P14
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (1495 samples).
+[SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
+
+Early stopping triggered at epoch 52. Best Val Loss: 0.8060
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260502_071911/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260502_071911/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260502_071911/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260502_071911/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260502_071911/performance_report.txt
