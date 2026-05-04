@@ -42,7 +42,7 @@ def update_metadata(file_path, participant_id=None, trial_num=None):
 
 def main():
     # Case 1: P08 Trial Correction
-    p08_dir = Path("database/participant_P08/session_01")
+    p08_dir = Path("/Volumes/Laurens SSD/BasData/participant_P08/session_01")
     old_p08_file = p08_dir / "trial_1_20260408_132419.h5"
     new_p08_file = p08_dir / "trial_2_20260408_132419.h5"
     
@@ -57,7 +57,7 @@ def main():
         print(f"[WARN] Could not find P08 trial file to fix.")
 
     # Case 2: P09 Participant Correction
-    p09_file = Path("database/participant_P09/session_01/trial_1_20260408_163009.h5")
+    p09_file = Path("/Volumes/Laurens SSD/BasData/participant_P09/session_01/trial_1_20260408_163009.h5")
     if p09_file.exists():
         update_metadata(p09_file, participant_id="P09")
     else:
