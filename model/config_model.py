@@ -493,6 +493,11 @@ SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
     'scheduler_factor': 0.5,
     'use_checkpointing': True,  # Memory-compute trade-off
     'use_amp': True,            # Mixed precision (saves 50% activation memory)
+    'scheduler': {
+        'type': 'OneCycleLR',
+        'max_lr': 0.001,
+        'pct_start': 0.1,  # 10% of total steps for warmup
+    },
     'random_state': GLOBAL_RANDOM_STATE
 }
 

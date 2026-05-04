@@ -202,7 +202,8 @@ class SpatioTemporalTransformerRegressor:
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  use_checkpointing: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_checkpointing', True),
                  use_amp: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_amp', True),
-                 random_state: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['random_state']):
+                 random_state: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['random_state'],
+                 max_seq_len: int = None):
                  
         self.d_model = d_model
         self.nhead_spatial = nhead_spatial
@@ -226,6 +227,7 @@ class SpatioTemporalTransformerRegressor:
         self.use_checkpointing = use_checkpointing
         self.use_amp = use_amp
         self.random_state = random_state
+        self.max_seq_len = max_seq_len
         
         self.loss_history = {"train": [], "val": []}
         self.train_samples = 0
@@ -286,6 +288,19 @@ class SpatioTemporalTransformerRegressor:
         
         sequences_train = self._extract_sequences(X_train)
         sequences_val = self._extract_sequences(X_val)
+        
+        # Determine max_seq_len to cap dataset and avoid excessive padding
+        train_lengths = [len(seq) for seq in sequences_train]
+        from collections import Counter
+        counts = Counter(train_lengths)
+        min_count = max(2, int(len(sequences_train) * 0.005))
+        valid_lengths = [l for l, c in counts.items() if c >= min_count]
+        self.max_seq_len = max(valid_lengths) if valid_lengths else max(train_lengths)
+        print(f"[{self.__class__.__name__}] Capping sequence length at {self.max_seq_len} based on sample distribution (min_count={min_count}).")
+        
+        sequences_train = [seq[:self.max_seq_len] for seq in sequences_train]
+        sequences_val = [seq[:self.max_seq_len] for seq in sequences_val]
+        
         self.feature_names = list(sequences_train[0][0].keys())
         self._build_channel_indices()
         
@@ -340,7 +355,6 @@ class SpatioTemporalTransformerRegressor:
         ).to(self.device)
         
         optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=self.scheduler_patience, factor=self.scheduler_factor)
         
         if self.loss_type == 'mae':
             criterion = nn.L1Loss()
@@ -349,6 +363,23 @@ class SpatioTemporalTransformerRegressor:
         
         dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
+        
+        from model.config_model import SPATIO_TEMPORAL_TRANSFORMER_CONFIG
+        scheduler_config = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler', {'type': 'ReduceLROnPlateau'})
+        
+        if scheduler_config.get('type') == 'OneCycleLR':
+            total_steps = self.epochs * len(loader_train)
+            scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer,
+                max_lr=scheduler_config.get('max_lr', self.learning_rate),
+                total_steps=total_steps,
+                pct_start=scheduler_config.get('pct_start', 0.1),
+                anneal_strategy='cos'
+            )
+        else:
+            scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, mode='min', patience=self.scheduler_patience, factor=self.scheduler_factor
+            )
         
         dataset_val = SequenceDataset(scaled_seqs_val, y_tensor_val)
         loader_val = DataLoader(dataset_val, batch_size=self.batch_size, shuffle=False, collate_fn=pad_collate_fn)
@@ -385,6 +416,9 @@ class SpatioTemporalTransformerRegressor:
                     scaler.step(optimizer)
                     scaler.update()
                     
+                    if scheduler_config.get('type') == 'OneCycleLR':
+                        scheduler.step()
+                        
                     running_loss += loss.item() * batch_x.size(0)
                     
                 avg_train_loss = running_loss / len(dataset_train)
@@ -403,7 +437,9 @@ class SpatioTemporalTransformerRegressor:
                 avg_val_loss = val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
                 
-                scheduler.step(avg_val_loss)
+                if scheduler_config.get('type') != 'OneCycleLR':
+                    scheduler.step(avg_val_loss)
+                    
                 self.loss_history["train"].append(avg_train_loss)
                 self.loss_history["val"].append(avg_val_loss)
                 
@@ -426,7 +462,9 @@ class SpatioTemporalTransformerRegressor:
             raise ValueError("Model not fitted.")
             
         sequences = self._extract_sequences(X)
-        
+        if getattr(self, 'max_seq_len', None) is not None:
+            sequences = [seq[:self.max_seq_len] for seq in sequences]
+            
         scaled_seqs = []
         for seq in sequences:
             seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
@@ -495,7 +533,8 @@ class SpatioTemporalTransformerRegressor:
                 'window_step_sec': self.window_step_sec,
                 'use_checkpointing': self.use_checkpointing,
                 'use_amp': self.use_amp,
-                'random_state': self.random_state
+                'random_state': self.random_state,
+                'max_seq_len': getattr(self, 'max_seq_len', None)
             },
             'split_info': {
                 'train_samples': self.train_samples,
