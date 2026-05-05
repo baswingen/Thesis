@@ -1,0 +1,956 @@
+[
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_1128",
+    "participant": "P01",
+    "reasons": "outlier(5.71%)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_1908",
+    "participant": "P01",
+    "reasons": "imu_flatline(23.6%/yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0001",
+    "participant": "P03",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P03",
+    "reasons": "imu_flatline(72.8%/ax2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0003",
+    "participant": "P03",
+    "reasons": "imu_flatline(100.0%/ax2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P03",
+    "reasons": "imu_flatline(100.0%/ax2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0005",
+    "participant": "P03",
+    "reasons": "imu_flatline(100.0%/ax2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0006",
+    "participant": "P03",
+    "reasons": "imu_flatline(100.0%/ax2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0007",
+    "participant": "P03",
+    "reasons": "imu_flatline(100.0%/ax2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0008",
+    "participant": "P03",
+    "reasons": "imu_flatline(44.0%/ax2)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0254",
+    "participant": "P03",
+    "reasons": "imu_flatline(41.0%/ax2); outlier(2.82%)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0650",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0651",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0652",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0653",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0654",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0655",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0656",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0657",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0658",
+    "participant": "P04",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0001",
+    "participant": "P05",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P05",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0003",
+    "participant": "P05",
+    "reasons": "imu_flatline(94.3%/pitch_rad2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P05",
+    "reasons": "imu_flatline(79.0%/pitch_rad2)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0284",
+    "participant": "P05",
+    "reasons": "outlier(3.06%)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0255",
+    "participant": "P06",
+    "reasons": "dead_channels(roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0256",
+    "participant": "P06",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0257",
+    "participant": "P06",
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0834",
+    "participant": "P06",
+    "reasons": "too_short(0.235s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0642",
+    "participant": "P07",
+    "reasons": "too_short(0.243s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0880",
+    "participant": "P07",
+    "reasons": "outlier(6.41%)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0142",
+    "participant": "P08",
+    "reasons": "outlier(3.61%)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0480",
+    "participant": "P08",
+    "reasons": "outlier(2.56%)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0511",
+    "participant": "P08",
+    "reasons": "outlier(3.46%)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0774",
+    "participant": "P08",
+    "reasons": "outlier(5.45%)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0182",
+    "participant": "P09",
+    "reasons": "too_short(0.010s)"
+  },
+  {
+    "file": "participant_P12_session_01_segments.h5",
+    "segment": "segment_0084",
+    "participant": "P12",
+    "reasons": "too_short(0.077s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0224",
+    "participant": "P13",
+    "reasons": "too_short(0.113s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0350",
+    "participant": "P13",
+    "reasons": "outlier(2.24%)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0372",
+    "participant": "P14",
+    "reasons": "too_short(0.116s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0717",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0718",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0719",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0720",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0721",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0722",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0723",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0724",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0725",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0726",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0727",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0728",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0729",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0730",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0731",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0732",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0733",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0734",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0735",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0736",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0737",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0738",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0739",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0740",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0741",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0742",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0743",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0744",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0745",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0746",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0747",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0748",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0749",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0750",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0751",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0752",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0753",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0754",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0755",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0756",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0757",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0758",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0759",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0760",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0761",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0762",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0763",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0764",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0765",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0766",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0767",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0768",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0769",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0770",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0771",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0772",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0773",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0774",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0775",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0776",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0777",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0778",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0779",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0780",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0781",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0782",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0783",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0784",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0785",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0786",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0787",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0788",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0789",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0790",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0791",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0792",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0793",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0794",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0795",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0796",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0797",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0798",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0799",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0800",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0801",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0802",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0803",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0804",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0805",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0806",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0807",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0808",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0809",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0810",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0811",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0812",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0813",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0814",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0815",
+    "participant": "P15",
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0816",
+    "participant": "P15",
+    "reasons": "emg_flatline(37.8%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0817",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0818",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0819",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0820",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0821",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0822",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0823",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR)); outlier(2.76%)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0824",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0825",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0826",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0827",
+    "participant": "P15",
+    "reasons": "emg_flatline(100.0%/Extensor Carpi Radialis (ECR)); dead_channels(Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0828",
+    "participant": "P15",
+    "reasons": "emg_flatline(17.5%/Extensor Carpi Radialis (ECR))"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0969",
+    "participant": "P15",
+    "reasons": "outlier(2.42%)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P16",
+    "reasons": "outlier(2.43%)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0514",
+    "participant": "P16",
+    "reasons": "outlier(2.09%)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0714",
+    "participant": "P16",
+    "reasons": "outlier(3.61%)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0016",
+    "participant": "P18",
+    "reasons": "dead_channels(ax1;ay1;az1;roll_rad1;pitch_rad1;yaw_rad1)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0017",
+    "participant": "P18",
+    "reasons": "dead_channels(ax1;ay1;az1;roll_rad1;pitch_rad1;yaw_rad1)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0075",
+    "participant": "P18",
+    "reasons": "dead_channels(ax1;ay1;az1;roll_rad1;pitch_rad1;yaw_rad1)"
+  }
+]

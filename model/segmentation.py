@@ -967,7 +967,14 @@ def save_precomputed_features(
                 if "sequence_dicts" in feat_dict:
                     windows: list[dict] = feat_dict["sequence_dicts"]  # type: ignore[assignment]
                     if windows:
-                        all_keys = list(windows[0].keys())
+                        # Use intersection of keys across all windows to handle
+                        # edge-case segments where a boundary window produces
+                        # fewer features than others.
+                        common_keys = set(windows[0].keys())
+                        for w in windows[1:]:
+                            common_keys &= set(w.keys())
+                        all_keys = sorted(common_keys)
+
                         arr = np.array(
                             [[w[k] for k in all_keys] for w in windows],
                             dtype=np.float64,

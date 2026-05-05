@@ -15,10 +15,10 @@ MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp",
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = False
+DEV_MODE = True
 DEV_FRACTION = 0.1
 DEV_CV_FOLDS = 3
-DEV_EPOCHS = 50
+DEV_EPOCHS = 25
 DEV_EARLY_STOPPING_PATIENCE = 5
 
 # ──────────────────────────────────────────────────────────

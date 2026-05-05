@@ -1,4 +1,5 @@
 import h5py
+import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -8,6 +9,28 @@ import os
 
 from model.feature_extraction import FeatureExtractor
 from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, TRUE_WEIGHTS
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Segment Blacklist (loaded once from data_analysis/results/blacklist.json)
+# ─────────────────────────────────────────────────────────────────────────────
+_BLACKLIST_PATH = Path(__file__).resolve().parent.parent / "data_analysis" / "results" / "blacklist.json"
+
+def _load_blacklist() -> set[tuple[str, str]]:
+    """Load the blacklist as a set of (filename, segment_key) tuples."""
+    if not _BLACKLIST_PATH.exists():
+        return set()
+    try:
+        with open(_BLACKLIST_PATH) as f:
+            entries = json.load(f)
+        bl = {(e["file"], e["segment"]) for e in entries}
+        if bl:
+            print(f"[DataLoader] Loaded blacklist: {len(bl)} segments will be skipped.")
+        return bl
+    except Exception as exc:
+        print(f"[DataLoader] WARNING: Failed to load blacklist: {exc}")
+        return set()
+
+SEGMENT_BLACKLIST: set[tuple[str, str]] = _load_blacklist()
 
 #: Anthropometric attribute names stored as file-level attrs in segment HDF5
 _ANTHRO_ATTR_NAMES = [
@@ -106,12 +129,16 @@ class DataLoader:
             if not seg_feats:
                 return pd.DataFrame()  # caller will fall back to live extraction
 
+            n_skipped_bl = 0
             with h5py.File(path, "r") as f:
                 for seg_key in tqdm(
                     sorted(seg_feats.keys()),
                     desc=f"Loading precomputed ({path.name})",
                     unit="segment",
                 ):
+                    if (path.name, seg_key) in SEGMENT_BLACKLIST:
+                        n_skipped_bl += 1
+                        continue
                     feat_dict = seg_feats[seg_key]
                     grp = f[seg_key]
 
@@ -146,6 +173,9 @@ class DataLoader:
                         feat_dict["imu_fs_orig"] = grp["imu"].attrs.get("fs_orig", feat_dict["imu_fs"])
 
                     all_features.append(feat_dict)
+
+            if n_skipped_bl > 0:
+                print(f"[DataLoader] Skipped {n_skipped_bl} blacklisted segments in {path.name}")
 
         if not all_features:
             return pd.DataFrame()
@@ -183,6 +213,7 @@ class DataLoader:
                 print(f"[WARN] File not found: {path}")
                 continue
 
+            n_skipped_bl = 0
             with h5py.File(path, "r") as f:
                 segment_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
 
@@ -194,6 +225,9 @@ class DataLoader:
                 has_anthro = np.any(anthro_vec != 0.0)
 
                 for key in tqdm(segment_keys, desc=f"Loading raw ({path.name})", unit="seg"):
+                    if (path.name, key) in SEGMENT_BLACKLIST:
+                        n_skipped_bl += 1
+                        continue
                     grp = f[key]
 
                     # --- EMG ---
@@ -268,6 +302,9 @@ class DataLoader:
                         row["anthropometrics"] = anthro_vec.copy()
 
                     all_rows.append(row)
+
+            if n_skipped_bl > 0:
+                print(f"[DataLoader] Skipped {n_skipped_bl} blacklisted segments in {path.name}")
 
         if not all_rows:
             print("[WARN] No raw segments loaded.")
@@ -362,6 +399,9 @@ class DataLoader:
                 segment_keys = sorted(k for k in f.keys() if k.startswith("segment_"))
                 
                 for key in segment_keys:
+                    if (path.name, key) in SEGMENT_BLACKLIST:
+                        pbar.update(1)
+                        continue
                     grp = f[key]
                     
                     # Extract Data
