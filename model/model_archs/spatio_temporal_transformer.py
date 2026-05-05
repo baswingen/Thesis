@@ -203,7 +203,9 @@ class SpatioTemporalTransformerRegressor:
                  use_checkpointing: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_checkpointing', True),
                  use_amp: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_amp', True),
                  random_state: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['random_state'],
-                 max_seq_len: int = None):
+                 max_seq_len: int = None,
+                 scheduler: dict = None,
+                 **kwargs):
                  
         self.d_model = d_model
         self.nhead_spatial = nhead_spatial
