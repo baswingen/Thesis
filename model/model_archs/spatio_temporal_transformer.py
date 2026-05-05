@@ -152,7 +152,10 @@ class SpatioTemporalTransformerNetwork(nn.Module):
         
         # Create Temporal Masks
         padding_mask = torch.arange(T, device=x.device).expand(B, T) >= lengths.unsqueeze(1)
-        causal_mask = nn.Transformer.generate_square_subsequent_mask(T).to(torch.bool).to(x.device)
+        # Use a float mask instead of bool to avoid -inf overflow under AMP float16.
+        # generate_square_subsequent_mask already returns 0.0 / -inf in float,
+        # which is handled correctly by scaled_dot_product_attention.
+        causal_mask = nn.Transformer.generate_square_subsequent_mask(T, device=x.device)
         
         # Pass through Temporal Transformer
         if self.use_checkpointing and self.training:
@@ -403,12 +406,13 @@ class SpatioTemporalTransformerRegressor:
         patience_counter = 0
         best_model_weights = copy.deepcopy(self.model.state_dict())
         
-        scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
+        scaler = torch.amp.GradScaler('cuda', enabled=self.use_amp)
         
         with tqdm(range(self.epochs), desc="Training Spatio-Temporal Transformer", unit="epoch") as pbar:
             for epoch in pbar:
                 self.model.train()
                 running_loss = 0.0
+                n_train_samples = 0
                 for batch_x, batch_y, lengths in loader_train:
                     batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                     lengths = lengths.to(self.device)
@@ -416,9 +420,14 @@ class SpatioTemporalTransformerRegressor:
                     optimizer.zero_grad()
                     
                     # Use AMP for forward pass
-                    with torch.cuda.amp.autocast(enabled=self.use_amp):
+                    with torch.amp.autocast('cuda', enabled=self.use_amp):
                         outputs = self.model(batch_x, lengths)
                         loss = criterion(outputs, batch_y)
+                    
+                    # Guard against NaN loss (AMP float16 overflow)
+                    if not torch.isfinite(loss):
+                        optimizer.zero_grad()
+                        continue
                     
                     # Scales loss, and calls backward() to create scaled gradients
                     scaler.scale(loss).backward()
@@ -435,13 +444,14 @@ class SpatioTemporalTransformerRegressor:
                         scheduler.step()
                         
                     running_loss += loss.item() * batch_x.size(0)
+                    n_train_samples += batch_x.size(0)
                     
-                avg_train_loss = running_loss / len(dataset_train)
+                avg_train_loss = running_loss / max(n_train_samples, 1)
                 
                 self.model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
-                    with torch.cuda.amp.autocast(enabled=self.use_amp):
+                    with torch.amp.autocast('cuda', enabled=self.use_amp):
                         for batch_x, batch_y, lengths in loader_val:
                             batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                             lengths = lengths.to(self.device)
