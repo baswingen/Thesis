@@ -303,23 +303,42 @@ class SpatioTemporalTransformerRegressor:
         sequences_train = [seq[:self.max_seq_len] for seq in sequences_train]
         sequences_val = [seq[:self.max_seq_len] for seq in sequences_val]
         
-        self.feature_names = list(sequences_train[0][0].keys())
+        # Determine feature names robustly (union of all keys in a few samples)
+        self.feature_names = []
+        seen_keys = set()
+        for i in range(min(10, len(sequences_train))):
+            if sequences_train[i]:
+                for w in sequences_train[i]:
+                    for k in w.keys():
+                        if k not in seen_keys:
+                            self.feature_names.append(k)
+                            seen_keys.add(k)
+        
+        if not self.feature_names:
+            raise ValueError("No features found in training sequences.")
+            
         self._build_channel_indices()
         
-        # Flatten train to fit scaler
+        # Convert to arrays and fit scaler
         flat_data_train = []
         for seq in sequences_train:
-            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
+            seq_arr = np.array([[w.get(k, 0.0) for k in self.feature_names] for w in seq])
             flat_data_train.append(seq_arr)
             
         all_features_train = self._sanitise(np.vstack(flat_data_train))
         self.scaler.fit(all_features_train)
         
-        # Reconstruct scaled train sequences
+        # Transform sequences
         scaled_seqs_train = []
         for arr in flat_data_train:
             scaled_arr = self.scaler.transform(self._sanitise(arr)).astype(np.float32)
             scaled_seqs_train.append(scaled_arr) 
+            
+        scaled_seqs_val = []
+        for seq in sequences_val:
+            seq_arr = np.array([[w.get(k, 0.0) for k in self.feature_names] for w in seq])
+            scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
+            scaled_seqs_val.append(scaled_arr)
             
         y_np_train = y_train.values.astype(np.float32)
         
@@ -331,13 +350,7 @@ class SpatioTemporalTransformerRegressor:
         scaled_seqs_train = [torch.from_numpy(a) for a in scaled_seqs_train]
         y_tensor_train = torch.from_numpy(y_np_train).unsqueeze(1)
         
-        # Validation sequences
-        scaled_seqs_val = []
-        for seq in sequences_val:
-            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
-            scaled_seqs_val.append(torch.from_numpy(scaled_arr))
-            
+        scaled_seqs_val = [torch.from_numpy(a) for a in scaled_seqs_val]
         y_tensor_val = torch.from_numpy(y_val.values.astype(np.float32)).unsqueeze(1)
         
         self.train_samples = len(X_train)
@@ -469,7 +482,8 @@ class SpatioTemporalTransformerRegressor:
             
         scaled_seqs = []
         for seq in sequences:
-            seq_arr = np.array([[w[k] for k in self.feature_names] for w in seq])
+            # Use .get(k, 0.0) to handle missing features in test data
+            seq_arr = np.array([[w.get(k, 0.0) for k in self.feature_names] for w in seq])
             scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
             scaled_seqs.append(torch.from_numpy(scaled_arr))
             
