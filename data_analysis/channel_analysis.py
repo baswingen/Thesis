@@ -45,7 +45,7 @@ from model.config_model import CHANNEL_CONFIG
 H5_FILES = "all"
 
 if H5_FILES == "all":
-    H5_FILES = sorted(list((PROJECT_ROOT / "database" / "segments").glob("*.h5")))
+    H5_FILES = sorted(list(Path("/Volumes/Laurens SSD/BasData/segments").glob("*.h5")))
 
 OUT_DIR = PROJECT_ROOT / "data_analysis" / "results"
 

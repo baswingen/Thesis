@@ -14,7 +14,7 @@ Run:
 
 # Path to the .h5 file you want to inspect
 # Layout: database/participant_PXX/session_NN/trial_N_TIMESTAMP.h5
-FILE = r"database\participant_P09\session_01\trial_2_20260408_164859.h5"
+FILE = r"/Volumes/Laurens SSD/BasData/participant_P01/session_01/trial_3_20260304_150704.h5"
 
 # Dataset path inside the file.
 # Examples:
@@ -254,5 +254,10 @@ if __name__ == "__main__":
 
     x_idx, plot_cols = resolve_columns(col_names, INCLUDE_COLUMNS, EXCLUDE_COLUMNS, X_COLUMN)
     print(f"[INFO] Plotting {len(plot_cols)} column(s) vs {X_COLUMN or 'row index'}")
+
+    if x_idx is not None:
+        print(f"[INFO] Sorting data by {X_COLUMN} to prevent backward-drawing artifacts...")
+        sort_indices = np.argsort(data[:, x_idx])
+        data = data[sort_indices]
 
     plot(data, col_names, x_idx, plot_cols, DATASET, h5_path)

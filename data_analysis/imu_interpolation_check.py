@@ -6,7 +6,7 @@ from pathlib import Path
 def analyze_interpolation():
     # Paths
     base_dir = Path("/Users/baswingen/Library/Mobile Documents/com~apple~CloudDocs/Master Thesis/python/Thesis")
-    trial_file = base_dir / "database/participant_P01/session_01/trial_2_20260304_151841.h5"
+    trial_file = Path("/Volumes/Laurens SSD/BasData/participant_P01/session_01/trial_2_20260304_151841.h5")
     output_dir = base_dir / "data_analysis/results"
     output_dir.mkdir(parents=True, exist_ok=True)
     

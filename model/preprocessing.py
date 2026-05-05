@@ -78,6 +78,12 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 2000.0, overwri
         # Load the data matrix
         data = dset_synced[:]
         
+        # Sort data by timestamp to prevent backward-drawing or out-of-order artifacts
+        if t_pc_idx != -1:
+            print("Sorting synced matrix by t_pc_common...")
+            sort_indices = np.argsort(data[:, t_pc_idx])
+            data = data[sort_indices]
+        
         # Calculate robust FS from t_pc_common
         fs = fs_fallback
         if t_pc_idx != -1:
@@ -260,6 +266,12 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
         fs_imu = fs_fallback
         if "t_pc_common" in col_names_str:
             idx = col_names_str.index("t_pc_common")
+            
+            # Sort data by timestamp to prevent backward-drawing or out-of-order artifacts
+            print("Sorting synced matrix by t_pc_common...")
+            sort_indices = np.argsort(data[:, idx])
+            data = data[sort_indices]
+            
             t_common = data[:, idx]
             dt = np.median(np.diff(t_common))
             if dt > 0:
@@ -415,7 +427,13 @@ def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
             # Effective FS for filtering
             fs_eff = fs
             if "t_pc_common" in cols:
-                dt = np.median(np.diff(data[:, cols.index("t_pc_common")]))
+                idx = cols.index("t_pc_common")
+                
+                # Sort data by timestamp to prevent backward-drawing or out-of-order artifacts
+                sort_indices = np.argsort(data[:, idx])
+                data = data[sort_indices]
+                
+                dt = np.median(np.diff(data[:, idx]))
                 if dt > 0: fs_eff = 1.0 / dt
                 
             bp = BandpassFilter(20.0, 500.0, fs_eff)

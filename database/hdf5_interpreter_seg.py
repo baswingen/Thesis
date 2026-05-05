@@ -20,7 +20,7 @@ Run:
 # =============================================================================
 
 # Path to a *_segments.h5 file produced by model/segmentation.py
-FILE = r"database/segments/participant_P01_session_02_segments.h5"
+FILE = r"/Volumes/Laurens SSD/BasData/segments/participant_P01_session_02_segments.h5"
 
 # Which signal blocks to show: "imu", "emg", or "both"
 SHOW = "both"
