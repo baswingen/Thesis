@@ -1,0 +1,155 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260506_120546
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P02_session_01_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P18_session_01_segments.h5']
+Total samples: 3225
+Evaluation Mode: Leave-One-Participant-Out CV (18 Participants)
+Final Model Training samples: 2898
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: ALL
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (6): ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+Disabled IMU Channels (12): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2
+
+--- HYPERPARAMETERS ---
+Model: SPATIO_TEMPORAL_TRANSFORMER
+Architecture:
+  d_model: 160
+  nhead_spatial: 4
+  nhead_temporal: 4
+  num_layers_spatial: 3
+  num_layers_temporal: 1
+  dim_feedforward: 256
+  use_checkpointing: False
+  use_amp: True
+Training:
+  Learning Rate: 0.0003
+  Weight Decay: 0.0001
+  Batch Size: 32
+  Epochs: 25
+  Dropout: 0.2
+  Loss Function: mse
+  Validation Split: 0.1
+  Early Stopping Patience: 5
+  Scheduler Patience: 7
+  Scheduler Factor: 0.5
+Scheduler: {'type': 'ReduceLROnPlateau'}
+
+--- PIPELINE CONFIGURATION ---
+DEV_MODE: True (fraction=0.2, epochs=25)
+Global Loss Function: mse
+Random State: 245
+Excluded Weight Classes: 0.75kg (→ 0.899kg), 2.25kg (→ 2.238kg)
+Augmentation: enabled
+  probability: 0.5
+  methods: ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup']
+  noise_std: 0.05
+  stretch_factor_range: (0.75, 1.25)
+  channel_dropout_p: 0.25
+  magnitude_scale_range: (0.5, 2.0)
+
+--- EVALUATION METRICS ---
+METHOD: MACRO-AVERAGE (Primary)
+Description: Unweighted mean across 18 participants. Weights every person equally.
+(Reflects expected generalization performance to a NEW participant)
+  MAE: 0.3621 (±0.1553)
+  MSE: 0.4498 (±0.3829)
+  RMSE: 0.6299 (±0.2301)
+  R2: 0.8800 (±0.0999)
+  Train MAE: 0.2138 (±0.0626)
+  Train RMSE: 0.3852 (±0.0783)
+  Generalization Gap (MAE): 0.1483 (±0.1665)
+  Overfit Ratio (RMSE): 1.7217 (±0.8429)
+
+METHOD: POOLED-AVERAGE (Secondary)
+Description: Weighted by samples. Matches Regression Plot box-plot metrics.
+(Reflects overall accuracy across all recorded data points)
+  MAE: 0.3327
+  RMSE: 0.6140
+  R2: 0.8983
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 1882     | 0.0617     | 0.1709    
+0.98 kg      | 267      | 0.5441     | 0.7037    
+1.97 kg      | 270      | 0.6696     | 0.8650    
+2.94 kg      | 270      | 0.7623     | 0.9500    
+4.14 kg      | 267      | 0.8582     | 1.0276    
+5.92 kg      | 269      | 0.7280     | 1.0580    
+
+--- DETAILED GENERALIZATION PERFORMANCE ---
+Mean MAE across participants: 0.3621 ± 0.1553
+Min / Max MAE:                0.2017 / 0.8043
+Mean RMSE across participants:0.6299 ± 0.2301
+Min / Max RMSE:               0.3833 / 1.3378
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 755      | 0.3053     | 0.5588    
+P02          | 243      | 0.3311     | 0.5581    
+P12          | 170      | 0.2017     | 0.3833    
+P17          | 169      | 0.3087     | 0.4680    
+P11          | 169      | 0.2934     | 0.5544    
+P09          | 169      | 0.5290     | 0.8002    
+P07          | 168      | 0.4532     | 0.8945    
+P08          | 167      | 0.2476     | 0.5163    
+P16          | 167      | 0.2110     | 0.4234    
+P06          | 166      | 0.3214     | 0.5299    
+P04          | 166      | 0.2380     | 0.4382    
+P03          | 164      | 0.3468     | 0.5356    
+P15          | 150      | 0.2249     | 0.4848    
+P10          | 84       | 0.5044     | 0.8388    
+P14          | 82       | 0.2858     | 0.5256    
+P18          | 80       | 0.2990     | 0.6108    
+P13          | 79       | 0.8043     | 1.3378    
+P05          | 77       | 0.6124     | 0.8802    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+4            | 0.500s           | 40       | 0.7013     | 0.9338    
+5            | 0.600s           | 88       | 0.7135     | 1.0420    
+6            | 0.700s           | 135      | 0.4955     | 0.7371    
+7            | 0.800s           | 238      | 0.4584     | 0.7140    
+8            | 0.900s           | 286      | 0.3948     | 0.6641    
+9            | 1.000s           | 338      | 0.3389     | 0.6004    
+10           | 1.100s           | 382      | 0.3372     | 0.6230    
+11           | 1.200s           | 340      | 0.2578     | 0.5105    
+12           | 1.300s           | 286      | 0.1953     | 0.4150    
+13           | 1.400s           | 241      | 0.2715     | 0.5318    
+14           | 1.500s           | 192      | 0.2676     | 0.5581    
+15           | 1.600s           | 159      | 0.2746     | 0.5432    
+16           | 1.700s           | 89       | 0.3393     | 0.6491    
+17           | 1.800s           | 93       | 0.2219     | 0.5044    
+18           | 1.900s           | 67       | 0.2039     | 0.4668    
+19           | 2.000s           | 53       | 0.3438     | 0.7166    
+20           | 2.100s           | 41       | 0.2856     | 0.5576    
+21           | 2.200s           | 22       | 0.2057     | 0.5019    
+22           | 2.300s           | 25       | 0.3234     | 0.5395    
+23           | 2.400s           | 21       | 0.1107     | 0.2846    
+24           | 2.500s           | 12       | 0.5932     | 1.0825    
+25           | 2.600s           | 12       | 0.2131     | 0.5119    
+26           | 2.700s           | 15       | 0.3206     | 0.4762    
+27           | 2.800s           | 12       | 0.0663     | 0.1042    
+28           | 2.900s           | 9        | 0.1668     | 0.3335    
+29           | 3.000s           | 9        | 0.7824     | 1.1080    
+30           | 3.100s           | 6        | 0.8483     | 1.2599    
+31           | 3.200s           | 6        | 0.6171     | 0.8753    
+32           | 3.300s           | 4        | 0.2454     | 0.4907    
+33           | 3.400s           | 4        | 0.7428     | 0.9556    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 785,825
+Trainable Parameters: 785,825
+
+Average timings:
+train_time: 197.522724s (±59.605636s)
+inference_time_total: 0.281162s (±0.265217s)
+inference_time_per_sample: 0.001571s (±0.000391s)

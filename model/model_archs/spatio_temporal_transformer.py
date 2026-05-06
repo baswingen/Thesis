@@ -345,9 +345,12 @@ class SpatioTemporalTransformerRegressor:
             
         y_np_train = y_train.values.astype(np.float32)
         
-        # Augmentation
+        # Augmentation (passing participant IDs for balancing)
         augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
-        scaled_seqs_train, y_np_train = augmenter.augment_dataset(scaled_seqs_train, y_np_train)
+        participant_ids_train = X_train['subject'].values if 'subject' in X_train.columns else None
+        scaled_seqs_train, y_np_train = augmenter.augment_dataset(
+            scaled_seqs_train, y_np_train, participant_ids=participant_ids_train
+        )
         
         # To tensors
         scaled_seqs_train = [torch.from_numpy(a) for a in scaled_seqs_train]

@@ -152,34 +152,16 @@ class SequenceAugmenter:
         return_pids: bool = False,
     ) -> Tuple[List[np.ndarray], np.ndarray]:
         """
-        Apply augmentations to the training dataset.
+        Apply augmentations to the training dataset with optional participant balancing.
 
-        For each original sample, a new augmented copy is created with
-        probability `p` and *appended* to the dataset (original is kept).
-        This means the dataset can grow up to 2× its original size.
+        Mode 1: Standard (balance_participants=False)
+            Each sample is augmented with probability `p`. Dataset grows up to 2x.
 
-        MixUp is handled separately.  When `participant_ids` is supplied,
-        cross-participant MixUp is used: the partner is drawn from a
-        *different* participant that carries the **exact same weight label**.
-        Samples with no eligible cross-participant partner are skipped.
-        When `participant_ids` is None, a random partner is chosen (original
-        behaviour).
-
-        Parameters
-        ----------
-        sequences : list of np.ndarray, shape (seq_len, n_features)
-            Scaled training sequences.
-        labels : np.ndarray, shape (N,) or (N, 1)
-            Corresponding target values.
-        participant_ids : np.ndarray, shape (N,), optional
-            Participant identifier for each sample (e.g. 'P01').  When
-            provided, MixUp partners are restricted to a different participant
-            with the same weight label.
-
-        Returns
-        -------
-        aug_sequences : list of np.ndarray
-        aug_labels    : np.ndarray
+        Mode 2: Targeted Balancing (balance_participants=True)
+            Every participant is brought to exactly `target_samples_per_participant`.
+            If a person has too many samples, we randomly select a subset.
+            If a person has too few, we generate synthetic variations to fill the gap.
+            In all cases, standard augmentation (p) is still applied for diversity.
         """
         if not self.config.get('enabled', True):
             if return_pids:
@@ -188,88 +170,102 @@ class SequenceAugmenter:
 
         p = self.config.get('p', 0.5)
         methods = self.config.get('methods', ['noise', 'stretch', 'channel_dropout'])
-        rng = np.random.default_rng()  # fresh RNG each call
-
+        rng = np.random.default_rng()
         labels_flat = labels.flatten()
+        
+        # ── Setup ─────────────────────────────────────────────────────
+        aug_sequences = []
+        aug_labels = []
+        aug_pids = [] if participant_ids is not None else None
 
-        aug_sequences = list(sequences)           # start with originals
-        aug_labels = list(labels_flat)
-        aug_pids = list(participant_ids) if participant_ids is not None else None
-
-        for i, seq in enumerate(sequences):
-            if rng.random() > p:
-                continue  # skip this sample
-
-            # Pick a random subset of active methods for variety
+        # Helper to apply a random subset of active augmentations
+        def apply_random_aug(seq):
             active = [m for m in methods if m != 'mixup']
-            if len(active) > 1:
-                n_apply = rng.integers(1, len(active) + 1)
-                chosen = list(rng.choice(active, size=n_apply, replace=False))
-            else:
-                chosen = active
+            if not active: return seq
+            n_apply = rng.integers(1, len(active) + 1)
+            chosen = rng.choice(active, size=n_apply, replace=False)
+            res = seq.copy()
+            for m in chosen:
+                if m == 'noise': res = self.gaussian_noise(res)
+                elif m == 'stretch': res = self.temporal_stretch(res)
+                elif m == 'channel_dropout': res = self.channel_dropout(res)
+                elif m == 'magnitude_scale': res = self.magnitude_scale(res)
+            return res
 
-            aug_seq = seq.copy()
+        # ── Balancing Mode ────────────────────────────────────────────
+        if self.config.get('balance_participants', False) and participant_ids is not None:
+            target = self.config.get('target_samples_per_participant', 1500)
+            
+            # Group indices by participant
+            from collections import defaultdict
+            p_groups = defaultdict(list)
+            for idx, pid in enumerate(participant_ids):
+                p_groups[pid].append(idx)
+            
+            for pid, idxs in p_groups.items():
+                # Case A: Participant has enough or too many samples
+                if len(idxs) >= target:
+                    selected_idxs = rng.choice(idxs, size=target, replace=False)
+                    for i in selected_idxs:
+                        seq = sequences[i]
+                        # Apply stochastic augmentation (p)
+                        if rng.random() <= p:
+                            seq = apply_random_aug(seq)
+                        aug_sequences.append(seq)
+                        aug_labels.append(labels_flat[i])
+                        aug_pids.append(pid)
+                
+                # Case B: Participant needs oversampling
+                else:
+                    # 1. Take all originals
+                    for i in idxs:
+                        seq = sequences[i]
+                        if rng.random() <= p:
+                            seq = apply_random_aug(seq)
+                        aug_sequences.append(seq)
+                        aug_labels.append(labels_flat[i])
+                        aug_pids.append(pid)
+                    
+                    # 2. Fill the gap with synthetic variations
+                    needed = target - len(idxs)
+                    for _ in range(needed):
+                        i = int(rng.choice(idxs))
+                        # For fills, we FORCE augmentation to ensure diversity
+                        aug_seq = apply_random_aug(sequences[i])
+                        aug_sequences.append(aug_seq)
+                        aug_labels.append(labels_flat[i])
+                        aug_pids.append(pid)
+            
+            print(f"[Augmenter] Balanced {len(p_groups)} participants to {target} samples each. Total: {len(aug_sequences)}")
 
-            for method in chosen:
-                if method == 'noise':
-                    aug_seq = self.gaussian_noise(aug_seq)
-                elif method == 'stretch':
-                    aug_seq = self.temporal_stretch(aug_seq)
-                elif method == 'channel_dropout':
-                    aug_seq = self.channel_dropout(aug_seq)
-                elif method == 'magnitude_scale':
-                    aug_seq = self.magnitude_scale(aug_seq)
-
-            aug_sequences.append(aug_seq)
-            aug_labels.append(labels_flat[i])
-            if aug_pids is not None:
-                aug_pids.append(aug_pids[i])
-
-        # ── MixUp pass (if enabled and alpha > 0) ────────────────────
-        if 'mixup' in methods and self.config.get('mixup_alpha', 0.2) > 0:
-            n_orig = len(sequences)
-
+        # ── Standard Mode ─────────────────────────────────────────────
+        else:
+            # Fallback to the original stochastic logic
+            aug_sequences = list(sequences)
+            aug_labels = list(labels_flat)
             if participant_ids is not None:
-                # ── Cross-participant MixUp ──────────────────────────
-                # Build lookup: (participant_id, weight) → list of indices
-                from collections import defaultdict
-                cp_lookup: dict = defaultdict(list)
-                for idx in range(n_orig):
-                    key = (participant_ids[idx], labels_flat[idx])
-                    cp_lookup[key].append(idx)
+                aug_pids = list(participant_ids)
 
-                for i in range(n_orig):
-                    if rng.random() > p:
-                        continue
-                    pid_i = participant_ids[i]
-                    w_i = labels_flat[i]
-                    # Candidates: same weight, different participant
-                    candidates = [
-                        j
-                        for (pid_j, w_j), idxs in cp_lookup.items()
-                        if w_j == w_i and pid_j != pid_i
-                        for j in idxs
-                    ]
-                    if not candidates:
-                        continue  # no cross-participant partner available
-                    j = int(rng.choice(candidates))
-                    mixed_seq, mixed_label = self.mixup_pair(
-                        sequences[i], labels_flat[i],
-                        sequences[j], labels_flat[j],
-                    )
-                    aug_sequences.append(mixed_seq)
-                    aug_labels.append(mixed_label)
+            for i, seq in enumerate(sequences):
+                if rng.random() <= p:
+                    aug_seq = apply_random_aug(seq)
+                    aug_sequences.append(aug_seq)
+                    aug_labels.append(labels_flat[i])
                     if aug_pids is not None:
-                        aug_pids.append(aug_pids[i])
-            else:
-                # ── Original random-partner MixUp ────────────────────
-                for i in range(n_orig):
-                    if rng.random() > p:
-                        continue
-                    j = rng.integers(0, n_orig)
+                        aug_pids.append(participant_ids[i])
+
+        # ── MixUp (Optional Post-Pass) ───────────────────────────────
+        if 'mixup' in methods and self.config.get('mixup_alpha', 0.2) > 0:
+            # Simple MixUp on the newly balanced/augmented dataset
+            n_curr = len(aug_sequences)
+            for i in range(n_curr):
+                if rng.random() <= p:
+                    j = rng.integers(0, n_curr)
+                    # Don't MixUp with self
+                    if i == j: continue
                     mixed_seq, mixed_label = self.mixup_pair(
-                        sequences[i], labels_flat[i],
-                        sequences[j], labels_flat[j],
+                        aug_sequences[i], aug_labels[i],
+                        aug_sequences[j], aug_labels[j]
                     )
                     aug_sequences.append(mixed_seq)
                     aug_labels.append(mixed_label)

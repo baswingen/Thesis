@@ -4,7 +4,7 @@ Centralizing these values makes it easier to manage experiments and
 ensures consistency across training and inference scripts.
 """
 
-GLOBAL_RANDOM_STATE = 32
+GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 
@@ -12,10 +12,10 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
-RUN_GRID_SEARCH = True
+RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = False
+DEV_MODE = True
 DEV_FRACTION = 0.2
 DEV_CV_FOLDS = 18
 DEV_EPOCHS = 25
@@ -103,14 +103,14 @@ CHANNEL_CONFIG = {
     # ── IMU Channels ─────────────────────────────────────────
     'imu_channels': {
         # Sensor 1
-        'ax1': False, 'ay1': False, 'az1': False,
-        'roll_rad1': False, 'pitch_rad1': False, 'yaw_rad1': False,
+        'ax1': True, 'ay1': True, 'az1': True,
+        'roll_rad1': True, 'pitch_rad1': True, 'yaw_rad1': True,
         # Sensor 2
-        'ax2': False, 'ay2': False, 'az2': False,
-        'roll_rad2': False, 'pitch_rad2': False, 'yaw_rad2': False,
+        'ax2': True, 'ay2': True, 'az2': True,
+        'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
         # Differential (Elbow Kinematics)
-        'ax_diff': True, 'ay_diff': True, 'az_diff': True,
-        'roll_rad_diff': True, 'pitch_rad_diff': True, 'yaw_rad_diff': True,
+        'ax_diff': False, 'ay_diff': False, 'az_diff': False,
+        'roll_rad_diff': False, 'pitch_rad_diff': False, 'yaw_rad_diff': False,
     },
 }
 
@@ -125,7 +125,7 @@ EMG_CHANNEL_CONFIG = {
     "Biceps Brachii":   ("ch7", "ch8"),
     # Single-channel muscles
     "Triceps Brachii":    "ch17",
-    "Brachioradialis":   "ch18",
+    "Brachioradialis":   "ch18",    
     "Flexor Carpi Ulnaris (FCU)":  "ch19",
     "Extensor Carpi Radialis (ECR)": "ch20",
 }
@@ -247,6 +247,13 @@ AUGMENTATION_CONFIG = {
     # Increased to 0.5 to strongly support interpolating out-of-distribution masses
     # (like the underrepresented 5.92 kg).
     'mixup_alpha': 0.5,
+
+    # ── Participant Balancing ────────────────────────────────────────
+    # When 'balance_participants' is True, the augmenter will ensure every 
+    # participant has exactly 'target_samples_per_participant' in the training set.
+    # If they have more, we downsample; if less, we use augmentation to fill.
+    'balance_participants': True,
+    'target_samples_per_participant': 1500,
 }
 
 # Cross-Validation Configuration
@@ -521,6 +528,11 @@ SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
 if DEV_MODE:
     print(f"\n[CONFIG] DEV_MODE is ACTIVE! Subsampling {DEV_FRACTION*100}% of data for rapid iteration.")
     CV_CONFIG['strict_val_split'] = True
+    
+    # Scale augmentation target for rapid iteration
+    orig_target = AUGMENTATION_CONFIG.get('target_samples_per_participant', 1500)
+    AUGMENTATION_CONFIG['target_samples_per_participant'] = max(10, int(orig_target * DEV_FRACTION))
+    print(f"[CONFIG] Scaled augmentation target per participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}")
     
     # Cap epochs and patience for fast deep learning runs
     for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG]:
