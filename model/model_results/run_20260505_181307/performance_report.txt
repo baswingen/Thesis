@@ -1,0 +1,118 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260505_181307
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P02_session_01_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P18_session_01_segments.h5']
+Total samples: 1613
+Evaluation Mode: Leave-One-Participant-Out CV (3 Participants)
+Final Model Training samples: 659
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: ALL
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+
+--- HYPERPARAMETERS ---
+Model: SPATIO_TEMPORAL_TRANSFORMER
+
+--- EVALUATION METRICS ---
+(Averaged over 3 folds)
+MAE: 0.5071 (±0.1977)
+MSE: 0.8703 (±0.5179)
+RMSE: 0.8853 (±0.2941)
+R2: 0.7639 (±0.1406)
+Train MAE: 0.3030 (±0.0477)
+Train RMSE: 0.5328 (±0.0916)
+Generalization Gap (MAE): 0.2041 (±0.1503)
+Overfit Ratio (RMSE): 1.6156 (±0.2971)
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 941      | 0.1201     | 0.3503    
+0.98 kg      | 136      | 0.8300     | 1.2159    
+1.97 kg      | 135      | 1.1460     | 1.4437    
+2.94 kg      | 135      | 1.2786     | 1.5475    
+4.14 kg      | 133      | 1.1616     | 1.3629    
+5.92 kg      | 133      | 0.8304     | 1.3318    
+
+--- DETAILED GENERALIZATION PERFORMANCE ---
+Mean MAE across participants: 0.5373 ± 0.3379
+Min / Max MAE:                0.1539 / 1.2827
+Mean RMSE across participants:0.8784 ± 0.4660
+Min / Max RMSE:               0.2970 / 1.7646
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 380      | 0.4924     | 0.8605    
+P03          | 82       | 0.2817     | 0.4855    
+P10          | 40       | 0.4243     | 0.7874    
+P13          | 38       | 1.0999     | 1.7149    
+P02          | 121      | 0.4614     | 0.8594    
+P05          | 39       | 1.2827     | 1.7646    
+P06          | 84       | 0.6743     | 1.0208    
+P08          | 84       | 0.9821     | 1.3952    
+P09          | 85       | 0.7770     | 1.3556    
+P14          | 41       | 0.2709     | 0.4847    
+P16          | 83       | 0.9941     | 1.5343    
+P04          | 84       | 0.2335     | 0.4606    
+P07          | 84       | 0.4418     | 0.7905    
+P11          | 85       | 0.2651     | 0.4285    
+P12          | 85       | 0.1539     | 0.2970    
+P15          | 74       | 0.1690     | 0.3711    
+P17          | 84       | 0.2947     | 0.4877    
+P18          | 40       | 0.3733     | 0.7121    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+4            | 0.500s           | 20       | 1.1366     | 1.4654    
+5            | 0.600s           | 46       | 0.9465     | 1.3050    
+6            | 0.700s           | 76       | 0.6301     | 0.9696    
+7            | 0.800s           | 117      | 0.7871     | 1.1975    
+8            | 0.900s           | 146      | 0.6307     | 1.0225    
+9            | 1.000s           | 156      | 0.4456     | 0.8973    
+10           | 1.100s           | 179      | 0.5257     | 0.9378    
+11           | 1.200s           | 178      | 0.4530     | 0.8509    
+12           | 1.300s           | 150      | 0.3666     | 0.7543    
+13           | 1.400s           | 122      | 0.3836     | 0.7488    
+14           | 1.500s           | 88       | 0.2765     | 0.6835    
+15           | 1.600s           | 67       | 0.2959     | 0.5762    
+16           | 1.700s           | 60       | 0.6007     | 1.2129    
+17           | 1.800s           | 50       | 0.3814     | 0.8806    
+18           | 1.900s           | 33       | 0.4534     | 0.9927    
+19           | 2.000s           | 21       | 0.3477     | 0.6890    
+20           | 2.100s           | 17       | 0.4505     | 0.6752    
+21           | 2.200s           | 21       | 0.3693     | 0.7708    
+22           | 2.300s           | 14       | 0.8597     | 1.6680    
+23           | 2.400s           | 13       | 0.4853     | 0.8860    
+24           | 2.500s           | 10       | 0.5634     | 0.8740    
+25           | 2.600s           | 6        | 0.6170     | 0.8580    
+26           | 2.700s           | 3        | 0.3674     | 0.6364    
+27           | 2.800s           | 5        | 0.0861     | 0.1783    
+28           | 2.900s           | 4        | 0.4662     | 0.6003    
+29           | 3.000s           | 2        | 0.1289     | 0.1823    
+30           | 3.100s           | 1        | 1.7931     | 1.7931    
+31           | 3.200s           | 5        | 0.6267     | 0.9710    
+32           | 3.300s           | 3        | 0.1941     | 0.2590    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 161,345
+Trainable Parameters: 161,345
+
+Average timings:
+train_time: 34.163222s (±5.250980s)
+inference_time_total: 0.670899s (±0.078174s)
+inference_time_per_sample: 0.001248s (±0.000143s)
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 161,345
+Trainable Parameters: 161,345
+
+Average timings:
+train_time: 34.163222s (±5.250980s)
+inference_time_total: 0.670899s (±0.078174s)
+inference_time_per_sample: 0.001248s (±0.000143s)

@@ -82,7 +82,7 @@ class SpatioTemporalTransformerNetwork(nn.Module):
             dropout=dropout_rate, batch_first=True
         )
         self.spatial_transformer = nn.TransformerEncoder(
-            spatial_layer, num_layers=num_layers_spatial, enable_nested_tensor=True
+            spatial_layer, num_layers=num_layers_spatial, enable_nested_tensor=False
         )
         
         # 4. Temporal Positional Encoding
@@ -94,7 +94,7 @@ class SpatioTemporalTransformerNetwork(nn.Module):
             dropout=dropout_rate, batch_first=True
         )
         self.temporal_transformer = nn.TransformerEncoder(
-            temporal_layer, num_layers=num_layers_temporal, enable_nested_tensor=True
+            temporal_layer, num_layers=num_layers_temporal, enable_nested_tensor=False
         )
         
         # 6. Final Regressor
@@ -406,7 +406,8 @@ class SpatioTemporalTransformerRegressor:
         patience_counter = 0
         best_model_weights = copy.deepcopy(self.model.state_dict())
         
-        scaler = torch.amp.GradScaler('cuda', enabled=self.use_amp)
+        amp_device = 'cuda' if self.device.type == 'cuda' else 'cpu'
+        scaler = torch.amp.GradScaler(amp_device, enabled=(self.use_amp and self.device.type == 'cuda'))
         
         with tqdm(range(self.epochs), desc="Training Spatio-Temporal Transformer", unit="epoch") as pbar:
             for epoch in pbar:
@@ -420,7 +421,7 @@ class SpatioTemporalTransformerRegressor:
                     optimizer.zero_grad()
                     
                     # Use AMP for forward pass
-                    with torch.amp.autocast('cuda', enabled=self.use_amp):
+                    with torch.amp.autocast(self.device.type, enabled=(self.use_amp and self.device.type == 'cuda')):
                         outputs = self.model(batch_x, lengths)
                         loss = criterion(outputs, batch_y)
                     
@@ -451,7 +452,7 @@ class SpatioTemporalTransformerRegressor:
                 self.model.eval()
                 val_loss = 0.0
                 with torch.no_grad():
-                    with torch.amp.autocast('cuda', enabled=self.use_amp):
+                    with torch.amp.autocast(self.device.type, enabled=(self.use_amp and self.device.type == 'cuda')):
                         for batch_x, batch_y, lengths in loader_val:
                             batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                             lengths = lengths.to(self.device)

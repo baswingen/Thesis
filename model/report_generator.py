@@ -3,7 +3,11 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 
-from model.config_model import PARTICIPANT_CONFIG, CHANNEL_CONFIG, FEATURE_CONFIG
+from model.config_model import (
+    PARTICIPANT_CONFIG, CHANNEL_CONFIG, FEATURE_CONFIG,
+    WEIGHT_INCLUDE, TRUE_WEIGHTS, DEV_MODE, DEV_FRACTION, DEV_EPOCHS,
+    GLOBAL_LOSS_FUNCTION, GLOBAL_RANDOM_STATE, AUGMENTATION_CONFIG,
+)
 from model import performance_utils
 
 class ReportGenerator:
@@ -58,28 +62,94 @@ class ReportGenerator:
         lines.append(f"Ablation Modality: {ablation_modality.upper()}")
         if is_raw_segment:
             lines.append("Input: Raw EMG + IMU segments (end-to-end CNN)")
-            emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
-            imu_ch = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if v]
-            lines.append(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}")
-            lines.append(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}")
         else:
             lines.append(f"EMG Window: {FEATURE_CONFIG['emg_window_size_sec']}s, IMU Window: {FEATURE_CONFIG['imu_window_size_sec']}s, Step: {FEATURE_CONFIG['window_step_sec']}s")
+
+        # Always show enabled channels
+        emg_ch = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if v]
+        imu_ch = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if v]
+        disabled_emg = [k for k, v in CHANNEL_CONFIG.get('emg_channels', {}).items() if not v]
+        disabled_imu = [k for k, v in CHANNEL_CONFIG.get('imu_channels', {}).items() if not v]
+        lines.append(f"Enabled EMG Channels ({len(emg_ch)}): {', '.join(emg_ch)}")
+        lines.append(f"Enabled IMU Channels ({len(imu_ch)}): {', '.join(imu_ch)}")
+        if disabled_emg:
+            lines.append(f"Disabled EMG Channels ({len(disabled_emg)}): {', '.join(disabled_emg)}")
+        if disabled_imu:
+            lines.append(f"Disabled IMU Channels ({len(disabled_imu)}): {', '.join(disabled_imu)}")
+
         lines.append("")
         self.sections.append("\n".join(lines))
 
     def _add_hyperparameters(self, model, model_type):
         lines = ["--- HYPERPARAMETERS ---"]
         lines.append(f"Model: {model_type.upper()}")
-        
-        if model_type == "svr":
-            lines.append(f"Kernel: {model.kernel}\nC: {model.C}\nEpsilon: {model.epsilon}")
-        elif model_type == "rf":
-            lines.append(f"N Estimators: {model.n_estimators}\nMax Depth: {model.max_depth}")
-        elif model_type in ["gru", "lstm", "cnn_lstm", "tcn", "transformer"]:
-            lines.append(f"Learning Rate: {getattr(model, 'learning_rate', 'N/A')}")
-            lines.append(f"Batch Size: {getattr(model, 'batch_size', 'N/A')}")
-            lines.append(f"Epochs: {getattr(model, 'epochs', 'N/A')}")
-            
+
+        # ── Architecture attributes (varies by model) ──
+        arch_keys = [
+            # Transformer / Spatio-Temporal Transformer
+            'd_model', 'nhead', 'nhead_spatial', 'nhead_temporal',
+            'num_layers', 'num_layers_spatial', 'num_layers_temporal',
+            'dim_feedforward',
+            # CNN / RNN
+            'cnn_filters', 'cnn_kernel_sizes', 'pool_size',
+            'lstm_hidden_size', 'lstm_num_layers',
+            'gru_hidden_size', 'gru_num_layers',
+            'hidden_size', 'num_layers',
+            # TCN
+            'tcn_channels', 'kernel_size',
+            # General
+            'use_anthropometrics', 'use_checkpointing', 'use_amp',
+        ]
+        arch_lines = []
+        for key in arch_keys:
+            val = getattr(model, key, None)
+            if val is not None:
+                arch_lines.append(f"  {key}: {val}")
+        if arch_lines:
+            lines.append("Architecture:")
+            lines.extend(arch_lines)
+
+        # ── Training / Optimisation ──
+        train_keys = [
+            ('learning_rate', 'Learning Rate'),
+            ('weight_decay', 'Weight Decay'),
+            ('batch_size', 'Batch Size'),
+            ('epochs', 'Epochs'),
+            ('dropout_rate', 'Dropout'),
+            ('loss_type', 'Loss Function'),
+            ('validation_split', 'Validation Split'),
+            ('early_stopping_patience', 'Early Stopping Patience'),
+            ('scheduler_patience', 'Scheduler Patience'),
+            ('scheduler_factor', 'Scheduler Factor'),
+        ]
+        train_lines = []
+        for key, label in train_keys:
+            val = getattr(model, key, None)
+            if val is not None:
+                train_lines.append(f"  {label}: {val}")
+        if train_lines:
+            lines.append("Training:")
+            lines.extend(train_lines)
+
+        # ── Scheduler config (dict) ──
+        sched = getattr(model, 'scheduler_config', None)
+        if sched is None:
+            # Try the config dict import
+            from model.config_model import SPATIO_TEMPORAL_TRANSFORMER_CONFIG
+            if model_type == 'spatio_temporal_transformer':
+                sched = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler', {})
+        if sched:
+            lines.append(f"Scheduler: {sched}")
+
+        # ── SVR / RF specifics ──
+        if model_type == 'svr':
+            lines.append(f"Kernel: {getattr(model, 'kernel', 'N/A')}")
+            lines.append(f"C: {getattr(model, 'C', 'N/A')}")
+            lines.append(f"Epsilon: {getattr(model, 'epsilon', 'N/A')}")
+        elif model_type == 'rf':
+            lines.append(f"N Estimators: {getattr(model, 'n_estimators', 'N/A')}")
+            lines.append(f"Max Depth: {getattr(model, 'max_depth', 'N/A')}")
+
         lines.append("")
         self.sections.append("\n".join(lines))
 
@@ -180,8 +250,6 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
-        self.sections.append("\n".join(lines))
-
     def _add_permutation_importance(self, permutation_importances):
         if not permutation_importances:
             return
@@ -232,6 +300,7 @@ class ReportGenerator:
             
         self._add_feature_configuration(is_raw_segment, ablation_modality)
         self._add_hyperparameters(model, model_type)
+        self._add_pipeline_config()
         self._add_evaluation_metrics(use_cv, avg_metrics, std_metrics, metrics, n_folds)
         self._add_per_weight_metrics(y_test, y_pred, use_cv, y, oof_predictions)
         self._add_per_participant_metrics(participant_stats)
@@ -245,3 +314,32 @@ class ReportGenerator:
             f.write("\n".join(self.sections))
 
         print(f"\nPerformance report saved to {self.report_file}")
+
+    def _add_pipeline_config(self):
+        """Print global pipeline settings so the report is fully reproducible."""
+        lines = ["--- PIPELINE CONFIGURATION ---"]
+        lines.append(f"DEV_MODE: {DEV_MODE}" + (f" (fraction={DEV_FRACTION}, epochs={DEV_EPOCHS})" if DEV_MODE else ""))
+        lines.append(f"Global Loss Function: {GLOBAL_LOSS_FUNCTION}")
+        lines.append(f"Random State: {GLOBAL_RANDOM_STATE}")
+
+        # Weight-class filter
+        excluded = [k for k, v in WEIGHT_INCLUDE.items() if not v]
+        if excluded:
+            mapped = [f"{k}kg (→ {TRUE_WEIGHTS.get(k, '?')}kg)" for k in excluded]
+            lines.append(f"Excluded Weight Classes: {', '.join(mapped)}")
+        else:
+            lines.append("Excluded Weight Classes: none")
+
+        # Augmentation summary
+        aug_enabled = AUGMENTATION_CONFIG.get('enabled', False)
+        lines.append(f"Augmentation: {'enabled' if aug_enabled else 'disabled'}")
+        if aug_enabled:
+            lines.append(f"  probability: {AUGMENTATION_CONFIG.get('p', 'N/A')}")
+            lines.append(f"  methods: {AUGMENTATION_CONFIG.get('methods', [])}")
+            lines.append(f"  noise_std: {AUGMENTATION_CONFIG.get('noise_std', 'N/A')}")
+            lines.append(f"  stretch_factor_range: {AUGMENTATION_CONFIG.get('stretch_factor_range', 'N/A')}")
+            lines.append(f"  channel_dropout_p: {AUGMENTATION_CONFIG.get('channel_dropout_p', 'N/A')}")
+            lines.append(f"  magnitude_scale_range: {AUGMENTATION_CONFIG.get('magnitude_scale_range', 'N/A')}")
+
+        lines.append("")
+        self.sections.append("\n".join(lines))

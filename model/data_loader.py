@@ -8,7 +8,18 @@ import sys
 import os
 
 from model.feature_extraction import FeatureExtractor
-from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, TRUE_WEIGHTS
+from model.config_model import FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, TRUE_WEIGHTS, WEIGHT_INCLUDE
+
+# Pre-compute the set of *calibrated* weights that are disabled in the config.
+# Nominal keys in WEIGHT_INCLUDE are mapped through TRUE_WEIGHTS so the filter
+# works against the weight values that actually appear in the DataFrame.
+_EXCLUDED_TRUE_WEIGHTS: set[float] = set()
+for nom_w, enabled in WEIGHT_INCLUDE.items():
+    if not enabled:
+        _EXCLUDED_TRUE_WEIGHTS.add(TRUE_WEIGHTS.get(nom_w, nom_w))
+if _EXCLUDED_TRUE_WEIGHTS:
+    print(f"[DataLoader] Weight filter active (applied at training time) — "
+          f"excluding calibrated weights: {sorted(_EXCLUDED_TRUE_WEIGHTS)}")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Segment Blacklist (loaded once from data_analysis/results/blacklist.json)
@@ -147,14 +158,12 @@ class DataLoader:
                         return v.decode() if isinstance(v, bytes) else v
 
                     label = str(_a("label", "unknown"))
+
+                    nominal_w = 0.0 if label == "free_movement" else float(grp.attrs.get("weight", -1.0))
+
                     feat_dict["label"] = label
                     feat_dict["state"] = str(_a("state", "unknown"))
-                    
-                    if label == "free_movement":
-                        feat_dict["weight"] = 0.0
-                    else:
-                        weight_raw = float(grp.attrs.get("weight", -1.0))
-                        feat_dict["weight"] = TRUE_WEIGHTS.get(weight_raw, weight_raw)
+                    feat_dict["weight"] = 0.0 if label == "free_movement" else TRUE_WEIGHTS.get(nominal_w, nominal_w)
                         
                     feat_dict["segment_id"] = seg_key
                     feat_dict["trial_file"] = _a("trial_file", "unknown")
@@ -181,6 +190,46 @@ class DataLoader:
             return pd.DataFrame()
 
         df = pd.DataFrame(all_features)
+
+        # --- Apply CHANNEL_CONFIG filtering to precomputed features ---
+        # Build set of disabled channel prefixes (e.g. "ax1_IMU_", "Biceps Brachii_EMG_")
+        disabled_prefixes = set()
+        emg_cfg = CHANNEL_CONFIG.get('emg_channels', {})
+        imu_cfg = CHANNEL_CONFIG.get('imu_channels', {})
+        for ch, enabled in emg_cfg.items():
+            if not enabled:
+                disabled_prefixes.add(f"{ch}_EMG_")
+        for ch, enabled in imu_cfg.items():
+            if not enabled:
+                disabled_prefixes.add(f"{ch}_IMU_")
+                disabled_prefixes.add(f"{ch}_SVM_")  # SVM features derived from IMU
+
+        if disabled_prefixes:
+            def _is_disabled(key: str) -> bool:
+                return any(key.startswith(p) for p in disabled_prefixes)
+
+            if "sequence_dicts" in df.columns:
+                # Filter keys inside each sequence's window dicts
+                def _filter_seq(seq_list):
+                    return [{k: v for k, v in w.items() if not _is_disabled(k)}
+                            for w in seq_list]
+                df["sequence_dicts"] = df["sequence_dicts"].apply(_filter_seq)
+                n_removed = 0  # count for logging
+                sample_seq = df["sequence_dicts"].iloc[0]
+                if sample_seq:
+                    n_total_orig = len(all_features[0].get("sequence_dicts", [{}])[0]) if all_features and all_features[0].get("sequence_dicts") else 0
+                    n_total_now = len(sample_seq[0])
+                    n_removed = n_total_orig - n_total_now
+            else:
+                # Scalar feature DataFrame: drop disabled columns
+                cols_to_drop = [c for c in df.columns if _is_disabled(c)]
+                n_removed = len(cols_to_drop)
+                if cols_to_drop:
+                    df.drop(columns=cols_to_drop, inplace=True)
+
+            if n_removed > 0:
+                print(f"[DataLoader] Channel filter: removed {n_removed} features from disabled channels.")
+
         if "sequence_dicts" not in df.columns:
             df.fillna(0, inplace=True)
         return df
@@ -279,16 +328,14 @@ class DataLoader:
                     emg_fs_eff = float(grp["emg"].attrs.get("fs", 2000.0)) if "emg" in grp else 2000.0
 
                     label = str(_a("label", "unknown"))
-                    
-                    weight_raw = -1.0
-                    if label != "free_movement":
-                        weight_raw = float(grp.attrs.get("weight", -1.0))
+
+                    nominal_w = 0.0 if label == "free_movement" else float(grp.attrs.get("weight", -1.0))
                     
                     row = {
                         "raw_segment": raw,
                         "label": label,
                         "state": str(_a("state", "unknown")),
-                        "weight": 0.0 if label == "free_movement" else TRUE_WEIGHTS.get(weight_raw, weight_raw),
+                        "weight": 0.0 if label == "free_movement" else TRUE_WEIGHTS.get(nominal_w, nominal_w),
                         "segment_id": key,
                         "trial_file": _a("trial_file", "unknown"),
                         "subject": path.stem.split("_")[1] if "participant" in path.stem else "unknown",
@@ -472,16 +519,14 @@ class DataLoader:
                         
                     # Target labels / stratification parameters
                     label = str(_a("label", "unknown"))
+
+                    nominal_w = 0.0 if label == "free_movement" else float(grp.attrs.get("weight", -1.0))
+
                     features["label"] = label
                     features["state"] = str(_a("state", "unknown"))
-                    
-                    # For regression: map 'free_movement' to 0.0kg. 
+                    # For regression: map 'free_movement' to 0.0kg.
                     # Others use the weight recorded in h5 attributes mapped to true weight.
-                    if label == "free_movement":
-                        features["weight"] = 0.0
-                    else:
-                        weight_raw = float(grp.attrs.get("weight", -1.0))
-                        features["weight"] = TRUE_WEIGHTS.get(weight_raw, weight_raw)
+                    features["weight"] = 0.0 if label == "free_movement" else TRUE_WEIGHTS.get(nominal_w, nominal_w)
                     
                     # Context elements (if we want to use them for nested cross-validation later)
                     features["segment_id"] = key
@@ -523,7 +568,7 @@ class DataLoader:
             
         if target_col not in df.columns:
             raise ValueError(f"Target column '{target_col}' not found in dataframe.")
-            
+
         y = df[target_col]
         
         # Columns that are purely metadata / labels and shouldn't be trained on

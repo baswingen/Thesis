@@ -264,6 +264,16 @@ def load_and_prepare_data(loader, h5_paths, model_type, is_raw_segment, is_seque
     if df.empty:
         return None, None, None, None
 
+    # --- Weight-class filter (applied before groups/df extraction) ---
+    from model.data_loader import _EXCLUDED_TRUE_WEIGHTS
+    if _EXCLUDED_TRUE_WEIGHTS and "weight" in df.columns:
+        before = len(df)
+        mask = ~df["weight"].isin(_EXCLUDED_TRUE_WEIGHTS)
+        df = df[mask].reset_index(drop=True)
+        n_dropped = before - len(df)
+        if n_dropped > 0:
+            print(f"[DataLoader] Dropped {n_dropped} segments with excluded weight classes.")
+
     groups = df["subject"].astype(str).values if "subject" in df.columns else None
     X, y = loader.prepare_for_ml(df, target_col="weight")
     

@@ -15,7 +15,7 @@ Quality Checks
   3. Near-zero variance       (dead channel detection)
   4. NaN / Inf presence
   5. Extreme outlier density  (>6σ from channel global mean)
-  6. Minimum segment duration
+  6. Segment duration bounds  (min and max)
   7. Cross-modal consistency  (EMG active but IMU frozen, or vice versa)
 
 Run from the project root:
@@ -25,7 +25,8 @@ Run from the project root:
         --segments-dir PATH     (default: /Volumes/Laurens SSD/BasData/segments)
         --out-dir PATH          (default: data_analysis/results)
         --flatline-threshold 5  (percent; flag segments with flatline% above this)
-        --min-duration 0.3      (seconds; flag segments shorter than this)
+        --min-duration 0.5      (seconds; flag segments shorter than this)
+        --max-duration 3.5      (seconds; flag segments longer than this)
         --outlier-sigma 6       (σ threshold for outlier detection)
         --outlier-threshold 2   (percent; flag segments with outlier% above this)
 """
@@ -312,6 +313,7 @@ def _build_blacklist(
     df: pd.DataFrame,
     flatline_threshold: float,
     min_duration: float,
+    max_duration: float,
     outlier_threshold: float,
 ) -> pd.DataFrame:
     """
@@ -344,6 +346,9 @@ def _build_blacklist(
 
         if row["duration_sec"] < min_duration:
             seg_reasons.append(f"too_short({row['duration_sec']:.3f}s)")
+
+        if row["duration_sec"] > max_duration:
+            seg_reasons.append(f"too_long({row['duration_sec']:.3f}s)")
 
         if row["cross_modal_mismatch"]:
             seg_reasons.append("cross_modal_mismatch")
@@ -475,8 +480,10 @@ def main():
                         help="Output directory (default: data_analysis/results).")
     parser.add_argument("--flatline-threshold", type=float, default=5.0,
                         help="Flag segments with flatline%% above this (default: 5.0).")
-    parser.add_argument("--min-duration", type=float, default=0.3,
-                        help="Flag segments shorter than this in seconds (default: 0.3).")
+    parser.add_argument("--min-duration", type=float, default=0.5,
+                        help="Flag segments shorter than this in seconds (default: 0.5).")
+    parser.add_argument("--max-duration", type=float, default=3.5,
+                        help="Flag segments longer than this in seconds (default: 3.5).")
     parser.add_argument("--outlier-sigma", type=float, default=6.0,
                         help="Sigma threshold for outlier detection (default: 6.0).")
     parser.add_argument("--outlier-threshold", type=float, default=2.0,
@@ -500,7 +507,7 @@ def main():
 
     # Phase 3: Apply thresholds and generate outputs
     df = pd.DataFrame(rows)
-    df = _build_blacklist(df, args.flatline_threshold, args.min_duration, args.outlier_threshold)
+    df = _build_blacklist(df, args.flatline_threshold, args.min_duration, args.max_duration, args.outlier_threshold)
 
     print("\n[3/3] Writing outputs …")
     _write_outputs(df, out_dir)

@@ -1,0 +1,182 @@
+SPATIO-TEMPORAL TRANSFORMER HYPERPARAMETER SWEEP REPORT
+=================================================================
+Date: 2026-05-05 19:05:43
+DEV_MODE: True
+Total time: 11.0 min (0.18 hours)
+Configurations tested: 8/8
+Epochs per config: 25
+Early-stop patience: 5
+Training subjects (14): P03, P04, P05, P07, P08, P10, P11, P12, P13, P14, P15, P16, P17, P18
+Validation subjects (4): P01, P02, P06, P09
+Training samples: 953
+Validation samples: 659
+
+BEST PARAMETERS (lowest RMSE):
+----------------------------------------
+  weight_decay: 1e-05
+  num_layers_temporal: 1
+  num_layers_spatial: 3
+  nhead_temporal: 4
+  nhead_spatial: 4
+  learning_rate: 0.001
+  dropout_rate: 0.3
+  dim_feedforward: 256
+  d_model: 128
+  batch_size: 64
+  scheduler_type: ReduceLROnPlateau
+  pct_start: 0.1
+
+Validation metrics on unseen participants (P01, P02, P06, P09):
+Mean Absolute Error: 0.2753
+Mean Squared Error: 0.2463
+Root Mean Squared Error: 0.4962
+R-squared Score: 0.9359
+
+
+=================================================================
+ALL CONFIGURATIONS RANKED BY RMSE
+=================================================================
+
+--- Rank 1 (Iteration 8) ---
+  RMSE: 0.4962 | MAE: 0.2753 | R²: 0.9359
+  Epochs: 14 | Overfit ratio: 3.6x | Best val loss: 0.2683
+  Time: 145s
+  Params:
+    weight_decay: 1e-05
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.001
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 128
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+
+--- Rank 2 (Iteration 7) ---
+  RMSE: 0.5755 | MAE: 0.3186 | R²: 0.9139
+  Epochs: 12 | Overfit ratio: 3.9x | Best val loss: 0.3370
+  Time: 88s
+  Params:
+    weight_decay: 1e-05
+    num_layers_temporal: 2
+    num_layers_spatial: 2
+    nhead_temporal: 2
+    nhead_spatial: 6
+    learning_rate: 0.002
+    dropout_rate: 0.4
+    dim_feedforward: 256
+    d_model: 96
+    batch_size: 16
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+
+--- Rank 3 (Iteration 1) ---
+  RMSE: 0.5920 | MAE: 0.3693 | R²: 0.9088
+  Epochs: 9 | Overfit ratio: 2.8x | Best val loss: 0.3505
+  Time: 70s
+  Params:
+    weight_decay: 0.0005
+    num_layers_temporal: 3
+    num_layers_spatial: 2
+    nhead_temporal: 2
+    nhead_spatial: 6
+    learning_rate: 0.002
+    dropout_rate: 0.2
+    dim_feedforward: 512
+    d_model: 96
+    batch_size: 16
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+
+--- Rank 4 (Iteration 3) ---
+  RMSE: 0.6102 | MAE: 0.3362 | R²: 0.9031
+  Epochs: 10 | Overfit ratio: 2.5x | Best val loss: 0.3808
+  Time: 95s
+  Params:
+    weight_decay: 1e-05
+    num_layers_temporal: 2
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 6
+    learning_rate: 0.001
+    dropout_rate: 0.4
+    dim_feedforward: 512
+    d_model: 96
+    batch_size: 16
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.05
+
+--- Rank 5 (Iteration 5) ---
+  RMSE: 0.6606 | MAE: 0.4414 | R²: 0.8865
+  Epochs: 8 | Overfit ratio: 1.2x | Best val loss: 0.4364
+  Time: 133s
+  Params:
+    weight_decay: 0.0005
+    num_layers_temporal: 3
+    num_layers_spatial: 3
+    nhead_temporal: 6
+    nhead_spatial: 2
+    learning_rate: 0.001
+    dropout_rate: 0.2
+    dim_feedforward: 512
+    d_model: 192
+    batch_size: 16
+    scheduler_type: OneCycleLR
+    pct_start: 0.05
+
+--- Rank 6 (Iteration 2) ---
+  RMSE: 0.6832 | MAE: 0.3805 | R²: 0.8786
+  Epochs: 12 | Overfit ratio: 4.9x | Best val loss: 0.5529
+  Time: 37s
+  Params:
+    weight_decay: 0.001
+    num_layers_temporal: 2
+    num_layers_spatial: 1
+    nhead_temporal: 6
+    nhead_spatial: 2
+    learning_rate: 0.0005
+    dropout_rate: 0.5
+    dim_feedforward: 256
+    d_model: 96
+    batch_size: 64
+    scheduler_type: OneCycleLR
+    pct_start: 0.2
+
+--- Rank 7 (Iteration 6) ---
+  RMSE: 0.7564 | MAE: 0.4274 | R²: 0.8512
+  Epochs: 9 | Overfit ratio: 4.6x | Best val loss: 0.6305
+  Time: 30s
+  Params:
+    weight_decay: 0.001
+    num_layers_temporal: 3
+    num_layers_spatial: 1
+    nhead_temporal: 2
+    nhead_spatial: 4
+    learning_rate: 0.001
+    dropout_rate: 0.4
+    dim_feedforward: 128
+    d_model: 96
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.05
+
+--- Rank 8 (Iteration 4) ---
+  RMSE: 0.7669 | MAE: 0.4404 | R²: 0.8470
+  Epochs: 9 | Overfit ratio: 4.1x | Best val loss: 0.5965
+  Time: 61s
+  Params:
+    weight_decay: 0.0005
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 2
+    learning_rate: 0.002
+    dropout_rate: 0.4
+    dim_feedforward: 128
+    d_model: 96
+    batch_size: 32
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.05

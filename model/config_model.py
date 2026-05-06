@@ -16,8 +16,8 @@ RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
 DEV_MODE = True
-DEV_FRACTION = 0.1
-DEV_CV_FOLDS = 3
+DEV_FRACTION = 0.2
+DEV_CV_FOLDS = 18
 DEV_EPOCHS = 25
 DEV_EARLY_STOPPING_PATIENCE = 5
 
@@ -67,6 +67,20 @@ TRUE_WEIGHTS = {
     6.0: 5.922,
 }
 
+# Toggle individual weight classes on/off.
+# Set a weight to False to exclude ALL segments with that nominal weight
+# from training.  The 0.0 key controls free_movement segments.
+WEIGHT_INCLUDE = {
+    0.0:  True,   # free_movement (no load)
+    0.75: False,
+    1.0:  True,
+    2.0:  True,
+    2.25: False,
+    3.0:  True,
+    4.25: True,
+    6.0:  True,
+}
+
 ###########################################################
 # RAW CHANNEL TOGGLES (apply to ALL architectures)
 # Set False to exclude a channel from both raw-segment
@@ -89,11 +103,11 @@ CHANNEL_CONFIG = {
     # ── IMU Channels ─────────────────────────────────────────
     'imu_channels': {
         # Sensor 1
-        'ax1': True, 'ay1': True, 'az1': True,
-        'roll_rad1': True, 'pitch_rad1': True, 'yaw_rad1': True,
+        'ax1': False, 'ay1': False, 'az1': False,
+        'roll_rad1': False, 'pitch_rad1': False, 'yaw_rad1': False,
         # Sensor 2
-        'ax2': True, 'ay2': True, 'az2': True,
-        'roll_rad2': True, 'pitch_rad2': True, 'yaw_rad2': True,
+        'ax2': False, 'ay2': False, 'az2': False,
+        'roll_rad2': False, 'pitch_rad2': False, 'yaw_rad2': False,
         # Differential (Elbow Kinematics)
         'ax_diff': True, 'ay_diff': True, 'az_diff': True,
         'roll_rad_diff': True, 'pitch_rad_diff': True, 'yaw_rad_diff': True,
@@ -475,28 +489,28 @@ TRANSFORMER_CONFIG = {
 }
 
 # Spatio-Temporal Transformer Configuration
+# Validated via 3 HP sweeps: 2× at 10% (sweep_20260505_183441, _185415) + 1× at 20% (_222742)
+# 20% winner: R²=0.929, RMSE=0.514, MAE=0.319 (d_model=160 emerged with more data)
 SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
-    'd_model': 192,             # Slightly reduced from 256
-    'nhead_spatial': 6,         # Adjusted for d_model=192 (must divide d_model)
-    'num_layers_spatial': 3,    # Slightly reduced from 4
-    'nhead_temporal': 6,
-    'num_layers_temporal': 3,
-    'dim_feedforward': 512,     # Reduced from 1024 (major memory saver)
-    'dropout_rate': 0.4,
-    'learning_rate': 0.001,
-    'weight_decay': 1e-4,
-    'batch_size': 32,           # Reduced from 128 (CRITICAL for memory)
-    'epochs': 150,
+    'd_model': 160,               # 20% sweep winner (beat 128 with more data)
+    'nhead_spatial': 4,           # Must divide d_model (160/4=40)
+    'num_layers_spatial': 3,      # Spatial depth critical — won all 3 sweeps
+    'nhead_temporal': 4,          # Must divide d_model (160/4=40)
+    'num_layers_temporal': 1,     # Single temporal layer — won all 3 sweeps
+    'dim_feedforward': 256,       # Consistent across all sweeps
+    'dropout_rate': 0.2,          # Lower than 10% sweep (0.3) — more data needs less reg
+    'learning_rate': 3e-4,        # Slower than 1e-3 — steadier convergence
+    'weight_decay': 1e-4,         # Slightly higher than 10% sweep
+    'batch_size': 32,             # Smaller batches = more gradient updates
+    'epochs': 200,                # Increased for slower lr (3e-4 vs 1e-3)
     'validation_split': 0.1,
-    'early_stopping_patience': 50,
-    'scheduler_patience': 5,
+    'early_stopping_patience': 60, # Increased to match slower convergence
+    'scheduler_patience': 7,       # More patience before lr reduction
     'scheduler_factor': 0.5,
-    'use_checkpointing': True,  # Memory-compute trade-off
-    'use_amp': True,            # Mixed precision (saves 50% activation memory)
+    'use_checkpointing': True,    # Memory-compute trade-off (for DelftBlue)
+    'use_amp': True,              # Mixed precision (CUDA only, auto-disabled on MPS)
     'scheduler': {
-        'type': 'OneCycleLR',
-        'max_lr': 0.001,
-        'pct_start': 0.1,  # 10% of total steps for warmup
+        'type': 'ReduceLROnPlateau',  # Won all 3 sweeps
     },
     'random_state': GLOBAL_RANDOM_STATE
 }
@@ -534,13 +548,13 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER_CONFIG.update({
-        'd_model': 64,
+        'd_model': 160,               # Same as production (20% sweep-validated)
         'nhead_spatial': 4,
-        'num_layers_spatial': 2,
+        'num_layers_spatial': 3,
         'nhead_temporal': 4,
-        'num_layers_temporal': 2,
-        'dim_feedforward': 128,
-        'use_checkpointing': False, # Disable for dev mode for speed
+        'num_layers_temporal': 1,
+        'dim_feedforward': 256,
+        'use_checkpointing': False,   # Disable for dev mode speed
         'use_amp': True,
     })
     

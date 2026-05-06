@@ -1,15 +1,165 @@
 [
   {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0014",
+    "participant": "P01",
+    "reasons": "too_long(3.779s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0020",
+    "participant": "P01",
+    "reasons": "too_long(3.569s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0106",
+    "participant": "P01",
+    "reasons": "too_long(5.380s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0126",
+    "participant": "P01",
+    "reasons": "too_long(17.127s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0134",
+    "participant": "P01",
+    "reasons": "too_long(6.437s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0237",
+    "participant": "P01",
+    "reasons": "too_long(5.205s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0241",
+    "participant": "P01",
+    "reasons": "too_long(4.412s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0243",
+    "participant": "P01",
+    "reasons": "too_long(4.146s)"
+  },
+  {
+    "file": "participant_P01_session_01_segments.h5",
+    "segment": "segment_0353",
+    "participant": "P01",
+    "reasons": "too_long(4.360s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_0061",
+    "participant": "P01",
+    "reasons": "too_long(3.863s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_0620",
+    "participant": "P01",
+    "reasons": "too_long(3.504s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_0692",
+    "participant": "P01",
+    "reasons": "too_long(3.811s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_0921",
+    "participant": "P01",
+    "reasons": "too_long(3.743s)"
+  },
+  {
     "file": "participant_P01_session_02_segments.h5",
     "segment": "segment_1128",
     "participant": "P01",
-    "reasons": "outlier(5.71%)"
+    "reasons": "outlier(5.71%); too_long(5.357s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_1430",
+    "participant": "P01",
+    "reasons": "too_long(3.937s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_1528",
+    "participant": "P01",
+    "reasons": "too_long(4.377s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_1705",
+    "participant": "P01",
+    "reasons": "too_long(4.009s)"
+  },
+  {
+    "file": "participant_P01_session_02_segments.h5",
+    "segment": "segment_1720",
+    "participant": "P01",
+    "reasons": "too_long(4.221s)"
   },
   {
     "file": "participant_P01_session_02_segments.h5",
     "segment": "segment_1908",
     "participant": "P01",
-    "reasons": "imu_flatline(23.6%/yaw_rad2)"
+    "reasons": "imu_flatline(23.6%/yaw_rad2); too_long(44.830s)"
+  },
+  {
+    "file": "participant_P01_session_03_segments.h5",
+    "segment": "segment_0506",
+    "participant": "P01",
+    "reasons": "too_long(4.869s)"
+  },
+  {
+    "file": "participant_P01_session_03_segments.h5",
+    "segment": "segment_1025",
+    "participant": "P01",
+    "reasons": "too_long(6.929s)"
+  },
+  {
+    "file": "participant_P01_session_03_segments.h5",
+    "segment": "segment_1108",
+    "participant": "P01",
+    "reasons": "too_long(4.356s)"
+  },
+  {
+    "file": "participant_P02_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P02",
+    "reasons": "too_long(6.439s)"
+  },
+  {
+    "file": "participant_P02_session_01_segments.h5",
+    "segment": "segment_0034",
+    "participant": "P02",
+    "reasons": "too_long(3.865s)"
+  },
+  {
+    "file": "participant_P02_session_01_segments.h5",
+    "segment": "segment_0277",
+    "participant": "P02",
+    "reasons": "too_long(3.778s)"
+  },
+  {
+    "file": "participant_P02_session_01_segments.h5",
+    "segment": "segment_0429",
+    "participant": "P02",
+    "reasons": "too_short(0.373s)"
+  },
+  {
+    "file": "participant_P02_session_01_segments.h5",
+    "segment": "segment_1242",
+    "participant": "P02",
+    "reasons": "too_long(4.838s)"
   },
   {
     "file": "participant_P03_session_01_segments.h5",
@@ -57,13 +207,289 @@
     "file": "participant_P03_session_01_segments.h5",
     "segment": "segment_0008",
     "participant": "P03",
-    "reasons": "imu_flatline(44.0%/ax2)"
+    "reasons": "imu_flatline(44.0%/ax2); too_long(67.848s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0049",
+    "participant": "P03",
+    "reasons": "too_long(5.912s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0106",
+    "participant": "P03",
+    "reasons": "too_long(3.679s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0112",
+    "participant": "P03",
+    "reasons": "too_long(3.862s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0146",
+    "participant": "P03",
+    "reasons": "too_long(3.554s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0167",
+    "participant": "P03",
+    "reasons": "too_long(3.643s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0231",
+    "participant": "P03",
+    "reasons": "too_long(4.024s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0234",
+    "participant": "P03",
+    "reasons": "too_long(4.816s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0246",
+    "participant": "P03",
+    "reasons": "too_long(7.314s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0249",
+    "participant": "P03",
+    "reasons": "too_long(4.377s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0250",
+    "participant": "P03",
+    "reasons": "too_long(3.808s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0252",
+    "participant": "P03",
+    "reasons": "too_long(3.776s)"
   },
   {
     "file": "participant_P03_session_01_segments.h5",
     "segment": "segment_0254",
     "participant": "P03",
-    "reasons": "imu_flatline(41.0%/ax2); outlier(2.82%)"
+    "reasons": "imu_flatline(41.0%/ax2); outlier(2.82%); too_long(44.594s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0316",
+    "participant": "P03",
+    "reasons": "too_long(3.697s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0318",
+    "participant": "P03",
+    "reasons": "too_long(5.095s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0324",
+    "participant": "P03",
+    "reasons": "too_long(5.152s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0352",
+    "participant": "P03",
+    "reasons": "too_long(3.679s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0358",
+    "participant": "P03",
+    "reasons": "too_long(3.565s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0360",
+    "participant": "P03",
+    "reasons": "too_long(3.560s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0362",
+    "participant": "P03",
+    "reasons": "too_long(3.772s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0388",
+    "participant": "P03",
+    "reasons": "too_long(4.616s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0451",
+    "participant": "P03",
+    "reasons": "too_long(6.394s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0468",
+    "participant": "P03",
+    "reasons": "too_long(14.900s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0493",
+    "participant": "P03",
+    "reasons": "too_long(5.916s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0509",
+    "participant": "P03",
+    "reasons": "too_long(4.598s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0513",
+    "participant": "P03",
+    "reasons": "too_long(8.190s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0617",
+    "participant": "P03",
+    "reasons": "too_long(4.502s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0648",
+    "participant": "P03",
+    "reasons": "too_long(3.505s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0649",
+    "participant": "P03",
+    "reasons": "too_long(6.688s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0673",
+    "participant": "P03",
+    "reasons": "too_long(4.002s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0683",
+    "participant": "P03",
+    "reasons": "too_long(4.531s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0853",
+    "participant": "P03",
+    "reasons": "too_long(5.524s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0885",
+    "participant": "P03",
+    "reasons": "too_long(3.759s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0902",
+    "participant": "P03",
+    "reasons": "too_long(3.631s)"
+  },
+  {
+    "file": "participant_P03_session_01_segments.h5",
+    "segment": "segment_0918",
+    "participant": "P03",
+    "reasons": "too_short(0.367s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P04",
+    "reasons": "too_long(5.987s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P04",
+    "reasons": "too_long(7.034s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0012",
+    "participant": "P04",
+    "reasons": "too_long(4.157s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0024",
+    "participant": "P04",
+    "reasons": "too_short(0.347s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0073",
+    "participant": "P04",
+    "reasons": "too_short(0.475s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0119",
+    "participant": "P04",
+    "reasons": "too_short(0.488s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0248",
+    "participant": "P04",
+    "reasons": "too_short(0.495s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0254",
+    "participant": "P04",
+    "reasons": "too_long(3.663s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0301",
+    "participant": "P04",
+    "reasons": "too_short(0.481s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0355",
+    "participant": "P04",
+    "reasons": "too_short(0.482s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0374",
+    "participant": "P04",
+    "reasons": "too_long(4.318s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0499",
+    "participant": "P04",
+    "reasons": "too_long(4.756s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0512",
+    "participant": "P04",
+    "reasons": "too_short(0.496s)"
   },
   {
     "file": "participant_P04_session_01_segments.h5",
@@ -120,6 +546,30 @@
     "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
   },
   {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0659",
+    "participant": "P04",
+    "reasons": "too_long(41.547s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0770",
+    "participant": "P04",
+    "reasons": "too_long(3.579s)"
+  },
+  {
+    "file": "participant_P04_session_01_segments.h5",
+    "segment": "segment_0895",
+    "participant": "P04",
+    "reasons": "too_short(0.358s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P05",
+    "reasons": "too_long(9.469s)"
+  },
+  {
     "file": "participant_P05_session_01_segments.h5",
     "segment": "segment_0001",
     "participant": "P05",
@@ -129,25 +579,307 @@
     "file": "participant_P05_session_01_segments.h5",
     "segment": "segment_0002",
     "participant": "P05",
-    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+    "reasons": "dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2); too_long(3.792s)"
   },
   {
     "file": "participant_P05_session_01_segments.h5",
     "segment": "segment_0003",
     "participant": "P05",
-    "reasons": "imu_flatline(94.3%/pitch_rad2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2)"
+    "reasons": "imu_flatline(94.3%/pitch_rad2); dead_channels(ax2;ay2;az2;roll_rad2;pitch_rad2;yaw_rad2); too_long(11.421s)"
   },
   {
     "file": "participant_P05_session_01_segments.h5",
     "segment": "segment_0004",
     "participant": "P05",
-    "reasons": "imu_flatline(79.0%/pitch_rad2)"
+    "reasons": "imu_flatline(79.0%/pitch_rad2); too_long(20.812s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0008",
+    "participant": "P05",
+    "reasons": "too_long(4.571s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0010",
+    "participant": "P05",
+    "reasons": "too_long(4.454s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0018",
+    "participant": "P05",
+    "reasons": "too_long(4.796s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0019",
+    "participant": "P05",
+    "reasons": "too_long(3.717s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0020",
+    "participant": "P05",
+    "reasons": "too_long(3.859s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0036",
+    "participant": "P05",
+    "reasons": "too_long(4.202s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0037",
+    "participant": "P05",
+    "reasons": "too_long(3.720s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0046",
+    "participant": "P05",
+    "reasons": "too_long(5.649s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0050",
+    "participant": "P05",
+    "reasons": "too_long(3.640s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0052",
+    "participant": "P05",
+    "reasons": "too_long(4.276s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0080",
+    "participant": "P05",
+    "reasons": "too_long(4.435s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0096",
+    "participant": "P05",
+    "reasons": "too_long(3.704s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0098",
+    "participant": "P05",
+    "reasons": "too_long(3.535s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0104",
+    "participant": "P05",
+    "reasons": "too_long(4.101s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0118",
+    "participant": "P05",
+    "reasons": "too_long(3.915s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0119",
+    "participant": "P05",
+    "reasons": "too_long(4.888s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0131",
+    "participant": "P05",
+    "reasons": "too_long(3.789s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0134",
+    "participant": "P05",
+    "reasons": "too_long(3.526s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0140",
+    "participant": "P05",
+    "reasons": "too_long(4.535s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0158",
+    "participant": "P05",
+    "reasons": "too_long(3.876s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0164",
+    "participant": "P05",
+    "reasons": "too_long(3.553s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0170",
+    "participant": "P05",
+    "reasons": "too_long(4.215s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0180",
+    "participant": "P05",
+    "reasons": "too_long(3.765s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0210",
+    "participant": "P05",
+    "reasons": "too_long(4.968s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0230",
+    "participant": "P05",
+    "reasons": "too_long(3.856s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0246",
+    "participant": "P05",
+    "reasons": "too_long(3.831s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0269",
+    "participant": "P05",
+    "reasons": "too_long(3.615s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0270",
+    "participant": "P05",
+    "reasons": "too_long(4.152s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0274",
+    "participant": "P05",
+    "reasons": "too_long(3.616s)"
   },
   {
     "file": "participant_P05_session_01_segments.h5",
     "segment": "segment_0284",
     "participant": "P05",
-    "reasons": "outlier(3.06%)"
+    "reasons": "outlier(3.06%); too_long(5.827s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0304",
+    "participant": "P05",
+    "reasons": "too_long(3.954s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0310",
+    "participant": "P05",
+    "reasons": "too_long(3.873s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0314",
+    "participant": "P05",
+    "reasons": "too_long(4.045s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0316",
+    "participant": "P05",
+    "reasons": "too_long(3.546s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0356",
+    "participant": "P05",
+    "reasons": "too_long(5.080s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0361",
+    "participant": "P05",
+    "reasons": "too_long(3.521s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0365",
+    "participant": "P05",
+    "reasons": "too_long(3.686s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0380",
+    "participant": "P05",
+    "reasons": "too_long(3.742s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0395",
+    "participant": "P05",
+    "reasons": "too_long(6.096s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0398",
+    "participant": "P05",
+    "reasons": "too_long(5.059s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0408",
+    "participant": "P05",
+    "reasons": "too_long(5.133s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0438",
+    "participant": "P05",
+    "reasons": "too_long(4.090s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0440",
+    "participant": "P05",
+    "reasons": "too_long(3.773s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0482",
+    "participant": "P05",
+    "reasons": "too_long(3.598s)"
+  },
+  {
+    "file": "participant_P05_session_01_segments.h5",
+    "segment": "segment_0493",
+    "participant": "P05",
+    "reasons": "too_long(4.015s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P06",
+    "reasons": "too_long(6.873s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0119",
+    "participant": "P06",
+    "reasons": "too_long(3.611s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0137",
+    "participant": "P06",
+    "reasons": "too_short(0.454s)"
   },
   {
     "file": "participant_P06_session_01_segments.h5",
@@ -169,9 +901,243 @@
   },
   {
     "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0258",
+    "participant": "P06",
+    "reasons": "too_long(5.548s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0435",
+    "participant": "P06",
+    "reasons": "too_long(4.181s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0520",
+    "participant": "P06",
+    "reasons": "too_short(0.431s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0594",
+    "participant": "P06",
+    "reasons": "too_short(0.499s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0610",
+    "participant": "P06",
+    "reasons": "too_short(0.457s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0616",
+    "participant": "P06",
+    "reasons": "too_short(0.499s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0620",
+    "participant": "P06",
+    "reasons": "too_short(0.467s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0664",
+    "participant": "P06",
+    "reasons": "too_short(0.475s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0676",
+    "participant": "P06",
+    "reasons": "too_short(0.486s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0678",
+    "participant": "P06",
+    "reasons": "too_short(0.433s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0687",
+    "participant": "P06",
+    "reasons": "too_short(0.485s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0698",
+    "participant": "P06",
+    "reasons": "too_short(0.498s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0721",
+    "participant": "P06",
+    "reasons": "too_short(0.382s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0734",
+    "participant": "P06",
+    "reasons": "too_short(0.499s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0740",
+    "participant": "P06",
+    "reasons": "too_short(0.444s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0741",
+    "participant": "P06",
+    "reasons": "too_long(5.700s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0752",
+    "participant": "P06",
+    "reasons": "too_short(0.456s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0756",
+    "participant": "P06",
+    "reasons": "too_short(0.499s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0778",
+    "participant": "P06",
+    "reasons": "too_short(0.487s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0786",
+    "participant": "P06",
+    "reasons": "too_short(0.461s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0790",
+    "participant": "P06",
+    "reasons": "too_short(0.489s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0810",
+    "participant": "P06",
+    "reasons": "too_short(0.481s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0828",
+    "participant": "P06",
+    "reasons": "too_short(0.406s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
     "segment": "segment_0834",
     "participant": "P06",
     "reasons": "too_short(0.235s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0836",
+    "participant": "P06",
+    "reasons": "too_short(0.498s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0880",
+    "participant": "P06",
+    "reasons": "too_short(0.492s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0940",
+    "participant": "P06",
+    "reasons": "too_short(0.497s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0943",
+    "participant": "P06",
+    "reasons": "too_short(0.442s)"
+  },
+  {
+    "file": "participant_P06_session_01_segments.h5",
+    "segment": "segment_0978",
+    "participant": "P06",
+    "reasons": "too_short(0.476s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P07",
+    "reasons": "too_long(6.072s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0012",
+    "participant": "P07",
+    "reasons": "too_long(3.723s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0055",
+    "participant": "P07",
+    "reasons": "too_long(4.532s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0067",
+    "participant": "P07",
+    "reasons": "too_short(0.495s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0145",
+    "participant": "P07",
+    "reasons": "too_short(0.440s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0457",
+    "participant": "P07",
+    "reasons": "too_short(0.496s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0480",
+    "participant": "P07",
+    "reasons": "too_long(3.687s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0498",
+    "participant": "P07",
+    "reasons": "too_long(31.124s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0561",
+    "participant": "P07",
+    "reasons": "too_short(0.432s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0567",
+    "participant": "P07",
+    "reasons": "too_short(0.482s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0581",
+    "participant": "P07",
+    "reasons": "too_short(0.488s)"
   },
   {
     "file": "participant_P07_session_01_segments.h5",
@@ -181,9 +1147,129 @@
   },
   {
     "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0670",
+    "participant": "P07",
+    "reasons": "too_short(0.346s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0709",
+    "participant": "P07",
+    "reasons": "too_short(0.366s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0793",
+    "participant": "P07",
+    "reasons": "too_short(0.481s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0805",
+    "participant": "P07",
+    "reasons": "too_short(0.464s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0837",
+    "participant": "P07",
+    "reasons": "too_short(0.496s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0863",
+    "participant": "P07",
+    "reasons": "too_short(0.484s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0869",
+    "participant": "P07",
+    "reasons": "too_short(0.476s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
     "segment": "segment_0880",
     "participant": "P07",
     "reasons": "outlier(6.41%)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0881",
+    "participant": "P07",
+    "reasons": "too_short(0.470s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0885",
+    "participant": "P07",
+    "reasons": "too_short(0.487s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0925",
+    "participant": "P07",
+    "reasons": "too_short(0.485s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0933",
+    "participant": "P07",
+    "reasons": "too_short(0.385s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0939",
+    "participant": "P07",
+    "reasons": "too_short(0.471s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0963",
+    "participant": "P07",
+    "reasons": "too_short(0.361s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0987",
+    "participant": "P07",
+    "reasons": "too_short(0.491s)"
+  },
+  {
+    "file": "participant_P07_session_01_segments.h5",
+    "segment": "segment_0992",
+    "participant": "P07",
+    "reasons": "too_short(0.365s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P08",
+    "reasons": "too_long(17.377s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P08",
+    "reasons": "too_long(6.465s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0005",
+    "participant": "P08",
+    "reasons": "too_long(4.128s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0032",
+    "participant": "P08",
+    "reasons": "too_long(3.816s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0058",
+    "participant": "P08",
+    "reasons": "too_long(5.087s)"
   },
   {
     "file": "participant_P08_session_01_segments.h5",
@@ -193,9 +1279,51 @@
   },
   {
     "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0181",
+    "participant": "P08",
+    "reasons": "too_short(0.462s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0263",
+    "participant": "P08",
+    "reasons": "too_short(0.453s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0353",
+    "participant": "P08",
+    "reasons": "too_short(0.315s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0373",
+    "participant": "P08",
+    "reasons": "too_short(0.460s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0389",
+    "participant": "P08",
+    "reasons": "too_long(4.689s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0392",
+    "participant": "P08",
+    "reasons": "too_long(4.373s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
     "segment": "segment_0480",
     "participant": "P08",
-    "reasons": "outlier(2.56%)"
+    "reasons": "outlier(2.56%); too_long(4.775s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0499",
+    "participant": "P08",
+    "reasons": "too_long(28.904s)"
   },
   {
     "file": "participant_P08_session_01_segments.h5",
@@ -205,21 +1333,555 @@
   },
   {
     "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0516",
+    "participant": "P08",
+    "reasons": "too_short(0.460s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0552",
+    "participant": "P08",
+    "reasons": "too_short(0.499s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0562",
+    "participant": "P08",
+    "reasons": "too_short(0.466s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0637",
+    "participant": "P08",
+    "reasons": "too_short(0.467s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0652",
+    "participant": "P08",
+    "reasons": "too_short(0.423s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0673",
+    "participant": "P08",
+    "reasons": "too_short(0.332s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0687",
+    "participant": "P08",
+    "reasons": "too_short(0.472s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0699",
+    "participant": "P08",
+    "reasons": "too_short(0.312s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0744",
+    "participant": "P08",
+    "reasons": "too_long(4.024s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0759",
+    "participant": "P08",
+    "reasons": "too_short(0.497s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
     "segment": "segment_0774",
     "participant": "P08",
     "reasons": "outlier(5.45%)"
   },
   {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0787",
+    "participant": "P08",
+    "reasons": "too_short(0.477s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0799",
+    "participant": "P08",
+    "reasons": "too_short(0.497s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0831",
+    "participant": "P08",
+    "reasons": "too_short(0.396s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0853",
+    "participant": "P08",
+    "reasons": "too_short(0.485s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0893",
+    "participant": "P08",
+    "reasons": "too_short(0.498s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0925",
+    "participant": "P08",
+    "reasons": "too_short(0.498s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0973",
+    "participant": "P08",
+    "reasons": "too_short(0.454s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0981",
+    "participant": "P08",
+    "reasons": "too_short(0.485s)"
+  },
+  {
+    "file": "participant_P08_session_01_segments.h5",
+    "segment": "segment_0993",
+    "participant": "P08",
+    "reasons": "too_short(0.485s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P09",
+    "reasons": "too_long(8.822s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0003",
+    "participant": "P09",
+    "reasons": "too_long(5.317s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0006",
+    "participant": "P09",
+    "reasons": "too_long(7.574s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0047",
+    "participant": "P09",
+    "reasons": "too_long(4.038s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0079",
+    "participant": "P09",
+    "reasons": "too_long(4.282s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0109",
+    "participant": "P09",
+    "reasons": "too_long(5.655s)"
+  },
+  {
     "file": "participant_P09_session_01_segments.h5",
     "segment": "segment_0182",
     "participant": "P09",
-    "reasons": "too_short(0.010s)"
+    "reasons": "too_short(0.011s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0183",
+    "participant": "P09",
+    "reasons": "too_long(6.507s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0291",
+    "participant": "P09",
+    "reasons": "too_long(4.743s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0399",
+    "participant": "P09",
+    "reasons": "too_short(0.495s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0499",
+    "participant": "P09",
+    "reasons": "too_long(3.612s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0576",
+    "participant": "P09",
+    "reasons": "too_long(4.790s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0742",
+    "participant": "P09",
+    "reasons": "too_short(0.359s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0832",
+    "participant": "P09",
+    "reasons": "too_long(3.628s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0934",
+    "participant": "P09",
+    "reasons": "too_long(5.107s)"
+  },
+  {
+    "file": "participant_P09_session_01_segments.h5",
+    "segment": "segment_0990",
+    "participant": "P09",
+    "reasons": "too_long(4.061s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P10",
+    "reasons": "too_long(37.474s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P10",
+    "reasons": "too_long(5.002s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P10",
+    "reasons": "too_long(4.165s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0014",
+    "participant": "P10",
+    "reasons": "too_long(12.653s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0035",
+    "participant": "P10",
+    "reasons": "too_long(4.263s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0059",
+    "participant": "P10",
+    "reasons": "too_long(3.861s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0075",
+    "participant": "P10",
+    "reasons": "too_long(3.711s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0109",
+    "participant": "P10",
+    "reasons": "too_long(5.283s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0204",
+    "participant": "P10",
+    "reasons": "too_long(6.285s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0226",
+    "participant": "P10",
+    "reasons": "too_long(7.189s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0334",
+    "participant": "P10",
+    "reasons": "too_short(0.491s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0344",
+    "participant": "P10",
+    "reasons": "too_short(0.355s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0370",
+    "participant": "P10",
+    "reasons": "too_short(0.496s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0390",
+    "participant": "P10",
+    "reasons": "too_short(0.461s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0396",
+    "participant": "P10",
+    "reasons": "too_short(0.467s)"
+  },
+  {
+    "file": "participant_P10_session_01_segments.h5",
+    "segment": "segment_0460",
+    "participant": "P10",
+    "reasons": "too_short(0.482s)"
+  },
+  {
+    "file": "participant_P11_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P11",
+    "reasons": "too_long(13.441s)"
+  },
+  {
+    "file": "participant_P11_session_01_segments.h5",
+    "segment": "segment_0109",
+    "participant": "P11",
+    "reasons": "too_long(3.583s)"
+  },
+  {
+    "file": "participant_P11_session_01_segments.h5",
+    "segment": "segment_0192",
+    "participant": "P11",
+    "reasons": "too_long(8.577s)"
+  },
+  {
+    "file": "participant_P11_session_01_segments.h5",
+    "segment": "segment_0396",
+    "participant": "P11",
+    "reasons": "too_long(4.907s)"
+  },
+  {
+    "file": "participant_P11_session_01_segments.h5",
+    "segment": "segment_0499",
+    "participant": "P11",
+    "reasons": "too_long(71.216s)"
+  },
+  {
+    "file": "participant_P12_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P12",
+    "reasons": "too_long(9.925s)"
   },
   {
     "file": "participant_P12_session_01_segments.h5",
     "segment": "segment_0084",
     "participant": "P12",
-    "reasons": "too_short(0.077s)"
+    "reasons": "too_short(0.076s)"
+  },
+  {
+    "file": "participant_P12_session_01_segments.h5",
+    "segment": "segment_0421",
+    "participant": "P12",
+    "reasons": "too_long(4.176s)"
+  },
+  {
+    "file": "participant_P12_session_01_segments.h5",
+    "segment": "segment_0892",
+    "participant": "P12",
+    "reasons": "too_short(0.473s)"
+  },
+  {
+    "file": "participant_P12_session_01_segments.h5",
+    "segment": "segment_0932",
+    "participant": "P12",
+    "reasons": "too_long(3.667s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P13",
+    "reasons": "too_long(10.411s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0001",
+    "participant": "P13",
+    "reasons": "too_long(5.675s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P13",
+    "reasons": "too_long(5.503s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0003",
+    "participant": "P13",
+    "reasons": "too_long(3.510s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P13",
+    "reasons": "too_long(4.577s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0006",
+    "participant": "P13",
+    "reasons": "too_long(6.480s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0008",
+    "participant": "P13",
+    "reasons": "too_long(5.924s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0018",
+    "participant": "P13",
+    "reasons": "too_long(5.462s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0020",
+    "participant": "P13",
+    "reasons": "too_long(3.872s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0022",
+    "participant": "P13",
+    "reasons": "too_long(4.561s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0028",
+    "participant": "P13",
+    "reasons": "too_long(6.322s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0030",
+    "participant": "P13",
+    "reasons": "too_long(3.941s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0032",
+    "participant": "P13",
+    "reasons": "too_long(3.740s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0034",
+    "participant": "P13",
+    "reasons": "too_long(6.127s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0046",
+    "participant": "P13",
+    "reasons": "too_long(4.099s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0048",
+    "participant": "P13",
+    "reasons": "too_long(3.735s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0083",
+    "participant": "P13",
+    "reasons": "too_short(0.420s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0093",
+    "participant": "P13",
+    "reasons": "too_short(0.499s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0106",
+    "participant": "P13",
+    "reasons": "too_long(3.538s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0110",
+    "participant": "P13",
+    "reasons": "too_long(3.899s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0112",
+    "participant": "P13",
+    "reasons": "too_long(4.520s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0113",
+    "participant": "P13",
+    "reasons": "too_long(3.533s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0128",
+    "participant": "P13",
+    "reasons": "too_long(3.630s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0167",
+    "participant": "P13",
+    "reasons": "too_short(0.361s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0194",
+    "participant": "P13",
+    "reasons": "too_long(5.677s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0201",
+    "participant": "P13",
+    "reasons": "too_long(5.157s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0204",
+    "participant": "P13",
+    "reasons": "too_long(3.994s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0210",
+    "participant": "P13",
+    "reasons": "too_long(3.725s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0213",
+    "participant": "P13",
+    "reasons": "too_short(0.343s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0223",
+    "participant": "P13",
+    "reasons": "too_long(3.612s)"
   },
   {
     "file": "participant_P13_session_01_segments.h5",
@@ -229,15 +1891,273 @@
   },
   {
     "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0225",
+    "participant": "P13",
+    "reasons": "too_long(6.933s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0226",
+    "participant": "P13",
+    "reasons": "too_long(4.410s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0231",
+    "participant": "P13",
+    "reasons": "too_long(10.540s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0284",
+    "participant": "P13",
+    "reasons": "too_long(3.886s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0343",
+    "participant": "P13",
+    "reasons": "too_long(5.797s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
     "segment": "segment_0350",
     "participant": "P13",
-    "reasons": "outlier(2.24%)"
+    "reasons": "outlier(2.24%); too_long(4.155s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0369",
+    "participant": "P13",
+    "reasons": "too_long(4.114s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0402",
+    "participant": "P13",
+    "reasons": "too_long(3.672s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0435",
+    "participant": "P13",
+    "reasons": "too_long(3.675s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0439",
+    "participant": "P13",
+    "reasons": "too_long(3.639s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0441",
+    "participant": "P13",
+    "reasons": "too_long(5.505s)"
+  },
+  {
+    "file": "participant_P13_session_01_segments.h5",
+    "segment": "segment_0493",
+    "participant": "P13",
+    "reasons": "too_long(4.250s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P14",
+    "reasons": "too_long(15.605s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P14",
+    "reasons": "too_long(3.965s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P14",
+    "reasons": "too_long(5.920s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0030",
+    "participant": "P14",
+    "reasons": "too_long(3.741s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0038",
+    "participant": "P14",
+    "reasons": "too_long(3.896s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0042",
+    "participant": "P14",
+    "reasons": "too_long(3.896s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0107",
+    "participant": "P14",
+    "reasons": "too_long(4.455s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0112",
+    "participant": "P14",
+    "reasons": "too_long(3.898s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0147",
+    "participant": "P14",
+    "reasons": "too_long(5.748s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0173",
+    "participant": "P14",
+    "reasons": "too_long(6.013s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0189",
+    "participant": "P14",
+    "reasons": "too_long(3.666s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0270",
+    "participant": "P14",
+    "reasons": "too_long(3.635s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0291",
+    "participant": "P14",
+    "reasons": "too_short(0.452s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0313",
+    "participant": "P14",
+    "reasons": "too_long(3.728s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0319",
+    "participant": "P14",
+    "reasons": "too_long(4.365s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0343",
+    "participant": "P14",
+    "reasons": "too_long(6.974s)"
   },
   {
     "file": "participant_P14_session_01_segments.h5",
     "segment": "segment_0372",
     "participant": "P14",
-    "reasons": "too_short(0.116s)"
+    "reasons": "too_short(0.117s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0389",
+    "participant": "P14",
+    "reasons": "too_long(3.845s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0421",
+    "participant": "P14",
+    "reasons": "too_short(0.346s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0485",
+    "participant": "P14",
+    "reasons": "too_short(0.405s)"
+  },
+  {
+    "file": "participant_P14_session_01_segments.h5",
+    "segment": "segment_0489",
+    "participant": "P14",
+    "reasons": "too_short(0.460s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P15",
+    "reasons": "too_long(18.352s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0009",
+    "participant": "P15",
+    "reasons": "too_long(3.841s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0023",
+    "participant": "P15",
+    "reasons": "too_long(4.077s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0034",
+    "participant": "P15",
+    "reasons": "too_long(3.849s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0306",
+    "participant": "P15",
+    "reasons": "too_long(3.515s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0342",
+    "participant": "P15",
+    "reasons": "too_long(7.526s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0360",
+    "participant": "P15",
+    "reasons": "too_long(10.075s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0389",
+    "participant": "P15",
+    "reasons": "too_long(4.892s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0499",
+    "participant": "P15",
+    "reasons": "too_long(6.367s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0522",
+    "participant": "P15",
+    "reasons": "too_long(3.881s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0640",
+    "participant": "P15",
+    "reasons": "too_long(5.773s)"
+  },
+  {
+    "file": "participant_P15_session_01_segments.h5",
+    "segment": "segment_0701",
+    "participant": "P15",
+    "reasons": "too_long(9.896s)"
   },
   {
     "file": "participant_P15_session_01_segments.h5",
@@ -789,7 +2709,7 @@
     "file": "participant_P15_session_01_segments.h5",
     "segment": "segment_0808",
     "participant": "P15",
-    "reasons": "dead_channels(Extensor Carpi Radialis (ECR))"
+    "reasons": "dead_channels(Extensor Carpi Radialis (ECR)); too_long(4.181s)"
   },
   {
     "file": "participant_P15_session_01_segments.h5",
@@ -909,7 +2829,7 @@
     "file": "participant_P15_session_01_segments.h5",
     "segment": "segment_0828",
     "participant": "P15",
-    "reasons": "emg_flatline(17.5%/Extensor Carpi Radialis (ECR))"
+    "reasons": "emg_flatline(17.5%/Extensor Carpi Radialis (ECR)); too_long(5.997s)"
   },
   {
     "file": "participant_P15_session_01_segments.h5",
@@ -921,7 +2841,97 @@
     "file": "participant_P16_session_01_segments.h5",
     "segment": "segment_0000",
     "participant": "P16",
-    "reasons": "outlier(2.43%)"
+    "reasons": "outlier(2.43%); too_long(7.362s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0002",
+    "participant": "P16",
+    "reasons": "too_long(6.680s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0008",
+    "participant": "P16",
+    "reasons": "too_long(3.797s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0024",
+    "participant": "P16",
+    "reasons": "too_long(4.000s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0032",
+    "participant": "P16",
+    "reasons": "too_long(3.774s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0037",
+    "participant": "P16",
+    "reasons": "too_long(3.840s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0046",
+    "participant": "P16",
+    "reasons": "too_long(3.536s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0093",
+    "participant": "P16",
+    "reasons": "too_long(4.939s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0178",
+    "participant": "P16",
+    "reasons": "too_long(4.054s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0203",
+    "participant": "P16",
+    "reasons": "too_long(3.822s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0219",
+    "participant": "P16",
+    "reasons": "too_long(5.170s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0339",
+    "participant": "P16",
+    "reasons": "too_long(3.898s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0381",
+    "participant": "P16",
+    "reasons": "too_long(3.848s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0473",
+    "participant": "P16",
+    "reasons": "too_short(0.400s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0491",
+    "participant": "P16",
+    "reasons": "too_long(9.457s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0499",
+    "participant": "P16",
+    "reasons": "too_long(5.075s)"
   },
   {
     "file": "participant_P16_session_01_segments.h5",
@@ -931,9 +2941,189 @@
   },
   {
     "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0664",
+    "participant": "P16",
+    "reasons": "too_short(0.404s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0713",
+    "participant": "P16",
+    "reasons": "too_long(6.161s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
     "segment": "segment_0714",
     "participant": "P16",
     "reasons": "outlier(3.61%)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0750",
+    "participant": "P16",
+    "reasons": "too_short(0.322s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0826",
+    "participant": "P16",
+    "reasons": "too_long(5.583s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0834",
+    "participant": "P16",
+    "reasons": "too_long(4.802s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0936",
+    "participant": "P16",
+    "reasons": "too_long(3.792s)"
+  },
+  {
+    "file": "participant_P16_session_01_segments.h5",
+    "segment": "segment_0967",
+    "participant": "P16",
+    "reasons": "too_long(3.712s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P17",
+    "reasons": "too_long(4.124s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0022",
+    "participant": "P17",
+    "reasons": "too_long(4.095s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0051",
+    "participant": "P17",
+    "reasons": "too_short(0.475s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0109",
+    "participant": "P17",
+    "reasons": "too_long(6.915s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0111",
+    "participant": "P17",
+    "reasons": "too_short(0.402s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0166",
+    "participant": "P17",
+    "reasons": "too_long(4.100s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0230",
+    "participant": "P17",
+    "reasons": "too_long(5.614s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0240",
+    "participant": "P17",
+    "reasons": "too_long(6.362s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0264",
+    "participant": "P17",
+    "reasons": "too_short(0.440s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0295",
+    "participant": "P17",
+    "reasons": "too_long(3.894s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0308",
+    "participant": "P17",
+    "reasons": "too_short(0.492s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0344",
+    "participant": "P17",
+    "reasons": "too_short(0.394s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0379",
+    "participant": "P17",
+    "reasons": "too_long(4.054s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0498",
+    "participant": "P17",
+    "reasons": "too_long(7.250s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0555",
+    "participant": "P17",
+    "reasons": "too_short(0.403s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0559",
+    "participant": "P17",
+    "reasons": "too_short(0.494s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0593",
+    "participant": "P17",
+    "reasons": "too_short(0.458s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0779",
+    "participant": "P17",
+    "reasons": "too_short(0.389s)"
+  },
+  {
+    "file": "participant_P17_session_01_segments.h5",
+    "segment": "segment_0947",
+    "participant": "P17",
+    "reasons": "too_short(0.487s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0000",
+    "participant": "P18",
+    "reasons": "too_long(18.046s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0004",
+    "participant": "P18",
+    "reasons": "too_long(4.063s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0006",
+    "participant": "P18",
+    "reasons": "too_long(4.375s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0008",
+    "participant": "P18",
+    "reasons": "too_long(8.456s)"
   },
   {
     "file": "participant_P18_session_01_segments.h5",
@@ -949,8 +3139,134 @@
   },
   {
     "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0035",
+    "participant": "P18",
+    "reasons": "too_long(6.817s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0036",
+    "participant": "P18",
+    "reasons": "too_long(3.832s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0042",
+    "participant": "P18",
+    "reasons": "too_long(4.569s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0044",
+    "participant": "P18",
+    "reasons": "too_long(3.939s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0046",
+    "participant": "P18",
+    "reasons": "too_long(5.671s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0057",
+    "participant": "P18",
+    "reasons": "too_long(6.257s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0067",
+    "participant": "P18",
+    "reasons": "too_long(7.480s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
     "segment": "segment_0075",
     "participant": "P18",
     "reasons": "dead_channels(ax1;ay1;az1;roll_rad1;pitch_rad1;yaw_rad1)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0076",
+    "participant": "P18",
+    "reasons": "too_long(54.790s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0078",
+    "participant": "P18",
+    "reasons": "too_long(4.740s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0091",
+    "participant": "P18",
+    "reasons": "too_short(0.472s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0092",
+    "participant": "P18",
+    "reasons": "too_long(4.085s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0095",
+    "participant": "P18",
+    "reasons": "too_long(5.348s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0106",
+    "participant": "P18",
+    "reasons": "too_long(6.395s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0126",
+    "participant": "P18",
+    "reasons": "too_long(4.472s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0136",
+    "participant": "P18",
+    "reasons": "too_long(3.970s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0144",
+    "participant": "P18",
+    "reasons": "too_long(6.021s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0162",
+    "participant": "P18",
+    "reasons": "too_long(3.838s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0237",
+    "participant": "P18",
+    "reasons": "too_short(0.410s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0353",
+    "participant": "P18",
+    "reasons": "too_long(4.546s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0360",
+    "participant": "P18",
+    "reasons": "too_long(15.242s)"
+  },
+  {
+    "file": "participant_P18_session_01_segments.h5",
+    "segment": "segment_0399",
+    "participant": "P18",
+    "reasons": "too_long(3.943s)"
   }
 ]
