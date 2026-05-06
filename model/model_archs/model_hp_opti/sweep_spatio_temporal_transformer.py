@@ -66,11 +66,11 @@ def main():
     if args.n_iter is not None:
         n_iter = args.n_iter
     else:
-        n_iter = 12 if DEV_MODE else 40
+        n_iter = 12 if DEV_MODE else 100
 
     test_participants_count = args.test_participants
     sweep_epochs = DEV_EPOCHS if DEV_MODE else 100
-    sweep_patience = 8 if DEV_MODE else 20   # slightly more patience for 20% data
+    sweep_patience = 8 if DEV_MODE else 30
 
     # ------------------------------------------------------------------
     # Paths
@@ -84,33 +84,28 @@ def main():
     run_dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
-    # Parameter grid — REFINED for 20% data
+    # Parameter grid — BROAD selection for full dataset
     # ------------------------------------------------------------------
-    # Findings from 10% sweeps (2× independent runs):
-    #   - spatial_layers=3, temporal_layers=1 won both times → LOCKED
-    #   - d_model=128 beat 96 and 192 → explore 96-192 range
-    #   - ReduceLROnPlateau dominated OneCycleLR → keep both, bias Plateau
-    #   - dropout=0.3, wd=1e-5 optimal at 10% → explore lower reg with more data
-    #
     # d_model must be divisible by nhead_spatial AND nhead_temporal.
+    # The script auto-adjusts nheads downwards if they don't divide d_model.
     param_grid = {
-        # ── Architecture (locked depth, explore width) ──────────────
-        'd_model':              [96, 128, 160, 192],
-        'nhead_spatial':        [4, 8],
-        'num_layers_spatial':   [3],                  # LOCKED: won both sweeps
-        'nhead_temporal':       [2, 4],
-        'num_layers_temporal':  [1],                  # LOCKED: won both sweeps
-        'dim_feedforward':      [192, 256, 384, 512],
+        # ── Architecture (Broad Search) ─────────────────────────────
+        'd_model':              [64, 96, 128, 160, 192, 256],
+        'nhead_spatial':        [2, 4, 8],
+        'num_layers_spatial':   [1, 2, 3, 4],
+        'nhead_temporal':       [2, 4, 8],
+        'num_layers_temporal':  [1, 2, 3],
+        'dim_feedforward':      [128, 256, 512, 1024],
 
-        # ── Regularisation (explore lower reg with more data) ───────
-        'dropout_rate':         [0.15, 0.2, 0.3, 0.4],
-        'weight_decay':         [1e-6, 1e-5, 5e-5, 1e-4],
+        # ── Regularisation (Capture all possible configs) ───────────
+        'dropout_rate':         [0.1, 0.15, 0.2, 0.3, 0.4, 0.5],
+        'weight_decay':         [1e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3],
 
         # ── Training ────────────────────────────────────────────────
-        'learning_rate':        [3e-4, 5e-4, 1e-3],
+        'learning_rate':        [1e-4, 3e-4, 5e-4, 1e-3, 2e-3],
         'batch_size':           [32, 64, 128],
-        'scheduler_type':      ['ReduceLROnPlateau', 'ReduceLROnPlateau', 'OneCycleLR'],  # 2:1 bias
-        'pct_start':           [0.05, 0.1, 0.15],     # for OneCycleLR
+        'scheduler_type':       ['ReduceLROnPlateau', 'OneCycleLR'],
+        'pct_start':            [0.05, 0.1, 0.15, 0.2, 0.3],     # for OneCycleLR
     }
 
     print("=" * 65)
