@@ -316,7 +316,8 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         if DEV_MODE:
             n_splits = min(DEV_CV_FOLDS, n_unique_groups)
         else:
-            n_splits = max(2, n_unique_groups // 2)
+            # Respect requested n_folds (e.g., 18 for LOPO), capped by actual participant count
+            n_splits = min(n_folds, n_unique_groups)
             
         gkf = GroupKFold(n_splits=n_splits)
         cv_iterator = list(gkf.split(X, y, groups))

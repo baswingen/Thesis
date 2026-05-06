@@ -15,7 +15,7 @@ MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp",
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = True
+DEV_MODE = False
 DEV_FRACTION = 0.2
 DEV_CV_FOLDS = 18
 DEV_EPOCHS = 25
@@ -260,10 +260,10 @@ AUGMENTATION_CONFIG = {
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 5,               # Only used if strategy is 'kfold'
+    'n_folds': 18,               # Only used if strategy is 'kfold'
     'strategy': 'participant',  # Options: 'kfold', 'participant'
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
-    'strict_val_participants': 2 # Number of participants to hold out for early stopping
+    'strict_val_participants': 1 # Number of participants to hold out for early stopping
 }
 
 # SVM Configuration
@@ -499,25 +499,27 @@ TRANSFORMER_CONFIG = {
 # Validated via 3 HP sweeps: 2× at 10% (sweep_20260505_183441, _185415) + 1× at 20% (_222742)
 # 20% winner: R²=0.929, RMSE=0.514, MAE=0.319 (d_model=160 emerged with more data)
 SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
-    'd_model': 160,               # 20% sweep winner (beat 128 with more data)
-    'nhead_spatial': 4,           # Must divide d_model (160/4=40)
-    'num_layers_spatial': 3,      # Spatial depth critical — won all 3 sweeps
-    'nhead_temporal': 4,          # Must divide d_model (160/4=40)
-    'num_layers_temporal': 1,     # Single temporal layer — won all 3 sweeps
-    'dim_feedforward': 256,       # Consistent across all sweeps
-    'dropout_rate': 0.2,          # Lower than 10% sweep (0.3) — more data needs less reg
-    'learning_rate': 3e-4,        # Slower than 1e-3 — steadier convergence
-    'weight_decay': 1e-4,         # Slightly higher than 10% sweep
-    'batch_size': 32,             # Smaller batches = more gradient updates
-    'epochs': 200,                # Increased for slower lr (3e-4 vs 1e-3)
+    'd_model': 64,                # Hybrid (Rank 1/6 both used 64)
+    'nhead_spatial': 8,           # Hybrid (Rank 1/6 both used 8)
+    'num_layers_spatial': 3,      # Hybrid (Rank 1=2, Rank 6=4)
+    'nhead_temporal': 4,          # Hybrid (Rank 1/6 both used 4)
+    'num_layers_temporal': 2,     # Hybrid (Rank 1=2, Rank 6=3)
+    'dim_feedforward': 512,       # Hybrid (Rank 1=1024, Rank 6=256)
+    'dropout_rate': 0.25,         # Hybrid (Rank 1=0.15, Rank 6=0.3)
+    'learning_rate': 0.0003,      # Rank 1 winner
+    'weight_decay': 1e-05,        # Rank 6 for better regularization
+    'batch_size': 128,            # Rank 1/6 winner
+    'epochs': 200,                
     'validation_split': 0.1,
-    'early_stopping_patience': 60, # Increased to match slower convergence
-    'scheduler_patience': 7,       # More patience before lr reduction
+    'early_stopping_patience': 50, 
+    'scheduler_patience': 7,       
     'scheduler_factor': 0.5,
-    'use_checkpointing': True,    # Memory-compute trade-off (for DelftBlue)
-    'use_amp': True,              # Mixed precision (CUDA only, auto-disabled on MPS)
+    'use_checkpointing': True,    
+    'use_amp': True,              
     'scheduler': {
-        'type': 'ReduceLROnPlateau',  # Won all 3 sweeps
+        'type': 'OneCycleLR',     # Sweep winner
+        'max_lr': 0.0003,
+        'pct_start': 0.3          # Rank 1 winner
     },
     'random_state': GLOBAL_RANDOM_STATE
 }
