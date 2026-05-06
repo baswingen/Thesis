@@ -1,0 +1,6 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260505_234307
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.

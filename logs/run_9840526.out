@@ -1,0 +1,20 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260505_123226
+[DataLoader] No precomputed features found. Falling back to live extraction.
+  → Run 'python -m model.feature_extraction' to precompute features.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 19310
+  - Average Windows per Lift: 12.2
+  - Features per Window: 376
+Label vector (y) shape: (19310,) (Target: weight)
+
+Starting 9-Fold Cross-Participant Validation...
+--- Fold 1/9 (Left out Participants: P01) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 192, 'nhead_spatial': 6, 'num_layers_spatial': 3, 'nhead_temporal': 6, 'num_layers_temporal': 3, 'dim_feedforward': 512, 'dropout_rate': 0.4, 'learning_rate': 0.001, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 150, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 5, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.001, 'pct_start': 0.1}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 2 participants for early stopping: P05, P10
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (996 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 23 based on sample distribution (min_count=69).
+[SpatioTemporalTransformerRegressor] Grouped features into 26 spatial channels.
