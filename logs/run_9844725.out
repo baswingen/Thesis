@@ -1,0 +1,652 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.899, 2.238]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+
+--- GRID SEARCH ENABLED ---
+Launching hyperparameter sweep for SPATIO_TEMPORAL_TRANSFORMER...
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.899, 2.238]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER HYPERPARAMETER SWEEP
+=================================================================
+  DEV_MODE             : False
+  Configurations       : 40
+  Epochs per config    : 100
+  Early-stop patience  : 20
+  Test participants    : 4
+  Results directory    : /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer_20260506_103944
+=================================================================
+
+Loading precomputed features (sequence mode)…
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P13_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Channel filter: removed 144 features from disabled channels.
+[Sweep] Dropped 2647 segments with excluded weight classes.
+Total segments: 16122
+
+Participant split:
+  Training   (14 subjects, 9452 segs): P03, P04, P05, P07, P08, P10, P11, P12, P13, P14, P15, P16, P17, P18
+  Validation (4 subjects, 6670 segs): P01, P02, P06, P09
+
+=================================================================
+--- Iteration 1/40 [Elapsed: 0.0m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=1
+  ff=256, dropout=0.15, wd=0.0001
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.3564
+  MAE: 0.3517 | RMSE: 0.5970 | R²: 0.9038
+  Epochs: 24 | Train/Val gap: 14.1x | Time: 303s
+  >>> NEW BEST MODEL! RMSE: 0.5970
+
+=================================================================
+--- Iteration 2/40 [Elapsed: 5.0m] ---
+  d_model=96, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=192, dropout=0.2, wd=1e-06
+  lr=0.001, bs=32, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.3821
+  MAE: 0.3313 | RMSE: 0.6179 | R²: 0.8970
+  Epochs: 23 | Train/Val gap: 13.0x | Time: 210s
+
+=================================================================
+--- Iteration 3/40 [Elapsed: 8.5m] ---
+  d_model=192, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=192, dropout=0.2, wd=1e-06
+  lr=0.001, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.3206
+  MAE: 0.2948 | RMSE: 0.5643 | R²: 0.9141
+  Epochs: 24 | Train/Val gap: 7.9x | Time: 136s
+  >>> NEW BEST MODEL! RMSE: 0.5643
+
+=================================================================
+--- Iteration 4/40 [Elapsed: 10.8m] ---
+  d_model=192, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=512, dropout=0.4, wd=5e-05
+  lr=0.0003, bs=64, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3992
+  MAE: 0.3274 | RMSE: 0.6298 | R²: 0.8930
+  Epochs: 25 | Train/Val gap: 6.7x | Time: 164s
+
+=================================================================
+--- Iteration 5/40 [Elapsed: 13.5m] ---
+  d_model=96, nhead_s=8, nhead_t=2, layers_s=3, layers_t=1
+  ff=512, dropout=0.3, wd=1e-05
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2805
+  MAE: 0.2799 | RMSE: 0.5289 | R²: 0.9245
+  Epochs: 21 | Train/Val gap: 5.9x | Time: 195s
+  >>> NEW BEST MODEL! RMSE: 0.5289
+
+=================================================================
+--- Iteration 6/40 [Elapsed: 16.8m] ---
+  d_model=192, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=512, dropout=0.3, wd=5e-05
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3541
+  MAE: 0.3092 | RMSE: 0.5853 | R²: 0.9076
+  Epochs: 25 | Train/Val gap: 3.6x | Time: 147s
+
+=================================================================
+--- Iteration 7/40 [Elapsed: 19.2m] ---
+  d_model=128, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=5e-05
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2833
+  MAE: 0.2864 | RMSE: 0.5281 | R²: 0.9247
+  Epochs: 21 | Train/Val gap: 4.4x | Time: 126s
+  >>> NEW BEST MODEL! RMSE: 0.5281
+
+=================================================================
+--- Iteration 8/40 [Elapsed: 21.4m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.0001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2846
+  MAE: 0.2867 | RMSE: 0.5250 | R²: 0.9256
+  Epochs: 21 | Train/Val gap: 6.0x | Time: 149s
+  >>> NEW BEST MODEL! RMSE: 0.5250
+
+=================================================================
+--- Iteration 9/40 [Elapsed: 23.8m] ---
+  d_model=96, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.4, wd=0.0001
+  lr=0.0005, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.3046
+  MAE: 0.2961 | RMSE: 0.5511 | R²: 0.9181
+  Epochs: 23 | Train/Val gap: 4.5x | Time: 107s
+
+=================================================================
+--- Iteration 10/40 [Elapsed: 25.6m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.2, wd=0.0001
+  lr=0.0003, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2801
+  MAE: 0.2914 | RMSE: 0.5279 | R²: 0.9248
+  Epochs: 21 | Train/Val gap: 9.0x | Time: 209s
+
+=================================================================
+--- Iteration 11/40 [Elapsed: 29.1m] ---
+  d_model=128, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=512, dropout=0.4, wd=5e-05
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2655
+  MAE: 0.2837 | RMSE: 0.5120 | R²: 0.9293
+  Epochs: 21 | Train/Val gap: 4.4x | Time: 123s
+  >>> NEW BEST MODEL! RMSE: 0.5120
+
+=================================================================
+--- Iteration 12/40 [Elapsed: 31.1m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.4, wd=1e-05
+  lr=0.0005, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.3158
+  MAE: 0.2959 | RMSE: 0.5559 | R²: 0.9166
+  Epochs: 29 | Train/Val gap: 7.0x | Time: 171s
+
+=================================================================
+--- Iteration 13/40 [Elapsed: 34.0m] ---
+  d_model=128, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=1e-06
+  lr=0.0003, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.2983
+  MAE: 0.2883 | RMSE: 0.5447 | R²: 0.9199
+  Epochs: 23 | Train/Val gap: 4.4x | Time: 112s
+
+=================================================================
+--- Iteration 14/40 [Elapsed: 35.8m] ---
+  d_model=96, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=192, dropout=0.2, wd=1e-05
+  lr=0.001, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3455
+  MAE: 0.3064 | RMSE: 0.5877 | R²: 0.9068
+  Epochs: 21 | Train/Val gap: 8.9x | Time: 203s
+
+=================================================================
+--- Iteration 15/40 [Elapsed: 39.2m] ---
+  d_model=96, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.3, wd=0.0001
+  lr=0.0003, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2966
+  MAE: 0.3069 | RMSE: 0.5423 | R²: 0.9206
+  Epochs: 22 | Train/Val gap: 3.4x | Time: 122s
+
+=================================================================
+--- Iteration 16/40 [Elapsed: 41.3m] ---
+  d_model=128, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=192, dropout=0.2, wd=0.0001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3063
+  MAE: 0.3826 | RMSE: 0.5535 | R²: 0.9173
+  Epochs: 22 | Train/Val gap: 8.3x | Time: 100s
+
+=================================================================
+--- Iteration 17/40 [Elapsed: 42.9m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=1e-05
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2819
+  MAE: 0.2780 | RMSE: 0.5229 | R²: 0.9262
+  Epochs: 22 | Train/Val gap: 4.0x | Time: 129s
+
+=================================================================
+--- Iteration 18/40 [Elapsed: 45.1m] ---
+  d_model=128, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=512, dropout=0.2, wd=1e-05
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.3406
+  MAE: 0.3088 | RMSE: 0.5831 | R²: 0.9083
+  Epochs: 24 | Train/Val gap: 9.8x | Time: 114s
+
+=================================================================
+--- Iteration 19/40 [Elapsed: 47.0m] ---
+  d_model=96, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=512, dropout=0.15, wd=0.0001
+  lr=0.0003, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3030
+  MAE: 0.2813 | RMSE: 0.5348 | R²: 0.9228
+  Epochs: 21 | Train/Val gap: 8.4x | Time: 217s
+
+=================================================================
+--- Iteration 20/40 [Elapsed: 50.6m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=512, dropout=0.15, wd=0.0001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3251
+  MAE: 0.2936 | RMSE: 0.5696 | R²: 0.9125
+  Epochs: 25 | Train/Val gap: 17.7x | Time: 203s
+
+=================================================================
+--- Iteration 21/40 [Elapsed: 54.0m] ---
+  d_model=96, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=192, dropout=0.3, wd=1e-05
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3241
+  MAE: 0.3048 | RMSE: 0.5658 | R²: 0.9136
+  Epochs: 21 | Train/Val gap: 5.8x | Time: 124s
+
+=================================================================
+--- Iteration 22/40 [Elapsed: 56.1m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=1e-06
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3060
+  MAE: 0.3025 | RMSE: 0.5455 | R²: 0.9197
+  Epochs: 21 | Train/Val gap: 6.0x | Time: 132s
+
+=================================================================
+--- Iteration 23/40 [Elapsed: 58.3m] ---
+  d_model=192, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=384, dropout=0.4, wd=5e-05
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.4138
+  MAE: 0.3341 | RMSE: 0.6398 | R²: 0.8895
+  Epochs: 25 | Train/Val gap: 4.0x | Time: 263s
+
+=================================================================
+--- Iteration 24/40 [Elapsed: 62.7m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.3, wd=0.0001
+  lr=0.0005, bs=32, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.3719
+  MAE: 0.3174 | RMSE: 0.6085 | R²: 0.9001
+  Epochs: 23 | Train/Val gap: 10.3x | Time: 238s
+
+=================================================================
+--- Iteration 25/40 [Elapsed: 66.6m] ---
+  d_model=96, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.0001
+  lr=0.0005, bs=32, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3367
+  MAE: 0.2987 | RMSE: 0.5711 | R²: 0.9120
+  Epochs: 22 | Train/Val gap: 5.8x | Time: 193s
+
+=================================================================
+--- Iteration 26/40 [Elapsed: 69.8m] ---
+  d_model=96, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.15, wd=5e-05
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2819
+  MAE: 0.2783 | RMSE: 0.5296 | R²: 0.9243
+  Epochs: 22 | Train/Val gap: 11.8x | Time: 127s
+
+=================================================================
+--- Iteration 27/40 [Elapsed: 72.0m] ---
+  d_model=128, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.15, wd=1e-05
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.2765
+  MAE: 0.2741 | RMSE: 0.5251 | R²: 0.9256
+  Epochs: 23 | Train/Val gap: 6.6x | Time: 112s
+
+=================================================================
+--- Iteration 28/40 [Elapsed: 73.8m] ---
+  d_model=128, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=192, dropout=0.3, wd=1e-05
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3334
+  MAE: 0.3081 | RMSE: 0.5772 | R²: 0.9101
+  Epochs: 22 | Train/Val gap: 6.6x | Time: 129s
+
+=================================================================
+--- Iteration 29/40 [Elapsed: 76.0m] ---
+  d_model=128, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=512, dropout=0.15, wd=0.0001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2858
+  MAE: 0.2716 | RMSE: 0.5237 | R²: 0.9260
+  Epochs: 22 | Train/Val gap: 6.5x | Time: 108s
+
+=================================================================
+--- Iteration 30/40 [Elapsed: 77.8m] ---
+  d_model=96, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=192, dropout=0.4, wd=5e-05
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3653
+  MAE: 0.3208 | RMSE: 0.6040 | R²: 0.9015
+  Epochs: 22 | Train/Val gap: 4.6x | Time: 96s
+
+=================================================================
+--- Iteration 31/40 [Elapsed: 79.4m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.3, wd=0.0001
+  lr=0.0005, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.2900
+  MAE: 0.2772 | RMSE: 0.5329 | R²: 0.9234
+  Epochs: 24 | Train/Val gap: 6.5x | Time: 137s
+
+=================================================================
+--- Iteration 32/40 [Elapsed: 81.7m] ---
+  d_model=96, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=384, dropout=0.2, wd=0.0001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3501
+  MAE: 0.3323 | RMSE: 0.5917 | R²: 0.9055
+  Epochs: 25 | Train/Val gap: 7.3x | Time: 147s
+
+=================================================================
+--- Iteration 33/40 [Elapsed: 84.1m] ---
+  d_model=128, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=384, dropout=0.3, wd=5e-05
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3378
+  MAE: 0.3122 | RMSE: 0.5811 | R²: 0.9089
+  Epochs: 22 | Train/Val gap: 6.6x | Time: 221s
+
+=================================================================
+--- Iteration 34/40 [Elapsed: 87.8m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=512, dropout=0.4, wd=1e-06
+  lr=0.001, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3676
+  MAE: 0.3306 | RMSE: 0.6042 | R²: 0.9015
+  Epochs: 25 | Train/Val gap: 6.4x | Time: 147s
+
+=================================================================
+--- Iteration 35/40 [Elapsed: 90.3m] ---
+  d_model=96, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=384, dropout=0.2, wd=5e-05
+  lr=0.0003, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2993
+  MAE: 0.2837 | RMSE: 0.5470 | R²: 0.9193
+  Epochs: 22 | Train/Val gap: 7.1x | Time: 224s
+
+=================================================================
+--- Iteration 36/40 [Elapsed: 94.0m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=192, dropout=0.15, wd=5e-05
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2574
+  MAE: 0.2762 | RMSE: 0.5070 | R²: 0.9306
+  Epochs: 22 | Train/Val gap: 11.6x | Time: 174s
+  >>> NEW BEST MODEL! RMSE: 0.5070
+
+=================================================================
+--- Iteration 37/40 [Elapsed: 96.9m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.2, wd=5e-05
+  lr=0.0003, bs=128, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2583
+  MAE: 0.2920 | RMSE: 0.5070 | R²: 0.9306
+  Epochs: 22 | Train/Val gap: 7.3x | Time: 138s
+
+=================================================================
+--- Iteration 38/40 [Elapsed: 99.2m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=1
+  ff=384, dropout=0.15, wd=0.0001
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3067
+  MAE: 0.2818 | RMSE: 0.5508 | R²: 0.9181
+  Epochs: 21 | Train/Val gap: 12.3x | Time: 210s
+
+=================================================================
+--- Iteration 39/40 [Elapsed: 102.7m] ---
+  d_model=128, nhead_s=4, nhead_t=2, layers_s=3, layers_t=1
+  ff=256, dropout=0.15, wd=1e-06
+  lr=0.0005, bs=32, scheduler=OneCycleLR
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3297
+  MAE: 0.3036 | RMSE: 0.5689 | R²: 0.9127
+  Epochs: 21 | Train/Val gap: 12.3x | Time: 190s
+
+=================================================================
+--- Iteration 40/40 [Elapsed: 105.9m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=1
+  ff=384, dropout=0.4, wd=1e-05
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor] Using device: cuda
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (6670 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 27 based on sample distribution (min_count=47).
+[SpatioTemporalTransformerRegressor] Grouped features into 14 spatial channels.
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.3848
+  MAE: 0.3195 | RMSE: 0.6121 | R²: 0.8989
+  Epochs: 23 | Train/Val gap: 4.7x | Time: 148s
+
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER SWEEP COMPLETE
+  Total time: 108.3 minutes (1.81 hours)
+=================================================================
+
+Top-5 Configurations:
+  #1: RMSE=0.5070 MAE=0.2762 R²=0.9306 gap=11.6x (d=160, s=3×8, t=1×4, ff=192, do=0.15)
+  #2: RMSE=0.5070 MAE=0.2920 R²=0.9306 gap=7.3x (d=192, s=3×8, t=1×4, ff=384, do=0.2)
+  #3: RMSE=0.5120 MAE=0.2837 R²=0.9293 gap=4.4x (d=128, s=3×4, t=1×4, ff=512, do=0.4)
+  #4: RMSE=0.5229 MAE=0.2780 R²=0.9262 gap=4.0x (d=128, s=3×8, t=1×4, ff=256, do=0.3)
+  #5: RMSE=0.5237 MAE=0.2716 R²=0.9260 gap=6.5x (d=128, s=3×4, t=1×4, ff=512, do=0.15)
+
+Best Parameters:
+  weight_decay: 5e-05
+  num_layers_temporal: 1
+  num_layers_spatial: 3
+  nhead_temporal: 4
+  nhead_spatial: 8
+  learning_rate: 0.0003
+  dropout_rate: 0.15
+  dim_feedforward: 192
+  d_model: 160
+  batch_size: 64
+  scheduler_type: ReduceLROnPlateau
+  pct_start: 0.15
+
+Best Validation Metrics:
+Mean Absolute Error: 0.2762
+Mean Squared Error: 0.2570
+Root Mean Squared Error: 0.5070
+R-squared Score: 0.9306
+
+
+Report saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer_20260506_103944/sweep_report.txt
+CSV results saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer_20260506_103944/sweep_results.csv
