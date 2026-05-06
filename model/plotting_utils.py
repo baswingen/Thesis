@@ -96,12 +96,16 @@ def plot_regression_results(y_true: pd.Series | np.ndarray, y_pred: np.ndarray, 
     for box in bp['boxes']:
         box.set_facecolor('#AEC7E8') 
     
+    # Apply clamping consistently with model evaluation
+    y_pred = np.maximum(0.0, y_pred)
+    
     # Metrics annotation
     r2 = r2_score(y_true, y_pred)
     mae = mean_absolute_error(y_true, y_pred)
     
     # Professional metrics box top left
-    stats_text = f"$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg"
+    # Note: These are 'Pooled' metrics (calculated across all samples)
+    stats_text = f"POOLED METRICS:\n$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg"
     ax.text(0.02, 0.98, stats_text, 
              transform=ax.transAxes, verticalalignment='top',
              bbox=dict(facecolor='white', alpha=0.9, edgecolor='#CCCCCC', boxstyle='round,pad=0.5'))

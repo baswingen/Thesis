@@ -12,10 +12,10 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer"
-RUN_GRID_SEARCH = False
+RUN_GRID_SEARCH = True
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = True
+DEV_MODE = False
 DEV_FRACTION = 0.2
 DEV_CV_FOLDS = 18
 DEV_EPOCHS = 25

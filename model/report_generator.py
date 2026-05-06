@@ -153,17 +153,48 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
-    def _add_evaluation_metrics(self, use_cv, avg_metrics, std_metrics, metrics, n_folds):
+    def _add_evaluation_metrics(self, use_cv, avg_metrics, std_metrics, metrics, n_folds, 
+                                y_true_pooled, y_pred_pooled):
+        from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+        
         lines = ["--- EVALUATION METRICS ---"]
+        
         if use_cv:
-            lines.append(f"(Averaged over {n_folds} folds)")
+            lines.append("METHOD: MACRO-AVERAGE (Primary)")
+            lines.append(f"Description: Unweighted mean across {n_folds} participants. Weights every person equally.")
+            lines.append("(Reflects expected generalization performance to a NEW participant)")
             for k, v in avg_metrics.items():
                 if 'time' not in k.lower():
-                    lines.append(f"{k}: {v:.4f} (±{std_metrics[k]:.4f})")
+                    lines.append(f"  {k}: {v:.4f} (±{std_metrics[k]:.4f})")
+            
+            # Add Pooled metrics for comparison (matches Regression Plot)
+            if y_true_pooled is not None and y_pred_pooled is not None:
+                # Apply consistent clamping
+                y_pred_clamped = np.maximum(0.0, y_pred_pooled)
+                p_mae = mean_absolute_error(y_true_pooled, y_pred_clamped)
+                p_mse = mean_squared_error(y_true_pooled, y_pred_clamped)
+                p_rmse = np.sqrt(p_mse)
+                p_r2 = r2_score(y_true_pooled, y_pred_clamped)
+                
+                lines.append("\nMETHOD: POOLED-AVERAGE (Secondary)")
+                lines.append("Description: Weighted by samples. Matches Regression Plot box-plot metrics.")
+                lines.append("(Reflects overall accuracy across all recorded data points)")
+                lines.append(f"  MAE: {p_mae:.4f}")
+                lines.append(f"  RMSE: {p_rmse:.4f}")
+                lines.append(f"  R2: {p_r2:.4f}")
         else:
-            for k, v in metrics.items():
-                if 'time' not in k.lower():
-                    lines.append(f"{k}: {v:.4f}")
+            lines.append("METHOD: SINGLE TEST SPLIT")
+            # Apply clamping for consistency
+            y_pred_clamped = np.maximum(0.0, y_pred_pooled)
+            p_mae = mean_absolute_error(y_true_pooled, y_pred_clamped)
+            p_mse = mean_squared_error(y_true_pooled, y_pred_clamped)
+            p_rmse = np.sqrt(p_mse)
+            p_r2 = r2_score(y_true_pooled, y_pred_clamped)
+            
+            lines.append(f"  MAE: {p_mae:.4f}")
+            lines.append(f"  RMSE: {p_rmse:.4f}")
+            lines.append(f"  R2: {p_r2:.4f}")
+
         lines.append("")
         self.sections.append("\n".join(lines))
 
@@ -301,7 +332,11 @@ class ReportGenerator:
         self._add_feature_configuration(is_raw_segment, ablation_modality)
         self._add_hyperparameters(model, model_type)
         self._add_pipeline_config()
-        self._add_evaluation_metrics(use_cv, avg_metrics, std_metrics, metrics, n_folds)
+        
+        # Pass pooled data for secondary metric calculation
+        y_true_p = y if use_cv else y_test
+        y_pred_p = oof_predictions if use_cv else y_pred
+        self._add_evaluation_metrics(use_cv, avg_metrics, std_metrics, metrics, n_folds, y_true_p, y_pred_p)
         self._add_per_weight_metrics(y_test, y_pred, use_cv, y, oof_predictions)
         self._add_per_participant_metrics(participant_stats)
         self._add_per_seqlen_metrics(per_seqlen_stats)
