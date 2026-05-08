@@ -1,0 +1,249 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.899, 2.238]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260507_235556
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P13_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Channel filter: removed 72 features from disabled channels.
+[DataLoader] Dropped 2647 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 16122
+  - Average Windows per Lift: 11.6
+  - Features per Window: 304
+Label vector (y) shape: (16122,) (Target: weight)
+
+Starting 18-Fold Cross-Participant Validation...
+--- Fold 1/18 (Left out Participants: P01) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (387 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=59).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 110. Best Val Loss: 0.2356
+    Train MAE: 0.1428 | Test MAE: 0.3869 | Gap: 0.2442
+    Train RMSE: 0.2696 | Test RMSE: 0.7112 | Ratio: 2.64x
+--- Fold 2/18 (Left out Participants: P02) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (387 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 23 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 115. Best Val Loss: 0.2147
+    Train MAE: 0.1073 | Test MAE: 0.2246 | Gap: 0.1173
+    Train RMSE: 0.2158 | Test RMSE: 0.4893 | Ratio: 2.27x
+--- Fold 3/18 (Left out Participants: P12) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 113. Best Val Loss: 0.1183
+    Train MAE: 0.1360 | Test MAE: 0.2164 | Gap: 0.0804
+    Train RMSE: 0.2553 | Test RMSE: 0.4588 | Ratio: 1.80x
+--- Fold 4/18 (Left out Participants: P11) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 91. Best Val Loss: 0.1118
+    Train MAE: 0.1482 | Test MAE: 0.2180 | Gap: 0.0698
+    Train RMSE: 0.2974 | Test RMSE: 0.3800 | Ratio: 1.28x
+--- Fold 5/18 (Left out Participants: P09) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 101. Best Val Loss: 0.1266
+    Train MAE: 0.1383 | Test MAE: 0.4123 | Gap: 0.2740
+    Train RMSE: 0.2844 | Test RMSE: 0.7567 | Ratio: 2.66x
+--- Fold 6/18 (Left out Participants: P17) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 94. Best Val Loss: 0.1184
+    Train MAE: 0.1578 | Test MAE: 0.2277 | Gap: 0.0699
+    Train RMSE: 0.3225 | Test RMSE: 0.4380 | Ratio: 1.36x
+--- Fold 7/18 (Left out Participants: P04) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (387 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 23 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 104. Best Val Loss: 0.3077
+    Train MAE: 0.0990 | Test MAE: 0.2432 | Gap: 0.1442
+    Train RMSE: 0.2026 | Test RMSE: 0.5064 | Ratio: 2.50x
+--- Fold 8/18 (Left out Participants: P08) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 73. Best Val Loss: 0.1177
+    Train MAE: 0.2040 | Test MAE: 0.4501 | Gap: 0.2461
+    Train RMSE: 0.4208 | Test RMSE: 0.7723 | Ratio: 1.84x
+--- Fold 9/18 (Left out Participants: P07) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 98. Best Val Loss: 0.1202
+    Train MAE: 0.1746 | Test MAE: 0.3225 | Gap: 0.1479
+    Train RMSE: 0.3346 | Test RMSE: 0.6579 | Ratio: 1.97x
+--- Fold 10/18 (Left out Participants: P16) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 75. Best Val Loss: 0.1037
+    Train MAE: 0.2250 | Test MAE: 0.3706 | Gap: 0.1456
+    Train RMSE: 0.4301 | Test RMSE: 0.6437 | Ratio: 1.50x
+--- Fold 11/18 (Left out Participants: P06) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 87. Best Val Loss: 0.1109
+    Train MAE: 0.1454 | Test MAE: 0.1990 | Gap: 0.0535
+    Train RMSE: 0.3196 | Test RMSE: 0.4357 | Ratio: 1.36x
+--- Fold 12/18 (Left out Participants: P03) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (387 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 23 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 145. Best Val Loss: 0.2514
+    Train MAE: 0.0614 | Test MAE: 0.1570 | Gap: 0.0956
+    Train RMSE: 0.1260 | Test RMSE: 0.3502 | Ratio: 2.78x
+--- Fold 13/18 (Left out Participants: P15) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 90. Best Val Loss: 0.1161
+    Train MAE: 0.1790 | Test MAE: 0.1546 | Gap: -0.0244
+    Train RMSE: 0.3635 | Test RMSE: 0.3564 | Ratio: 0.98x
+--- Fold 14/18 (Left out Participants: P10) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 97. Best Val Loss: 0.1225
+    Train MAE: 0.1573 | Test MAE: 0.2934 | Gap: 0.1362
+    Train RMSE: 0.3012 | Test RMSE: 0.5850 | Ratio: 1.94x
+--- Fold 15/18 (Left out Participants: P14) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 104. Best Val Loss: 0.1118
+    Train MAE: 0.1191 | Test MAE: 0.2725 | Gap: 0.1534
+    Train RMSE: 0.2433 | Test RMSE: 0.6407 | Ratio: 2.63x
+--- Fold 16/18 (Left out Participants: P18) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 85. Best Val Loss: 0.1018
+    Train MAE: 0.1671 | Test MAE: 0.5336 | Gap: 0.3665
+    Train RMSE: 0.3458 | Test RMSE: 0.9930 | Ratio: 2.87x
+--- Fold 17/18 (Left out Participants: P13) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 128. Best Val Loss: 0.1062
+    Train MAE: 0.0937 | Test MAE: 0.7888 | Gap: 0.6951
+    Train RMSE: 0.1887 | Test RMSE: 1.3530 | Ratio: 7.17x
+--- Fold 18/18 (Left out Participants: P05) ---
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P04
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (835 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 23 based on sample distribution (min_count=74).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 72. Best Val Loss: 0.1137
+    Train MAE: 0.2103 | Test MAE: 0.5889 | Gap: 0.3786
+    Train RMSE: 0.4096 | Test RMSE: 0.9250 | Ratio: 2.26x
+
+Training final model on full dataset for saving...
+Initializing Spatio-Temporal Transformer Regressor with config: {'d_model': 64, 'nhead_spatial': 8, 'num_layers_spatial': 3, 'nhead_temporal': 4, 'num_layers_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'weight_decay': 1e-05, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 50, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants from final dataset for early stopping: P07
+[SpatioTemporalTransformerRegressor] Using explicitly provided validation set (833 samples).
+[SpatioTemporalTransformerRegressor] Capping sequence length at 24 based on sample distribution (min_count=76).
+[SpatioTemporalTransformerRegressor] Grouped features into 20 spatial channels.
+
+Early stopping triggered at epoch 73. Best Val Loss: 0.4600
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260507_235556/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260507_235556/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260507_235556/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260507_235556/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260507_235556/performance_report.txt
