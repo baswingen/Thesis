@@ -60,6 +60,8 @@ def main():
                         help="Number of random configurations (default: 8 in DEV, 40 otherwise)")
     parser.add_argument("--test_participants", type=int, default=4,
                         help="Number of participants to hold out for validation")
+    parser.add_argument("--mode", type=str, choices=["architecture", "regularization"], default="regularization",
+                        help="Which hyperparameters to sweep (architecture vs. regularization).")
     args = parser.parse_args()
 
     # DEV_MODE-aware defaults
@@ -86,30 +88,54 @@ def main():
     # ------------------------------------------------------------------
     # Parameter grid — BROAD selection for full dataset
     # ------------------------------------------------------------------
-    # d_model must be divisible by nhead_spatial AND nhead_temporal.
-    # The script auto-adjusts nheads downwards if they don't divide d_model.
-    param_grid = {
-        # ── Architecture (Broad Search) ─────────────────────────────
-        'd_model':              [64, 96, 128, 160, 192, 256],
-        'nhead_spatial':        [2, 4, 8],
-        'num_layers_spatial':   [1, 2, 3, 4],
-        'nhead_temporal':       [2, 4, 8],
-        'num_layers_temporal':  [1, 2, 3],
-        'dim_feedforward':      [128, 256, 512, 1024],
+    if args.mode == "regularization":
+        param_grid = {
+            # ── Fixed Architecture ──────────────────────────────
+            'd_model':              [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['d_model']],
+            'nhead_spatial':        [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['nhead_spatial']],
+            'num_layers_spatial':   [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['num_layers_spatial']],
+            'nhead_temporal':       [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['nhead_temporal']],
+            'num_layers_temporal':  [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['num_layers_temporal']],
+            'dim_feedforward':      [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['dim_feedforward']],
 
-        # ── Regularisation (Capture all possible configs) ───────────
-        'dropout_rate':         [0.1, 0.15, 0.2, 0.3, 0.4, 0.5],
-        'weight_decay':         [1e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3],
+            # ── Regularisation (Network) ───────────
+            'dropout_rate':         [0.2, 0.3, 0.4, 0.5],
+            'weight_decay':         [1e-5, 1e-4, 1e-3, 1e-2],
 
-        # ── Training ────────────────────────────────────────────────
-        'learning_rate':        [1e-4, 3e-4, 5e-4, 1e-3, 2e-3],
-        'batch_size':           [32, 64, 128],
-        'scheduler_type':       ['ReduceLROnPlateau', 'OneCycleLR'],
-        'pct_start':            [0.05, 0.1, 0.15, 0.2, 0.3],     # for OneCycleLR
-    }
+            # ── Regularisation (Augmentation) ──────
+            'aug_p':                [0.5, 0.8, 1.0],
+            'aug_channel_dropout':  [0.1, 0.25, 0.4],
+            'aug_mixup_alpha':      [0.2, 0.5, 0.8],
+
+            # ── Training (Fixed) ────────────────────────────────────────────────
+            'learning_rate':        [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['learning_rate']],
+            'batch_size':           [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['batch_size']],
+            'scheduler_type':       [SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler', {}).get('type', 'ReduceLROnPlateau')],
+            'pct_start':            [0.1],     
+        }
+    else:
+        param_grid = {
+            # ── Architecture (Broad Search) ─────────────────────────────
+            'd_model':              [64, 96, 128, 160, 192, 256],
+            'nhead_spatial':        [2, 4, 8],
+            'num_layers_spatial':   [1, 2, 3, 4],
+            'nhead_temporal':       [2, 4, 8],
+            'num_layers_temporal':  [1, 2, 3],
+            'dim_feedforward':      [128, 256, 512, 1024],
+
+            # ── Regularisation (Capture all possible configs) ───────────
+            'dropout_rate':         [0.1, 0.15, 0.2, 0.3, 0.4, 0.5],
+            'weight_decay':         [1e-6, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3],
+
+            # ── Training ────────────────────────────────────────────────
+            'learning_rate':        [1e-4, 3e-4, 5e-4, 1e-3, 2e-3],
+            'batch_size':           [32, 64, 128],
+            'scheduler_type':       ['ReduceLROnPlateau', 'OneCycleLR'],
+            'pct_start':            [0.05, 0.1, 0.15, 0.2, 0.3],     # for OneCycleLR
+        }
 
     print("=" * 65)
-    print("  SPATIO-TEMPORAL TRANSFORMER HYPERPARAMETER SWEEP")
+    print(f"  SPATIO-TEMPORAL TRANSFORMER SWEEP ({args.mode.upper()})")
     print("=" * 65)
     print(f"  DEV_MODE             : {DEV_MODE}")
     print(f"  Configurations       : {n_iter}")
@@ -221,6 +247,16 @@ def main():
         # Extract scheduler params
         scheduler_type = params.pop('scheduler_type')
         pct_start = params.pop('pct_start')
+        
+        # Extract augmentation params (if sweeping)
+        aug_cfg = copy.deepcopy(AUGMENTATION_CONFIG)
+        aug_p = params.pop('aug_p', aug_cfg.get('p', 0.5))
+        aug_channel_dropout = params.pop('aug_channel_dropout', aug_cfg.get('channel_dropout_p', 0.25))
+        aug_mixup_alpha = params.pop('aug_mixup_alpha', aug_cfg.get('mixup_alpha', 0.5))
+        
+        aug_cfg['p'] = aug_p
+        aug_cfg['channel_dropout_p'] = aug_channel_dropout
+        aug_cfg['mixup_alpha'] = aug_mixup_alpha
 
         elapsed = time.time() - sweep_start
         print(f"\n{'='*65}")
@@ -231,6 +267,8 @@ def main():
               f"wd={params['weight_decay']}")
         print(f"  lr={params['learning_rate']}, bs={params['batch_size']}, "
               f"scheduler={scheduler_type}")
+        if args.mode == 'regularization':
+            print(f"  aug_p={aug_p}, aug_channel_dropout={aug_channel_dropout}, aug_mixup_alpha={aug_mixup_alpha}")
 
         try:
             # Build scheduler config dict
@@ -261,6 +299,7 @@ def main():
                 use_checkpointing=False,   # Speed over memory for sweep
                 use_amp=True,
                 scheduler=sched_cfg,
+                augmentation_config=aug_cfg,
                 random_state=GLOBAL_RANDOM_STATE,
             )
 
@@ -296,7 +335,10 @@ def main():
                 'iteration': i,
                 'params': {**params,
                            'scheduler_type': scheduler_type,
-                           'pct_start': pct_start},
+                           'pct_start': pct_start,
+                           'aug_p': aug_p,
+                           'aug_channel_dropout': aug_channel_dropout,
+                           'aug_mixup_alpha': aug_mixup_alpha},
                 'metrics': metrics,
                 'epochs_trained': epochs_trained,
                 'final_train_loss': final_train_loss,

@@ -226,6 +226,54 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
+    def _add_0kg_vs_weight_comparison(self, y_true, y_pred):
+        if y_true is None or y_pred is None:
+            return
+            
+        from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+        
+        y_true = np.asarray(y_true)
+        y_pred = np.asarray(y_pred)
+        
+        # Get indices
+        idx_0kg = np.where(np.isclose(y_true, 0.0))[0]
+        idx_weights = np.where(~np.isclose(y_true, 0.0))[0]
+        
+        if len(idx_0kg) == 0 or len(idx_weights) == 0:
+            return
+            
+        y_true_0kg = y_true[idx_0kg]
+        y_pred_0kg = y_pred[idx_0kg]
+        y_true_w = y_true[idx_weights]
+        y_pred_w = y_pred[idx_weights]
+        
+        # Calculate metrics
+        mae_0kg = mean_absolute_error(y_true_0kg, y_pred_0kg)
+        rmse_0kg = np.sqrt(mean_squared_error(y_true_0kg, y_pred_0kg))
+        
+        mae_w = mean_absolute_error(y_true_w, y_pred_w)
+        rmse_w = np.sqrt(mean_squared_error(y_true_w, y_pred_w))
+        r2_w = r2_score(y_true_w, y_pred_w)
+        
+        lines = ["--- 0KG VS WEIGHTED LIFT COMPARISON ---"]
+        lines.append(f"{'Category':<20} | {'Count':<8} | {'MAE':<10} | {'RMSE':<10} | {'R2':<8}")
+        lines.append("-" * 66)
+        lines.append(f"{'0.00 kg (Free Move)':<20} | {len(idx_0kg):<8} | {mae_0kg:<10.4f} | {rmse_0kg:<10.4f} | {'N/A':<8}")
+        lines.append(f"{'>0.00 kg (Weights)':<20} | {len(idx_weights):<8} | {mae_w:<10.4f} | {rmse_w:<10.4f} | {r2_w:<8.4f}")
+        lines.append("-" * 66)
+        
+        # Add relative difference
+        diff_mae = mae_w - mae_0kg
+        diff_rmse = rmse_w - rmse_0kg
+        pct_mae = (mae_w / max(mae_0kg, 1e-8)) * 100 - 100
+        pct_rmse = (rmse_w / max(rmse_0kg, 1e-8)) * 100 - 100
+        
+        lines.append(f"Performance Degradation on Weighted Lifts:")
+        lines.append(f"  MAE:  +{diff_mae:.4f} ({pct_mae:+.1f}%)")
+        lines.append(f"  RMSE: +{diff_rmse:.4f} ({pct_rmse:+.1f}%)")
+        lines.append("")
+        self.sections.append("\n".join(lines))
+
     def _add_per_participant_metrics(self, participant_stats):
         if not participant_stats:
             return
@@ -408,6 +456,7 @@ class ReportGenerator:
         y_pred_p = oof_predictions if use_cv else y_pred
         self._add_evaluation_metrics(use_cv, avg_metrics, std_metrics, metrics, n_folds, y_true_p, y_pred_p)
         self._add_per_weight_metrics(y_test, y_pred, use_cv, y, oof_predictions)
+        self._add_0kg_vs_weight_comparison(y_true_p, y_pred_p)
         self._add_per_participant_metrics(participant_stats)
         self._add_per_seqlen_metrics(per_seqlen_stats)
         self._add_per_duration_metrics(per_duration_stats)

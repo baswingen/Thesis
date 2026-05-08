@@ -211,6 +211,7 @@ class SpatioTemporalTransformerRegressor:
                  random_state: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['random_state'],
                  max_seq_len: int = None,
                  scheduler: dict = None,
+                 augmentation_config: dict = None,
                  **kwargs):
                  
         self.d_model = d_model
@@ -236,6 +237,7 @@ class SpatioTemporalTransformerRegressor:
         self.use_amp = use_amp
         self.random_state = random_state
         self.max_seq_len = max_seq_len
+        self.augmentation_config = augmentation_config if augmentation_config is not None else AUGMENTATION_CONFIG
         
         self.loss_history = {"train": [], "val": []}
         self.train_samples = 0
@@ -349,7 +351,7 @@ class SpatioTemporalTransformerRegressor:
         y_np_train = y_train.values.astype(np.float32)
         
         # Augmentation (passing participant IDs for balancing)
-        augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
+        augmenter = SequenceAugmenter(config=self.augmentation_config)
         participant_ids_train = X_train['subject'].values if 'subject' in X_train.columns else None
         scaled_seqs_train, y_np_train = augmenter.augment_dataset(
             scaled_seqs_train, y_np_train, participant_ids=participant_ids_train
@@ -574,7 +576,8 @@ class SpatioTemporalTransformerRegressor:
                 'use_checkpointing': self.use_checkpointing,
                 'use_amp': self.use_amp,
                 'random_state': self.random_state,
-                'max_seq_len': getattr(self, 'max_seq_len', None)
+                'max_seq_len': getattr(self, 'max_seq_len', None),
+                'augmentation_config': self.augmentation_config
             },
             'split_info': {
                 'train_samples': self.train_samples,

@@ -18,6 +18,10 @@ USE_PRECOMPUTED_FEATURES = True
 DEV_MODE = True
 DEV_FRACTION = 0.2
 DEV_CV_FOLDS = 9
+
+# Enables or disables the computation of feature importance (DeepSHAP & Permutation).
+# These computations can be very slow, so disabling them is useful for rapid prototyping.
+COMPUTE_FEATURE_IMPORTANCE = False
 DEV_EPOCHS = 25
 DEV_EARLY_STOPPING_PATIENCE = 5
 
@@ -49,7 +53,7 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': 'all',  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
 }
 
 ###########################################################
@@ -58,13 +62,13 @@ PARTICIPANT_CONFIG = {
 # Maps nominal weight labels to precise measured weights in real life.
 # If a weight is not found in this list, the fallback is the original label.
 TRUE_WEIGHTS = {
-    0.75: 0.899,
-    1.0: 0.979,
-    2.0: 1.966,
-    2.25: 2.238,
-    3.0: 2.945,
-    4.25: 4.142,
-    6.0: 5.922,
+    0.75: 0.90,
+    1.0: 0.98,
+    2.0: 1.97,
+    2.25: 2.24,
+    3.0: 2.95,
+    4.25: 4.15,
+    6.0: 5.93,
 }
 
 # Toggle individual weight classes on/off.
@@ -272,7 +276,7 @@ AUGMENTATION_CONFIG = {
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 3,               # Only used if strategy is 'kfold'
+    'n_folds': 9,               # Only used if strategy is 'kfold'
     'strategy': 'participant',  # Options: 'kfold', 'participant'
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
     'strict_val_participants': 1 # Number of participants to hold out for early stopping

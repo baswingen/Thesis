@@ -31,7 +31,7 @@ from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.model_archs.spatio_temporal_transformer import SpatioTemporalTransformerRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS, COMPUTE_FEATURE_IMPORTANCE
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -438,7 +438,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         preds = model.predict(X_test_fold)
         oof_predictions[test_idx] = preds
         
-        if hasattr(model, 'permutation_importance'):
+        if COMPUTE_FEATURE_IMPORTANCE and hasattr(model, 'permutation_importance'):
             try:
                 import inspect
                 sig = inspect.signature(model.permutation_importance)
@@ -561,7 +561,7 @@ def execute_single_split(X, y, df, model_type, split_val):
     y_pred = model.predict(X_test)
     
     perm_imp = None
-    if hasattr(model, 'permutation_importance'):
+    if COMPUTE_FEATURE_IMPORTANCE and hasattr(model, 'permutation_importance'):
         try:
             import inspect
             sig = inspect.signature(model.permutation_importance)
@@ -792,10 +792,13 @@ def main():
             else:
                 X_train_shap, X_test_shap = X_train, X_test
                 
-            deepshap_analysis.run_deep_shap_analysis(
-                model, X_train_shap, X_test_shap, run_dir, 
-                n_bg=200, n_exp=100
-            )
+            if COMPUTE_FEATURE_IMPORTANCE:
+                deepshap_analysis.run_deep_shap_analysis(
+                    model, X_train_shap, X_test_shap, run_dir, 
+                    n_bg=200, n_exp=100
+                )
+            else:
+                print("Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE is False)...")
         except Exception as e:
             print(f"[WARN] Automated DeepSHAP analysis failed: {e}")
 
