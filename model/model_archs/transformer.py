@@ -385,12 +385,19 @@ class TimeSeriesTransformerRegressor:
         rmse = np.sqrt(mse)
         r2 = r2_score(y_test, y_pred)
         
-        metrics = {"MAE": mae, "MSE": mse, "RMSE": rmse, "R2": r2}
+        # Pearson Correlation
+        if len(y_test) > 1 and np.std(y_test) > 0 and np.std(y_pred) > 0:
+            corr = np.corrcoef(y_test, y_pred)[0, 1]
+        else:
+            corr = 0.0
+            
+        metrics = {"MAE": mae, "MSE": mse, "RMSE": rmse, "R2": r2, "Correlation": corr}
         report_str = (
             f"Mean Absolute Error: {mae:.4f}\n"
             f"Mean Squared Error: {mse:.4f}\n"
             f"Root Mean Squared Error: {rmse:.4f}\n"
             f"R-squared Score: {r2:.4f}\n"
+            f"Pearson Correlation: {corr:.4f}\n"
         )
         return metrics, report_str
         

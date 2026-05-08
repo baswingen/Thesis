@@ -1,0 +1,224 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260508_091339
+=======================================================
+
+--- DATASET INFO ---
+Participants included: all
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P02_session_01_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P18_session_01_segments.h5']
+Total samples: 3225
+Evaluation Mode: Leave-One-Participant-Out CV (9 Participants)
+Final Model Training samples: 2815
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: ALL
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (12): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2
+Disabled IMU Channels (6): ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- HYPERPARAMETERS ---
+Model: SPATIO_TEMPORAL_TRANSFORMER
+Architecture:
+  d_model: 160
+  nhead_spatial: 4
+  nhead_temporal: 4
+  num_layers_spatial: 3
+  num_layers_temporal: 1
+  dim_feedforward: 256
+  use_checkpointing: False
+  use_amp: True
+Training:
+  Learning Rate: 0.0003
+  Weight Decay: 1e-05
+  Batch Size: 128
+  Epochs: 25
+  Dropout: 0.25
+  Loss Function: mse
+  Validation Split: 0.1
+  Early Stopping Patience: 5
+  Scheduler Patience: 7
+  Scheduler Factor: 0.5
+Scheduler: {'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3}
+
+--- PIPELINE CONFIGURATION ---
+DEV_MODE: True (fraction=0.2, epochs=25)
+Global Loss Function: mse
+Random State: 245
+Excluded Weight Classes: 0.75kg (→ 0.899kg), 2.25kg (→ 2.238kg)
+Augmentation: enabled
+  probability: 0.5
+  methods: ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup']
+  noise_std: 0.05
+  stretch_factor_range: (0.75, 1.25)
+  channel_dropout_p: 0.25
+  magnitude_scale_range: (0.5, 2.0)
+
+--- EVALUATION METRICS ---
+METHOD: MACRO-AVERAGE (Primary)
+Description: Unweighted mean across 9 participants. Weights every person equally.
+(Reflects expected generalization performance to a NEW participant)
+  MAE: 0.3956 (±0.0885)
+  MSE: 0.4609 (±0.1439)
+  RMSE: 0.6711 (±0.1027)
+  R2: 0.8758 (±0.0385)
+  Correlation: 0.9519 (±0.0190)
+  Train MAE: 0.2464 (±0.0379)
+  Train RMSE: 0.4225 (±0.0412)
+  Generalization Gap (MAE): 0.1492 (±0.0997)
+  Overfit Ratio (RMSE): 1.6082 (±0.3174)
+
+METHOD: POOLED-AVERAGE (Secondary)
+Description: Weighted by samples. Matches Regression Plot box-plot metrics.
+(Reflects overall accuracy across all recorded data points)
+  MAE: 0.4030
+  RMSE: 0.6932
+  R2: 0.8704
+  Correlation: 0.9346
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 1882     | 0.1527     | 0.3850    
+0.98 kg      | 267      | 0.5081     | 0.6910    
+1.97 kg      | 270      | 0.7239     | 0.9199    
+2.94 kg      | 270      | 0.7914     | 0.9771    
+4.14 kg      | 267      | 1.0030     | 1.1833    
+5.92 kg      | 269      | 0.7415     | 1.0265    
+
+--- DETAILED GENERALIZATION PERFORMANCE ---
+Mean MAE across participants: 0.4145 ± 0.1822
+Min / Max MAE:                0.1746 / 0.8349
+Mean RMSE across participants:0.6665 ± 0.2415
+Min / Max RMSE:               0.3261 / 1.2531
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE      
+--------------------------------------------------
+P01          | 755      | 0.4431     | 0.7620    
+P02          | 243      | 0.2392     | 0.4154    
+P13          | 79       | 0.8349     | 1.2531    
+P05          | 77       | 0.5696     | 0.8436    
+P12          | 170      | 0.1746     | 0.3516    
+P18          | 80       | 0.4120     | 0.7251    
+P15          | 150      | 0.2567     | 0.5291    
+P17          | 169      | 0.3189     | 0.5663    
+P10          | 84       | 0.4544     | 0.7562    
+P11          | 169      | 0.3200     | 0.4507    
+P09          | 169      | 0.4648     | 0.7665    
+P14          | 82       | 0.2892     | 0.4532    
+P03          | 164      | 0.1935     | 0.3261    
+P07          | 168      | 0.6080     | 0.9526    
+P06          | 166      | 0.4316     | 0.6689    
+P08          | 167      | 0.7901     | 1.0414    
+P04          | 166      | 0.2915     | 0.5337    
+P16          | 167      | 0.3690     | 0.6014    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+4            | 0.500s           | 40       | 0.8377     | 1.1119    
+5            | 0.600s           | 88       | 0.7360     | 1.0371    
+6            | 0.700s           | 135      | 0.6622     | 0.9426    
+7            | 0.800s           | 238      | 0.5636     | 0.8217    
+8            | 0.900s           | 286      | 0.4675     | 0.7443    
+9            | 1.000s           | 338      | 0.4251     | 0.6918    
+10           | 1.100s           | 382      | 0.3794     | 0.6551    
+11           | 1.200s           | 340      | 0.3406     | 0.6183    
+12           | 1.300s           | 286      | 0.2539     | 0.5429    
+13           | 1.400s           | 241      | 0.3916     | 0.7111    
+14           | 1.500s           | 192      | 0.2827     | 0.5274    
+15           | 1.600s           | 159      | 0.2873     | 0.5197    
+16           | 1.700s           | 89       | 0.3569     | 0.6264    
+17           | 1.800s           | 93       | 0.3365     | 0.7224    
+18           | 1.900s           | 67       | 0.2270     | 0.5131    
+19           | 2.000s           | 53       | 0.3633     | 0.6735    
+20           | 2.100s           | 41       | 0.3916     | 0.6700    
+21           | 2.200s           | 22       | 0.2381     | 0.4919    
+22           | 2.300s           | 25       | 0.3934     | 0.6217    
+23           | 2.400s           | 21       | 0.3149     | 0.5459    
+24           | 2.500s           | 12       | 0.5929     | 0.8128    
+25           | 2.600s           | 12       | 0.2581     | 0.4535    
+26           | 2.700s           | 15       | 0.3830     | 0.6590    
+27           | 2.800s           | 12       | 0.2036     | 0.4706    
+28           | 2.900s           | 9        | 0.2164     | 0.4159    
+29           | 3.000s           | 9        | 0.6612     | 0.8830    
+30           | 3.100s           | 6        | 0.7279     | 1.1012    
+31           | 3.200s           | 6        | 0.6394     | 0.9527    
+32           | 3.300s           | 4        | 0.1421     | 0.2639    
+33           | 3.400s           | 4        | 0.5744     | 0.7972    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 799,265
+Trainable Parameters: 799,265
+
+Average timings:
+train_time: 263.213118s (±73.385907s)
+inference_time_total: 0.499348s (±0.171363s)
+inference_time_per_sample: 0.001418s (±0.000224s)
+
+--- PERMUTATION CHANNEL IMPORTANCE ---
+(Drop in MSE when feature is shuffled. Higher is more important)
+Brachioradialis_EMG: 0.548204
+Extensor Carpi Radialis (ECR)_EMG: 0.230137
+Lateral Deltoid_EMG: 0.080601
+Biceps Brachii_EMG: 0.062133
+Triceps Brachii_EMG: 0.018432
+roll_rad1_IMU: 0.017295
+Anterior Deltoid_EMG: 0.013923
+az1_IMU: 0.010244
+Flexor Carpi Ulnaris (FCU)_EMG: 0.008537
+Posterior Deltoid_EMG: 0.004460
+az2_IMU: 0.003445
+roll_rad1_IMU_Accel: 0.003292
+pitch_rad1_IMU_Accel: 0.002624
+ax2_IMU: 0.002280
+ax2_IMU_Accel: 0.001496
+ay2_IMU_Accel: 0.000911
+pitch_rad2_IMU: 0.000758
+yaw_rad1_IMU_Accel: 0.000584
+pitch_rad2_IMU_Accel: 0.000211
+ay1_IMU: 0.000046
+ay1_IMU_Accel: -0.000085
+ay2_IMU: -0.000202
+pitch_rad1_IMU: -0.000208
+az1_IMU_Accel: -0.000423
+ax1_IMU_Accel: -0.002887
+roll_rad2_IMU_Accel: -0.003231
+yaw_rad2_IMU_Accel: -0.003692
+az2_IMU_Accel: -0.003904
+roll_rad2_IMU: -0.004363
+yaw_rad2_IMU: -0.006661
+ax1_IMU: -0.008114
+yaw_rad1_IMU: -0.009381
+
+--- PERMUTATION FEATURE TYPE IMPORTANCE ---
+(Drop in MSE when feature extraction metric is shuffled across all channels)
+MAV: 0.076060
+LogDet: 0.063672
+RMS: 0.051631
+IEMG: 0.043888
+WL: 0.034989
+VAR: 0.026779
+Std: 0.026426
+Power: 0.023709
+P2P: 0.011624
+SpecEntropy: 0.008443
+Kurt: 0.005964
+Jerk: 0.004251
+SSC: 0.003505
+SpecEnergy: 0.003309
+Skew: 0.002664
+BW: 0.002014
+ZC: 0.001011
+HjComp: 0.000035
+PeakFreq: -0.000473
+MDF: -0.001538
+HjMob: -0.002678
+Myopulse: -0.003319
+WAMP: -0.004569
+Max: -0.004692
+Var: -0.004938
+Mean: -0.006233
+MNF: -0.009506
+SMA: -0.010192
+DomFreq: -0.012484

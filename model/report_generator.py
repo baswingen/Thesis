@@ -176,12 +176,19 @@ class ReportGenerator:
                 p_rmse = np.sqrt(p_mse)
                 p_r2 = r2_score(y_true_pooled, y_pred_clamped)
                 
+                # Pearson Correlation
+                if len(y_true_pooled) > 1 and np.std(y_true_pooled) > 0 and np.std(y_pred_clamped) > 0:
+                    p_corr = np.corrcoef(y_true_pooled, y_pred_clamped)[0, 1]
+                else:
+                    p_corr = 0.0
+                
                 lines.append("\nMETHOD: POOLED-AVERAGE (Secondary)")
                 lines.append("Description: Weighted by samples. Matches Regression Plot box-plot metrics.")
                 lines.append("(Reflects overall accuracy across all recorded data points)")
                 lines.append(f"  MAE: {p_mae:.4f}")
                 lines.append(f"  RMSE: {p_rmse:.4f}")
                 lines.append(f"  R2: {p_r2:.4f}")
+                lines.append(f"  Correlation: {p_corr:.4f}")
         else:
             lines.append("METHOD: SINGLE TEST SPLIT")
             # Apply clamping for consistency
@@ -191,9 +198,16 @@ class ReportGenerator:
             p_rmse = np.sqrt(p_mse)
             p_r2 = r2_score(y_true_pooled, y_pred_clamped)
             
+            # Pearson Correlation
+            if len(y_true_pooled) > 1 and np.std(y_true_pooled) > 0 and np.std(y_pred_clamped) > 0:
+                p_corr = np.corrcoef(y_true_pooled, y_pred_clamped)[0, 1]
+            else:
+                p_corr = 0.0
+            
             lines.append(f"  MAE: {p_mae:.4f}")
             lines.append(f"  RMSE: {p_rmse:.4f}")
             lines.append(f"  R2: {p_r2:.4f}")
+            lines.append(f"  Correlation: {p_corr:.4f}")
 
         lines.append("")
         self.sections.append("\n".join(lines))
@@ -281,16 +295,72 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
+    def _add_statistical_significance(self, y_true, y_pred):
+        if y_true is None or y_pred is None:
+            return
+            
+        stats = performance_utils.calculate_anova_metrics(y_true, y_pred)
+        if not stats or np.isnan(stats['pred']['p']) or np.isnan(stats['err']['p']):
+            return
+            
+        lines = ["--- STATISTICAL SIGNIFICANCE (ANOVA & Post-Hoc) ---"]
+        
+        # 1. Prediction Separability
+        lines.append("1. Prediction Separability (Can the model distinguish weights?)")
+        p_str = "< 0.0001" if stats['pred']['p'] < 0.0001 else f"= {stats['pred']['p']:.4f}"
+        sig_str = "Significant" if stats['pred']['p'] < 0.05 else "Not Significant"
+        lines.append(f"   - One-Way ANOVA: F = {stats['pred']['F']:.1f}, p {p_str} ({sig_str})")
+        if stats['pred']['p'] < 0.05:
+            lines.append("   - Interpretation: The model predicts significantly different values for different actual weights.")
+            if stats['pred']['tukey']:
+                lines.append("   - Largest Pairwise Differences (Tukey HSD):")
+                for t in stats['pred']['tukey']:
+                    tp_str = "< 0.001" if t['p'] < 0.001 else f"= {t['p']:.4f}"
+                    lines.append(f"       {t['g1']}kg vs {t['g2']}kg: p {tp_str} (Diff: {t['diff']:.2f}kg)")
+        else:
+            lines.append("   - Interpretation: The model FAILS to predict significantly different values for different actual weights.")
+        
+        lines.append("")
+        
+        # 2. Error Consistency
+        lines.append("2. Error Consistency (Is the model equally accurate for all weights?)")
+        p_str = "< 0.0001" if stats['err']['p'] < 0.0001 else f"= {stats['err']['p']:.4f}"
+        sig_str = "Significant" if stats['err']['p'] < 0.05 else "Not Significant"
+        lines.append(f"   - One-Way ANOVA: F = {stats['err']['F']:.1f}, p {p_str} ({sig_str})")
+        if stats['err']['p'] < 0.05:
+            lines.append("   - Interpretation: The model's error is NOT consistent across all weight classes.")
+            if stats['err']['tukey']:
+                lines.append("   - Significant Pairwise Error Differences (Tukey HSD):")
+                for t in stats['err']['tukey']:
+                    tp_str = "< 0.001" if t['p'] < 0.001 else f"= {t['p']:.4f}"
+                    lines.append(f"       {t['w_high']}kg vs {t['w_low']}kg: p {tp_str} ({t['w_high']}kg has {t['diff']:.2f}kg higher error)")
+        else:
+            lines.append("   - Interpretation: The model's error is consistent across all weight classes.")
+            
+        lines.append("")
+        self.sections.append("\n".join(lines))
+
     def _add_permutation_importance(self, permutation_importances):
         if not permutation_importances:
             return
-        lines = ["--- PERMUTATION CHANNEL IMPORTANCE ---"]
-        lines.append("(Drop in MSE when feature is shuffled. Higher is more important)")
-        sorted_imp = sorted(permutation_importances.items(), key=lambda item: item[1], reverse=True)
-        for k, v in sorted_imp:
-            lines.append(f"{k}: {v:.6f}")
-        lines.append("")
-        self.sections.append("\n".join(lines))
+            
+        if 'channel' in permutation_importances and permutation_importances['channel']:
+            lines = ["--- PERMUTATION CHANNEL IMPORTANCE ---"]
+            lines.append("(Drop in MSE when feature is shuffled. Higher is more important)")
+            sorted_imp = sorted(permutation_importances['channel'].items(), key=lambda item: item[1], reverse=True)
+            for k, v in sorted_imp:
+                lines.append(f"{k}: {v:.6f}")
+            lines.append("")
+            self.sections.append("\n".join(lines))
+            
+        if 'feature' in permutation_importances and permutation_importances['feature']:
+            lines = ["--- PERMUTATION FEATURE TYPE IMPORTANCE ---"]
+            lines.append("(Drop in MSE when feature extraction metric is shuffled across all channels)")
+            sorted_imp = sorted(permutation_importances['feature'].items(), key=lambda item: item[1], reverse=True)
+            for k, v in sorted_imp:
+                lines.append(f"{k}: {v:.6f}")
+            lines.append("")
+            self.sections.append("\n".join(lines))
 
     def _add_deepshap_summary(self):
         shap_p = self.run_dir / "deepshap_values.npz"
@@ -342,6 +412,7 @@ class ReportGenerator:
         self._add_per_seqlen_metrics(per_seqlen_stats)
         self._add_per_duration_metrics(per_duration_stats)
         self._add_compute_metrics(model, use_cv, avg_metrics, std_metrics, metrics)
+        self._add_statistical_significance(y_true_p, y_pred_p)
         self._add_permutation_importance(permutation_importances)
         self._add_deepshap_summary()
 

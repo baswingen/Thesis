@@ -15,9 +15,9 @@ MODEL_TYPE = "spatio_temporal_transformer"  # Options: "svr", "rf", "gb", "mlp",
 RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = False
+DEV_MODE = True
 DEV_FRACTION = 0.2
-DEV_CV_FOLDS = 18
+DEV_CV_FOLDS = 9
 DEV_EPOCHS = 25
 DEV_EARLY_STOPPING_PATIENCE = 5
 
@@ -254,13 +254,25 @@ AUGMENTATION_CONFIG = {
     # If they have more, we downsample; if less, we use augmentation to fill.
     'balance_participants': True,
     'target_samples_per_participant': 1500,
+
+    # ── Weight Balancing ─────────────────────────────────────────────
+    # When 'balance_weights' is True, the augmenter will ensure every
+    # weight class has exactly 'target_samples_per_weight' in the training set.
+    # This prevents the majority 0kg class from dominating and oversamples heavier weights.
+    'balance_weights': True,
+    'target_samples_per_weight': 2000,
+    
+    # ── Joint Balancing (Participants + Weights) ─────────────────────
+    # If BOTH toggles above are True, the augmenter balances every unique 
+    # combination of (participant, weight class).
+    'target_samples_per_group': 250,  # e.g. 18 participants * 6 weights * 250 = 27,000 total samples
 }
 
 # Cross-Validation Configuration
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 18,               # Only used if strategy is 'kfold'
+    'n_folds': 3,               # Only used if strategy is 'kfold'
     'strategy': 'participant',  # Options: 'kfold', 'participant'
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
     'strict_val_participants': 1 # Number of participants to hold out for early stopping
@@ -511,15 +523,13 @@ SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
     'batch_size': 128,            # Rank 1/6 winner
     'epochs': 200,                
     'validation_split': 0.1,
-    'early_stopping_patience': 50, 
+    'early_stopping_patience': 15, 
     'scheduler_patience': 7,       
     'scheduler_factor': 0.5,
     'use_checkpointing': True,    
     'use_amp': True,              
     'scheduler': {
-        'type': 'OneCycleLR',     # Sweep winner
-        'max_lr': 0.0003,
-        'pct_start': 0.3          # Rank 1 winner
+        'type': 'ReduceLROnPlateau'
     },
     'random_state': GLOBAL_RANDOM_STATE
 }
@@ -532,9 +542,15 @@ if DEV_MODE:
     CV_CONFIG['strict_val_split'] = True
     
     # Scale augmentation target for rapid iteration
-    orig_target = AUGMENTATION_CONFIG.get('target_samples_per_participant', 1500)
-    AUGMENTATION_CONFIG['target_samples_per_participant'] = max(10, int(orig_target * DEV_FRACTION))
-    print(f"[CONFIG] Scaled augmentation target per participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}")
+    orig_target_p = AUGMENTATION_CONFIG.get('target_samples_per_participant', 1500)
+    AUGMENTATION_CONFIG['target_samples_per_participant'] = max(10, int(orig_target_p * DEV_FRACTION))
+    
+    orig_target_w = AUGMENTATION_CONFIG.get('target_samples_per_weight', 2000)
+    AUGMENTATION_CONFIG['target_samples_per_weight'] = max(10, int(orig_target_w * DEV_FRACTION))
+    
+    orig_target_g = AUGMENTATION_CONFIG.get('target_samples_per_group', 250)
+    AUGMENTATION_CONFIG['target_samples_per_group'] = max(5, int(orig_target_g * DEV_FRACTION))
+    print(f"[CONFIG] Scaled augmentation targets - Participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}, Weight: {AUGMENTATION_CONFIG['target_samples_per_weight']}, Group: {AUGMENTATION_CONFIG['target_samples_per_group']}")
     
     # Cap epochs and patience for fast deep learning runs
     for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG]:

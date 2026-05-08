@@ -90,3 +90,83 @@ def get_generalization_metrics(participant_stats):
         'min_rmse': np.min(rmses),
         'max_rmse': np.max(rmses),
     }
+
+def calculate_anova_metrics(y_true, y_pred):
+    """
+    Calculate ANOVA statistics for predictions and absolute errors grouped by true weight.
+    """
+    from scipy import stats
+    
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    abs_err = np.abs(y_true - y_pred)
+    
+    unique_weights = np.sort(np.unique(y_true))
+    if len(unique_weights) < 2:
+        return None
+        
+    pred_groups = [y_pred[y_true == w] for w in unique_weights]
+    err_groups = [abs_err[y_true == w] for w in unique_weights]
+    
+    # 1. Prediction Separability
+    try:
+        f_pred, p_pred = stats.f_oneway(*pred_groups)
+    except Exception:
+        f_pred, p_pred = float('nan'), float('nan')
+    
+    pred_tukey = None
+    if not np.isnan(p_pred) and p_pred < 0.05:
+        try:
+            res = stats.tukey_hsd(*pred_groups)
+            diffs = []
+            n_groups = len(unique_weights)
+            for i in range(n_groups):
+                for j in range(i+1, n_groups):
+                    p_val = res.pvalue[i, j]
+                    if p_val < 0.05:
+                        diff = res.statistic[i, j]
+                        diffs.append({
+                            'g1': unique_weights[i],
+                            'g2': unique_weights[j],
+                            'diff': abs(diff),
+                            'p': p_val
+                        })
+            diffs.sort(key=lambda x: x['diff'], reverse=True)
+            pred_tukey = diffs[:5]
+        except Exception:
+            pass
+
+    # 2. Error Consistency
+    try:
+        f_err, p_err = stats.f_oneway(*err_groups)
+    except Exception:
+        f_err, p_err = float('nan'), float('nan')
+    
+    err_tukey = None
+    if not np.isnan(p_err) and p_err < 0.05:
+        try:
+            res = stats.tukey_hsd(*err_groups)
+            diffs = []
+            n_groups = len(unique_weights)
+            for i in range(n_groups):
+                for j in range(i+1, n_groups):
+                    p_val = res.pvalue[i, j]
+                    if p_val < 0.05:
+                        diff = res.statistic[i, j]
+                        w_high = unique_weights[i] if diff > 0 else unique_weights[j]
+                        w_low = unique_weights[j] if diff > 0 else unique_weights[i]
+                        diffs.append({
+                            'w_high': w_high,
+                            'w_low': w_low,
+                            'diff': abs(diff),
+                            'p': p_val
+                        })
+            diffs.sort(key=lambda x: x['diff'], reverse=True)
+            err_tukey = diffs[:5]
+        except Exception:
+            pass
+
+    return {
+        'pred': {'F': f_pred, 'p': p_pred, 'tukey': pred_tukey},
+        'err': {'F': f_err, 'p': p_err, 'tukey': err_tukey}
+    }

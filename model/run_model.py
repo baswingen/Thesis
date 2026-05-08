@@ -313,17 +313,27 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         from sklearn.model_selection import GroupKFold
         n_unique_groups = len(np.unique(groups))
         
-        if DEV_MODE:
-            n_splits = min(DEV_CV_FOLDS, n_unique_groups)
+        if n_unique_groups < 2:
+            print(f"\n[WARNING] Only {n_unique_groups} participant found. 'participant' strategy is impossible.")
+            print("Falling back to standard Stratified K-Fold (ignoring participant boundaries).")
+            cv_strategy = 'kfold'
         else:
-            # Respect requested n_folds (e.g., 18 for LOPO), capped by actual participant count
-            n_splits = min(n_folds, n_unique_groups)
-            
-        gkf = GroupKFold(n_splits=n_splits)
-        cv_iterator = list(gkf.split(X, y, groups))
-        n_folds = len(cv_iterator)
-        print(f"\nStarting {n_folds}-Fold Cross-Participant Validation...")
-    else:
+            if DEV_MODE:
+                n_splits = min(DEV_CV_FOLDS, n_unique_groups)
+            else:
+                n_splits = min(n_folds, n_unique_groups)
+                
+            if n_splits < 2:
+                print(f"\n[WARNING] n_splits={n_splits} is too low for cross-validation.")
+                print("Falling back to standard Stratified K-Fold.")
+                cv_strategy = 'kfold'
+            else:
+                gkf = GroupKFold(n_splits=n_splits)
+                cv_iterator = list(gkf.split(X, y, groups))
+                n_folds = len(cv_iterator)
+                print(f"\nStarting {n_folds}-Fold Cross-Participant Validation...")
+
+    if cv_strategy != 'participant':
         from sklearn.model_selection import StratifiedKFold
         skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
         strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
@@ -334,7 +344,8 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     fold_results = []
     oof_predictions = np.zeros(len(X))
     participant_stats = []
-    permutation_importances = []
+    perm_importances_channel = []
+    perm_importances_feature = []
     cv_histories = []
     cv_val_participants = []
 
@@ -429,9 +440,19 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         
         if hasattr(model, 'permutation_importance'):
             try:
-                print("Computing permutation importance for fold...")
-                imp = model.permutation_importance(X_test_fold, y_test_fold)
-                permutation_importances.append(imp)
+                import inspect
+                sig = inspect.signature(model.permutation_importance)
+                if 'importance_type' in sig.parameters:
+                    print("Computing permutation importance for fold (channel)...")
+                    imp_c = model.permutation_importance(X_test_fold, y_test_fold, importance_type='channel')
+                    perm_importances_channel.append(imp_c)
+                    print("Computing permutation importance for fold (feature)...")
+                    imp_f = model.permutation_importance(X_test_fold, y_test_fold, importance_type='feature')
+                    perm_importances_feature.append(imp_f)
+                else:
+                    print("Computing permutation importance for fold...")
+                    imp = model.permutation_importance(X_test_fold, y_test_fold)
+                    perm_importances_channel.append(imp)
             except Exception as e:
                 print(f"[WARN] Permutation importance computation failed: {e}")
                 
@@ -490,11 +511,21 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         else:
             model.fit(X, y, **kwargs)
 
-    avg_permutation_importance = None
-    if permutation_importances:
-        avg_permutation_importance = {}
-        for k in permutation_importances[0].keys():
-            avg_permutation_importance[k] = np.mean([pi[k] for pi in permutation_importances])
+    avg_permutation_importance = {}
+    if perm_importances_channel:
+        avg_perm_imp_channel = {}
+        for k in perm_importances_channel[0].keys():
+            avg_perm_imp_channel[k] = np.mean([pi[k] for pi in perm_importances_channel])
+        avg_permutation_importance['channel'] = avg_perm_imp_channel
+        
+    if perm_importances_feature:
+        avg_perm_imp_feature = {}
+        for k in perm_importances_feature[0].keys():
+            avg_perm_imp_feature[k] = np.mean([pi[k] for pi in perm_importances_feature])
+        avg_permutation_importance['feature'] = avg_perm_imp_feature
+        
+    if not avg_permutation_importance:
+        avg_permutation_importance = None
 
     return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories, cv_val_participants
 
@@ -532,10 +563,20 @@ def execute_single_split(X, y, df, model_type, split_val):
     perm_imp = None
     if hasattr(model, 'permutation_importance'):
         try:
-            print("Computing permutation importance for test set...")
-            perm_imp = model.permutation_importance(X_test, y_test)
+            import inspect
+            sig = inspect.signature(model.permutation_importance)
+            perm_imp = {}
+            if 'importance_type' in sig.parameters:
+                print("Computing permutation importance for test set (channel)...")
+                perm_imp['channel'] = model.permutation_importance(X_test, y_test, importance_type='channel')
+                print("Computing permutation importance for test set (feature)...")
+                perm_imp['feature'] = model.permutation_importance(X_test, y_test, importance_type='feature')
+            else:
+                print("Computing permutation importance for test set...")
+                perm_imp['channel'] = model.permutation_importance(X_test, y_test)
         except Exception as e:
             print(f"[WARN] Permutation importance computation failed: {e}")
+            perm_imp = None
             
     return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp
 
@@ -724,7 +765,10 @@ def main():
         print(agg_stats.to_string())
     
     if perm_imp:
-        plotting_utils.plot_permutation_importance(perm_imp, run_dir / "permutation_importance.png", model_name=model_type.upper())
+        if 'channel' in perm_imp and perm_imp['channel']:
+            plotting_utils.plot_permutation_importance(perm_imp['channel'], run_dir / "permutation_importance_channel.png", model_name=model_type.upper())
+        if 'feature' in perm_imp and perm_imp['feature']:
+            plotting_utils.plot_permutation_importance(perm_imp['feature'], run_dir / "permutation_importance_feature.png", model_name=model_type.upper())
     
     # 6. Final Report (Moved before DeepSHAP to safeguard against OOM crashes)
     generator = ReportGenerator(run_dir, timestamp)
@@ -735,7 +779,7 @@ def main():
                        ablation_modality=args.modality)
                        
     # 7. Automated DeepSHAP Analysis (High-Fidelity)
-    if model_type in ["cnn_lstm"]:  # Removed 'cnn_gru' since SHAP does not support PyTorch GRU modules
+    if model_type in ["cnn_lstm", "spatio_temporal_transformer"]:
         print("\n" + "-"*50)
         print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
         print("-"*50)

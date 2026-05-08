@@ -193,17 +193,36 @@ class SequenceAugmenter:
             return res
 
         # ── Balancing Mode ────────────────────────────────────────────
-        if self.config.get('balance_participants', False) and participant_ids is not None:
-            target = self.config.get('target_samples_per_participant', 1500)
-            
-            # Group indices by participant
+        balance_w = self.config.get('balance_weights', False)
+        balance_p = self.config.get('balance_participants', False)
+        
+        if balance_w or (balance_p and participant_ids is not None):
             from collections import defaultdict
-            p_groups = defaultdict(list)
-            for idx, pid in enumerate(participant_ids):
-                p_groups[pid].append(idx)
+            groups_dict = defaultdict(list)
             
-            for pid, idxs in p_groups.items():
-                # Case A: Participant has enough or too many samples
+            if balance_w and balance_p and participant_ids is not None:
+                target = self.config.get('target_samples_per_group', 250)
+                # Group indices by (participant, weight label)
+                for idx, (pid, label) in enumerate(zip(participant_ids, labels_flat)):
+                    rounded_label = round(float(label), 2)
+                    groups_dict[(pid, rounded_label)].append(idx)
+                balance_type = "participant-weight combinations"
+            elif balance_w:
+                target = self.config.get('target_samples_per_weight', 2000)
+                # Group indices by weight label
+                for idx, label in enumerate(labels_flat):
+                    rounded_label = round(float(label), 2)
+                    groups_dict[rounded_label].append(idx)
+                balance_type = "weight classes"
+            else:
+                target = self.config.get('target_samples_per_participant', 1500)
+                # Group indices by participant
+                for idx, pid in enumerate(participant_ids):
+                    groups_dict[pid].append(idx)
+                balance_type = "participants"
+            
+            for g_key, idxs in groups_dict.items():
+                # Case A: Group has enough or too many samples
                 if len(idxs) >= target:
                     selected_idxs = rng.choice(idxs, size=target, replace=False)
                     for i in selected_idxs:
@@ -213,9 +232,9 @@ class SequenceAugmenter:
                             seq = apply_random_aug(seq)
                         aug_sequences.append(seq)
                         aug_labels.append(labels_flat[i])
-                        aug_pids.append(pid)
+                        if aug_pids is not None: aug_pids.append(participant_ids[i])
                 
-                # Case B: Participant needs oversampling
+                # Case B: Group needs oversampling
                 else:
                     # 1. Take all originals
                     for i in idxs:
@@ -224,7 +243,7 @@ class SequenceAugmenter:
                             seq = apply_random_aug(seq)
                         aug_sequences.append(seq)
                         aug_labels.append(labels_flat[i])
-                        aug_pids.append(pid)
+                        if aug_pids is not None: aug_pids.append(participant_ids[i])
                     
                     # 2. Fill the gap with synthetic variations
                     needed = target - len(idxs)
@@ -234,9 +253,9 @@ class SequenceAugmenter:
                         aug_seq = apply_random_aug(sequences[i])
                         aug_sequences.append(aug_seq)
                         aug_labels.append(labels_flat[i])
-                        aug_pids.append(pid)
+                        if aug_pids is not None: aug_pids.append(participant_ids[i])
             
-            print(f"[Augmenter] Balanced {len(p_groups)} participants to {target} samples each. Total: {len(aug_sequences)}")
+            print(f"[Augmenter] Balanced {len(groups_dict)} {balance_type} to {target} samples each. Total: {len(aug_sequences)}")
 
         # ── Standard Mode ─────────────────────────────────────────────
         else:

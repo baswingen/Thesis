@@ -5,19 +5,28 @@ from pathlib import Path
 from sklearn.metrics import r2_score, mean_absolute_error
 
 MODALITY_COLORS = {
-    "EMG": "#E05C5C",  # Reddish/Coral
-    "IMU": "#5C9BE0",  # Blueish/Sky
+    "EMG": "#E05C5C",    # Reddish/Coral
+    "IMU": "#5C9BE0",    # Blueish/Sky
+    "ANTHRO": "#9B59B6", # Purple/Amethyst
 }
 
 def get_modality_color(label: str) -> str:
     """
     Identifies the modality from a label and returns the standard color.
     IMU labels are typically mapped to LaTeX symbols (containing '$') 
-    or contain 'ax', 'ay', etc.
+    or contain 'ax', 'ay', etc. Anthropometrics use a distinct purple.
     """
     label_lower = label.lower()
+    # Check for IMU keywords or LaTeX symbols
     if "$" in label or any(x in label_lower for x in ["ax", "ay", "az", "roll", "pitch", "yaw", "imu"]):
         return MODALITY_COLORS["IMU"]
+    
+    # Check for Anthropometric keywords
+    anthro_keywords = ["age", "height", "gender", "arm length", "arm circ", "body weight"]
+    if any(x in label_lower for x in anthro_keywords):
+        return MODALITY_COLORS["ANTHRO"]
+        
+    # Default to EMG
     return MODALITY_COLORS["EMG"]
 
 def set_style():

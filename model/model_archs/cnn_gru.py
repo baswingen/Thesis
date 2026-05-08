@@ -150,7 +150,10 @@ class CNNGRUNetwork(nn.Module):
         last_hidden = self.dropout(last_hidden)
 
         # Concatenate static features (anthropometrics) if available
-        if static_features is not None and self.n_static_features > 0:
+        if self.n_static_features > 0:
+            if static_features is None:
+                # Fallback to zeros if not provided (e.g. during certain SHAP analysis passes)
+                static_features = torch.zeros((last_hidden.size(0), self.n_static_features), device=last_hidden.device)
             last_hidden = torch.cat([last_hidden, static_features], dim=1)
 
         out = self.fc(last_hidden)      # (batch, 1)
@@ -668,12 +671,19 @@ class CNNGRURegressor:
         rmse = np.sqrt(mse)
         r2 = r2_score(y_test, y_pred)
 
-        metrics = {"MAE": mae, "MSE": mse, "RMSE": rmse, "R2": r2}
+        # Pearson Correlation
+        if len(y_test) > 1 and np.std(y_test) > 0 and np.std(y_pred) > 0:
+            corr = np.corrcoef(y_test, y_pred)[0, 1]
+        else:
+            corr = 0.0
+
+        metrics = {"MAE": mae, "MSE": mse, "RMSE": rmse, "R2": r2, "Correlation": corr}
         report_str = (
             f"Mean Absolute Error: {mae:.4f}\n"
             f"Mean Squared Error: {mse:.4f}\n"
             f"Root Mean Squared Error: {rmse:.4f}\n"
             f"R-squared Score: {r2:.4f}\n"
+            f"Pearson Correlation: {corr:.4f}\n"
         )
         return metrics, report_str
 
