@@ -15,9 +15,9 @@ MODEL_TYPE = "spatio_temporal_transformer2"  # Options: "svr", "rf", "gb", "mlp"
 RUN_GRID_SEARCH = True
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = True
+DEV_MODE = False
 DEV_FRACTION = 0.2
-DEV_CV_FOLDS = 9
+DEV_CV_FOLDS = 16
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
 # These computations can be very slow, so disabling them is useful for rapid prototyping.
