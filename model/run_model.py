@@ -30,6 +30,7 @@ from model.model_archs.cnn_bilstm_attention import CNNBiLSTMAttentionRegressor
 from model.model_archs.tcn import TCNRegressor
 from model.model_archs.transformer import TimeSeriesTransformerRegressor
 from model.model_archs.spatio_temporal_transformer import SpatioTemporalTransformerRegressor
+from model.model_archs.spatio_temporal_transformer2 import SpatioTemporalTransformerRegressor2
 from model.config_model import (
     SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS, COMPUTE_FEATURE_IMPORTANCE
 )
@@ -100,6 +101,10 @@ def initialize_model(model_type: str):
         print(f"Initializing Spatio-Temporal Transformer Regressor with config: {SPATIO_TEMPORAL_TRANSFORMER_CONFIG}")
         from model.model_archs.spatio_temporal_transformer import SpatioTemporalTransformerRegressor
         return SpatioTemporalTransformerRegressor(**SPATIO_TEMPORAL_TRANSFORMER_CONFIG)
+    elif model_type == "spatio_temporal_transformer2":
+        print(f"Initializing Interleaved Spatio-Temporal Transformer Regressor with config: {SPATIO_TEMPORAL_TRANSFORMER_CONFIG}")
+        from model.model_archs.spatio_temporal_transformer2 import SpatioTemporalTransformerRegressor2
+        return SpatioTemporalTransformerRegressor2(**SPATIO_TEMPORAL_TRANSFORMER_CONFIG)
     else:
         print(f"Unknown model type: {model_type}")
         return None
@@ -371,7 +376,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         kwargs = {'sample_weight': sample_weight}
         
         # Apply Strict Cross-Participant Early Stopping if enabled
-        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer', 'lstm', 'gru']:
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer', 'spatio_temporal_transformer2', 'lstm', 'gru']:
             from sklearn.model_selection import GroupShuffleSplit
             groups_train = groups[train_idx]
             val_p = CV_CONFIG.get('strict_val_participants', 2)
@@ -481,7 +486,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         kwargs = {'sample_weight': sample_weight}
         
         # Apply Strict Cross-Participant Early Stopping for the final model
-        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer', 'lstm', 'gru']:
+        if cv_strategy == 'participant' and CV_CONFIG.get('strict_val_split', False) and model_type in ['cnn_lstm', 'cnn_gru', 'cnn_bilstm_attention', 'tcn', 'transformer', 'spatio_temporal_transformer', 'spatio_temporal_transformer2', 'lstm', 'gru']:
             from sklearn.model_selection import GroupShuffleSplit
             val_p = CV_CONFIG.get('strict_val_participants', 2)
             
@@ -694,7 +699,7 @@ def main():
     print(f"Results will be saved to: {run_dir}")
     
     model_type = MODEL_TYPE.lower()
-    is_sequence = model_type in ["gru", "lstm", "transformer", "spatio_temporal_transformer"]
+    is_sequence = model_type in ["gru", "lstm", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2"]
     is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn"]
     
     # 2. Data Loading
@@ -779,7 +784,7 @@ def main():
                        ablation_modality=args.modality)
                        
     # 7. Automated DeepSHAP Analysis (High-Fidelity)
-    if model_type in ["cnn_lstm", "spatio_temporal_transformer"]:
+    if model_type in ["cnn_lstm", "spatio_temporal_transformer", "spatio_temporal_transformer2"]:
         print("\n" + "-"*50)
         print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
         print("-"*50)
