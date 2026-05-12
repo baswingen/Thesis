@@ -68,10 +68,10 @@ def main():
     if args.n_iter is not None:
         n_iter = args.n_iter
     else:
-        n_iter = 12 if DEV_MODE else 100
+        n_iter = 12 if DEV_MODE else 250
 
     test_participants_count = args.test_participants
-    sweep_epochs = DEV_EPOCHS if DEV_MODE else 100
+    sweep_epochs = DEV_EPOCHS if DEV_MODE else 200
     sweep_patience = 8 if DEV_MODE else 15
 
     # ------------------------------------------------------------------

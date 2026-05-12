@@ -11,11 +11,11 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer2"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "st_transformer_aksan", "cnn_st_transformer"
+MODEL_TYPE = "spatio_temporal_transformer2"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
 RUN_GRID_SEARCH = True
-USE_PRECOMPUTED_FEATURES = False
+USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = True
+DEV_MODE = False
 DEV_FRACTION = 0.2
 DEV_CV_FOLDS = 8
 
@@ -625,12 +625,16 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER_CONFIG.update({
-        'd_model': 160,               # Same as production (20% sweep-validated)
+        'd_model': 160,               # Same as reference run_20260511_115531
         'nhead_spatial': 4,
         'num_layers_spatial': 3,
         'nhead_temporal': 4,
         'num_layers_temporal': 1,
         'dim_feedforward': 256,
+        'dropout_rate': 0.25,
+        'learning_rate': 0.0003,
+        'weight_decay': 1e-5,
+        'batch_size': 128,
         'use_checkpointing': False,   # Disable for dev mode speed
         'use_amp': True,
     })
