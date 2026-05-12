@@ -60,7 +60,7 @@ def main():
                         help="Number of random configurations (default: 8 in DEV, 40 otherwise)")
     parser.add_argument("--test_participants", type=int, default=4,
                         help="Number of participants to hold out for validation")
-    parser.add_argument("--mode", type=str, choices=["architecture", "regularization"], default="architecture",
+    parser.add_argument("--mode", type=str, choices=["architecture", "regularization"], default="regularization",
                         help="Which hyperparameters to sweep (architecture vs. regularization).")
     args = parser.parse_args()
 
@@ -72,7 +72,7 @@ def main():
 
     test_participants_count = args.test_participants
     sweep_epochs = DEV_EPOCHS if DEV_MODE else 100
-    sweep_patience = 8 if DEV_MODE else 30
+    sweep_patience = 8 if DEV_MODE else 15
 
     # ------------------------------------------------------------------
     # Paths
@@ -90,7 +90,7 @@ def main():
     # ------------------------------------------------------------------
     if args.mode == "regularization":
         param_grid = {
-            # ── Fixed Architecture ──────────────────────────────
+            # ── Fixed Architecture (from best sweep) ─────────────
             'd_model':              [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['d_model']],
             'nhead_spatial':        [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['nhead_spatial']],
             'num_layers_spatial':   [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['num_layers_spatial']],
@@ -98,19 +98,22 @@ def main():
             'num_layers_temporal':  [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['num_layers_temporal']],
             'dim_feedforward':      [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['dim_feedforward']],
 
-            # ── Regularisation (Network) ───────────
+            # ── Optimization & Implicit Regularization ──────────
+            'batch_size':           [32, 64, 128],
+            'learning_rate':        [5e-4, 1e-3, 2e-3],
+            'weight_decay':         [1e-4, 1e-3, 5e-3, 1e-2],
             'dropout_rate':         [0.2, 0.3, 0.4, 0.5],
-            'weight_decay':         [1e-5, 1e-4, 1e-3, 1e-2],
 
-            # ── Regularisation (Augmentation) ──────
+            # ── Augmentation Regularization ──────────────────────
             'aug_p':                [0.5, 0.8, 1.0],
             'aug_channel_dropout':  [0.1, 0.25, 0.4],
             'aug_mixup_alpha':      [0.2, 0.5, 0.8],
+            'aug_noise_std':        [0.01, 0.05, 0.1],
+            'aug_magnitude_range':  [(0.9, 1.1), (0.8, 1.2), (0.5, 2.0)],
+            'aug_stretch_range':    [(0.9, 1.1), (0.8, 1.2), (0.7, 1.3)],
 
-            # ── Training (Fixed) ────────────────────────────────────────────────
-            'learning_rate':        [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['learning_rate']],
-            'batch_size':           [SPATIO_TEMPORAL_TRANSFORMER_CONFIG['batch_size']],
-            'scheduler_type':       [SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler', {}).get('type', 'ReduceLROnPlateau')],
+            # ── Fixed Training Params ────────────────────────────
+            'scheduler_type':       ['ReduceLROnPlateau'],
             'pct_start':            [0.1],     
         }
     else:
@@ -256,10 +259,16 @@ def main():
         aug_p = params.pop('aug_p', aug_cfg.get('p', 0.5))
         aug_channel_dropout = params.pop('aug_channel_dropout', aug_cfg.get('channel_dropout_p', 0.25))
         aug_mixup_alpha = params.pop('aug_mixup_alpha', aug_cfg.get('mixup_alpha', 0.5))
+        aug_noise_std = params.pop('aug_noise_std', aug_cfg.get('noise_std', 0.05))
+        aug_magnitude_range = params.pop('aug_magnitude_range', aug_cfg.get('magnitude_scale_range', (0.85, 1.15)))
+        aug_stretch_range = params.pop('aug_stretch_range', aug_cfg.get('stretch_factor_range', (0.85, 1.15)))
         
         aug_cfg['p'] = aug_p
         aug_cfg['channel_dropout_p'] = aug_channel_dropout
         aug_cfg['mixup_alpha'] = aug_mixup_alpha
+        aug_cfg['noise_std'] = aug_noise_std
+        aug_cfg['magnitude_scale_range'] = aug_magnitude_range
+        aug_cfg['stretch_factor_range'] = aug_stretch_range
 
         elapsed = time.time() - sweep_start
         print(f"\n{'='*65}")
@@ -272,6 +281,7 @@ def main():
               f"scheduler={scheduler_type}")
         if args.mode == 'regularization':
             print(f"  aug_p={aug_p}, aug_channel_dropout={aug_channel_dropout}, aug_mixup_alpha={aug_mixup_alpha}")
+            print(f"  aug_noise_std={aug_noise_std}, aug_magnitude_range={aug_magnitude_range}, aug_stretch_range={aug_stretch_range}")
 
         try:
             # Build scheduler config dict
@@ -341,7 +351,10 @@ def main():
                            'pct_start': pct_start,
                            'aug_p': aug_p,
                            'aug_channel_dropout': aug_channel_dropout,
-                           'aug_mixup_alpha': aug_mixup_alpha},
+                           'aug_mixup_alpha': aug_mixup_alpha,
+                           'aug_noise_std': aug_noise_std,
+                           'aug_magnitude_range': aug_magnitude_range,
+                           'aug_stretch_range': aug_stretch_range},
                 'metrics': metrics,
                 'epochs_trained': epochs_trained,
                 'final_train_loss': final_train_loss,

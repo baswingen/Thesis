@@ -11,13 +11,13 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer2"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "st_transformer_aksan"
-RUN_GRID_SEARCH = False
-USE_PRECOMPUTED_FEATURES = True
+MODEL_TYPE = "spatio_temporal_transformer2"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "st_transformer_aksan", "cnn_st_transformer"
+RUN_GRID_SEARCH = True
+USE_PRECOMPUTED_FEATURES = False
 
 DEV_MODE = True
 DEV_FRACTION = 0.2
-DEV_CV_FOLDS = 16
+DEV_CV_FOLDS = 8
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
 # These computations can be very slow, so disabling them is useful for rapid prototyping.
@@ -515,19 +515,19 @@ TRANSFORMER_CONFIG = {
 # Validated via 3 HP sweeps: 2× at 10% (sweep_20260505_183441, _185415) + 1× at 20% (_222742)
 # 20% winner: R²=0.929, RMSE=0.514, MAE=0.319 (d_model=160 emerged with more data)
 SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
-    'd_model': 64,                # Hybrid (Rank 1/6 both used 64)
-    'nhead_spatial': 8,           # Hybrid (Rank 1/6 both used 8)
-    'num_layers_spatial': 3,      # Hybrid (Rank 1=2, Rank 6=4)
-    'nhead_temporal': 4,          # Hybrid (Rank 1/6 both used 4)
-    'num_layers_temporal': 2,     # Hybrid (Rank 1=2, Rank 6=3)
-    'dim_feedforward': 512,       # Hybrid (Rank 1=1024, Rank 6=256)
-    'dropout_rate': 0.25,         # Hybrid (Rank 1=0.15, Rank 6=0.3)
-    'learning_rate': 0.0003,      # Rank 1 winner
-    'weight_decay': 1e-05,        # Rank 6 for better regularization
-    'batch_size': 128,            # Rank 1/6 winner
+    'd_model': 128,               
+    'nhead_spatial': 8,           
+    'num_layers_spatial': 3,      
+    'nhead_temporal': 2,          
+    'num_layers_temporal': 3,     
+    'dim_feedforward': 1024,       
+    'dropout_rate': 0.3,         
+    'learning_rate': 0.001,      
+    'weight_decay': 0.001,        
+    'batch_size': 64,            
     'epochs': 200,                
     'validation_split': 0.1,
-    'early_stopping_patience': 15, 
+    'early_stopping_patience': 30, 
     'scheduler_patience': 7,       
     'scheduler_factor': 0.5,
     'use_checkpointing': True,    
@@ -557,6 +557,30 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
     'random_state': GLOBAL_RANDOM_STATE
 }
 
+# CNN-ST-Transformer Configuration
+CNN_ST_TRANSFORMER_CONFIG = {
+    'cnn_filters': [32, 64, 128],    # MUST end with d_model (128)
+    'cnn_kernel_sizes': [8, 5, 3],
+    'pool_size': 2,
+    'd_model': 128,
+    'nhead_spatial': 4,
+    'num_layers_spatial': 2,
+    'nhead_temporal': 4,
+    'num_layers_temporal': 2,
+    'dim_feedforward': 256,
+    'dropout_rate': 0.1,
+    'learning_rate': 0.0003,
+    'weight_decay': 1e-4,
+    'batch_size': 64,  # Smaller batch size for raw sequences
+    'epochs': 200,                
+    'validation_split': 0.1,
+    'early_stopping_patience': 15, 
+    'scheduler_patience': 7,       
+    'scheduler_factor': 0.5,
+    'use_amp': True,              
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
 # ──────────────────────────────────────────────────────────
 # DEV MODE OVERRIDES
 # ──────────────────────────────────────────────────────────
@@ -576,7 +600,7 @@ if DEV_MODE:
     print(f"[CONFIG] Scaled augmentation targets - Participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}, Weight: {AUGMENTATION_CONFIG['target_samples_per_weight']}, Group: {AUGMENTATION_CONFIG['target_samples_per_group']}")
     
     # Cap epochs and patience for fast deep learning runs
-    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG]:
+    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
         if 'epochs' in cfg:
             cfg['epochs'] = min(cfg['epochs'], DEV_EPOCHS)
         if 'early_stopping_patience' in cfg:
@@ -616,6 +640,19 @@ if DEV_MODE:
         'num_layers': 2,
         'num_heads': 2,
         'feedforward_dim': 64,
+    })
+    
+    CNN_ST_TRANSFORMER_CONFIG.update({
+        'cnn_filters': [8, 16],
+        'cnn_kernel_sizes': [5, 3],
+        'pool_size': 8,           # Large pool size to aggressively shrink the time dimension
+        'd_model': 16,
+        'nhead_spatial': 2,
+        'num_layers_spatial': 1,
+        'nhead_temporal': 2,
+        'num_layers_temporal': 1,
+        'dim_feedforward': 32,
+        'batch_size': 32,
     })
     
     CNN_LSTM_CONFIG.update({
