@@ -1,0 +1,332 @@
+SPATIO-TEMPORAL TRANSFORMER 2 HYPERPARAMETER SWEEP REPORT
+=================================================================
+Date: 2026-05-12 18:32:26
+DEV_MODE: True
+Total time: 6.3 min (0.11 hours)
+Configurations tested: 12/12
+Epochs per config: 25
+Early-stop patience: 8
+Training subjects (12): P03, P04, P05, P07, P09, P10, P11, P12, P14, P15, P16, P18
+Validation subjects (4): P01, P02, P06, P17
+Training samples: 1653
+Validation samples: 1326
+
+BEST PARAMETERS (lowest RMSE):
+----------------------------------------
+  weight_decay: 0.01
+  num_layers_temporal: 1
+  num_layers_spatial: 3
+  nhead_temporal: 4
+  nhead_spatial: 4
+  learning_rate: 0.0005
+  dropout_rate: 0.2
+  dim_feedforward: 256
+  d_model: 160
+  batch_size: 128
+  scheduler_type: ReduceLROnPlateau
+  pct_start: 0.1
+  aug_p: 0.5
+  aug_channel_dropout: 0.1
+  aug_mixup_alpha: 0.5
+  aug_noise_std: 0.01
+  aug_magnitude_range: (0.8, 1.2)
+  aug_stretch_range: (0.8, 1.2)
+
+Validation metrics on unseen participants (P01, P02, P06, P17):
+Mean Absolute Error: 0.3515
+Mean Squared Error: 0.2709
+Root Mean Squared Error: 0.5204
+R-squared Score: 0.9242
+
+
+=================================================================
+ALL CONFIGURATIONS RANKED BY RMSE
+=================================================================
+
+--- Rank 1 (Iteration 1) ---
+  RMSE: 0.5204 | MAE: 0.3515 | R²: 0.9242
+  Epochs: 13 | Overfit ratio: 3.7x | Best val loss: 0.2767
+  Time: 59s
+  Params:
+    weight_decay: 0.01
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.0005
+    dropout_rate: 0.2
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 128
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.5
+    aug_channel_dropout: 0.1
+    aug_mixup_alpha: 0.5
+    aug_noise_std: 0.01
+    aug_magnitude_range: (0.8, 1.2)
+    aug_stretch_range: (0.8, 1.2)
+
+--- Rank 2 (Iteration 10) ---
+  RMSE: 0.5445 | MAE: 0.3130 | R²: 0.9171
+  Epochs: 13 | Overfit ratio: 4.6x | Best val loss: 0.3080
+  Time: 22s
+  Params:
+    weight_decay: 0.01
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.001
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.5
+    aug_channel_dropout: 0.25
+    aug_mixup_alpha: 0.8
+    aug_noise_std: 0.05
+    aug_magnitude_range: (0.9, 1.1)
+    aug_stretch_range: (0.9, 1.1)
+
+--- Rank 3 (Iteration 7) ---
+  RMSE: 0.5605 | MAE: 0.3230 | R²: 0.9121
+  Epochs: 9 | Overfit ratio: 3.1x | Best val loss: 0.3434
+  Time: 23s
+  Params:
+    weight_decay: 0.005
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.001
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 32
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.8
+    aug_channel_dropout: 0.4
+    aug_mixup_alpha: 0.2
+    aug_noise_std: 0.01
+    aug_magnitude_range: (0.8, 1.2)
+    aug_stretch_range: (0.7, 1.3)
+
+--- Rank 4 (Iteration 3) ---
+  RMSE: 0.5639 | MAE: 0.3645 | R²: 0.9111
+  Epochs: 12 | Overfit ratio: 3.4x | Best val loss: 0.3193
+  Time: 26s
+  Params:
+    weight_decay: 0.005
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.0005
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 32
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.5
+    aug_channel_dropout: 0.4
+    aug_mixup_alpha: 0.8
+    aug_noise_std: 0.1
+    aug_magnitude_range: (0.5, 2.0)
+    aug_stretch_range: (0.9, 1.1)
+
+--- Rank 5 (Iteration 6) ---
+  RMSE: 0.5794 | MAE: 0.3211 | R²: 0.9061
+  Epochs: 19 | Overfit ratio: 7.4x | Best val loss: 0.3498
+  Time: 37s
+  Params:
+    weight_decay: 0.001
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.0005
+    dropout_rate: 0.4
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 1.0
+    aug_channel_dropout: 0.1
+    aug_mixup_alpha: 0.5
+    aug_noise_std: 0.05
+    aug_magnitude_range: (0.9, 1.1)
+    aug_stretch_range: (0.8, 1.2)
+
+--- Rank 6 (Iteration 11) ---
+  RMSE: 0.5947 | MAE: 0.3496 | R²: 0.9011
+  Epochs: 14 | Overfit ratio: nanx | Best val loss: 0.3542
+  Time: 27s
+  Params:
+    weight_decay: 0.01
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.002
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.8
+    aug_channel_dropout: 0.25
+    aug_mixup_alpha: 0.2
+    aug_noise_std: 0.05
+    aug_magnitude_range: (0.5, 2.0)
+    aug_stretch_range: (0.8, 1.2)
+
+--- Rank 7 (Iteration 12) ---
+  RMSE: 0.6003 | MAE: 0.3258 | R²: 0.8992
+  Epochs: 16 | Overfit ratio: 7.6x | Best val loss: 0.4111
+  Time: 38s
+  Params:
+    weight_decay: 0.01
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.0005
+    dropout_rate: 0.5
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 32
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.8
+    aug_channel_dropout: 0.1
+    aug_mixup_alpha: 0.5
+    aug_noise_std: 0.01
+    aug_magnitude_range: (0.8, 1.2)
+    aug_stretch_range: (0.9, 1.1)
+
+--- Rank 8 (Iteration 4) ---
+  RMSE: 0.6110 | MAE: 0.4271 | R²: 0.8956
+  Epochs: 12 | Overfit ratio: nanx | Best val loss: 0.3734
+  Time: 20s
+  Params:
+    weight_decay: 0.0001
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.002
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.5
+    aug_channel_dropout: 0.4
+    aug_mixup_alpha: 0.5
+    aug_noise_std: 0.1
+    aug_magnitude_range: (0.9, 1.1)
+    aug_stretch_range: (0.7, 1.3)
+
+--- Rank 9 (Iteration 5) ---
+  RMSE: 0.6224 | MAE: 0.3515 | R²: 0.8916
+  Epochs: 9 | Overfit ratio: nanx | Best val loss: 0.4219
+  Time: 23s
+  Params:
+    weight_decay: 0.005
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.002
+    dropout_rate: 0.3
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 32
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.8
+    aug_channel_dropout: 0.25
+    aug_mixup_alpha: 0.8
+    aug_noise_std: 0.01
+    aug_magnitude_range: (0.8, 1.2)
+    aug_stretch_range: (0.9, 1.1)
+
+--- Rank 10 (Iteration 8) ---
+  RMSE: 0.6444 | MAE: 0.3919 | R²: 0.8838
+  Epochs: 18 | Overfit ratio: 6.0x | Best val loss: 0.4157
+  Time: 47s
+  Params:
+    weight_decay: 0.005
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.001
+    dropout_rate: 0.5
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 32
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 1.0
+    aug_channel_dropout: 0.25
+    aug_mixup_alpha: 0.2
+    aug_noise_std: 0.05
+    aug_magnitude_range: (0.9, 1.1)
+    aug_stretch_range: (0.9, 1.1)
+
+--- Rank 11 (Iteration 2) ---
+  RMSE: 0.6500 | MAE: 0.3684 | R²: 0.8818
+  Epochs: 21 | Overfit ratio: 6.8x | Best val loss: 0.4312
+  Time: 33s
+  Params:
+    weight_decay: 0.0001
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.002
+    dropout_rate: 0.5
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 128
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.8
+    aug_channel_dropout: 0.1
+    aug_mixup_alpha: 0.2
+    aug_noise_std: 0.01
+    aug_magnitude_range: (0.9, 1.1)
+    aug_stretch_range: (0.7, 1.3)
+
+--- Rank 12 (Iteration 9) ---
+  RMSE: 0.6598 | MAE: 0.3814 | R²: 0.8782
+  Epochs: 13 | Overfit ratio: 5.0x | Best val loss: 0.4518
+  Time: 26s
+  Params:
+    weight_decay: 0.005
+    num_layers_temporal: 1
+    num_layers_spatial: 3
+    nhead_temporal: 4
+    nhead_spatial: 4
+    learning_rate: 0.001
+    dropout_rate: 0.5
+    dim_feedforward: 256
+    d_model: 160
+    batch_size: 64
+    scheduler_type: ReduceLROnPlateau
+    pct_start: 0.1
+    aug_p: 0.8
+    aug_channel_dropout: 0.4
+    aug_mixup_alpha: 0.5
+    aug_noise_std: 0.05
+    aug_magnitude_range: (0.8, 1.2)
+    aug_stretch_range: (0.8, 1.2)

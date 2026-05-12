@@ -1,0 +1,302 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+
+[CONFIG] DEV_MODE is ACTIVE! Subsampling 20.0% of data for rapid iteration.
+[CONFIG] Scaled augmentation targets - Participant: 300, Weight: 400, Group: 50
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+
+--- GRID SEARCH ENABLED ---
+Launching hyperparameter sweep for SPATIO_TEMPORAL_TRANSFORMER2...
+
+[CONFIG] DEV_MODE is ACTIVE! Subsampling 20.0% of data for rapid iteration.
+[CONFIG] Scaled augmentation targets - Participant: 300, Weight: 400, Group: 50
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER 2 SWEEP (REGULARIZATION)
+=================================================================
+  DEV_MODE             : True
+  Configurations       : 12
+  Epochs per config    : 25
+  Early-stop patience  : 8
+  Test participants    : 4
+  Results directory    : /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer2_20260512_181600
+=================================================================
+
+Loading precomputed features (sequence mode)…
+[DataLoader] Filtered 20 files down to 18 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Channel filter: removed 72 features from disabled channels.
+[Sweep] Dropped 2454 segments with excluded weight classes.
+[DEV MODE] Subsampled to 2979 segments (20%)
+Total segments: 2979
+
+Participant split:
+  Training   (12 subjects, 1653 segs): P03, P04, P05, P07, P09, P10, P11, P12, P14, P15, P16, P18
+  Validation (4 subjects, 1326 segs): P01, P02, P06, P17
+
+=================================================================
+--- Iteration 1/12 [Elapsed: 0.0m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.2, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+  aug_p=0.5, aug_channel_dropout=0.1, aug_mixup_alpha=0.5
+  aug_noise_std=0.01, aug_magnitude_range=(0.8, 1.2), aug_stretch_range=(0.8, 1.2)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.2767
+  MAE: 0.3515 | RMSE: 0.5204 | R²: 0.9242
+  Epochs: 13 | Train/Val gap: 3.7x | Time: 59s
+  >>> NEW BEST MODEL! RMSE: 0.5204
+
+=================================================================
+--- Iteration 2/12 [Elapsed: 1.0m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.5, wd=0.0001
+  lr=0.002, bs=128, scheduler=ReduceLROnPlateau
+  aug_p=0.8, aug_channel_dropout=0.1, aug_mixup_alpha=0.2
+  aug_noise_std=0.01, aug_magnitude_range=(0.9, 1.1), aug_stretch_range=(0.7, 1.3)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.4312
+  MAE: 0.3684 | RMSE: 0.6500 | R²: 0.8818
+  Epochs: 21 | Train/Val gap: 6.8x | Time: 33s
+
+=================================================================
+--- Iteration 3/12 [Elapsed: 1.5m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.005
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+  aug_p=0.5, aug_channel_dropout=0.4, aug_mixup_alpha=0.8
+  aug_noise_std=0.1, aug_magnitude_range=(0.5, 2.0), aug_stretch_range=(0.9, 1.1)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.3193
+  MAE: 0.3645 | RMSE: 0.5639 | R²: 0.9111
+  Epochs: 12 | Train/Val gap: 3.4x | Time: 26s
+
+=================================================================
+--- Iteration 4/12 [Elapsed: 2.0m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.0001
+  lr=0.002, bs=64, scheduler=ReduceLROnPlateau
+  aug_p=0.5, aug_channel_dropout=0.4, aug_mixup_alpha=0.5
+  aug_noise_std=0.1, aug_magnitude_range=(0.9, 1.1), aug_stretch_range=(0.7, 1.3)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.3734
+  MAE: 0.4271 | RMSE: 0.6110 | R²: 0.8956
+  Epochs: 12 | Train/Val gap: nanx | Time: 20s
+
+=================================================================
+--- Iteration 5/12 [Elapsed: 2.3m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.005
+  lr=0.002, bs=32, scheduler=ReduceLROnPlateau
+  aug_p=0.8, aug_channel_dropout=0.25, aug_mixup_alpha=0.8
+  aug_noise_std=0.01, aug_magnitude_range=(0.8, 1.2), aug_stretch_range=(0.9, 1.1)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.4219
+  MAE: 0.3515 | RMSE: 0.6224 | R²: 0.8916
+  Epochs: 9 | Train/Val gap: nanx | Time: 23s
+
+=================================================================
+--- Iteration 6/12 [Elapsed: 2.7m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.4, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+  aug_p=1.0, aug_channel_dropout=0.1, aug_mixup_alpha=0.5
+  aug_noise_std=0.05, aug_magnitude_range=(0.9, 1.1), aug_stretch_range=(0.8, 1.2)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 19. Best Val Loss: 0.3498
+  MAE: 0.3211 | RMSE: 0.5794 | R²: 0.9061
+  Epochs: 19 | Train/Val gap: 7.4x | Time: 37s
+
+=================================================================
+--- Iteration 7/12 [Elapsed: 3.3m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.005
+  lr=0.001, bs=32, scheduler=ReduceLROnPlateau
+  aug_p=0.8, aug_channel_dropout=0.4, aug_mixup_alpha=0.2
+  aug_noise_std=0.01, aug_magnitude_range=(0.8, 1.2), aug_stretch_range=(0.7, 1.3)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.3434
+  MAE: 0.3230 | RMSE: 0.5605 | R²: 0.9121
+  Epochs: 9 | Train/Val gap: 3.1x | Time: 23s
+
+=================================================================
+--- Iteration 8/12 [Elapsed: 3.7m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.5, wd=0.005
+  lr=0.001, bs=32, scheduler=ReduceLROnPlateau
+  aug_p=1.0, aug_channel_dropout=0.25, aug_mixup_alpha=0.2
+  aug_noise_std=0.05, aug_magnitude_range=(0.9, 1.1), aug_stretch_range=(0.9, 1.1)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 18. Best Val Loss: 0.4157
+  MAE: 0.3919 | RMSE: 0.6444 | R²: 0.8838
+  Epochs: 18 | Train/Val gap: 6.0x | Time: 47s
+
+=================================================================
+--- Iteration 9/12 [Elapsed: 4.5m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.5, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+  aug_p=0.8, aug_channel_dropout=0.4, aug_mixup_alpha=0.5
+  aug_noise_std=0.05, aug_magnitude_range=(0.8, 1.2), aug_stretch_range=(0.8, 1.2)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.4518
+  MAE: 0.3814 | RMSE: 0.6598 | R²: 0.8782
+  Epochs: 13 | Train/Val gap: 5.0x | Time: 26s
+
+=================================================================
+--- Iteration 10/12 [Elapsed: 4.9m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.01
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+  aug_p=0.5, aug_channel_dropout=0.25, aug_mixup_alpha=0.8
+  aug_noise_std=0.05, aug_magnitude_range=(0.9, 1.1), aug_stretch_range=(0.9, 1.1)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.3080
+  MAE: 0.3130 | RMSE: 0.5445 | R²: 0.9171
+  Epochs: 13 | Train/Val gap: 4.6x | Time: 22s
+
+=================================================================
+--- Iteration 11/12 [Elapsed: 5.3m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.3, wd=0.01
+  lr=0.002, bs=64, scheduler=ReduceLROnPlateau
+  aug_p=0.8, aug_channel_dropout=0.25, aug_mixup_alpha=0.2
+  aug_noise_std=0.05, aug_magnitude_range=(0.5, 2.0), aug_stretch_range=(0.8, 1.2)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 14. Best Val Loss: 0.3542
+  MAE: 0.3496 | RMSE: 0.5947 | R²: 0.9011
+  Epochs: 14 | Train/Val gap: nanx | Time: 27s
+
+=================================================================
+--- Iteration 12/12 [Elapsed: 5.7m] ---
+  d_model=160, nhead_s=4, nhead_t=4, layers_s=3, layers_t=1
+  ff=256, dropout=0.5, wd=0.01
+  lr=0.0005, bs=32, scheduler=ReduceLROnPlateau
+  aug_p=0.8, aug_channel_dropout=0.1, aug_mixup_alpha=0.5
+  aug_noise_std=0.01, aug_magnitude_range=(0.8, 1.2), aug_stretch_range=(0.9, 1.1)
+[SpatioTemporalTransformerRegressor2] Using device: cuda
+[SpatioTemporalTransformerRegressor2] Using explicitly provided validation set (1326 samples).
+[SpatioTemporalTransformerRegressor2] Capping sequence length at 32 based on sample distribution (min_count=8).
+[SpatioTemporalTransformerRegressor2] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 400 samples each. Total: 2400
+
+Early stopping triggered at epoch 16. Best Val Loss: 0.4111
+  MAE: 0.3258 | RMSE: 0.6003 | R²: 0.8992
+  Epochs: 16 | Train/Val gap: 7.6x | Time: 38s
+
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER 2 SWEEP COMPLETE
+  Total time: 6.3 minutes (0.11 hours)
+=================================================================
+
+Top-5 Configurations:
+  #1: RMSE=0.5204 MAE=0.3515 R²=0.9242 gap=3.7x (d=160, s=3×4, t=1×4, ff=256, do=0.2)
+  #2: RMSE=0.5445 MAE=0.3130 R²=0.9171 gap=4.6x (d=160, s=3×4, t=1×4, ff=256, do=0.3)
+  #3: RMSE=0.5605 MAE=0.3230 R²=0.9121 gap=3.1x (d=160, s=3×4, t=1×4, ff=256, do=0.3)
+  #4: RMSE=0.5639 MAE=0.3645 R²=0.9111 gap=3.4x (d=160, s=3×4, t=1×4, ff=256, do=0.3)
+  #5: RMSE=0.5794 MAE=0.3211 R²=0.9061 gap=7.4x (d=160, s=3×4, t=1×4, ff=256, do=0.4)
+
+Best Parameters:
+  weight_decay: 0.01
+  num_layers_temporal: 1
+  num_layers_spatial: 3
+  nhead_temporal: 4
+  nhead_spatial: 4
+  learning_rate: 0.0005
+  dropout_rate: 0.2
+  dim_feedforward: 256
+  d_model: 160
+  batch_size: 128
+  scheduler_type: ReduceLROnPlateau
+  pct_start: 0.1
+  aug_p: 0.5
+  aug_channel_dropout: 0.1
+  aug_mixup_alpha: 0.5
+  aug_noise_std: 0.01
+  aug_magnitude_range: (0.8, 1.2)
+  aug_stretch_range: (0.8, 1.2)
+
+Best Validation Metrics:
+Mean Absolute Error: 0.3515
+Mean Squared Error: 0.2709
+Root Mean Squared Error: 0.5204
+R-squared Score: 0.9242
+
+
+Report saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer2_20260512_181600/sweep_report.txt
+CSV results saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer2_20260512_181600/sweep_results.csv
