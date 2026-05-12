@@ -438,11 +438,12 @@ class ReportGenerator:
                  X_test, X_train, y, y_train, y_test, is_raw_segment, 
                  avg_metrics, std_metrics, metrics, participant_stats, 
                  per_seqlen_stats, per_duration_stats, oof_predictions, y_pred,
-                 permutation_importances=None, ablation_modality="all"):
+                 permutation_importances=None, ablation_modality="all", groups=None):
         """Assembles all sections and writes to the report file."""
         
         self._add_header()
         self._add_dataset_info(h5_paths, X, X_test, use_cv, cv_strategy, n_folds, model)
+        self._add_dataset_composition(y, groups)
         
         if getattr(model, 'balance_weights', False):
             self._add_balance_weights(y_train, use_cv, y)
@@ -469,6 +470,64 @@ class ReportGenerator:
             f.write("\n".join(self.sections))
 
         print(f"\nPerformance report saved to {self.report_file}")
+
+    def _add_dataset_composition(self, y, groups):
+        """Report on the distribution of weights and participants in the dataset."""
+        if y is None:
+            return
+
+        lines = ["--- DATASET COMPOSITION (Pre-Augmentation) ---"]
+        
+        # Weight distribution
+        y_arr = np.asarray(y)
+        unique_weights, counts = np.unique(y_arr, return_counts=True)
+        lines.append("Weight Distribution:")
+        lines.append(f"{'Weight':<12} | {'Count':<8} | {'Percentage':<10}")
+        lines.append("-" * 35)
+        total = len(y_arr)
+        for w, c in zip(unique_weights, counts):
+            lines.append(f"{w:<12.2f} | {c:<8} | {c/total*100:<10.1f}%")
+        lines.append("")
+        
+        # Participant distribution
+        if groups is not None:
+            groups_arr = np.asarray(groups)
+            unique_p, p_counts = np.unique(groups_arr, return_counts=True)
+            lines.append("Participant Distribution:")
+            lines.append(f"{'Participant':<12} | {'Count':<8} | {'Percentage':<10}")
+            lines.append("-" * 35)
+            for p, c in zip(unique_p, p_counts):
+                lines.append(f"{p:<12} | {c:<8} | {c/total*100:<10.1f}%")
+            lines.append("")
+            
+        # Balancing Info
+        lines.append("Balancing Strategy (from config):")
+        balance_p = AUGMENTATION_CONFIG.get('balance_participants', False)
+        balance_w = AUGMENTATION_CONFIG.get('balance_weights', False)
+        
+        if balance_p and balance_w:
+            target = AUGMENTATION_CONFIG.get('target_samples_per_group', 250)
+            lines.append(f"  Mode: Joint (Participant + Weight)")
+            lines.append(f"  Target: {target} samples per (participant, weight) group")
+            if groups is not None:
+                n_groups = len(unique_p) * len(unique_weights)
+                lines.append(f"  Expected Training Samples (if all groups filled): {n_groups * target:,}")
+        elif balance_p:
+            target = AUGMENTATION_CONFIG.get('target_samples_per_participant', 1500)
+            lines.append(f"  Mode: Participant-only")
+            lines.append(f"  Target: {target} samples per participant")
+            if groups is not None:
+                lines.append(f"  Expected Training Samples: {len(unique_p) * target:,}")
+        elif balance_w:
+            target = AUGMENTATION_CONFIG.get('target_samples_per_weight', 2000)
+            lines.append(f"  Mode: Weight-only")
+            lines.append(f"  Target: {target} samples per weight class")
+            lines.append(f"  Expected Training Samples: {len(unique_weights) * target:,}")
+        else:
+            lines.append("  Mode: None (Standard stochastic augmentation only)")
+            
+        lines.append("")
+        self.sections.append("\n".join(lines))
 
     def _add_pipeline_config(self):
         """Print global pipeline settings so the report is fully reproducible."""
