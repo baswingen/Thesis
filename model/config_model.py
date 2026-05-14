@@ -11,13 +11,13 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer2"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
+MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
 RUN_GRID_SEARCH = True
 USE_PRECOMPUTED_FEATURES = True
 
 DEV_MODE = False
-DEV_FRACTION = 0.2
-DEV_CV_FOLDS = 8
+DEV_FRACTION = 0.1
+DEV_CV_FOLDS = 16
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
 # These computations can be very slow, so disabling them is useful for rapid prototyping.
@@ -221,7 +221,7 @@ AUGMENTATION_CONFIG = {
     # Probability that any single training sample is augmented (0.0 – 1.0).
     # Each selected sample produces one additional augmented copy alongside
     # the original, so the dataset can grow up to 2× when p=1.0.
-    'p': 0.5,
+    'p': 0.8,
 
     # Active augmentation methods.  Remove a method name to disable it.
     # Available: 'noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'
@@ -229,13 +229,13 @@ AUGMENTATION_CONFIG = {
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
-    # 0.05 ≈ 5% of one standard deviation — very conservative.
-    'noise_std': 0.05,
+    # 0.1 ≈ 10% of one standard deviation — matched to Sweep Rank 8.
+    'noise_std': 0.1,
 
     # ── Temporal stretch ─────────────────────────────────────────────
     # Random scale factor applied to sequence length, then resampled back.
-    # Increased to ±25% for more robust duration invariance.
-    'stretch_factor_range': (0.75, 1.25),
+    # ±10% range matched to Sweep Rank 8 best generalization params.
+    'stretch_factor_range': (0.9, 1.1),
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
@@ -521,15 +521,15 @@ SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
     'nhead_temporal': 2,          
     'num_layers_temporal': 3,     
     'dim_feedforward': 1024,       
-    'dropout_rate': 0.3,         
-    'learning_rate': 0.001,      
-    'weight_decay': 0.001,        
+    'dropout_rate': 0.5,         
+    'learning_rate': 0.0005,      
+    'weight_decay': 0.005,        
     'batch_size': 64,            
     'epochs': 200,                
     'validation_split': 0.1,
     'early_stopping_patience': 30, 
     'scheduler_patience': 7,       
-    'scheduler_factor': 0.5,
+    'scheduler_factor': 0.8,
     'use_checkpointing': True,    
     'use_amp': True,              
     'scheduler': {
@@ -554,6 +554,33 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
     'scheduler_patience': 7,       
     'scheduler_factor': 0.5,
     'use_amp': True,              
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
+# Modality-Grouped Spatio-Temporal Transformer (Transformer3) Configuration
+# Updated to match Sweep Rank 8 (Iteration 214) parameters for T2, 
+# as requested to align the architectures with robust regularization.
+SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
+    'd_model': 128,
+    'nhead_spatial': 8,           
+    'num_layers_spatial': 3,
+    'nhead_temporal': 2,          
+    'num_layers_temporal': 3,
+    'dim_feedforward': 1024,
+    'dropout_rate': 0.5,
+    'learning_rate': 0.0005,
+    'weight_decay': 0.005,
+    'batch_size': 64,
+    'epochs': 200,
+    'validation_split': 0.1,
+    'early_stopping_patience': 30,
+    'scheduler_patience': 7,
+    'scheduler_factor': 0.8,
+    'use_checkpointing': True,
+    'use_amp': True,
+    'scheduler': {
+        'type': 'ReduceLROnPlateau'
+    },
     'random_state': GLOBAL_RANDOM_STATE
 }
 
@@ -600,7 +627,7 @@ if DEV_MODE:
     print(f"[CONFIG] Scaled augmentation targets - Participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}, Weight: {AUGMENTATION_CONFIG['target_samples_per_weight']}, Group: {AUGMENTATION_CONFIG['target_samples_per_group']}")
     
     # Cap epochs and patience for fast deep learning runs
-    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
+    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
         if 'epochs' in cfg:
             cfg['epochs'] = min(cfg['epochs'], DEV_EPOCHS)
         if 'early_stopping_patience' in cfg:
@@ -625,25 +652,44 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER_CONFIG.update({
-        'd_model': 160,               # Same as reference run_20260511_115531
-        'nhead_spatial': 4,
+        'd_model': 128,               
+        'nhead_spatial': 8,
         'num_layers_spatial': 3,
-        'nhead_temporal': 4,
-        'num_layers_temporal': 1,
-        'dim_feedforward': 256,
-        'dropout_rate': 0.25,
-        'learning_rate': 0.0003,
-        'weight_decay': 1e-5,
-        'batch_size': 128,
+        'nhead_temporal': 2,
+        'num_layers_temporal': 3,
+        'dim_feedforward': 1024,
+        'dropout_rate': 0.5,
+        'learning_rate': 0.0005,
+        'weight_decay': 0.005,
+        'batch_size': 64,
         'use_checkpointing': False,   # Disable for dev mode speed
         'use_amp': True,
     })
     
+    SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.update({
+        'd_model': 128,
+        'nhead_spatial': 8,
+        'num_layers_spatial': 3,
+        'nhead_temporal': 2,
+        'num_layers_temporal': 3,
+        'dim_feedforward': 1024,
+        'dropout_rate': 0.5,
+        'learning_rate': 0.0005,
+        'weight_decay': 0.005,
+        'batch_size': 64,
+        'use_checkpointing': False,
+        'use_amp': True,
+    })
+    
     ST_TRANSFORMER_AKSAN_CONFIG.update({
-        'embed_dim': 32,
-        'num_layers': 2,
-        'num_heads': 2,
-        'feedforward_dim': 64,
+        'embed_dim': 48,              # Matched to ~927K params (fair comparison with T2=935K, T3=933K)
+        'num_layers': 3,
+        'num_heads': 4,               # 48/4 = 12 per head
+        'feedforward_dim': 256,
+        'dropout': 0.25,
+        'learning_rate': 0.0003,
+        'weight_decay': 1e-5,
+        'batch_size': 128,
     })
     
     CNN_ST_TRANSFORMER_CONFIG.update({

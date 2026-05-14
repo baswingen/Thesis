@@ -34,7 +34,7 @@ from model.model_archs.spatio_temporal_transformer2 import SpatioTemporalTransfo
 from model.model_archs.spatio_temporal_transformer3 import SpatioTemporalTransformerRegressor3
 from model.model_archs.st_transformer_aksan import STTransformerAksanRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS, COMPUTE_FEATURE_IMPORTANCE
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS, COMPUTE_FEATURE_IMPORTANCE
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -108,9 +108,9 @@ def initialize_model(model_type: str):
         from model.model_archs.spatio_temporal_transformer2 import SpatioTemporalTransformerRegressor2
         return SpatioTemporalTransformerRegressor2(**SPATIO_TEMPORAL_TRANSFORMER_CONFIG)
     elif model_type == "spatio_temporal_transformer3":
-        print(f"Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {SPATIO_TEMPORAL_TRANSFORMER_CONFIG}")
+        print(f"Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {SPATIO_TEMPORAL_TRANSFORMER3_CONFIG}")
         from model.model_archs.spatio_temporal_transformer3 import SpatioTemporalTransformerRegressor3
-        return SpatioTemporalTransformerRegressor3(**SPATIO_TEMPORAL_TRANSFORMER_CONFIG)
+        return SpatioTemporalTransformerRegressor3(**SPATIO_TEMPORAL_TRANSFORMER3_CONFIG)
     elif model_type == "st_transformer_aksan":
         print(f"Initializing ST-Transformer (Aksan et al.) Regressor with config: {ST_TRANSFORMER_AKSAN_CONFIG}")
         from model.model_archs.st_transformer_aksan import STTransformerAksanRegressor
@@ -547,6 +547,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         avg_permutation_importance = None
 
     return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories, cv_val_participants
+    # NOTE: cv_metrics is the raw list of per-fold metric dicts, needed by run_data_exporter
 
 
 def execute_single_split(X, y, df, model_type, split_val):
@@ -757,14 +758,15 @@ def main():
     print_data_summary(X, y, is_raw_segment, is_sequence)
     # 4. Training & Evaluation
     if CV_CONFIG.get('use_cross_val', True):
-        model, cv_metrics, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p = execute_cross_validation(
+        model, cv_metrics_list, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p = execute_cross_validation(
             X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
         )
-        avg_metrics = {k: np.mean([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
-        std_metrics = {k: np.std([m[k] for m in cv_metrics]) for k in cv_metrics[0].keys()}
+        avg_metrics = {k: np.mean([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
+        std_metrics = {k: np.std([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
         metrics, X_train, X_test, y_train, y_test, y_pred = {}, None, None, None, None, None
     else:
         actual_n_folds = 0
+        cv_metrics_list, cv_val_p = None, None
         model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp = execute_single_split(
             X, y, df, model_type, CV_CONFIG.get('train_test_split', 0.2)
         )
@@ -797,6 +799,36 @@ def main():
                        per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
                        ablation_modality=args.modality, groups=groups)
                        
+    # 6b. Save machine-readable run data (JSON)
+    from model.run_data_exporter import save_run_data
+    save_run_data(
+        run_dir=run_dir,
+        timestamp=timestamp,
+        model_type=model_type,
+        model=model,
+        h5_paths=h5_paths,
+        X=X, y=y, groups=groups, df=df,
+        use_cv=CV_CONFIG.get('use_cross_val', True),
+        cv_strategy=CV_CONFIG.get('strategy', 'kfold'),
+        n_folds=actual_n_folds,
+        avg_metrics=avg_metrics,
+        std_metrics=std_metrics,
+        metrics=metrics,
+        cv_metrics=cv_metrics_list,
+        participant_stats=participant_stats,
+        per_seqlen_stats=per_seqlen,
+        per_duration_stats=per_dur,
+        oof_predictions=oof_predictions,
+        y_pred=y_pred,
+        y_test=y_test,
+        perm_imp=perm_imp,
+        all_histories=all_histories,
+        cv_val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None,
+        ablation_modality=args.modality,
+        is_raw_segment=is_raw_segment,
+        is_sequence=is_sequence,
+    )
+
     # 7. Automated DeepSHAP Analysis (High-Fidelity)
     if model_type in ["cnn_lstm", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"]:
         print("\n" + "-"*50)
@@ -815,6 +847,20 @@ def main():
                 deepshap_analysis.run_deep_shap_analysis(
                     model, X_train_shap, X_test_shap, run_dir, 
                     n_bg=200, n_exp=100
+                )
+                # Re-save JSON to include DeepSHAP importance values
+                save_run_data(
+                    run_dir=run_dir, timestamp=timestamp, model_type=model_type, model=model,
+                    h5_paths=h5_paths, X=X, y=y, groups=groups, df=df,
+                    use_cv=CV_CONFIG.get('use_cross_val', True),
+                    cv_strategy=CV_CONFIG.get('strategy', 'kfold'),
+                    n_folds=actual_n_folds, avg_metrics=avg_metrics, std_metrics=std_metrics,
+                    metrics=metrics, cv_metrics=cv_metrics_list, participant_stats=participant_stats,
+                    per_seqlen_stats=per_seqlen, per_duration_stats=per_dur,
+                    oof_predictions=oof_predictions, y_pred=y_pred, y_test=y_test,
+                    perm_imp=perm_imp, all_histories=all_histories,
+                    cv_val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None,
+                    ablation_modality=args.modality, is_raw_segment=is_raw_segment, is_sequence=is_sequence,
                 )
             else:
                 print("Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE is False)...")

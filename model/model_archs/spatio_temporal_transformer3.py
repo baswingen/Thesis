@@ -17,7 +17,7 @@ import copy
 # Add project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent))
 
-from model.config_model import SPATIO_TEMPORAL_TRANSFORMER_CONFIG, FEATURE_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG
+from model.config_model import SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, FEATURE_CONFIG, GLOBAL_LOSS_FUNCTION, AUGMENTATION_CONFIG
 from model import plotting_utils
 from model.data_augmentation import SequenceAugmenter
 
@@ -268,28 +268,28 @@ class SpatioTemporalTransformerNetwork3(nn.Module):
 
 class SpatioTemporalTransformerRegressor3:
     def __init__(self, 
-                 d_model: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['d_model'],
-                 nhead_spatial: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['nhead_spatial'],
-                 num_layers_spatial: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['num_layers_spatial'],
-                 nhead_temporal: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['nhead_temporal'],
-                 num_layers_temporal: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['num_layers_temporal'],
-                 dim_feedforward: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['dim_feedforward'],
-                 dropout_rate: float = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['dropout_rate'],
-                 learning_rate: float = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['learning_rate'],
-                 weight_decay: float = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('weight_decay', 0.0),
-                 batch_size: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['batch_size'],
-                 epochs: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['epochs'],
-                 validation_split: float = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('validation_split', 0.2),
-                 early_stopping_patience: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('early_stopping_patience', 10),
-                 scheduler_patience: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler_patience', 5),
-                 scheduler_factor: float = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler_factor', 0.5),
+                 d_model: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['d_model'],
+                 nhead_spatial: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['nhead_spatial'],
+                 num_layers_spatial: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['num_layers_spatial'],
+                 nhead_temporal: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['nhead_temporal'],
+                 num_layers_temporal: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['num_layers_temporal'],
+                 dim_feedforward: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['dim_feedforward'],
+                 dropout_rate: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['dropout_rate'],
+                 learning_rate: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['learning_rate'],
+                 weight_decay: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('weight_decay', 0.0),
+                 batch_size: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['batch_size'],
+                 epochs: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['epochs'],
+                 validation_split: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('validation_split', 0.2),
+                 early_stopping_patience: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('early_stopping_patience', 10),
+                 scheduler_patience: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('scheduler_patience', 5),
+                 scheduler_factor: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('scheduler_factor', 0.5),
                  emg_window_size_sec: float = FEATURE_CONFIG['emg_window_size_sec'],
                  imu_window_size_sec: float = FEATURE_CONFIG['imu_window_size_sec'],
                  window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
-                 use_checkpointing: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_checkpointing', True),
-                 use_amp: bool = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('use_amp', True),
-                 random_state: int = SPATIO_TEMPORAL_TRANSFORMER_CONFIG['random_state'],
+                 use_checkpointing: bool = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('use_checkpointing', True),
+                 use_amp: bool = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('use_amp', True),
+                 random_state: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['random_state'],
                  max_seq_len: int = None,
                  scheduler: dict = None,
                  augmentation_config: dict = None,
@@ -465,8 +465,8 @@ class SpatioTemporalTransformerRegressor3:
         dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
         
-        from model.config_model import SPATIO_TEMPORAL_TRANSFORMER_CONFIG
-        scheduler_config = SPATIO_TEMPORAL_TRANSFORMER_CONFIG.get('scheduler', {'type': 'ReduceLROnPlateau'})
+        from model.config_model import SPATIO_TEMPORAL_TRANSFORMER3_CONFIG
+        scheduler_config = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('scheduler', {'type': 'ReduceLROnPlateau'})
         
         if scheduler_config.get('type') == 'OneCycleLR':
             total_steps = self.epochs * len(loader_train)
