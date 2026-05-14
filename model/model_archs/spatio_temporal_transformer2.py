@@ -83,22 +83,25 @@ class InterleavedSTBlock(nn.Module):
         x_temporal = x.transpose(1, 2).contiguous().view(B * C, T, d) 
         
         if padding_mask is not None:
-            # padding_mask is [B, T] -> [B*C, T]
+            # Convert boolean padding mask to float mask [0.0, -inf] 
+            # to match the causal_mask type and resolve numerical instability.
             temporal_padding_mask = padding_mask.repeat_interleave(C, dim=0)
+            padding_mask_float = torch.zeros_like(temporal_padding_mask, dtype=x.dtype).masked_fill(temporal_padding_mask, float('-inf'))
         else:
-            temporal_padding_mask = None
+            padding_mask_float = None
             
         temporal_out, _ = self.temporal_attn(
             x_temporal, x_temporal, x_temporal, 
             attn_mask=causal_mask, 
-            key_padding_mask=temporal_padding_mask,
+            key_padding_mask=padding_mask_float,
             is_causal=True if causal_mask is not None else False
         )
         # Back to [B, T, C, d]
         temporal_out = temporal_out.view(B, C, T, d).transpose(1, 2).contiguous() 
         
         # 3. Fusion and Residuals
-        attn_out = self.dropout(spatial_out + temporal_out)
+        # Use .to() here to be robust against AMP dtype mismatches.
+        attn_out = self.dropout(spatial_out + temporal_out.to(spatial_out.dtype))
         x = self.norm1(x + attn_out)
         
         # 4. FFN
@@ -118,7 +121,12 @@ class AttentionPooling(nn.Module):
 
     def forward(self, x):
         # x shape: [B, C, d_model]
-        attn_weights = torch.softmax(self.attention(x), dim=1) # [B, C, 1]
+        attn_scores = self.attention(x) # [B, C, 1]
+        
+        # Stability clamp for float16 (Half) precision on GPU
+        attn_scores = torch.clamp(attn_scores, min=-65500, max=65500)
+        
+        attn_weights = torch.softmax(attn_scores, dim=1) 
         pooled = torch.sum(x * attn_weights, dim=1) # [B, d_model]
         return pooled, attn_weights
 

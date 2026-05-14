@@ -69,7 +69,7 @@ def main():
     if args.n_iter is not None:
         n_iter = args.n_iter
     else:
-        n_iter = 12 if DEV_MODE else 250
+        n_iter = 12 if DEV_MODE else 150
 
     test_participants_count = args.test_participants
     sweep_epochs = DEV_EPOCHS if DEV_MODE else 200
@@ -317,18 +317,24 @@ def main():
             iter_time = time.time() - iter_start
 
             # Overfitting diagnostics
+            # We use the losses from the best validation epoch for a more meaningful gap analysis
+            best_idx = np.argmin(model.loss_history['val'])
+            best_val_loss = model.loss_history['val'][best_idx]
+            best_train_loss = model.loss_history['train'][best_idx]
+            
             final_train_loss = model.loss_history['train'][-1] if model.loss_history['train'] else float('nan')
             final_val_loss   = model.loss_history['val'][-1]   if model.loss_history['val']   else float('nan')
-            best_val_loss    = min(model.loss_history['val'])   if model.loss_history['val']   else float('nan')
             epochs_trained   = len(model.loss_history['train'])
-            overfit_ratio    = final_val_loss / max(final_train_loss, 1e-8)
+            
+            # overfit_ratio based on best model to avoid reporting NaNs from final unstable epochs
+            overfit_ratio    = best_val_loss / max(best_train_loss, 1e-8)
 
             # Count model parameters
             total_params = sum(p.numel() for p in model.model.parameters())
             
             print(f"  MAE: {mae:.4f} | RMSE: {rmse:.4f} | R²: {r2:.4f} | Params: {total_params:,}")
             print(f"  Epochs: {epochs_trained} | "
-                  f"Train/Val gap: {overfit_ratio:.1f}x | "
+                  f"Best Train/Val gap: {overfit_ratio:.1f}x | "
                   f"Time: {iter_time:.0f}s")
 
             result_entry = {

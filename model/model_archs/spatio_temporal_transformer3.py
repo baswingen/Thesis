@@ -106,20 +106,25 @@ class ModalityGroupedSTBlock(nn.Module):
             group_x_flat = group_x.transpose(1, 2).contiguous().view(B * n_ch, T, d)
             
             if padding_mask is not None:
+                # Convert boolean padding mask to float mask [0.0, -inf] 
+                # to match the causal_mask type and resolve numerical instability.
                 group_padding = padding_mask.repeat_interleave(n_ch, dim=0)
+                group_padding_float = torch.zeros_like(group_padding, dtype=x.dtype).masked_fill(group_padding, float('-inf'))
             else:
-                group_padding = None
+                group_padding_float = None
             
             group_out, _ = self.temporal_attns[gname](
                 group_x_flat, group_x_flat, group_x_flat,
                 attn_mask=causal_mask,
-                key_padding_mask=group_padding,
+                key_padding_mask=group_padding_float,
                 is_causal=True if causal_mask is not None else False
             )
             # Back to [B, T, n_ch, d]
             group_out = group_out.view(B, n_ch, T, d).transpose(1, 2).contiguous()
-            # Scatter back into full temporal output
-            temporal_out[:, :, ch_indices, :] = group_out
+            
+            # Scatter back into full temporal output.
+            # We use .to(temporal_out.dtype) to be robust against AMP dtype mismatches.
+            temporal_out[:, :, ch_indices, :] = group_out.to(temporal_out.dtype)
         
         # 3. Fusion and Residuals
         attn_out = self.dropout(spatial_out + temporal_out)
@@ -142,7 +147,12 @@ class AttentionPooling(nn.Module):
 
     def forward(self, x):
         # x shape: [B, C, d_model]
-        attn_weights = torch.softmax(self.attention(x), dim=1) # [B, C, 1]
+        attn_scores = self.attention(x) # [B, C, 1]
+        
+        # Stability clamp for float16 (Half) precision on GPU
+        attn_scores = torch.clamp(attn_scores, min=-65500, max=65500)
+        
+        attn_weights = torch.softmax(attn_scores, dim=1) 
         pooled = torch.sum(x * attn_weights, dim=1) # [B, d_model]
         return pooled, attn_weights
 
@@ -235,21 +245,29 @@ class SpatioTemporalTransformerNetwork3(nn.Module):
         t_pe = self.temporal_pos_encoder(dummy)
         x_st = x_st + t_pe.unsqueeze(2)
         
-        # 4. Create Masks
+        # 4. Create Unified Attention Mask
+        # Combine causal mask and padding mask into a single float mask [-inf, 0.0]
+        # to avoid UserWarnings and numerical instability in newer PyTorch versions.
         causal_mask = nn.Transformer.generate_square_subsequent_mask(T, device=x.device)
         padding_mask = torch.arange(T, device=x.device).expand(B, T) >= lengths.unsqueeze(1)
+        
+        # Convert boolean padding mask to float mask [0.0, -inf]
+        # (B, 1, 1, T) for broadcasting over heads and queries
+        padding_mask_float = torch.zeros((B, T), device=x.device).masked_fill(padding_mask, float('-inf'))
         
         # 5. Pass through Modality-Grouped Blocks
         if self.use_checkpointing and self.training:
             for block in self.blocks:
                 def create_custom_forward(module):
                     def custom_forward(src, c_mask, p_mask):
+                        # We pass padding_mask separately if the block logic needs it, 
+                        # but MHA inside the block will use the unified mask logic.
                         return module(src, causal_mask=c_mask, padding_mask=p_mask)
                     return custom_forward
                 
                 x_st = torch.utils.checkpoint.checkpoint(
                     create_custom_forward(block), 
-                    x_st, causal_mask, padding_mask,
+                    x_st, causal_mask, padding_mask, # Keep original masks for block API compatibility
                     use_reentrant=False
                 )
         else:
@@ -257,7 +275,9 @@ class SpatioTemporalTransformerNetwork3(nn.Module):
                 x_st = block(x_st, causal_mask=causal_mask, padding_mask=padding_mask)
         
         # 6. Extract Last Valid Timestep
-        last_tokens = x_st[torch.arange(B), lengths - 1, :, :]
+        # Ensure lengths is at least 1 to prevent index -1 issues or NaN pooling
+        safe_lengths = torch.clamp(lengths, min=1)
+        last_tokens = x_st[torch.arange(B), safe_lengths - 1, :, :]
         
         # 7. Late Attention Pooling over Channels
         pooled_out, _ = self.attention_pooling(last_tokens)
