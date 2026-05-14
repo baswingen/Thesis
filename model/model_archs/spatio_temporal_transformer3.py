@@ -95,7 +95,8 @@ class ModalityGroupedSTBlock(nn.Module):
         spatial_out = spatial_out.view(B, T, C, d)
         
         # 2. Modality-Grouped Temporal Attention
-        temporal_out = torch.zeros_like(x)  # [B, T, C, d]
+        # spatial_out already went through MHA, so it reflects the current AMP dtype (Float or Half)
+        temporal_out = torch.zeros_like(x, dtype=spatial_out.dtype)  # [B, T, C, d]
         
         for gname, ch_indices in self.modality_groups.items():
             n_ch = len(ch_indices)
