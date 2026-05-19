@@ -1,0 +1,2496 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+
+--- GRID SEARCH ENABLED ---
+Launching hyperparameter sweep for SPATIO_TEMPORAL_TRANSFORMER3...
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER 3 SWEEP (ARCHITECTURE)
+  (Modality-Grouped Temporal Attention)
+=================================================================
+  DEV_MODE             : False
+  Configurations       : 150
+  Epochs per config    : 200
+  Early-stop patience  : 20
+  Test participants    : 4
+  Results directory    : /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer3_20260515_021212
+=================================================================
+
+Loading precomputed features (sequence mode)…
+[DataLoader] Filtered 20 files down to 18 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Channel filter: removed 72 features from disabled channels.
+[Sweep] Dropped 2454 segments with excluded weight classes.
+Total segments: 14898
+
+Participant split:
+  Training   (12 subjects, 8233 segs): P03, P04, P05, P07, P09, P10, P11, P12, P14, P15, P16, P18
+  Validation (4 subjects, 6665 segs): P01, P02, P06, P17
+
+=================================================================
+--- Iteration 1/150 [Elapsed: 0.0m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=1024, dropout=0.4, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.2972
+  MAE: 0.3060 | RMSE: 0.5397 | R²: 0.9217 | Params: 2,293,154
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 353s
+  >>> NEW BEST MODEL! RMSE: 0.5397
+
+=================================================================
+--- Iteration 2/150 [Elapsed: 5.9m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=512, dropout=0.6, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.4968
+  MAE: 0.3270 | RMSE: 0.6160 | R²: 0.8980 | Params: 1,638,146
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 248s
+
+=================================================================
+--- Iteration 3/150 [Elapsed: 10.0m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=3
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.3519
+  MAE: 0.3302 | RMSE: 0.5905 | R²: 0.9062 | Params: 4,349,634
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 348s
+
+=================================================================
+--- Iteration 4/150 [Elapsed: 15.8m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=1024, dropout=0.4, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3095
+  MAE: 0.3100 | RMSE: 0.5352 | R²: 0.9230 | Params: 4,859,138
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 231s
+  >>> NEW BEST MODEL! RMSE: 0.5352
+
+=================================================================
+--- Iteration 5/150 [Elapsed: 19.7m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=512, dropout=0.4, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3131
+  MAE: 0.3001 | RMSE: 0.5433 | R²: 0.9206 | Params: 1,638,146
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 192s
+
+=================================================================
+--- Iteration 6/150 [Elapsed: 22.9m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=2048, dropout=0.5, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 8.5118
+  MAE: 2.6962 | RMSE: 2.9175 | R²: -1.2889 | Params: 8,539,650
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 392s
+
+=================================================================
+--- Iteration 7/150 [Elapsed: 29.4m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=1024, dropout=0.6, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 34. Best Val Loss: 0.4574
+  MAE: 0.3573 | RMSE: 0.6568 | R²: 0.8840 | Params: 6,438,402
+  Epochs: 34 | Best Train/Val gap: nanx | Time: 438s
+
+=================================================================
+--- Iteration 8/150 [Elapsed: 36.7m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.4456
+  MAE: 0.3587 | RMSE: 0.6482 | R²: 0.8870 | Params: 1,666,818
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 182s
+
+=================================================================
+--- Iteration 9/150 [Elapsed: 39.7m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 36. Best Val Loss: 0.3822
+  MAE: 0.3024 | RMSE: 0.5794 | R²: 0.9097 | Params: 2,208,898
+  Epochs: 36 | Best Train/Val gap: 2.2x | Time: 245s
+
+=================================================================
+--- Iteration 10/150 [Elapsed: 43.8m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=1024, dropout=0.5, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.3097
+  MAE: 0.2956 | RMSE: 0.5368 | R²: 0.9225 | Params: 3,034,818
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 320s
+
+=================================================================
+--- Iteration 11/150 [Elapsed: 49.2m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=2
+  ff=1024, dropout=0.5, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 9.0838
+  MAE: 2.7814 | RMSE: 3.0144 | R²: -1.4434 | Params: 6,438,402
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 315s
+
+=================================================================
+--- Iteration 12/150 [Elapsed: 54.4m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.6973
+  MAE: 0.4045 | RMSE: 0.7796 | R²: 0.8366 | Params: 1,634,818
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 183s
+
+=================================================================
+--- Iteration 13/150 [Elapsed: 57.5m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.6109
+  MAE: 0.3187 | RMSE: 0.6111 | R²: 0.8996 | Params: 6,435,074
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 284s
+
+=================================================================
+--- Iteration 14/150 [Elapsed: 62.2m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=4, layers_t=2
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2847
+  MAE: 0.3141 | RMSE: 0.5225 | R²: 0.9266 | Params: 3,034,818
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 231s
+  >>> NEW BEST MODEL! RMSE: 0.5225
+
+=================================================================
+--- Iteration 15/150 [Elapsed: 66.0m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=3
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 3.0325
+  MAE: 1.2526 | RMSE: 1.7371 | R²: 0.1886 | Params: 4,231,874
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 257s
+
+=================================================================
+--- Iteration 16/150 [Elapsed: 70.3m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=3
+  ff=1024, dropout=0.6, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 35. Best Val Loss: 0.4202
+  MAE: 0.2934 | RMSE: 0.5677 | R²: 0.9133 | Params: 1,636,482
+  Epochs: 35 | Best Train/Val gap: nanx | Time: 331s
+
+=================================================================
+--- Iteration 17/150 [Elapsed: 75.8m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=2, layers_t=4
+  ff=512, dropout=0.6, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.4597
+  MAE: 0.3252 | RMSE: 0.6177 | R²: 0.8974 | Params: 1,638,146
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 332s
+
+=================================================================
+--- Iteration 18/150 [Elapsed: 81.4m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.4615
+  MAE: 0.3017 | RMSE: 0.5712 | R²: 0.9123 | Params: 1,634,818
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 202s
+
+=================================================================
+--- Iteration 19/150 [Elapsed: 84.7m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=2048, dropout=0.5, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.4162
+  MAE: 0.3306 | RMSE: 0.6234 | R²: 0.8955 | Params: 3,279,266
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 274s
+
+=================================================================
+--- Iteration 20/150 [Elapsed: 89.3m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3150
+  MAE: 0.3281 | RMSE: 0.5457 | R²: 0.9199 | Params: 3,279,266
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 261s
+
+=================================================================
+--- Iteration 21/150 [Elapsed: 93.6m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=512, dropout=0.5, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3713
+  MAE: 0.3564 | RMSE: 0.6030 | R²: 0.9022 | Params: 3,248,770
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 286s
+
+=================================================================
+--- Iteration 22/150 [Elapsed: 98.4m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=2
+  ff=512, dropout=0.4, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.4107
+  MAE: 0.3010 | RMSE: 0.5447 | R²: 0.9202 | Params: 2,457,794
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 189s
+
+=================================================================
+--- Iteration 23/150 [Elapsed: 101.6m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.2907
+  MAE: 0.2941 | RMSE: 0.5308 | R²: 0.9242 | Params: 5,387,778
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 306s
+
+=================================================================
+--- Iteration 24/150 [Elapsed: 106.7m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.6294
+  MAE: 0.3493 | RMSE: 0.6332 | R²: 0.8922 | Params: 2,849,538
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 167s
+
+=================================================================
+--- Iteration 25/150 [Elapsed: 109.4m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=512, dropout=0.5, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 20. Best Val Loss: inf
+  MAE: 1.3639 | RMSE: 2.2425 | R²: -0.3523 | Params: 2,457,794
+  Epochs: 20 | Best Train/Val gap: nanx | Time: 222s
+
+=================================================================
+--- Iteration 26/150 [Elapsed: 113.1m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 20. Best Val Loss: inf
+  MAE: 1.3283 | RMSE: 2.3405 | R²: -0.4730 | Params: 4,231,874
+  Epochs: 20 | Best Train/Val gap: nanx | Time: 246s
+
+=================================================================
+--- Iteration 27/150 [Elapsed: 117.2m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.9085
+  MAE: 0.4223 | RMSE: 0.7699 | R²: 0.8406 | Params: 4,037,250
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 246s
+
+=================================================================
+--- Iteration 28/150 [Elapsed: 121.3m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=512, dropout=0.6, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.5508
+  MAE: 0.3696 | RMSE: 0.6828 | R²: 0.8746 | Params: 3,248,770
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 247s
+
+=================================================================
+--- Iteration 29/150 [Elapsed: 125.5m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 36. Best Val Loss: 0.4410
+  MAE: 0.3217 | RMSE: 0.6050 | R²: 0.9016 | Params: 3,217,154
+  Epochs: 36 | Best Train/Val gap: nanx | Time: 467s
+
+=================================================================
+--- Iteration 30/150 [Elapsed: 133.2m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=512, dropout=0.4, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 27. Best Val Loss: 0.3188
+  MAE: 0.2819 | RMSE: 0.5417 | R²: 0.9211 | Params: 1,241,730
+  Epochs: 27 | Best Train/Val gap: nanx | Time: 257s
+
+=================================================================
+--- Iteration 31/150 [Elapsed: 137.5m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=1024, dropout=0.6, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 1.0371
+  MAE: 0.3568 | RMSE: 0.6766 | R²: 0.8769 | Params: 2,061,058
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 157s
+
+=================================================================
+--- Iteration 32/150 [Elapsed: 140.1m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=512, dropout=0.4, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.2997
+  MAE: 0.2705 | RMSE: 0.4905 | R²: 0.9353 | Params: 2,377,410
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 288s
+  >>> NEW BEST MODEL! RMSE: 0.4905
+
+=================================================================
+--- Iteration 33/150 [Elapsed: 145.0m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=512, dropout=0.5, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 1.2546
+  MAE: 0.6275 | RMSE: 1.1121 | R²: 0.6674 | Params: 5,387,778
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 275s
+
+=================================================================
+--- Iteration 34/150 [Elapsed: 149.5m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=3
+  ff=1024, dropout=0.6, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.6869
+  MAE: 0.4111 | RMSE: 0.7956 | R²: 0.8298 | Params: 1,636,482
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 241s
+
+=================================================================
+--- Iteration 35/150 [Elapsed: 153.6m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=1024, dropout=0.4, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.4238
+  MAE: 0.3061 | RMSE: 0.5720 | R²: 0.9120 | Params: 1,636,482
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 207s
+
+=================================================================
+--- Iteration 36/150 [Elapsed: 157.0m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.4514
+  MAE: 0.3032 | RMSE: 0.5728 | R²: 0.9118 | Params: 3,248,770
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 248s
+
+=================================================================
+--- Iteration 37/150 [Elapsed: 161.1m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 45. Best Val Loss: 0.6552
+  MAE: 0.4010 | RMSE: 0.7802 | R²: 0.8363 | Params: 4,330,498
+  Epochs: 45 | Best Train/Val gap: nanx | Time: 430s
+
+=================================================================
+--- Iteration 38/150 [Elapsed: 168.3m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=3
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.4637
+  MAE: 0.3066 | RMSE: 0.5652 | R²: 0.9141 | Params: 2,377,410
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 297s
+
+=================================================================
+--- Iteration 39/150 [Elapsed: 173.3m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=1024, dropout=0.4, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 45. Best Val Loss: 0.2864
+  MAE: 0.2850 | RMSE: 0.5298 | R²: 0.9245 | Params: 1,551,490
+  Epochs: 45 | Best Train/Val gap: 3.1x | Time: 346s
+
+=================================================================
+--- Iteration 40/150 [Elapsed: 179.0m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=512, dropout=0.4, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.2638
+  MAE: 0.2848 | RMSE: 0.5082 | R²: 0.9306 | Params: 5,387,778
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 365s
+
+=================================================================
+--- Iteration 41/150 [Elapsed: 185.1m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.4735
+  MAE: 0.3596 | RMSE: 0.6426 | R²: 0.8890 | Params: 3,217,154
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 305s
+
+=================================================================
+--- Iteration 42/150 [Elapsed: 190.2m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.3523
+  MAE: 0.2831 | RMSE: 0.5334 | R²: 0.9235 | Params: 6,438,402
+  Epochs: 26 | Best Train/Val gap: nanx | Time: 342s
+
+=================================================================
+--- Iteration 43/150 [Elapsed: 195.9m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=1024, dropout=0.6, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 11.6061
+  MAE: 3.1086 | RMSE: 3.4053 | R²: -2.1182 | Params: 6,438,402
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 317s
+
+=================================================================
+--- Iteration 44/150 [Elapsed: 201.2m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=512, dropout=0.4, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.2693
+  MAE: 0.3144 | RMSE: 0.5189 | R²: 0.9276 | Params: 5,387,778
+  Epochs: 26 | Best Train/Val gap: nanx | Time: 374s
+
+=================================================================
+--- Iteration 45/150 [Elapsed: 207.4m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=1024, dropout=0.6, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.6241
+  MAE: 0.3572 | RMSE: 0.7033 | R²: 0.8670 | Params: 4,859,138
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 270s
+
+=================================================================
+--- Iteration 46/150 [Elapsed: 211.9m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=3
+  ff=1024, dropout=0.5, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.4197
+  MAE: 0.2976 | RMSE: 0.5942 | R²: 0.9051 | Params: 6,438,402
+  Epochs: 26 | Best Train/Val gap: nanx | Time: 396s
+
+=================================================================
+--- Iteration 47/150 [Elapsed: 218.5m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=3
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.8163
+  MAE: 0.4286 | RMSE: 0.8039 | R²: 0.8262 | Params: 4,231,874
+  Epochs: 26 | Best Train/Val gap: nanx | Time: 309s
+
+=================================================================
+--- Iteration 48/150 [Elapsed: 223.7m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.4406
+  MAE: 0.3183 | RMSE: 0.6225 | R²: 0.8958 | Params: 4,859,138
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 290s
+
+=================================================================
+--- Iteration 49/150 [Elapsed: 228.5m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.4727
+  MAE: 0.3398 | RMSE: 0.6390 | R²: 0.8902 | Params: 4,330,498
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 230s
+
+=================================================================
+--- Iteration 50/150 [Elapsed: 232.3m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 58. Best Val Loss: 0.4181
+  MAE: 0.3211 | RMSE: 0.6409 | R²: 0.8895 | Params: 2,425,986
+  Epochs: 58 | Best Train/Val gap: nanx | Time: 582s
+
+=================================================================
+--- Iteration 51/150 [Elapsed: 242.0m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 7.4797
+  MAE: 2.5297 | RMSE: 2.7355 | R²: -1.0122 | Params: 8,539,650
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 330s
+
+=================================================================
+--- Iteration 52/150 [Elapsed: 247.5m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 27. Best Val Loss: 0.3844
+  MAE: 0.3226 | RMSE: 0.6046 | R²: 0.9017 | Params: 3,279,874
+  Epochs: 27 | Best Train/Val gap: nanx | Time: 205s
+
+=================================================================
+--- Iteration 53/150 [Elapsed: 251.0m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=1024, dropout=0.4, wd=0.005
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 20. Best Val Loss: inf
+  MAE: 1.4119 | RMSE: 2.1005 | R²: -0.1864 | Params: 2,293,154
+  Epochs: 20 | Best Train/Val gap: nanx | Time: 181s
+
+=================================================================
+--- Iteration 54/150 [Elapsed: 254.0m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 1.4130
+  MAE: 0.5103 | RMSE: 0.9060 | R²: 0.7793 | Params: 4,349,634
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 271s
+
+=================================================================
+--- Iteration 55/150 [Elapsed: 258.5m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.6699
+  MAE: 0.3263 | RMSE: 0.6192 | R²: 0.8969 | Params: 845,314
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 118s
+
+=================================================================
+--- Iteration 56/150 [Elapsed: 260.5m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 27. Best Val Loss: 0.5428
+  MAE: 0.3456 | RMSE: 0.6682 | R²: 0.8799 | Params: 4,231,874
+  Epochs: 27 | Best Train/Val gap: nanx | Time: 318s
+
+=================================================================
+--- Iteration 57/150 [Elapsed: 265.7m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 1.5704
+  MAE: 0.7252 | RMSE: 1.2279 | R²: 0.5946 | Params: 3,217,154
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 267s
+
+=================================================================
+--- Iteration 58/150 [Elapsed: 270.2m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=512, dropout=0.4, wd=0.01
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3078
+  MAE: 0.3003 | RMSE: 0.5381 | R²: 0.9221 | Params: 1,800,098
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 215s
+
+=================================================================
+--- Iteration 59/150 [Elapsed: 273.8m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=2
+  ff=1024, dropout=0.5, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.4698
+  MAE: 0.3527 | RMSE: 0.6633 | R²: 0.8817 | Params: 1,636,482
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 240s
+
+=================================================================
+--- Iteration 60/150 [Elapsed: 277.8m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=1024, dropout=0.4, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.4401
+  MAE: 0.2954 | RMSE: 0.5443 | R²: 0.9203 | Params: 1,551,490
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 188s
+
+=================================================================
+--- Iteration 61/150 [Elapsed: 280.9m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=4
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 32. Best Val Loss: 0.3236
+  MAE: 0.2842 | RMSE: 0.5416 | R²: 0.9211 | Params: 5,614,210
+  Epochs: 32 | Best Train/Val gap: nanx | Time: 403s
+
+=================================================================
+--- Iteration 62/150 [Elapsed: 287.6m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=1024, dropout=0.4, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.2849
+  MAE: 0.2732 | RMSE: 0.5179 | R²: 0.9279 | Params: 2,164,482
+  Epochs: 29 | Best Train/Val gap: 1.4x | Time: 346s
+
+=================================================================
+--- Iteration 63/150 [Elapsed: 293.4m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=3
+  ff=2048, dropout=0.6, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 11.0671
+  MAE: 3.0456 | RMSE: 3.3280 | R²: -1.9781 | Params: 8,539,650
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 363s
+
+=================================================================
+--- Iteration 64/150 [Elapsed: 299.4m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.3253
+  MAE: 0.3583 | RMSE: 0.5690 | R²: 0.9129 | Params: 4,330,498
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 234s
+
+=================================================================
+--- Iteration 65/150 [Elapsed: 303.3m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=1024, dropout=0.6, wd=0.005
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 28. Best Val Loss: 0.3594
+  MAE: 0.3089 | RMSE: 0.5729 | R²: 0.9117 | Params: 1,636,482
+  Epochs: 28 | Best Train/Val gap: 1.4x | Time: 208s
+
+=================================================================
+--- Iteration 66/150 [Elapsed: 306.8m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=2048, dropout=0.6, wd=0.005
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.7116
+  MAE: 0.4273 | RMSE: 0.7768 | R²: 0.8377 | Params: 5,614,210
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 319s
+
+=================================================================
+--- Iteration 67/150 [Elapsed: 312.1m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=2048, dropout=0.4, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.2899
+  MAE: 0.2939 | RMSE: 0.5364 | R²: 0.9226 | Params: 5,614,210
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 392s
+
+=================================================================
+--- Iteration 68/150 [Elapsed: 318.7m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=512, dropout=0.6, wd=0.01
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.9835
+  MAE: 0.4224 | RMSE: 0.7821 | R²: 0.8355 | Params: 4,071,170
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 259s
+
+=================================================================
+--- Iteration 69/150 [Elapsed: 323.0m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 44. Best Val Loss: 0.2976
+  MAE: 0.2849 | RMSE: 0.5373 | R²: 0.9224 | Params: 2,164,482
+  Epochs: 44 | Best Train/Val gap: 2.2x | Time: 395s
+
+=================================================================
+--- Iteration 70/150 [Elapsed: 329.6m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=1024, dropout=0.4, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.3142
+  MAE: 0.3755 | RMSE: 0.5605 | R²: 0.9155 | Params: 4,037,250
+  Epochs: 26 | Best Train/Val gap: nanx | Time: 353s
+
+=================================================================
+--- Iteration 71/150 [Elapsed: 335.5m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.8546
+  MAE: 0.4161 | RMSE: 0.8530 | R²: 0.8043 | Params: 2,208,898
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 252s
+
+=================================================================
+--- Iteration 72/150 [Elapsed: 339.6m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=512, dropout=0.4, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.3386
+  MAE: 0.3015 | RMSE: 0.5605 | R²: 0.9155 | Params: 1,638,146
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 331s
+
+=================================================================
+--- Iteration 73/150 [Elapsed: 345.2m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=1024, dropout=0.5, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3249
+  MAE: 0.2804 | RMSE: 0.5343 | R²: 0.9232 | Params: 3,034,818
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 335s
+
+=================================================================
+--- Iteration 74/150 [Elapsed: 350.8m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=3, layers_t=2
+  ff=1024, dropout=0.4, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2651
+  MAE: 0.2938 | RMSE: 0.5020 | R²: 0.9322 | Params: 1,636,482
+  Epochs: 22 | Best Train/Val gap: 0.7x | Time: 223s
+
+=================================================================
+--- Iteration 75/150 [Elapsed: 354.5m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 1.1394
+  MAE: 0.4532 | RMSE: 0.8286 | R²: 0.8154 | Params: 8,539,650
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 363s
+
+=================================================================
+--- Iteration 76/150 [Elapsed: 360.5m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=1024, dropout=0.6, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.4967
+  MAE: 0.3376 | RMSE: 0.6573 | R²: 0.8838 | Params: 4,037,250
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 339s
+
+=================================================================
+--- Iteration 77/150 [Elapsed: 366.2m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=1024, dropout=0.4, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 34. Best Val Loss: 0.3191
+  MAE: 0.2938 | RMSE: 0.5574 | R²: 0.9164 | Params: 2,164,482
+  Epochs: 34 | Best Train/Val gap: 2.3x | Time: 401s
+
+=================================================================
+--- Iteration 78/150 [Elapsed: 372.9m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 33. Best Val Loss: 0.4724
+  MAE: 0.3741 | RMSE: 0.6873 | R²: 0.8730 | Params: 8,539,650
+  Epochs: 33 | Best Train/Val gap: nanx | Time: 471s
+
+=================================================================
+--- Iteration 79/150 [Elapsed: 380.7m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 28. Best Val Loss: 4.5566
+  MAE: 1.4307 | RMSE: 2.1345 | R²: -0.2251 | Params: 6,435,074
+  Epochs: 28 | Best Train/Val gap: nanx | Time: 319s
+
+=================================================================
+--- Iteration 80/150 [Elapsed: 386.0m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 33. Best Val Loss: 0.3973
+  MAE: 0.3016 | RMSE: 0.6022 | R²: 0.9025 | Params: 5,614,210
+  Epochs: 33 | Best Train/Val gap: nanx | Time: 491s
+
+=================================================================
+--- Iteration 81/150 [Elapsed: 394.2m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 36. Best Val Loss: 0.3852
+  MAE: 0.3102 | RMSE: 0.5978 | R²: 0.9039 | Params: 4,349,634
+  Epochs: 36 | Best Train/Val gap: 2.2x | Time: 432s
+
+=================================================================
+--- Iteration 82/150 [Elapsed: 401.4m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.7761
+  MAE: 0.4281 | RMSE: 0.7750 | R²: 0.8385 | Params: 5,387,778
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 301s
+
+=================================================================
+--- Iteration 83/150 [Elapsed: 406.5m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=512, dropout=0.6, wd=0.005
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 30. Best Val Loss: 0.5437
+  MAE: 0.3785 | RMSE: 0.7232 | R²: 0.8594 | Params: 5,387,778
+  Epochs: 30 | Best Train/Val gap: nanx | Time: 377s
+
+=================================================================
+--- Iteration 84/150 [Elapsed: 412.7m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.3276
+  MAE: 0.3007 | RMSE: 0.5583 | R²: 0.9162 | Params: 1,638,146
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 258s
+
+=================================================================
+--- Iteration 85/150 [Elapsed: 417.0m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=2
+  ff=512, dropout=0.6, wd=0.001
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.7487
+  MAE: 0.3204 | RMSE: 0.6093 | R²: 0.9002 | Params: 4,071,170
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 224s
+
+=================================================================
+--- Iteration 86/150 [Elapsed: 420.8m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.4937
+  MAE: 0.3243 | RMSE: 0.6077 | R²: 0.9007 | Params: 3,248,770
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 304s
+
+=================================================================
+--- Iteration 87/150 [Elapsed: 425.8m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=2
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 1.7735
+  MAE: 0.6000 | RMSE: 1.0216 | R²: 0.7194 | Params: 5,614,210
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 315s
+
+=================================================================
+--- Iteration 88/150 [Elapsed: 431.1m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=1024, dropout=0.5, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.5203
+  MAE: 0.3085 | RMSE: 0.5627 | R²: 0.9148 | Params: 3,049,154
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 236s
+
+=================================================================
+--- Iteration 89/150 [Elapsed: 435.0m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.2819
+  MAE: 0.2921 | RMSE: 0.5238 | R²: 0.9262 | Params: 4,349,634
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 340s
+
+=================================================================
+--- Iteration 90/150 [Elapsed: 440.7m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=512, dropout=0.6, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 1.6091
+  MAE: 0.4071 | RMSE: 0.7602 | R²: 0.8446 | Params: 3,248,770
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 233s
+
+=================================================================
+--- Iteration 91/150 [Elapsed: 444.6m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=1024, dropout=0.6, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.5668
+  MAE: 0.3746 | RMSE: 0.6954 | R²: 0.8700 | Params: 3,034,818
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 259s
+
+=================================================================
+--- Iteration 92/150 [Elapsed: 448.9m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=2, layers_t=4
+  ff=1024, dropout=0.6, wd=0.005
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 45. Best Val Loss: 0.3929
+  MAE: 0.3141 | RMSE: 0.5884 | R²: 0.9069 | Params: 3,034,818
+  Epochs: 45 | Best Train/Val gap: 2.7x | Time: 472s
+
+=================================================================
+--- Iteration 93/150 [Elapsed: 456.8m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=4
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 8.6150
+  MAE: 2.7117 | RMSE: 2.9350 | R²: -1.3163 | Params: 5,614,210
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 314s
+
+=================================================================
+--- Iteration 94/150 [Elapsed: 462.0m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 1.7387
+  MAE: 0.9850 | RMSE: 1.3187 | R²: 0.5324 | Params: 3,217,154
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 278s
+
+=================================================================
+--- Iteration 95/150 [Elapsed: 466.6m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=1024, dropout=0.5, wd=0.005
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 34. Best Val Loss: 0.3667
+  MAE: 0.3287 | RMSE: 0.6053 | R²: 0.9015 | Params: 6,438,402
+  Epochs: 34 | Best Train/Val gap: nanx | Time: 441s
+
+=================================================================
+--- Iteration 96/150 [Elapsed: 474.0m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2736
+  MAE: 0.2931 | RMSE: 0.5090 | R²: 0.9303 | Params: 2,425,986
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 226s
+
+=================================================================
+--- Iteration 97/150 [Elapsed: 477.7m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=2048, dropout=0.6, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 41. Best Val Loss: 0.3063
+  MAE: 0.2770 | RMSE: 0.5330 | R²: 0.9236 | Params: 3,217,154
+  Epochs: 41 | Best Train/Val gap: 2.0x | Time: 529s
+
+=================================================================
+--- Iteration 98/150 [Elapsed: 486.5m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=512, dropout=0.6, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.4419
+  MAE: 0.3446 | RMSE: 0.6251 | R²: 0.8949 | Params: 2,377,410
+  Epochs: 26 | Best Train/Val gap: nanx | Time: 271s
+
+=================================================================
+--- Iteration 99/150 [Elapsed: 491.1m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=2
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 30. Best Val Loss: 0.3766
+  MAE: 0.3242 | RMSE: 0.6073 | R²: 0.9008 | Params: 3,279,266
+  Epochs: 30 | Best Train/Val gap: nanx | Time: 341s
+
+=================================================================
+--- Iteration 100/150 [Elapsed: 496.7m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=1024, dropout=0.5, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.8551
+  MAE: 0.3586 | RMSE: 0.6680 | R²: 0.8800 | Params: 4,859,138
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 216s
+
+=================================================================
+--- Iteration 101/150 [Elapsed: 500.3m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=2
+  ff=512, dropout=0.6, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 20. Best Val Loss: inf
+  MAE: 1.3324 | RMSE: 2.3327 | R²: -0.4632 | Params: 3,248,770
+  Epochs: 20 | Best Train/Val gap: nanx | Time: 267s
+
+=================================================================
+--- Iteration 102/150 [Elapsed: 504.8m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.3019
+  MAE: 0.2796 | RMSE: 0.5141 | R²: 0.9289 | Params: 1,638,146
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 262s
+
+=================================================================
+--- Iteration 103/150 [Elapsed: 509.2m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.4509
+  MAE: 0.3194 | RMSE: 0.5819 | R²: 0.9089 | Params: 1,634,818
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 143s
+
+=================================================================
+--- Iteration 104/150 [Elapsed: 511.5m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=3, layers_t=4
+  ff=1024, dropout=0.4, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.2821
+  MAE: 0.2783 | RMSE: 0.5197 | R²: 0.9274 | Params: 2,164,482
+  Epochs: 22 | Best Train/Val gap: 0.6x | Time: 212s
+
+=================================================================
+--- Iteration 105/150 [Elapsed: 515.1m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=2, layers_t=3
+  ff=512, dropout=0.4, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3227
+  MAE: 0.4343 | RMSE: 0.5673 | R²: 0.9135 | Params: 2,457,794
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 225s
+
+=================================================================
+--- Iteration 106/150 [Elapsed: 518.8m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=512, dropout=0.5, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.4870
+  MAE: 0.3712 | RMSE: 0.6758 | R²: 0.8772 | Params: 2,377,410
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 279s
+
+=================================================================
+--- Iteration 107/150 [Elapsed: 523.5m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.7386
+  MAE: 0.3751 | RMSE: 0.6948 | R²: 0.8702 | Params: 2,457,794
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 237s
+
+=================================================================
+--- Iteration 108/150 [Elapsed: 527.4m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=2048, dropout=0.4, wd=0.005
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 35. Best Val Loss: 0.3280
+  MAE: 0.2967 | RMSE: 0.5618 | R²: 0.9151 | Params: 5,614,210
+  Epochs: 35 | Best Train/Val gap: nanx | Time: 434s
+
+=================================================================
+--- Iteration 109/150 [Elapsed: 534.7m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=2
+  ff=2048, dropout=0.4, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 6.8841
+  MAE: 2.4225 | RMSE: 2.6241 | R²: -0.8517 | Params: 8,539,650
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 353s
+
+=================================================================
+--- Iteration 110/150 [Elapsed: 540.5m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=2
+  ff=2048, dropout=0.5, wd=0.005
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 1.1128
+  MAE: 0.5875 | RMSE: 1.0442 | R²: 0.7068 | Params: 4,231,874
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 258s
+
+=================================================================
+--- Iteration 111/150 [Elapsed: 544.8m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=1024, dropout=0.5, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 31. Best Val Loss: 0.3217
+  MAE: 0.2991 | RMSE: 0.5543 | R²: 0.9174 | Params: 2,164,482
+  Epochs: 31 | Best Train/Val gap: 1.7x | Time: 291s
+
+=================================================================
+--- Iteration 112/150 [Elapsed: 549.7m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=4, layers_t=2
+  ff=512, dropout=0.6, wd=0.005
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 36. Best Val Loss: 0.3739
+  MAE: 0.2999 | RMSE: 0.5701 | R²: 0.9126 | Params: 2,377,410
+  Epochs: 36 | Best Train/Val gap: 2.1x | Time: 359s
+
+=================================================================
+--- Iteration 113/150 [Elapsed: 555.7m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=2048, dropout=0.4, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 41. Best Val Loss: 0.3187
+  MAE: 0.2944 | RMSE: 0.5592 | R²: 0.9159 | Params: 5,614,210
+  Epochs: 41 | Best Train/Val gap: nanx | Time: 505s
+
+=================================================================
+--- Iteration 114/150 [Elapsed: 564.1m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=2048, dropout=0.5, wd=0.001
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.4377
+  MAE: 0.3572 | RMSE: 0.6482 | R²: 0.8870 | Params: 2,425,986
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 274s
+
+=================================================================
+--- Iteration 115/150 [Elapsed: 568.7m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=3
+  ff=512, dropout=0.4, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 32. Best Val Loss: 0.3306
+  MAE: 0.3009 | RMSE: 0.5617 | R²: 0.9152 | Params: 1,241,730
+  Epochs: 32 | Best Train/Val gap: nanx | Time: 228s
+
+=================================================================
+--- Iteration 116/150 [Elapsed: 572.5m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=2048, dropout=0.5, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 31. Best Val Loss: 0.3438
+  MAE: 0.3032 | RMSE: 0.5796 | R²: 0.9097 | Params: 3,217,154
+  Epochs: 31 | Best Train/Val gap: nanx | Time: 327s
+
+=================================================================
+--- Iteration 117/150 [Elapsed: 577.9m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=1024, dropout=0.5, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.7200
+  MAE: 0.4301 | RMSE: 0.7701 | R²: 0.8405 | Params: 4,037,250
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 257s
+
+=================================================================
+--- Iteration 118/150 [Elapsed: 582.2m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.4, wd=0.001
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.4192
+  MAE: 0.3506 | RMSE: 0.6273 | R²: 0.8942 | Params: 4,330,498
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 226s
+
+=================================================================
+--- Iteration 119/150 [Elapsed: 586.0m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=1024, dropout=0.4, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.3161
+  MAE: 0.3265 | RMSE: 0.5505 | R²: 0.9185 | Params: 6,438,402
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 313s
+
+=================================================================
+--- Iteration 120/150 [Elapsed: 591.2m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=2048, dropout=0.4, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.3101
+  MAE: 0.3067 | RMSE: 0.5458 | R²: 0.9199 | Params: 4,349,634
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 340s
+
+=================================================================
+--- Iteration 121/150 [Elapsed: 596.8m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 32. Best Val Loss: 0.3694
+  MAE: 0.2988 | RMSE: 0.5704 | R²: 0.9125 | Params: 2,377,410
+  Epochs: 32 | Best Train/Val gap: nanx | Time: 322s
+
+=================================================================
+--- Iteration 122/150 [Elapsed: 602.2m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=3
+  ff=2048, dropout=0.5, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 29. Best Val Loss: 0.4167
+  MAE: 0.3286 | RMSE: 0.6225 | R²: 0.8958 | Params: 4,231,874
+  Epochs: 29 | Best Train/Val gap: nanx | Time: 346s
+
+=================================================================
+--- Iteration 123/150 [Elapsed: 608.0m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.4, wd=0.001
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3433
+  MAE: 0.3144 | RMSE: 0.5528 | R²: 0.9178 | Params: 1,634,818
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 144s
+
+=================================================================
+--- Iteration 124/150 [Elapsed: 610.4m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=2048, dropout=0.6, wd=0.005
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 32. Best Val Loss: 0.4540
+  MAE: 0.3134 | RMSE: 0.6263 | R²: 0.8945 | Params: 4,231,874
+  Epochs: 32 | Best Train/Val gap: nanx | Time: 315s
+
+=================================================================
+--- Iteration 125/150 [Elapsed: 615.6m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 28. Best Val Loss: 0.5978
+  MAE: 0.3901 | RMSE: 0.7626 | R²: 0.8436 | Params: 3,279,266
+  Epochs: 28 | Best Train/Val gap: nanx | Time: 265s
+
+=================================================================
+--- Iteration 126/150 [Elapsed: 620.0m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 27. Best Val Loss: 0.2995
+  MAE: 0.2998 | RMSE: 0.5416 | R²: 0.9211 | Params: 1,638,146
+  Epochs: 27 | Best Train/Val gap: nanx | Time: 303s
+
+=================================================================
+--- Iteration 127/150 [Elapsed: 625.1m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=1024, dropout=0.4, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 22. Best Val Loss: 0.3656
+  MAE: 0.2705 | RMSE: 0.5079 | R²: 0.9306 | Params: 4,037,250
+  Epochs: 22 | Best Train/Val gap: nanx | Time: 309s
+
+=================================================================
+--- Iteration 128/150 [Elapsed: 630.2m] ---
+  d_model=128, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=1024, dropout=0.4, wd=0.005
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 26. Best Val Loss: 0.3164
+  MAE: 0.2921 | RMSE: 0.5354 | R²: 0.9229 | Params: 2,164,482
+  Epochs: 26 | Best Train/Val gap: 1.2x | Time: 247s
+
+=================================================================
+--- Iteration 129/150 [Elapsed: 634.4m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 11.1308
+  MAE: 3.0518 | RMSE: 3.3355 | R²: -1.9917 | Params: 8,539,650
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 362s
+
+=================================================================
+--- Iteration 130/150 [Elapsed: 640.4m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=512, dropout=0.5, wd=0.005
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.5033
+  MAE: 0.3235 | RMSE: 0.6025 | R²: 0.9024 | Params: 4,071,170
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 223s
+
+=================================================================
+--- Iteration 131/150 [Elapsed: 644.1m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=4, layers_t=3
+  ff=512, dropout=0.4, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.2921
+  MAE: 0.2805 | RMSE: 0.5324 | R²: 0.9238 | Params: 1,638,146
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 288s
+
+=================================================================
+--- Iteration 132/150 [Elapsed: 648.9m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=1024, dropout=0.4, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 25. Best Val Loss: 0.3605
+  MAE: 0.3223 | RMSE: 0.5742 | R²: 0.9113 | Params: 4,859,138
+  Epochs: 25 | Best Train/Val gap: nanx | Time: 266s
+
+=================================================================
+--- Iteration 133/150 [Elapsed: 653.3m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 36. Best Val Loss: 0.3138
+  MAE: 0.3427 | RMSE: 0.5586 | R²: 0.9161 | Params: 4,330,498
+  Epochs: 36 | Best Train/Val gap: nanx | Time: 287s
+
+=================================================================
+--- Iteration 134/150 [Elapsed: 658.1m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=4, layers_t=4
+  ff=512, dropout=0.5, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 28. Best Val Loss: 0.3355
+  MAE: 0.3718 | RMSE: 0.5784 | R²: 0.9100 | Params: 3,248,770
+  Epochs: 28 | Best Train/Val gap: 1.5x | Time: 299s
+
+=================================================================
+--- Iteration 135/150 [Elapsed: 663.1m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=1024, dropout=0.5, wd=0.005
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 48. Best Val Loss: 0.3160
+  MAE: 0.3039 | RMSE: 0.5517 | R²: 0.9181 | Params: 1,551,490
+  Epochs: 48 | Best Train/Val gap: 2.8x | Time: 288s
+
+=================================================================
+--- Iteration 136/150 [Elapsed: 667.9m] ---
+  d_model=160, nhead_s=8, nhead_t=4, layers_s=3, layers_t=2
+  ff=2048, dropout=0.6, wd=0.001
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 35. Best Val Loss: 0.4094
+  MAE: 0.3089 | RMSE: 0.5839 | R²: 0.9083 | Params: 3,279,266
+  Epochs: 35 | Best Train/Val gap: nanx | Time: 324s
+
+=================================================================
+--- Iteration 137/150 [Elapsed: 673.3m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=1024, dropout=0.6, wd=0.005
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.8470
+  MAE: 0.3844 | RMSE: 0.7292 | R²: 0.8570 | Params: 2,061,058
+  Epochs: 23 | Best Train/Val gap: nanx | Time: 163s
+
+=================================================================
+--- Iteration 138/150 [Elapsed: 676.0m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=2, layers_t=3
+  ff=512, dropout=0.4, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 24. Best Val Loss: 0.2650
+  MAE: 0.3004 | RMSE: 0.5096 | R²: 0.9302 | Params: 4,071,170
+  Epochs: 24 | Best Train/Val gap: nanx | Time: 282s
+
+=================================================================
+--- Iteration 139/150 [Elapsed: 680.7m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=2, layers_t=3
+  ff=1024, dropout=0.4, wd=0.01
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.2994
+  MAE: 0.3036 | RMSE: 0.5298 | R²: 0.9245 | Params: 4,859,138
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 222s
+
+=================================================================
+--- Iteration 140/150 [Elapsed: 684.4m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=512, dropout=0.6, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 42. Best Val Loss: 0.3649
+  MAE: 0.3028 | RMSE: 0.5745 | R²: 0.9113 | Params: 1,638,146
+  Epochs: 42 | Best Train/Val gap: nanx | Time: 363s
+
+=================================================================
+--- Iteration 141/150 [Elapsed: 690.5m] ---
+  d_model=256, nhead_s=8, nhead_t=2, layers_s=4, layers_t=3
+  ff=2048, dropout=0.4, wd=0.01
+  lr=0.0003, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 32. Best Val Loss: 0.3584
+  MAE: 0.3251 | RMSE: 0.5960 | R²: 0.9045 | Params: 8,539,650
+  Epochs: 32 | Best Train/Val gap: 2.2x | Time: 453s
+
+=================================================================
+--- Iteration 142/150 [Elapsed: 698.0m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=4, layers_t=4
+  ff=512, dropout=0.5, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.4304
+  MAE: 0.3008 | RMSE: 0.5573 | R²: 0.9165 | Params: 3,248,770
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 235s
+
+=================================================================
+--- Iteration 143/150 [Elapsed: 701.9m] ---
+  d_model=160, nhead_s=8, nhead_t=2, layers_s=3, layers_t=3
+  ff=512, dropout=0.4, wd=0.001
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 27. Best Val Loss: 0.3342
+  MAE: 0.3048 | RMSE: 0.5631 | R²: 0.9147 | Params: 1,800,098
+  Epochs: 27 | Best Train/Val gap: nanx | Time: 214s
+
+=================================================================
+--- Iteration 144/150 [Elapsed: 705.5m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=4
+  ff=1024, dropout=0.6, wd=0.01
+  lr=0.0005, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 39. Best Val Loss: 0.4152
+  MAE: 0.3178 | RMSE: 0.6231 | R²: 0.8956 | Params: 4,037,250
+  Epochs: 39 | Best Train/Val gap: nanx | Time: 516s
+
+=================================================================
+--- Iteration 145/150 [Elapsed: 714.1m] ---
+  d_model=192, nhead_s=8, nhead_t=2, layers_s=2, layers_t=2
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.001, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.5587
+  MAE: 0.4778 | RMSE: 0.7424 | R²: 0.8518 | Params: 1,666,818
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 167s
+
+=================================================================
+--- Iteration 146/150 [Elapsed: 716.9m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=2048, dropout=0.6, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 20. Best Val Loss: inf
+  MAE: 1.3287 | RMSE: 2.3413 | R²: -0.4741 | Params: 4,330,498
+  Epochs: 20 | Best Train/Val gap: nanx | Time: 165s
+
+=================================================================
+--- Iteration 147/150 [Elapsed: 719.6m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=2, layers_t=2
+  ff=1024, dropout=0.6, wd=0.005
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 33. Best Val Loss: 0.5358
+  MAE: 0.3251 | RMSE: 0.6570 | R²: 0.8839 | Params: 1,108,482
+  Epochs: 33 | Best Train/Val gap: nanx | Time: 232s
+
+=================================================================
+--- Iteration 148/150 [Elapsed: 723.5m] ---
+  d_model=192, nhead_s=8, nhead_t=4, layers_s=3, layers_t=3
+  ff=2048, dropout=0.4, wd=0.001
+  lr=0.0005, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.5609
+  MAE: 0.3739 | RMSE: 0.6502 | R²: 0.8863 | Params: 4,231,874
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 213s
+
+=================================================================
+--- Iteration 149/150 [Elapsed: 727.1m] ---
+  d_model=256, nhead_s=8, nhead_t=4, layers_s=2, layers_t=4
+  ff=512, dropout=0.5, wd=0.01
+  lr=0.001, bs=128, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 21. Best Val Loss: 0.7131
+  MAE: 0.4236 | RMSE: 0.7736 | R²: 0.8391 | Params: 5,387,778
+  Epochs: 21 | Best Train/Val gap: nanx | Time: 259s
+
+=================================================================
+--- Iteration 150/150 [Elapsed: 731.4m] ---
+  d_model=128, nhead_s=8, nhead_t=4, layers_s=3, layers_t=4
+  ff=1024, dropout=0.4, wd=0.001
+  lr=0.0003, bs=64, scheduler=ReduceLROnPlateau
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (6665 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 25 based on sample distribution (min_count=41).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 6 weight classes to 2000 samples each. Total: 12000
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 23. Best Val Loss: 0.2842
+  MAE: 0.2790 | RMSE: 0.5197 | R²: 0.9274 | Params: 2,164,482
+  Epochs: 23 | Best Train/Val gap: 0.8x | Time: 269s
+
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER 3 SWEEP COMPLETE
+  Total time: 735.9 minutes (12.26 hours)
+=================================================================
+
+Top-5 Configurations:
+  #1: RMSE=0.4905 MAE=0.2705 R²=0.9353 Params=2,377,410 gap=nanx (d=160, s=3×8, t=4×4, ff=512, do=0.4)
+  #2: RMSE=0.5020 MAE=0.2938 R²=0.9322 Params=1,636,482 gap=0.7x (d=128, s=3×8, t=2×2, ff=1024, do=0.4)
+  #3: RMSE=0.5079 MAE=0.2705 R²=0.9306 Params=4,037,250 gap=nanx (d=192, s=4×8, t=4×4, ff=1024, do=0.4)
+  #4: RMSE=0.5082 MAE=0.2848 R²=0.9306 Params=5,387,778 gap=nanx (d=256, s=4×8, t=2×4, ff=512, do=0.4)
+  #5: RMSE=0.5090 MAE=0.2931 R²=0.9303 Params=2,425,986 gap=nanx (d=128, s=3×8, t=3×4, ff=2048, do=0.4)
+
+Best Parameters:
+  weight_decay: 0.01
+  num_layers_temporal: 4
+  num_layers_spatial: 3
+  nhead_temporal: 4
+  nhead_spatial: 8
+  learning_rate: 0.0003
+  dropout_rate: 0.4
+  dim_feedforward: 512
+  d_model: 160
+  batch_size: 64
+  scheduler_type: ReduceLROnPlateau
+  pct_start: 0.1
+  aug_p: 0.8
+  aug_channel_dropout: 0.25
+  aug_mixup_alpha: 0.5
+  aug_noise_std: 0.1
+  aug_magnitude_range: (0.5, 2.0)
+  aug_stretch_range: (0.9, 1.1)
+
+Best Validation Metrics:
+Mean Absolute Error: 0.2705
+Mean Squared Error: 0.2406
+Root Mean Squared Error: 0.4905
+R-squared Score: 0.9353
+Total Parameters: 2,377,410
+
+
+Report saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer3_20260515_021212/sweep_report.txt
+CSV results saved to: /home/bwingen/thesis/Thesis/model/model_results/sweep_spatio_temporal_transformer3_20260515_021212/sweep_results.csv
