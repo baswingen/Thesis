@@ -91,34 +91,33 @@ def main():
     # ------------------------------------------------------------------
     # Thorough Architecture Search centered on Rank 8 Generalization findings
     param_grid = {
-        # ── Architecture (Expanded Search) ──
-        'd_model':              [128, 160, 192, 256],
-        'nhead_spatial':        [8],          # Fixed at 8 for high-res spatial attention
-        'num_layers_spatial':   [2, 3, 4],
-        'nhead_temporal':       [2, 4],       # Modality-grouped benefit from fewer temporal heads per group
-        'num_layers_temporal':  [2, 3, 4],
-        'dim_feedforward':      [512, 1024, 2048],
+        # ── Architecture (Fixed Heavyweight for Full Dataset) ──
+        'd_model':              [128],
+        'nhead_spatial':        [4, 8],
+        'num_layers_spatial':   [3],
+        'nhead_temporal':       [4],          # 4 heads works well for modality grouping
+        'num_layers_temporal':  [3],          # Heavyweight deep temporal processing
+        'dim_feedforward':      [1024],       # Heavyweight representational capacity
 
-        # ── Regularisation (Rank 8 Priors) ──
-        'dropout_rate':         [0.4, 0.5, 0.6], 
-        'weight_decay':         [0.001, 0.005, 0.01],
+        # ── Regularisation (Spanning Dev Mode R=0.92 to Heavy Rank 8) ──
+        'dropout_rate':         [0.25, 0.35, 0.5], 
+        'weight_decay':         [1e-05, 1e-04, 1e-03, 5e-03],
 
         # ── Learning ──
-        'learning_rate':        [3e-4, 5e-4, 1e-3],
+        'learning_rate':        [3e-4, 5e-4],
         'batch_size':           [64, 128],
         
-        # ── Fixed Rank 8 Augmentation Regularization ──
-        'aug_p':                [0.8],
-        'aug_noise_std':        [0.1],
-        'aug_stretch_range':    [(0.9, 1.1)],
-        'aug_magnitude_range':  [(0.5, 2.0)],
-        'aug_channel_dropout':  [0.25],
-        'aug_mixup_alpha':      [0.5],
+        # ── Augmentation (Scaling from Moderate to Heavy) ──
+        'aug_p':                [0.5, 0.8],
+        'aug_noise_std':        [0.05, 0.1],
+        'aug_stretch_range':    [(0.75, 1.25), (0.9, 1.1)],
+        'aug_channel_dropout':  [0.1, 0.25],
+        # Note: magnitude_scale and mixup should ideally be disabled in config_model.py's methods list
         
         # ── Training ──
         'scheduler_type':       ['ReduceLROnPlateau'],
-        'scheduler_factor':     [0.8],
-        'scheduler_patience':   [5, 8],
+        'scheduler_factor':     [0.5, 0.8],
+        'scheduler_patience':   [5, 7],
     }
 
     print("=" * 65)

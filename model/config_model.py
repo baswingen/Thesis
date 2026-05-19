@@ -16,8 +16,8 @@ RUN_GRID_SEARCH = True
 USE_PRECOMPUTED_FEATURES = True
 
 DEV_MODE = False
-DEV_FRACTION = 0.1
-DEV_CV_FOLDS = 16
+DEV_FRACTION = 0.25
+DEV_CV_FOLDS = 8
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
 # These computations can be very slow, so disabling them is useful for rapid prototyping.
@@ -224,8 +224,8 @@ AUGMENTATION_CONFIG = {
     'p': 0.8,
 
     # Active augmentation methods.  Remove a method name to disable it.
-    # Available: 'noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'
-    'methods': ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'],
+    # Removed 'magnitude_scale' and 'mixup' as they destroy the amplitude-weight correlation.
+    'methods': ['noise', 'stretch', 'channel_dropout'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -561,21 +561,21 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
 # Updated to match Sweep Rank 8 (Iteration 214) parameters for T2, 
 # as requested to align the architectures with robust regularization.
 SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
-    'd_model': 128,
-    'nhead_spatial': 8,           
-    'num_layers_spatial': 3,
-    'nhead_temporal': 2,          
-    'num_layers_temporal': 3,
-    'dim_feedforward': 1024,
-    'dropout_rate': 0.5,
-    'learning_rate': 0.0005,
-    'weight_decay': 0.005,
+    'd_model': 120,               # Architecture from run_ST3_ R=0.92
+    'nhead_spatial': 4,           # Architecture from run_ST3_ R=0.92
+    'num_layers_spatial': 3,      # Architecture from run_ST3_ R=0.92
+    'nhead_temporal': 4,          # Architecture from run_ST3_ R=0.92
+    'num_layers_temporal': 1,     # Architecture from run_ST3_ R=0.92
+    'dim_feedforward': 256,       # Architecture from run_ST3_ R=0.92
+    'dropout_rate': 0.5,          # Optimized generalization parameter
+    'learning_rate': 0.0005,      # Optimized generalization parameter
+    'weight_decay': 0.005,        # Optimized generalization parameter
     'batch_size': 64,
-    'epochs': 200,
+    'epochs': 25,
     'validation_split': 0.1,
-    'early_stopping_patience': 30,
-    'scheduler_patience': 7,
-    'scheduler_factor': 0.8,
+    'early_stopping_patience': 5,
+    'scheduler_patience': 2,
+    'scheduler_factor': 0.5,
     'use_checkpointing': True,
     'use_amp': True,
     'scheduler': {
@@ -667,12 +667,12 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.update({
-        'd_model': 128,
-        'nhead_spatial': 8,
+        'd_model': 120,
+        'nhead_spatial': 4,
         'num_layers_spatial': 3,
-        'nhead_temporal': 2,
-        'num_layers_temporal': 3,
-        'dim_feedforward': 1024,
+        'nhead_temporal': 4,
+        'num_layers_temporal': 1,
+        'dim_feedforward': 256,
         'dropout_rate': 0.5,
         'learning_rate': 0.0005,
         'weight_decay': 0.005,
