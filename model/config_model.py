@@ -12,7 +12,7 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
-RUN_GRID_SEARCH = True
+RUN_GRID_SEARCH = False
 USE_PRECOMPUTED_FEATURES = True
 
 DEV_MODE = False
@@ -221,7 +221,8 @@ AUGMENTATION_CONFIG = {
     # Probability that any single training sample is augmented (0.0 – 1.0).
     # Each selected sample produces one additional augmented copy alongside
     # the original, so the dataset can grow up to 2× when p=1.0.
-    'p': 0.8,
+    # Optimized to 0.5 based on Spatio-Temporal Transformer 3 Sweep Rank 1 (Iter 92)
+    'p': 0.5,
 
     # Active augmentation methods.  Remove a method name to disable it.
     # Removed 'magnitude_scale' and 'mixup' as they destroy the amplitude-weight correlation.
@@ -229,17 +230,18 @@ AUGMENTATION_CONFIG = {
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
-    # 0.1 ≈ 10% of one standard deviation — matched to Sweep Rank 8.
-    'noise_std': 0.1,
+    # Optimized to 0.05 based on Spatio-Temporal Transformer 3 Sweep Rank 1 (Iter 92)
+    'noise_std': 0.05,
 
     # ── Temporal stretch ─────────────────────────────────────────────
     # Random scale factor applied to sequence length, then resampled back.
-    # ±10% range matched to Sweep Rank 8 best generalization params.
-    'stretch_factor_range': (0.9, 1.1),
+    # Optimized to (0.75, 1.25) to cover more diverse stretch ranges
+    'stretch_factor_range': (0.75, 1.25),
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
-    'channel_dropout_p': 0.25,
+    # Optimized to 0.1 based on Spatio-Temporal Transformer 3 Sweep Rank 1 (Iter 92)
+    'channel_dropout_p': 0.1,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -525,10 +527,10 @@ SPATIO_TEMPORAL_TRANSFORMER_CONFIG = {
     'learning_rate': 0.0005,      
     'weight_decay': 0.005,        
     'batch_size': 64,            
-    'epochs': 200,                
+    'epochs': 100,                
     'validation_split': 0.1,
-    'early_stopping_patience': 30, 
-    'scheduler_patience': 7,       
+    'early_stopping_patience': 15, 
+    'scheduler_patience': 5,       
     'scheduler_factor': 0.8,
     'use_checkpointing': True,    
     'use_amp': True,              
@@ -561,21 +563,21 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
 # Updated to match Sweep Rank 8 (Iteration 214) parameters for T2, 
 # as requested to align the architectures with robust regularization.
 SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
-    'd_model': 120,               # Architecture from run_ST3_ R=0.92
-    'nhead_spatial': 4,           # Architecture from run_ST3_ R=0.92
-    'num_layers_spatial': 3,      # Architecture from run_ST3_ R=0.92
-    'nhead_temporal': 4,          # Architecture from run_ST3_ R=0.92
-    'num_layers_temporal': 1,     # Architecture from run_ST3_ R=0.92
-    'dim_feedforward': 256,       # Architecture from run_ST3_ R=0.92
-    'dropout_rate': 0.5,          # Optimized generalization parameter
-    'learning_rate': 0.0005,      # Optimized generalization parameter
-    'weight_decay': 0.005,        # Optimized generalization parameter
+    'd_model': 128,               # Optimal sweep model capacity
+    'nhead_spatial': 8,           # Expanded spatial heads for high-channel EMG/IMU mapping
+    'num_layers_spatial': 3,      # 3 spatial layers
+    'nhead_temporal': 4,          # 4 temporal heads
+    'num_layers_temporal': 3,     # Expanded temporal layers for deep sequence learning
+    'dim_feedforward': 1024,      # Expanded feedforward dimension for capacity
+    'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent underfitting choke
+    'learning_rate': 0.0003,      # Optimized stable learning rate
+    'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
     'batch_size': 64,
-    'epochs': 25,
+    'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    'early_stopping_patience': 5,
-    'scheduler_patience': 2,
-    'scheduler_factor': 0.5,
+    'early_stopping_patience': 20, # Generous early stopping patience
+    'scheduler_patience': 7,       # Learning rate scheduler patience
+    'scheduler_factor': 0.8,       # Smooth learning rate scheduler decay factor
     'use_checkpointing': True,
     'use_amp': True,
     'scheduler': {
