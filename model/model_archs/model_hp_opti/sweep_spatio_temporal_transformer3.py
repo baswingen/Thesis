@@ -89,36 +89,67 @@ def main():
     # ------------------------------------------------------------------
     # Parameter grid
     # ------------------------------------------------------------------
-    # Thorough Architecture Search centered on Rank 8 Generalization findings
-    param_grid = {
-        # ── Architecture (Fixed Heavyweight for Full Dataset) ──
-        'd_model':              [128],
-        'nhead_spatial':        [4, 8],
-        'num_layers_spatial':   [3],
-        'nhead_temporal':       [4],          # 4 heads works well for modality grouping
-        'num_layers_temporal':  [3],          # Heavyweight deep temporal processing
-        'dim_feedforward':      [1024],       # Heavyweight representational capacity
+    if args.mode == "architecture":
+        # ── Sweep core architecture parameters while holding regularization fixed ──
+        # Fixes regularization, learning, and augmentation parameters to the sweep-winning sweet-spot
+        param_grid = {
+            # ── Architecture Search Parameters ──
+            'd_model':              [64, 96, 128, 160],
+            'nhead_spatial':        [4, 8],
+            'num_layers_spatial':   [2, 3, 4],
+            'nhead_temporal':       [2, 4, 8],
+            'num_layers_temporal':  [1, 2, 3, 4],
+            'dim_feedforward':      [256, 512, 1024],
 
-        # ── Regularisation (Spanning Dev Mode R=0.92 to Heavy Rank 8) ──
-        'dropout_rate':         [0.25, 0.35, 0.5], 
-        'weight_decay':         [1e-05, 1e-04, 1e-03, 5e-03],
+            # ── Fixed Regularization (Sweep Rank 1 optimal sweet-spot) ──
+            'dropout_rate':         [0.25], 
+            'weight_decay':         [0.005],
 
-        # ── Learning ──
-        'learning_rate':        [3e-4, 5e-4],
-        'batch_size':           [64, 128],
-        
-        # ── Augmentation (Scaling from Moderate to Heavy) ──
-        'aug_p':                [0.5, 0.8],
-        'aug_noise_std':        [0.05, 0.1],
-        'aug_stretch_range':    [(0.75, 1.25), (0.9, 1.1)],
-        'aug_channel_dropout':  [0.1, 0.25],
-        # Note: magnitude_scale and mixup should ideally be disabled in config_model.py's methods list
-        
-        # ── Training ──
-        'scheduler_type':       ['ReduceLROnPlateau'],
-        'scheduler_factor':     [0.5, 0.8],
-        'scheduler_patience':   [5, 7],
-    }
+            # ── Fixed Learning (Sweep Rank 1 optimal stable rate) ──
+            'learning_rate':        [3e-4],
+            'batch_size':           [64],
+            
+            # ── Fixed Augmentation (Sweep Rank 1 optimal noise injection) ──
+            'aug_p':                [0.5],
+            'aug_noise_std':        [0.05],
+            'aug_stretch_range':    [(0.75, 1.25)],
+            'aug_channel_dropout':  [0.1],
+            
+            # ── Fixed Training (Optimal stable scheduler) ──
+            'scheduler_type':       ['ReduceLROnPlateau'],
+            'scheduler_factor':     [0.8],
+            'scheduler_patience':   [7],
+        }
+    else:
+        # ── Sweep regularization while holding architecture fixed (Heavyweight configuration) ──
+        param_grid = {
+            # ── Fixed Architecture (Heavyweight baseline) ──
+            'd_model':              [128],
+            'nhead_spatial':        [4, 8],
+            'num_layers_spatial':   [3],
+            'nhead_temporal':       [4],
+            'num_layers_temporal':  [3],
+            'dim_feedforward':      [1024],
+
+            # ── Swept Regularisation ──
+            'dropout_rate':         [0.25, 0.35, 0.5], 
+            'weight_decay':         [1e-05, 1e-04, 1e-03, 5e-03],
+
+            # ── Swept Learning ──
+            'learning_rate':        [3e-4, 5e-4],
+            'batch_size':           [64, 128],
+            
+            # ── Swept Augmentation ──
+            'aug_p':                [0.5, 0.8],
+            'aug_noise_std':        [0.05, 0.1],
+            'aug_stretch_range':    [(0.75, 1.25), (0.9, 1.1)],
+            'aug_channel_dropout':  [0.1, 0.25],
+            
+            # ── Swept Training ──
+            'scheduler_type':       ['ReduceLROnPlateau'],
+            'scheduler_factor':     [0.5, 0.8],
+            'scheduler_patience':   [5, 7],
+        }
 
     print("=" * 65)
     print(f"  SPATIO-TEMPORAL TRANSFORMER 3 SWEEP ({args.mode.upper()})")

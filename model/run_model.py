@@ -704,7 +704,8 @@ def main():
         sweep_script = base_dir / "model" / "model_archs" / "model_hp_opti" / f"sweep_{MODEL_TYPE.lower()}.py"
         if sweep_script.exists():
             import subprocess
-            subprocess.run([sys.executable, str(sweep_script)])
+            # Forward any command line arguments to the sweep script (e.g. --mode architecture --n_iter 150)
+            subprocess.run([sys.executable, str(sweep_script)] + sys.argv[1:])
         else:
             print(f"Error: Grid search script {sweep_script.name} not found.")
         return
