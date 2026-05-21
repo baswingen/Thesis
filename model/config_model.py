@@ -1,8 +1,8 @@
-"""
-Configuration file for model hyperparameters.
-Centralizing these values makes it easier to manage experiments and 
-ensures consistency across training and inference scripts.
-"""
+import os
+from pathlib import Path
+
+# Detect if we are on the DelftBlue server
+ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
 
 GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse', 'mae', or 'huber'
@@ -13,26 +13,27 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
 RUN_GRID_SEARCH = True
+GRID_SEARCH_MODE = "features"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = False
+DEV_MODE = not ON_DELFTBLUE
 DEV_FRACTION = 0.25
 DEV_CV_FOLDS = 8
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
 # These computations can be very slow, so disabling them is useful for rapid prototyping.
-COMPUTE_FEATURE_IMPORTANCE = False
+COMPUTE_FEATURE_IMPORTANCE = True
+COMPUTE_PERMUTATION_CHANNEL = True
+COMPUTE_PERMUTATION_FEATURE = True
+COMPUTE_PERMUTATION_INDIVIDUAL = True
+COMPUTE_DEEPSHAP = True
+RUN_MODALITY_ABLATION = True
 DEV_EPOCHS = 25
 DEV_EARLY_STOPPING_PATIENCE = 5
 
 # ──────────────────────────────────────────────────────────
 # DATABASE & ENVIRONMENT CONFIGURATION
 # ──────────────────────────────────────────────────────────
-import os
-from pathlib import Path
-
-# Detect if we are on the DelftBlue server
-ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
 
 # Define the root of the database depending on the environment.
 # Local: project-relative 'database/'
@@ -53,7 +54,7 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
 }
 
 ###########################################################
@@ -565,10 +566,9 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
 SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
     'd_model': 128,               # Optimal sweep model capacity
     'nhead_spatial': 8,           # Expanded spatial heads for high-channel EMG/IMU mapping
-    'num_layers_spatial': 3,      # 3 spatial layers
-    'nhead_temporal': 4,          # 4 temporal heads
-    'num_layers_temporal': 3,     # Expanded temporal layers for deep sequence learning
-    'dim_feedforward': 1024,      # Expanded feedforward dimension for capacity
+    'num_layers': 4,              # Combined spatio-temporal layers (optimized to 4)
+    'nhead_temporal': 8,          # 8 temporal heads (optimized to 8)
+    'dim_feedforward': 256,       # Best FF dimension (optimized to 256)
     'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent underfitting choke
     'learning_rate': 0.0003,      # Optimized stable learning rate
     'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
@@ -671,9 +671,8 @@ if DEV_MODE:
     SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.update({
         'd_model': 120,
         'nhead_spatial': 4,
-        'num_layers_spatial': 3,
+        'num_layers': 3,
         'nhead_temporal': 4,
-        'num_layers_temporal': 1,
         'dim_feedforward': 256,
         'dropout_rate': 0.5,
         'learning_rate': 0.0005,

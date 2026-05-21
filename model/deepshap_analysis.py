@@ -217,7 +217,8 @@ def run_deep_shap_analysis(regressor, X_train, X_test, out_dir, n_bg=200, n_exp=
     print(f"\nRunning DeepExplainer ({n_bg} bg, {n_exp} test) ...")
     explainer = shap.DeepExplainer(shap_model, bg_tensor_shap)
     
-    batch_size = 10 if shap_device.type == "cuda" else 5
+    # For CPU (macOS fallbacks), use batch_size=1 to avoid OOM crashes due to autograd graph scaling
+    batch_size = 5 if shap_device.type == "cuda" else 1
     all_shap_values = []
     
     for i in tqdm(range(0, len(exp_tensor_shap), batch_size), desc="Computing SHAP"):

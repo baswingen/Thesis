@@ -169,14 +169,14 @@ class SpatioTemporalTransformerNetwork3(nn.Module):
         'IMU_Orient': lambda ch: '_IMU' in ch and any(k in ch for k in ['roll', 'pitch', 'yaw', 'Orient', 'rad']),
     }
     
-    def __init__(self, channel_indices: dict, d_model: int, nhead_spatial: int, num_layers_spatial: int, 
-                 nhead_temporal: int, num_layers_temporal: int, dim_feedforward: int, dropout_rate: float,
+    def __init__(self, channel_indices: dict, d_model: int, nhead_spatial: int, 
+                 nhead_temporal: int, num_layers: int, dim_feedforward: int, dropout_rate: float,
                  use_checkpointing: bool = False):
         super().__init__()
         
         self.d_model = d_model
         self.use_checkpointing = use_checkpointing
-        self.num_layers = max(num_layers_spatial, num_layers_temporal)
+        self.num_layers = num_layers
         
         # 1. Channel Projections
         self.channel_projections = nn.ModuleDict()
@@ -291,9 +291,8 @@ class SpatioTemporalTransformerRegressor3:
     def __init__(self, 
                  d_model: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['d_model'],
                  nhead_spatial: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['nhead_spatial'],
-                 num_layers_spatial: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['num_layers_spatial'],
+                 num_layers: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('num_layers', 3),
                  nhead_temporal: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['nhead_temporal'],
-                 num_layers_temporal: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['num_layers_temporal'],
                  dim_feedforward: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['dim_feedforward'],
                  dropout_rate: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['dropout_rate'],
                  learning_rate: float = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['learning_rate'],
@@ -316,11 +315,19 @@ class SpatioTemporalTransformerRegressor3:
                  augmentation_config: dict = None,
                  **kwargs):
                  
+        # Resolve num_layers with fallback for explicit spatial/temporal layers in kwargs
+        spatial_val = kwargs.get('num_layers_spatial')
+        temporal_val = kwargs.get('num_layers_temporal')
+        if spatial_val is not None or temporal_val is not None:
+            num_layers = max(spatial_val or 1, temporal_val or 1)
+
         self.d_model = d_model
         self.nhead_spatial = nhead_spatial
-        self.num_layers_spatial = num_layers_spatial
+        self.num_layers = num_layers
+        # Backward compatibility alias fields
+        self.num_layers_spatial = num_layers
+        self.num_layers_temporal = num_layers
         self.nhead_temporal = nhead_temporal
-        self.num_layers_temporal = num_layers_temporal
         self.dim_feedforward = dim_feedforward
         self.dropout_rate = dropout_rate
         self.learning_rate = learning_rate
@@ -468,9 +475,8 @@ class SpatioTemporalTransformerRegressor3:
             channel_indices=self.channel_indices,
             d_model=self.d_model, 
             nhead_spatial=self.nhead_spatial, 
-            num_layers_spatial=self.num_layers_spatial,
             nhead_temporal=self.nhead_temporal,
-            num_layers_temporal=self.num_layers_temporal,
+            num_layers=self.num_layers,
             dim_feedforward=self.dim_feedforward, 
             dropout_rate=self.dropout_rate,
             use_checkpointing=self.use_checkpointing
@@ -643,9 +649,11 @@ class SpatioTemporalTransformerRegressor3:
             'config': {
                 'd_model': self.d_model,
                 'nhead_spatial': self.nhead_spatial,
-                'num_layers_spatial': self.num_layers_spatial,
+                'num_layers': self.num_layers,
+                # Include spatial/temporal aliases for loading in old code versions
+                'num_layers_spatial': self.num_layers,
+                'num_layers_temporal': self.num_layers,
                 'nhead_temporal': self.nhead_temporal,
-                'num_layers_temporal': self.num_layers_temporal,
                 'dim_feedforward': self.dim_feedforward,
                 'dropout_rate': self.dropout_rate,
                 'learning_rate': self.learning_rate,
@@ -677,7 +685,13 @@ class SpatioTemporalTransformerRegressor3:
     @classmethod
     def load(cls, filepath: str | Path):
         state = torch.load(filepath, weights_only=False)
-        regressor = cls(**state['config'])
+        config = copy.deepcopy(state['config'])
+        
+        # Load spatial/temporal parameters gracefully if loading an old model
+        if 'num_layers' not in config:
+            config['num_layers'] = max(config.get('num_layers_spatial', 3), config.get('num_layers_temporal', 3))
+            
+        regressor = cls(**config)
         regressor.scaler = state['scaler']
         regressor.feature_names = state['feature_names']
         regressor.channel_indices = state['channel_indices']
@@ -686,9 +700,8 @@ class SpatioTemporalTransformerRegressor3:
             channel_indices=state['channel_indices'],
             d_model=state['config']['d_model'], 
             nhead_spatial=state['config']['nhead_spatial'], 
-            num_layers_spatial=state['config']['num_layers_spatial'],
             nhead_temporal=state['config']['nhead_temporal'],
-            num_layers_temporal=state['config']['num_layers_temporal'],
+            num_layers=regressor.num_layers,
             dim_feedforward=state['config']['dim_feedforward'],
             dropout_rate=state['config']['dropout_rate'],
             use_checkpointing=state['config'].get('use_checkpointing', False)
@@ -752,8 +765,10 @@ class SpatioTemporalTransformerRegressor3:
                 else:
                     feat_type = f"Anthro_{fname}"
                 groups[feat_type].append(i)
+            elif importance_type == 'individual_feature':
+                groups[fname].append(i)
             else:
-                raise ValueError("importance_type must be 'channel' or 'feature'")
+                raise ValueError("importance_type must be 'channel', 'feature', or 'individual_feature'")
                 
         group_importances = {}
         group_names = list(groups.keys())

@@ -34,7 +34,8 @@ from model.model_archs.spatio_temporal_transformer2 import SpatioTemporalTransfo
 from model.model_archs.spatio_temporal_transformer3 import SpatioTemporalTransformerRegressor3
 from model.model_archs.st_transformer_aksan import STTransformerAksanRegressor
 from model.config_model import (
-    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS, COMPUTE_FEATURE_IMPORTANCE
+    SVM_CONFIG, RBFNN_CONFIG, SVR_CONFIG, RF_CONFIG, GB_CONFIG, MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG, CV_CONFIG, FEATURE_CONFIG, CHANNEL_CONFIG, PARTICIPANT_CONFIG, DATABASE_CONFIG, AUGMENTATION_CONFIG, GLOBAL_RANDOM_STATE, MODEL_TYPE, RUN_GRID_SEARCH, USE_PRECOMPUTED_FEATURES, DEV_MODE, DEV_FRACTION, DEV_CV_FOLDS, COMPUTE_FEATURE_IMPORTANCE,
+    COMPUTE_PERMUTATION_CHANNEL, COMPUTE_PERMUTATION_FEATURE, COMPUTE_PERMUTATION_INDIVIDUAL, COMPUTE_DEEPSHAP, RUN_MODALITY_ABLATION
 )
 from sklearn.metrics import (
     classification_report, accuracy_score, confusion_matrix,
@@ -365,6 +366,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     participant_stats = []
     perm_importances_channel = []
     perm_importances_feature = []
+    perm_importances_individual = []
     cv_histories = []
     cv_val_participants = []
 
@@ -462,16 +464,23 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
                 import inspect
                 sig = inspect.signature(model.permutation_importance)
                 if 'importance_type' in sig.parameters:
-                    print("Computing permutation importance for fold (channel)...")
-                    imp_c = model.permutation_importance(X_test_fold, y_test_fold, importance_type='channel')
-                    perm_importances_channel.append(imp_c)
-                    print("Computing permutation importance for fold (feature)...")
-                    imp_f = model.permutation_importance(X_test_fold, y_test_fold, importance_type='feature')
-                    perm_importances_feature.append(imp_f)
+                    if COMPUTE_PERMUTATION_CHANNEL:
+                        print("Computing permutation importance for fold (channel)...")
+                        imp_c = model.permutation_importance(X_test_fold, y_test_fold, importance_type='channel')
+                        perm_importances_channel.append(imp_c)
+                    if COMPUTE_PERMUTATION_FEATURE:
+                        print("Computing permutation importance for fold (feature)...")
+                        imp_f = model.permutation_importance(X_test_fold, y_test_fold, importance_type='feature')
+                        perm_importances_feature.append(imp_f)
+                    if COMPUTE_PERMUTATION_INDIVIDUAL:
+                        print("Computing permutation importance for fold (individual feature)...")
+                        imp_i = model.permutation_importance(X_test_fold, y_test_fold, importance_type='individual_feature')
+                        perm_importances_individual.append(imp_i)
                 else:
-                    print("Computing permutation importance for fold...")
-                    imp = model.permutation_importance(X_test_fold, y_test_fold)
-                    perm_importances_channel.append(imp)
+                    if COMPUTE_PERMUTATION_CHANNEL:
+                        print("Computing permutation importance for fold...")
+                        imp = model.permutation_importance(X_test_fold, y_test_fold)
+                        perm_importances_channel.append(imp)
             except Exception as e:
                 print(f"[WARN] Permutation importance computation failed: {e}")
                 
@@ -543,6 +552,12 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             avg_perm_imp_feature[k] = np.mean([pi[k] for pi in perm_importances_feature])
         avg_permutation_importance['feature'] = avg_perm_imp_feature
         
+    if perm_importances_individual:
+        avg_perm_imp_individual = {}
+        for k in perm_importances_individual[0].keys():
+            avg_perm_imp_individual[k] = np.mean([pi[k] for pi in perm_importances_individual])
+        avg_permutation_importance['individual'] = avg_perm_imp_individual
+        
     if not avg_permutation_importance:
         avg_permutation_importance = None
 
@@ -580,23 +595,27 @@ def execute_single_split(X, y, df, model_type, split_val):
     
     y_pred = model.predict(X_test)
     
-    perm_imp = None
+    perm_imp = {}
     if COMPUTE_FEATURE_IMPORTANCE and hasattr(model, 'permutation_importance'):
         try:
             import inspect
             sig = inspect.signature(model.permutation_importance)
-            perm_imp = {}
             if 'importance_type' in sig.parameters:
-                print("Computing permutation importance for test set (channel)...")
-                perm_imp['channel'] = model.permutation_importance(X_test, y_test, importance_type='channel')
-                print("Computing permutation importance for test set (feature)...")
-                perm_imp['feature'] = model.permutation_importance(X_test, y_test, importance_type='feature')
+                if COMPUTE_PERMUTATION_CHANNEL:
+                    print("Computing permutation importance for test set (channel)...")
+                    perm_imp['channel'] = model.permutation_importance(X_test, y_test, importance_type='channel')
+                if COMPUTE_PERMUTATION_FEATURE:
+                    print("Computing permutation importance for test set (feature)...")
+                    perm_imp['feature'] = model.permutation_importance(X_test, y_test, importance_type='feature')
+                if COMPUTE_PERMUTATION_INDIVIDUAL:
+                    print("Computing permutation importance for test set (individual feature)...")
+                    perm_imp['individual'] = model.permutation_importance(X_test, y_test, importance_type='individual_feature')
             else:
-                print("Computing permutation importance for test set...")
-                perm_imp['channel'] = model.permutation_importance(X_test, y_test)
+                if COMPUTE_PERMUTATION_CHANNEL:
+                    print("Computing permutation importance for test set...")
+                    perm_imp['channel'] = model.permutation_importance(X_test, y_test)
         except Exception as e:
             print(f"[WARN] Permutation importance computation failed: {e}")
-            perm_imp = None
             
     return model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp
 
@@ -683,17 +702,18 @@ def main():
     parser = argparse.ArgumentParser(description="Run the model training and evaluation pipeline.")
     parser.add_argument("--modality", type=str, choices=["all", "emg_only", "imu_only"], default="all",
                         help="Select which sensor modalities to use. Useful for macro-ablation.")
+    parser.add_argument("--run_ablation", action="store_true", default=None,
+                        help="Run the complete modality ablation loop (all, emg_only, imu_only).")
     args, unknown = parser.parse_known_args()
     
-    # Apply modality overrides to the global configuration
-    if args.modality == "emg_only":
-        print("\n[MACRO ABLATION] Overriding config: Disabling all IMU channels.")
-        for k in CHANNEL_CONFIG['imu_channels']:
-            CHANNEL_CONFIG['imu_channels'][k] = False
-    elif args.modality == "imu_only":
-        print("\n[MACRO ABLATION] Overriding config: Disabling all EMG channels.")
-        for k in CHANNEL_CONFIG['emg_channels']:
-            CHANNEL_CONFIG['emg_channels'][k] = False
+    # Determine whether to run full macro-ablation loop
+    run_ablation = RUN_MODALITY_ABLATION if args.run_ablation is None else args.run_ablation
+    
+    if run_ablation:
+        modalities = ["all", "emg_only", "imu_only"]
+        print(f"\n[MACRO ABLATION LOOP] Enabled. Will run sequentially for: {modalities}")
+    else:
+        modalities = [args.modality]
 
     # Define paths
     base_dir = Path(__file__).parent.parent
@@ -710,163 +730,212 @@ def main():
             print(f"Error: Grid search script {sweep_script.name} not found.")
         return
         
-    # 1. Setup
+    # 1. Setup (Run directory created once at the root)
     run_dir, timestamp = setup_run_dir(base_dir)
     print(f"Results will be saved to: {run_dir}")
     
-    model_type = MODEL_TYPE.lower()
-    is_sequence = model_type in ["gru", "lstm", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan"]
-    is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "cnn_st_transformer"]
+    # Keep a deep copy of the original CHANNEL_CONFIG to restore at each iteration
+    orig_channel_config = copy.deepcopy(CHANNEL_CONFIG)
     
-    # 2. Data Loading
-    loader = DataLoader()
-    h5_paths = [p for p in DATABASE_CONFIG['segments_dir'].glob("*.h5") if not p.name.startswith("._")]
-    if not h5_paths:
-        print(f"No HDF5 segment files found in {DATABASE_CONFIG['segments_dir']}.")
-        return
-
-    X, y, groups, df = load_and_prepare_data(loader, h5_paths, model_type, is_raw_segment, is_sequence, USE_PRECOMPUTED_FEATURES)
-    if X is None: 
-        print("Data extraction failed or produced an empty DataFrame.")
-        return
+    for active_modality in modalities:
+        print("\n" + "="*80)
+        print(f"  RUNNING PIPELINE FOR MODALITY CONFIGURATION: {active_modality.upper()}")
+        print("="*80 + "\n")
         
-    if DEV_MODE:
-        print(f"\n[DEV MODE] Subsampling dataset to {DEV_FRACTION*100}% for rapid testing...")
-        stratify_key = None
-        if groups is not None and "weight" in df.columns:
-            stratify_key = [f"{g}_{w}" for g, w in zip(groups, df["weight"])]
-        elif groups is not None:
-            stratify_key = groups
-        elif "weight" in df.columns:
-            stratify_key = df["weight"]
+        # Reset to original channels
+        CHANNEL_CONFIG['emg_channels'] = copy.deepcopy(orig_channel_config['emg_channels'])
+        CHANNEL_CONFIG['imu_channels'] = copy.deepcopy(orig_channel_config['imu_channels'])
+        
+        # Apply overrides
+        if active_modality == "emg_only":
+            print("\n[MACRO ABLATION] Overriding config: Disabling all IMU channels.")
+            for k in CHANNEL_CONFIG['imu_channels']:
+                CHANNEL_CONFIG['imu_channels'][k] = False
+        elif active_modality == "imu_only":
+            print("\n[MACRO ABLATION] Overriding config: Disabling all EMG channels.")
+            for k in CHANNEL_CONFIG['emg_channels']:
+                CHANNEL_CONFIG['emg_channels'][k] = False
+
+        if run_ablation:
+            run_dir_active = run_dir / active_modality
+            run_dir_active.mkdir(parents=True, exist_ok=True)
+        else:
+            run_dir_active = run_dir
+
+        model_type = MODEL_TYPE.lower()
+        is_sequence = model_type in ["gru", "lstm", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan"]
+        is_raw_segment = model_type in ["cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "cnn_st_transformer"]
+        
+        # 2. Data Loading
+        loader = DataLoader()
+        h5_paths = [p for p in DATABASE_CONFIG['segments_dir'].glob("*.h5") if not p.name.startswith("._")]
+        if not h5_paths:
+            print(f"No HDF5 segment files found in {DATABASE_CONFIG['segments_dir']}.")
+            continue
+
+        X, y, groups, df = load_and_prepare_data(loader, h5_paths, model_type, is_raw_segment, is_sequence, USE_PRECOMPUTED_FEATURES)
+        if X is None: 
+            print("Data extraction failed or produced an empty DataFrame.")
+            continue
             
-        try:
-            _, X, _, y, _, groups, _, df = train_test_split(
-                X, y, groups, df, 
-                test_size=DEV_FRACTION, 
-                random_state=GLOBAL_RANDOM_STATE, 
-                stratify=stratify_key
-            )
-        except ValueError as e:
-            print(f"[WARN] Stratified split failed ({e}), falling back to random split.")
-            _, X, _, y, _, groups, _, df = train_test_split(
-                X, y, groups, df, 
-                test_size=DEV_FRACTION, 
-                random_state=GLOBAL_RANDOM_STATE
-            )
-    
-    # 3. Summary
-    print_data_summary(X, y, is_raw_segment, is_sequence)
-    # 4. Training & Evaluation
-    if CV_CONFIG.get('use_cross_val', True):
-        model, cv_metrics_list, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p = execute_cross_validation(
-            X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
-        )
-        avg_metrics = {k: np.mean([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
-        std_metrics = {k: np.std([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
-        metrics, X_train, X_test, y_train, y_test, y_pred = {}, None, None, None, None, None
-    else:
-        actual_n_folds = 0
-        cv_metrics_list, cv_val_p = None, None
-        model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp = execute_single_split(
-            X, y, df, model_type, CV_CONFIG.get('train_test_split', 0.2)
-        )
-        avg_metrics, std_metrics, oof_predictions, participant_stats, all_histories = None, None, None, None, None
-
-    # 5. Artifacts & Specialized Plots
-    save_basic_artifacts(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions, 
-                         all_histories=all_histories, val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None)
-    per_seqlen, per_dur = save_extended_plots(model, run_dir, model_type, CV_CONFIG.get('use_cross_val', True), df, X, X_test, y, y_test, y_pred, 
-                                             oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
-                                             
-    if DEV_MODE and participant_stats:
-        print("\n[DEV MODE] Instant Participant Breakdown:")
-        import pandas as pd
-        stats_df = pd.DataFrame(participant_stats)
-        agg_stats = stats_df.groupby('Participant').agg({'MAE': 'mean', 'RMSE': 'mean', 'Samples': 'sum'})
-        print(agg_stats.to_string())
-    
-    if perm_imp:
-        if 'channel' in perm_imp and perm_imp['channel']:
-            plotting_utils.plot_permutation_importance(perm_imp['channel'], run_dir / "permutation_importance_channel.png", model_name=model_type.upper())
-        if 'feature' in perm_imp and perm_imp['feature']:
-            plotting_utils.plot_permutation_importance(perm_imp['feature'], run_dir / "permutation_importance_feature.png", model_name=model_type.upper())
-    
-    # 6. Final Report (Moved before DeepSHAP to safeguard against OOM crashes)
-    generator = ReportGenerator(run_dir, timestamp)
-    generator.generate(h5_paths, X, CV_CONFIG.get('use_cross_val', True), CV_CONFIG.get('strategy', 'kfold'), 
-                       actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
-                       is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
-                       per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
-                       ablation_modality=args.modality, groups=groups)
-                       
-    # 6b. Save machine-readable run data (JSON)
-    from model.run_data_exporter import save_run_data
-    save_run_data(
-        run_dir=run_dir,
-        timestamp=timestamp,
-        model_type=model_type,
-        model=model,
-        h5_paths=h5_paths,
-        X=X, y=y, groups=groups, df=df,
-        use_cv=CV_CONFIG.get('use_cross_val', True),
-        cv_strategy=CV_CONFIG.get('strategy', 'kfold'),
-        n_folds=actual_n_folds,
-        avg_metrics=avg_metrics,
-        std_metrics=std_metrics,
-        metrics=metrics,
-        cv_metrics=cv_metrics_list,
-        participant_stats=participant_stats,
-        per_seqlen_stats=per_seqlen,
-        per_duration_stats=per_dur,
-        oof_predictions=oof_predictions,
-        y_pred=y_pred,
-        y_test=y_test,
-        perm_imp=perm_imp,
-        all_histories=all_histories,
-        cv_val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None,
-        ablation_modality=args.modality,
-        is_raw_segment=is_raw_segment,
-        is_sequence=is_sequence,
-    )
-
-    # 7. Automated DeepSHAP Analysis (High-Fidelity)
-    if model_type in ["cnn_lstm", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"]:
-        print("\n" + "-"*50)
-        print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
-        print("-"*50)
-        try:
-            # If we used CV, the final model is trained on the whole dataset X.
-            # We split it here for the purposes of SHAP analysis.
-            if CV_CONFIG.get('use_cross_val', True):
-                strat = df["weight"].astype(str) if "weight" in df.columns else None
-                X_train_shap, X_test_shap = train_test_split(X, test_size=0.2, random_state=42, stratify=strat)
-            else:
-                X_train_shap, X_test_shap = X_train, X_test
+        if DEV_MODE:
+            print(f"\n[DEV MODE] Subsampling dataset to {DEV_FRACTION*100}% for rapid testing...")
+            stratify_key = None
+            if groups is not None and "weight" in df.columns:
+                stratify_key = [f"{g}_{w}" for g, w in zip(groups, df["weight"])]
+            elif groups is not None:
+                stratify_key = groups
+            elif "weight" in df.columns:
+                stratify_key = df["weight"]
                 
-            if COMPUTE_FEATURE_IMPORTANCE:
-                deepshap_analysis.run_deep_shap_analysis(
-                    model, X_train_shap, X_test_shap, run_dir, 
-                    n_bg=200, n_exp=100
+            try:
+                _, X, _, y, _, groups, _, df = train_test_split(
+                    X, y, groups, df, 
+                    test_size=DEV_FRACTION, 
+                    random_state=GLOBAL_RANDOM_STATE, 
+                    stratify=stratify_key
                 )
-                # Re-save JSON to include DeepSHAP importance values
-                save_run_data(
-                    run_dir=run_dir, timestamp=timestamp, model_type=model_type, model=model,
-                    h5_paths=h5_paths, X=X, y=y, groups=groups, df=df,
-                    use_cv=CV_CONFIG.get('use_cross_val', True),
-                    cv_strategy=CV_CONFIG.get('strategy', 'kfold'),
-                    n_folds=actual_n_folds, avg_metrics=avg_metrics, std_metrics=std_metrics,
-                    metrics=metrics, cv_metrics=cv_metrics_list, participant_stats=participant_stats,
-                    per_seqlen_stats=per_seqlen, per_duration_stats=per_dur,
-                    oof_predictions=oof_predictions, y_pred=y_pred, y_test=y_test,
-                    perm_imp=perm_imp, all_histories=all_histories,
-                    cv_val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None,
-                    ablation_modality=args.modality, is_raw_segment=is_raw_segment, is_sequence=is_sequence,
+            except ValueError as e:
+                print(f"[WARN] Stratified split failed ({e}), falling back to random split.")
+                _, X, _, y, _, groups, _, df = train_test_split(
+                    X, y, groups, df, 
+                    test_size=DEV_FRACTION, 
+                    random_state=GLOBAL_RANDOM_STATE
                 )
-            else:
-                print("Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE is False)...")
-        except Exception as e:
-            print(f"[WARN] Automated DeepSHAP analysis failed: {e}")
+        
+        # 3. Summary
+        print_data_summary(X, y, is_raw_segment, is_sequence)
+        # 4. Training & Evaluation
+        if CV_CONFIG.get('use_cross_val', True):
+            model, cv_metrics_list, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p = execute_cross_validation(
+                X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
+            )
+            avg_metrics = {k: np.mean([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
+            std_metrics = {k: np.std([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
+            metrics, X_train, X_test, y_train, y_test, y_pred = {}, None, None, None, None, None
+        else:
+            actual_n_folds = 0
+            cv_metrics_list, cv_val_p = None, None
+            model, metrics, report_str, X_train, X_test, y_train, y_test, y_pred, perm_imp = execute_single_split(
+                X, y, df, model_type, CV_CONFIG.get('train_test_split', 0.2)
+            )
+            avg_metrics, std_metrics, oof_predictions, participant_stats, all_histories = None, None, None, None, None
+
+        # 5. Artifacts & Specialized Plots
+        save_basic_artifacts(model, run_dir_active, model_type, CV_CONFIG.get('use_cross_val', True), y, y_test, y_pred, oof_predictions, 
+                             all_histories=all_histories, val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None)
+        per_seqlen, per_dur = save_extended_plots(model, run_dir_active, model_type, CV_CONFIG.get('use_cross_val', True), df, X, X_test, y, y_test, y_pred, 
+                                                 oof_predictions, is_raw_segment, is_sequence, groups, participant_stats)
+                                                 
+        if DEV_MODE and participant_stats:
+            print("\n[DEV MODE] Instant Participant Breakdown:")
+            import pandas as pd
+            stats_df = pd.DataFrame(participant_stats)
+            agg_stats = stats_df.groupby('Participant').agg({'MAE': 'mean', 'RMSE': 'mean', 'Samples': 'sum'})
+            print(agg_stats.to_string())
+        
+        if perm_imp:
+            if 'channel' in perm_imp and perm_imp['channel']:
+                plotting_utils.plot_permutation_importance(perm_imp['channel'], run_dir_active / "permutation_importance_channel.png", model_name=model_type.upper())
+            if 'feature' in perm_imp and perm_imp['feature']:
+                plotting_utils.plot_permutation_importance(perm_imp['feature'], run_dir_active / "permutation_importance_feature.png", model_name=model_type.upper())
+        
+        # 6. Final Report (Moved before DeepSHAP to safeguard against OOM crashes)
+        generator = ReportGenerator(run_dir_active, timestamp)
+        generator.generate(h5_paths, X, CV_CONFIG.get('use_cross_val', True), CV_CONFIG.get('strategy', 'kfold'), 
+                           actual_n_folds, model, model_type, X_test, X_train, y, y_train, y_test, 
+                           is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
+                           per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
+                           ablation_modality=active_modality, groups=groups)
+                           
+        # 6b. Save machine-readable run data (JSON)
+        from model.run_data_exporter import save_run_data
+        save_run_data(
+            run_dir=run_dir_active,
+            timestamp=timestamp,
+            model_type=model_type,
+            model=model,
+            h5_paths=h5_paths,
+            X=X, y=y, groups=groups, df=df,
+            use_cv=CV_CONFIG.get('use_cross_val', True),
+            cv_strategy=CV_CONFIG.get('strategy', 'kfold'),
+            n_folds=actual_n_folds,
+            avg_metrics=avg_metrics,
+            std_metrics=std_metrics,
+            metrics=metrics,
+            cv_metrics=cv_metrics_list,
+            participant_stats=participant_stats,
+            per_seqlen_stats=per_seqlen,
+            per_duration_stats=per_dur,
+            oof_predictions=oof_predictions,
+            y_pred=y_pred,
+            y_test=y_test,
+            perm_imp=perm_imp,
+            all_histories=all_histories,
+            cv_val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None,
+            ablation_modality=active_modality,
+            is_raw_segment=is_raw_segment,
+            is_sequence=is_sequence,
+        )
+
+        # 7. Automated DeepSHAP Analysis (High-Fidelity)
+        if model_type in ["cnn_lstm", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"]:
+            print("\n" + "-"*50)
+            print("LAUNCHING AUTOMATED DEEPSHAP ANALYSIS")
+            print("-"*50)
+            try:
+                # If we used CV, the final model is trained on the whole dataset X.
+                # We split it here for the purposes of SHAP analysis.
+                if CV_CONFIG.get('use_cross_val', True):
+                    strat = df["weight"].astype(str) if "weight" in df.columns else None
+                    X_train_shap, X_test_shap = train_test_split(X, test_size=0.2, random_state=42, stratify=strat)
+                else:
+                    X_train_shap, X_test_shap = X_train, X_test
+                    
+                if COMPUTE_FEATURE_IMPORTANCE and COMPUTE_DEEPSHAP:
+                    n_bg = 20 if DEV_MODE else 100
+                    n_exp = 10 if DEV_MODE else 50
+                    print(f"[DeepSHAP] Starting attribution with n_bg={n_bg}, n_exp={n_exp} (DEV_MODE={DEV_MODE})...")
+                    deepshap_analysis.run_deep_shap_analysis(
+                        model, X_train_shap, X_test_shap, run_dir_active, 
+                        n_bg=n_bg, n_exp=n_exp
+                    )
+                    # Re-save JSON to include DeepSHAP importance values
+                    save_run_data(
+                        run_dir=run_dir_active, timestamp=timestamp, model_type=model_type, model=model,
+                        h5_paths=h5_paths, X=X, y=y, groups=groups, df=df,
+                        use_cv=CV_CONFIG.get('use_cross_val', True),
+                        cv_strategy=CV_CONFIG.get('strategy', 'kfold'),
+                        n_folds=actual_n_folds, avg_metrics=avg_metrics, std_metrics=std_metrics,
+                        metrics=metrics, cv_metrics=cv_metrics_list, participant_stats=participant_stats,
+                        per_seqlen_stats=per_seqlen, per_duration_stats=per_dur,
+                        oof_predictions=oof_predictions, y_pred=y_pred, y_test=y_test,
+                        perm_imp=perm_imp, all_histories=all_histories,
+                        cv_val_participants=cv_val_p if CV_CONFIG.get('use_cross_val', True) else None,
+                        ablation_modality=active_modality, is_raw_segment=is_raw_segment, is_sequence=is_sequence,
+                    )
+                else:
+                    print("Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...")
+            except Exception as e:
+                print(f"[WARN] Automated DeepSHAP analysis failed: {e}")
+
+    # Master consolidation of run data if ablation was run
+    if run_ablation:
+        master_data = {}
+        for mod in modalities:
+            mod_json_path = run_dir / mod / "run_data.json"
+            if mod_json_path.exists():
+                try:
+                    with open(mod_json_path, "r") as f:
+                        master_data[mod] = json.load(f)
+                except Exception as e:
+                    print(f"[WARN] Failed to load {mod_json_path} for master compile: {e}")
+        
+        if master_data:
+            master_json_path = run_dir / "run_data.json"
+            with open(master_json_path, "w") as f:
+                json.dump(master_data, f, indent=2)
+            print(f"\n[Master Serializer] Consolidated modality ablation data saved to {master_json_path}")
 
 
 if __name__ == "__main__":

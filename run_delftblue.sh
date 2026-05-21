@@ -27,5 +27,4 @@ fi
 echo "Database found at $DB_ROOT"
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
-
 srun $ENV_PYTHON -u -m model.run_model "$@"

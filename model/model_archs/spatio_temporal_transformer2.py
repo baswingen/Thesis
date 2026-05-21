@@ -693,8 +693,10 @@ class SpatioTemporalTransformerRegressor2:
                 else:
                     feat_type = f"Anthro_{fname}"
                 groups[feat_type].append(i)
+            elif importance_type == 'individual_feature':
+                groups[fname].append(i)
             else:
-                raise ValueError("importance_type must be 'channel' or 'feature'")
+                raise ValueError("importance_type must be 'channel', 'feature', or 'individual_feature'")
                 
         group_importances = {}
         group_names = list(groups.keys())

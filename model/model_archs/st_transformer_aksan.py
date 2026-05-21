@@ -580,3 +580,114 @@ class STTransformerAksanRegressor:
 
     def plot_loss(self, save_path: str | Path):
         plotting_utils.plot_training_loss(self.loss_history, save_path, model_name="ST-Transformer (Aksan)")
+
+    def permutation_importance(self, X_test: pd.DataFrame, y_test: pd.Series, n_repeats: int = 5, importance_type: str = 'channel'):
+        """
+        Calculates permutation importance.
+        importance_type: 'channel' groups by physical signal source (e.g. Biceps_EMG, IMU1_Accel).
+                         'feature' groups by statistical extraction metric (e.g. mean, std) across all channels.
+                         'individual_feature' permutes individual features one by one.
+        Returns a dictionary mapping the group name to the increase in MSE.
+        """
+        import copy
+        from tqdm import tqdm
+        from collections import defaultdict
+        
+        # 1. Baseline performance
+        baseline_preds = self.predict(X_test)
+        baseline_mse = mean_squared_error(y_test, baseline_preds)
+        
+        # 2. Build permutation groups
+        groups = defaultdict(list)
+        for i, fname in enumerate(self.feature_names):
+            if importance_type == 'channel':
+                if '_EMG_' in fname:
+                    group = fname.split('_EMG_')[0] + "_EMG"
+                elif '_IMU_' in fname:
+                    parts = fname.split('_IMU_')
+                    prefix = parts[0] + "_IMU"
+                    suffix = parts[1] if len(parts) > 1 else ""
+                    if any(k in suffix for k in ['ax', 'ay', 'az', 'acc']):
+                        group = prefix + "_Accel"
+                    elif any(k in suffix for k in ['roll', 'pitch', 'yaw', 'gyro', 'rad']):
+                        group = prefix + "_Orient"
+                    else:
+                        group = prefix
+                elif '_SVM_' in fname:
+                    group = fname.split('_SVM_')[0] + "_SVM"
+                else:
+                    group = 'Anthropometrics'
+                groups[group].append(i)
+                
+            elif importance_type == 'feature':
+                # Extract feature type (e.g. mean, std) and split by modality
+                parts = fname.rsplit('_', 1)
+                feat_suffix = parts[-1] if len(parts) > 1 else "raw"
+                if '_EMG_' in fname:
+                    feat_type = f"EMG_{feat_suffix}"
+                elif '_IMU_' in fname or '_SVM_' in fname:
+                    feat_type = f"IMU_{feat_suffix}"
+                else:
+                    feat_type = f"Anthro_{fname}"
+                groups[feat_type].append(i)
+            elif importance_type == 'individual_feature':
+                groups[fname].append(i)
+            else:
+                raise ValueError("importance_type must be 'channel', 'feature', or 'individual_feature'")
+                
+        group_importances = {}
+        group_names = list(groups.keys())
+        
+        # We need the underlying sequences for permutation
+        orig_sequences = self._extract_sequences(X_test)
+        if getattr(self, 'max_seq_len', None) is not None:
+            orig_sequences = [seq[:self.max_seq_len] for seq in orig_sequences]
+            
+        for group in tqdm(group_names, desc=f"Permutation Importance ({importance_type})"):
+            feat_idxs = groups[group]
+            feat_names = [self.feature_names[i] for i in feat_idxs]
+            
+            scores = []
+            for _ in range(n_repeats):
+                # Permute: we shuffle the values of this channel's features ACROSS the whole test set
+                # But we must keep the sequence length structure.
+                
+                # Gather all values for this channel from all windows in all sequences
+                all_values = []
+                for seq in orig_sequences:
+                    for window in seq:
+                        vals = [window.get(k, 0.0) for k in feat_names]
+                        all_values.append(vals)
+                
+                # Shuffle the pool of values
+                all_values_arr = np.array(all_values)
+                np.random.shuffle(all_values_arr)
+                
+                # Create permuted sequences
+                perm_sequences = []
+                val_idx = 0
+                for i in range(len(orig_sequences)):
+                    new_seq = []
+                    for j in range(len(orig_sequences[i])):
+                        # Start with original window data
+                        new_window = orig_sequences[i][j].copy()
+                        # Overwrite features for the target channel with shuffled values
+                        for k_idx, k_name in enumerate(feat_names):
+                            new_window[k_name] = all_values_arr[val_idx, k_idx]
+                        new_seq.append(new_window)
+                        val_idx += 1
+                    perm_sequences.append(new_seq)
+                
+                # Create a temporary DataFrame with permuted sequences
+                X_perm = X_test.copy()
+                X_perm['sequence_dicts'] = perm_sequences
+                
+                # Predict and measure performance drop
+                perm_preds = self.predict(X_perm)
+                perm_mse = mean_squared_error(y_test, perm_preds)
+                scores.append(perm_mse - baseline_mse)
+            
+            group_importances[group] = np.mean(scores)
+            
+        return group_importances
+

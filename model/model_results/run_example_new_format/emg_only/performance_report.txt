@@ -1,0 +1,196 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260521_100751
+=======================================================
+
+--- DATASET INFO ---
+Participants included: ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+Database segments used: ['participant_P01_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P02_session_01_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P18_session_01_segments.h5']
+Total samples: 149
+Evaluation Mode: Train/Test Split
+Testing samples: 30
+
+--- DATASET COMPOSITION (Pre-Augmentation) ---
+Weight Distribution:
+Weight       | Count    | Percentage
+-----------------------------------
+0.00         | 86       | 57.7      %
+0.98         | 12       | 8.1       %
+1.97         | 13       | 8.7       %
+2.95         | 13       | 8.7       %
+4.15         | 13       | 8.7       %
+5.93         | 12       | 8.1       %
+
+Participant Distribution:
+Participant  | Count    | Percentage
+-----------------------------------
+P01          | 37       | 24.8      %
+P02          | 12       | 8.1       %
+P03          | 10       | 6.7       %
+P04          | 10       | 6.7       %
+P05          | 2        | 1.3       %
+P06          | 9        | 6.0       %
+P07          | 10       | 6.7       %
+P09          | 10       | 6.7       %
+P10          | 2        | 1.3       %
+P11          | 10       | 6.7       %
+P12          | 10       | 6.7       %
+P14          | 2        | 1.3       %
+P15          | 4        | 2.7       %
+P16          | 9        | 6.0       %
+P17          | 10       | 6.7       %
+P18          | 2        | 1.3       %
+
+Balancing Strategy (from config):
+  Mode: Joint (Participant + Weight)
+  Target: 62 samples per (participant, weight) group
+  Expected Training Samples (if all groups filled): 5,952
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: EMG_ONLY
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (0): 
+Disabled IMU Channels (18): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- HYPERPARAMETERS ---
+Model: SPATIO_TEMPORAL_TRANSFORMER3
+Architecture:
+  d_model: 120
+  nhead_spatial: 4
+  nhead_temporal: 4
+  num_layers_spatial: 3
+  num_layers_temporal: 1
+  dim_feedforward: 256
+  use_checkpointing: False
+  use_amp: True
+Training:
+  Learning Rate: 0.0005
+  Weight Decay: 0.005
+  Batch Size: 8
+  Epochs: 1
+  Dropout: 0.5
+  Loss Function: mse
+  Validation Split: 0.1
+  Early Stopping Patience: 5
+  Scheduler Patience: 7
+  Scheduler Factor: 0.8
+
+--- PIPELINE CONFIGURATION ---
+DEV_MODE: True (fraction=0.01, epochs=25)
+Global Loss Function: mse
+Random State: 245
+Excluded Weight Classes: 0.75kg (→ 0.9kg), 2.25kg (→ 2.24kg)
+Augmentation: enabled
+  probability: 0.5
+  methods: ['noise', 'stretch', 'channel_dropout']
+  noise_std: 0.05
+  stretch_factor_range: (0.75, 1.25)
+  channel_dropout_p: 0.1
+  magnitude_scale_range: (0.5, 2.0)
+
+--- EVALUATION METRICS ---
+METHOD: SINGLE TEST SPLIT
+  MAE: 0.5021
+  RMSE: 0.8634
+  R2: 0.7881
+  Correlation: 0.9642
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 17       | 0.0137     | 0.0566    
+0.98 kg      | 2        | 0.6950     | 0.6950    
+1.97 kg      | 3        | 1.1608     | 1.2034    
+2.95 kg      | 3        | 0.8051     | 1.0576    
+4.15 kg      | 3        | 1.9102     | 1.9564    
+5.93 kg      | 2        | 0.9054     | 1.0394    
+
+--- 0KG VS WEIGHTED LIFT COMPARISON ---
+Category             | Count    | MAE        | RMSE       | R2      
+------------------------------------------------------------------
+0.00 kg (Free Move)  | 17       | 0.0137     | 0.0566     | N/A     
+>0.00 kg (Weights)   | 13       | 1.1407     | 1.3100     | 0.3065  
+------------------------------------------------------------------
+Performance Degradation on Weighted Lifts:
+  MAE:  +1.1270 (+8206.1%)
+  RMSE: +1.2534 (+2213.5%)
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+6            | 0.700s           | 2        | 1.2678     | 1.3130    
+7            | 0.800s           | 2        | 1.0850     | 1.2360    
+8            | 0.900s           | 1        | 0.1658     | 0.1658    
+9            | 1.000s           | 5        | 0.4081     | 0.5552    
+10           | 1.100s           | 3        | 0.4720     | 0.8175    
+11           | 1.200s           | 4        | 0.0000     | 0.0000    
+12           | 1.300s           | 3        | 0.2303     | 0.3989    
+13           | 1.400s           | 3        | 0.5855     | 1.0141    
+14           | 1.500s           | 2        | 0.1167     | 0.1651    
+15           | 1.600s           | 2        | 0.0000     | 0.0000    
+16           | 1.700s           | 2        | 0.7751     | 1.0961    
+18           | 1.900s           | 1        | 2.5034     | 2.5034    
+
+--- COMPUTE & TIMING METRICS ---
+Device: Apple Silicon (MPS) on arm (arm64)
+Total Parameters: 563,930
+Trainable Parameters: 563,930
+
+Timings:
+train_time: 16.785057s
+inference_time_total: 0.119163s
+inference_time_per_sample: 0.003972s
+
+--- STATISTICAL SIGNIFICANCE (ANOVA & Post-Hoc) ---
+1. Prediction Separability (Can the model distinguish weights?)
+   - One-Way ANOVA: F = 103.3, p < 0.0001 (Significant)
+   - Interpretation: The model predicts significantly different values for different actual weights.
+   - Largest Pairwise Differences (Tukey HSD):
+       0.0kg vs 5.93kg: p < 0.001 (Diff: 6.43kg)
+       0.0kg vs 4.15kg: p < 0.001 (Diff: 6.05kg)
+       0.98kg vs 5.93kg: p < 0.001 (Diff: 4.77kg)
+       0.98kg vs 4.15kg: p < 0.001 (Diff: 4.39kg)
+       1.97kg vs 5.93kg: p < 0.001 (Diff: 3.93kg)
+
+2. Error Consistency (Is the model equally accurate for all weights?)
+   - One-Way ANOVA: F = 20.4, p < 0.0001 (Significant)
+   - Interpretation: The model's error is NOT consistent across all weight classes.
+   - Significant Pairwise Error Differences (Tukey HSD):
+       4.15kg vs 0.0kg: p < 0.001 (4.15kg has 1.90kg higher error)
+       4.15kg vs 0.98kg: p = 0.0082 (4.15kg has 1.22kg higher error)
+       1.97kg vs 0.0kg: p < 0.001 (1.97kg has 1.15kg higher error)
+       4.15kg vs 2.95kg: p = 0.0070 (4.15kg has 1.11kg higher error)
+       4.15kg vs 5.93kg: p = 0.0387 (4.15kg has 1.00kg higher error)
+
+--- PERMUTATION CHANNEL IMPORTANCE ---
+(Drop in MSE when feature is shuffled. Higher is more important)
+Brachioradialis_EMG: 0.499016
+Posterior Deltoid_EMG: 0.010598
+Anterior Deltoid_EMG: 0.009756
+Triceps Brachii_EMG: -0.027413
+Lateral Deltoid_EMG: -0.127386
+Biceps Brachii_EMG: -0.182082
+Flexor Carpi Ulnaris (FCU)_EMG: -0.291822
+Extensor Carpi Radialis (ECR)_EMG: -0.368529
+
+--- PERMUTATION FEATURE TYPE IMPORTANCE ---
+(Drop in MSE when feature extraction metric is shuffled across all channels)
+EMG_SSC: 0.021985
+EMG_Skew: 0.011120
+EMG_ZC: 0.008233
+EMG_HjComp: 0.004497
+EMG_SpecEntropy: -0.011215
+EMG_Power: -0.011782
+EMG_MDF: -0.018926
+EMG_PeakFreq: -0.023672
+EMG_BW: -0.023762
+EMG_Myopulse: -0.028506
+EMG_WAMP: -0.032264
+EMG_MNF: -0.034944
+EMG_HjMob: -0.075232
+EMG_Kurt: -0.075936
+EMG_WL: -0.088117
+EMG_VAR: -0.088749
+EMG_LogDet: -0.127349
+EMG_RMS: -0.139446
+EMG_MAV: -0.145148
+EMG_IEMG: -0.191518

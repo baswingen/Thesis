@@ -308,6 +308,10 @@ def _build_feature_importance(perm_imp, run_dir: Path) -> Optional[dict]:
             fi['permutation_feature'] = {
                 k: float(v) for k, v in perm_imp['feature'].items()
             }
+        if 'individual' in perm_imp and perm_imp['individual']:
+            fi['permutation_individual'] = {
+                k: float(v) for k, v in perm_imp['individual'].items()
+            }
 
     # Load DeepSHAP values if the .npz was saved
     shap_path = run_dir / "deepshap_values.npz"
@@ -316,14 +320,39 @@ def _build_feature_importance(perm_imp, run_dir: Path) -> Optional[dict]:
             data = np.load(shap_path, allow_pickle=True)
             grouped_names = data['grouped_names']
             grouped_vals = data['grouped_vals']
+            
+            # 1. Per-channel importance
             fi['deepshap_channel'] = {
                 str(n): float(v) for n, v in zip(grouped_names, grouped_vals)
             }
+            
+            # 2. Per-feature type (channel type) importance
             if 'feat_types' in data and 'feat_type_vals' in data:
                 fi['deepshap_feature_type'] = {
                     str(n): float(v)
                     for n, v in zip(data['feat_types'], data['feat_type_vals'])
                 }
+                
+            # 3. Per-feature (lowest granularity) importance
+            if 'channel_names' in data and 'mean_abs_shap' in data:
+                ch_names = data['channel_names']
+                m_abs_shap = data['mean_abs_shap']
+                fi['deepshap_feature'] = {
+                    str(n): float(v) for n, v in zip(ch_names, m_abs_shap)
+                }
+                
+            # 4. Per-modality (highest macro granularity) importance
+            modality_sums = {"EMG": 0.0, "IMU": 0.0, "Anthro": 0.0}
+            for name, val in zip(grouped_names, grouped_vals):
+                name_str = str(name)
+                if "_EMG" in name_str:
+                    modality_sums["EMG"] += float(val)
+                elif any(k in name_str for k in ["_IMU", "_SVM", "ax", "ay", "az", "roll", "pitch", "yaw", "rad", "$a_", "$\\alpha_", "diff"]):
+                    modality_sums["IMU"] += float(val)
+                else:
+                    modality_sums["Anthro"] += float(val)
+            fi['deepshap_modality'] = modality_sums
+            
         except Exception as e:
             print(f"[run_data_exporter] Failed to load DeepSHAP .npz: {e}")
 
