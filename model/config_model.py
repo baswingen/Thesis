@@ -13,7 +13,7 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
 RUN_GRID_SEARCH = True
-GRID_SEARCH_MODE = "features"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
+GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
 
 DEV_MODE = not ON_DELFTBLUE
@@ -153,61 +153,61 @@ FEATURE_CONFIG = {
 
 
     # ── EMG Features (set False to disable) ──────────────
+    # Optimized for cross-subject generalization capacity over raw size.
+    # Kept: 11 highly generalizable features (e.g. LogDet, WL, RMS, HjMob).
+    # Disabled: 9 volatile/redundant features (e.g. Kurtosis, Skewness, SpecEntropy, MAV).
     'emg_features': {
         # Time-domain
-        'MAV':        True,    # Mean Absolute Value
-        'RMS':        True,   # Root Mean Square
-        'WL':         True,    # Waveform Length
-        'ZC':         True,   # Zero Crossings
-        'SSC':        True,    # Slope Sign Changes
-        'VAR':        True,    # Variance
-        'WAMP':       True,   # Willison Amplitude
-        'IEMG':       True,    # Integrated EMG
-        'LogDet':     True,   # Log Detector
-        'Skew':       True,    # Skewness
-        'Kurt':       True,    # Kurtosis
-        'HjMob':      True,   # Hjorth Mobility
-        'HjComp':     True,   # Hjorth Complexity
-        'Myopulse':   True,   # Myopulse Percentage Rate
+        'MAV':        False,   # DISABLED — negative contribution (-0.00371), redundant with RMS/IEMG
+        'RMS':        True,    # Root Mean Square (+0.00740)
+        'WL':         True,    # Waveform Length (+0.00974)
+        'ZC':         True,    # Zero Crossings (+0.00438)
+        'SSC':        True,    # Slope Sign Changes (+0.00232)
+        'VAR':        False,   # DISABLED — negative contribution (-0.01334), highly redundant with RMS
+        'WAMP':       True,    # Willison Amplitude (+0.00179)
+        'IEMG':       False,   # DISABLED — negative contribution (-0.00352)
+        'LogDet':     True,    # Log Detector (+0.01598) — excellent skin-impedance normalizer
+        'Skew':       False,   # DISABLED — negative contribution (-0.01149), volatile 3rd moment
+        'Kurt':       False,   # DISABLED — negative contribution (-0.01696), volatile 4th moment
+        'HjMob':      True,    # Hjorth Mobility (+0.01274) — clean time-domain frequency proxy
+        'HjComp':     False,   # DISABLED — negative contribution (-0.01047), high-variance bandwidth estimator
+        'Myopulse':   True,    # Myopulse Percentage Rate (+0.00283)
         # Frequency-domain
-        'MNF':        True,    # Mean Frequency
-        'MDF':        True,    # Median Frequency
-        'Power':      True,   # Total Spectral Power
-        'SpecEntropy':True,    # Spectral Entropy
-        'PeakFreq':   True,    # Peak Frequency
-        'BW':         True,    # Bandwidth (95%)
+        'MNF':        True,    # Mean Frequency (+0.00508)
+        'MDF':        False,   # DISABLED — negative contribution (-0.00425)
+        'Power':      True,    # Total Spectral Power (+0.00551)
+        'SpecEntropy':False,   # DISABLED — negative contribution (-0.01440), high cross-subject variance
+        'PeakFreq':   False,   # DISABLED — negative contribution (-0.00326)
+        'BW':         True,    # Bandwidth (95%) (+0.00563)
     },
 
     # ── IMU Features (set False to disable) ──────────────
-    # Trimmed to 13 features to offset cost of 6 new diff channels.
-    # Disabled: Min (≈-Max), RMS (≈Std for zero-mean), IQR (≈Std),
-    #           ZC (low load-estimation value), Energy (≈Var*N),
-    #           SpecEntropy (low discriminability for rigid-body motion),
-    #           SVM_Std (SVM_Mean captures the key cross-channel info).
+    # Kept: 10 solid physical kinematics estimators (e.g. Std, Var, Mean, P2P, Jerk).
+    # Disabled: 3 noisy frequency/magnitude cross-channel metrics (SpecEnergy, SVM_Mean, MNF).
     'imu_features': {
-        # Time-domain (kept: 8)
-        'Mean':       True,    # Mean value
-        'Var':        True,    # Variance
-        'Std':        True,    # Standard Deviation
-        'Max':        True,    # Maximum
+        # Time-domain (kept: 10)
+        'Mean':       True,    # Mean value (+0.01379)
+        'Var':        True,    # Variance (+0.01571)
+        'Std':        True,    # Standard Deviation (+0.01619) — absolute best generalizer
+        'Max':        True,    # Maximum (+0.00262)
         'Min':        False,   # DISABLED — redundant with Max via P2P
         'RMS':        False,   # DISABLED — ≈Std for near-zero-mean signals
-        'SMA':        True,    # Signal Magnitude Area
-        'P2P':        True,    # Peak-to-Peak
+        'SMA':        True,    # Signal Magnitude Area (+0.00643)
+        'P2P':        True,    # Peak-to-Peak (+0.01239)
         'IQR':        False,   # DISABLED — highly correlated with Std
-        'Skew':       True,    # Skewness
-        'Kurt':       True,    # Kurtosis
-        'Jerk':       True,    # Mean Absolute Jerk
+        'Skew':       True,    # Skewness (+0.00539)
+        'Kurt':       True,    # Kurtosis (+0.00634)
+        'Jerk':       True,    # Mean Absolute Jerk (+0.01139)
         'ZC':         False,   # DISABLED — low value for load estimation
         'Energy':     False,   # DISABLED — ≈Var*N (redundant)
-        # Frequency-domain (kept: 3)
-        'DomFreq':    True,    # Dominant Frequency
-        'SpecEnergy': True,    # Spectral Energy
-        'MNF':        True,    # Mean Frequency
+        # Frequency-domain (kept: 1)
+        'DomFreq':    True,    # Dominant Frequency (+0.01096)
+        'SpecEnergy': False,   # DISABLED — negative contribution (-0.01337)
+        'MNF':        False,   # DISABLED — negative contribution (-0.00363)
         'MDF':        False,   # DISABLED — highly correlated with MNF
         'SpecEntropy':False,   # DISABLED — low discrimination for rigid-body
-        # Cross-channel (kept: 1)
-        'SVM_Mean':   True,    # Signal Vector Magnitude (mean)
+        # Cross-channel (kept: 0)
+        'SVM_Mean':   False,   # DISABLED — negative contribution (-0.00157)
         'SVM_Std':    False,   # DISABLED — SVM_Mean is the key statistic
     },
 }

@@ -191,8 +191,7 @@ class DataLoader:
 
         df = pd.DataFrame(all_features)
 
-        # --- Apply CHANNEL_CONFIG filtering to precomputed features ---
-        # Build set of disabled channel prefixes (e.g. "ax1_IMU_", "Biceps Brachii_EMG_")
+        # --- Apply CHANNEL_CONFIG & FEATURE_CONFIG filtering to precomputed features ---
         disabled_prefixes = set()
         emg_cfg = CHANNEL_CONFIG.get('emg_channels', {})
         imu_cfg = CHANNEL_CONFIG.get('imu_channels', {})
@@ -204,31 +203,43 @@ class DataLoader:
                 disabled_prefixes.add(f"{ch}_IMU_")
                 disabled_prefixes.add(f"{ch}_SVM_")  # SVM features derived from IMU
 
-        if disabled_prefixes:
-            def _is_disabled(key: str) -> bool:
-                return any(key.startswith(p) for p in disabled_prefixes)
+        disabled_suffixes = set()
+        emg_feats_cfg = FEATURE_CONFIG.get('emg_features', {})
+        imu_feats_cfg = FEATURE_CONFIG.get('imu_features', {})
+        for f, enabled in emg_feats_cfg.items():
+            if not enabled:
+                disabled_suffixes.add(f"_EMG_{f}")
+        for f, enabled in imu_feats_cfg.items():
+            if not enabled:
+                disabled_suffixes.add(f"_IMU_{f}")
+                disabled_suffixes.add(f"_SVM_{f}")
 
-            if "sequence_dicts" in df.columns:
-                # Filter keys inside each sequence's window dicts
-                def _filter_seq(seq_list):
-                    return [{k: v for k, v in w.items() if not _is_disabled(k)}
-                            for w in seq_list]
-                df["sequence_dicts"] = df["sequence_dicts"].apply(_filter_seq)
-                n_removed = 0  # count for logging
-                sample_seq = df["sequence_dicts"].iloc[0]
-                if sample_seq:
-                    n_total_orig = len(all_features[0].get("sequence_dicts", [{}])[0]) if all_features and all_features[0].get("sequence_dicts") else 0
-                    n_total_now = len(sample_seq[0])
-                    n_removed = n_total_orig - n_total_now
-            else:
-                # Scalar feature DataFrame: drop disabled columns
-                cols_to_drop = [c for c in df.columns if _is_disabled(c)]
-                n_removed = len(cols_to_drop)
-                if cols_to_drop:
-                    df.drop(columns=cols_to_drop, inplace=True)
+        def _is_disabled(key: str) -> bool:
+            if any(key.startswith(p) for p in disabled_prefixes):
+                return True
+            if any(key.endswith(s) for s in disabled_suffixes):
+                return True
+            return False
 
-            if n_removed > 0:
-                print(f"[DataLoader] Channel filter: removed {n_removed} features from disabled channels.")
+        if "sequence_dicts" in df.columns:
+            # Filter keys inside each sequence's window dicts
+            def _filter_seq(seq_list):
+                return [{k: v for k, v in w.items() if not _is_disabled(k)}
+                        for w in seq_list]
+            df["sequence_dicts"] = df["sequence_dicts"].apply(_filter_seq)
+            n_total_orig = len(all_features[0].get("sequence_dicts", [{}])[0]) if all_features and all_features[0].get("sequence_dicts") else 0
+            sample_seq = df["sequence_dicts"].iloc[0]
+            n_total_now = len(sample_seq[0]) if sample_seq else 0
+            n_removed = n_total_orig - n_total_now
+        else:
+            # Scalar feature DataFrame: drop disabled columns
+            cols_to_drop = [c for c in df.columns if _is_disabled(c)]
+            n_removed = len(cols_to_drop)
+            if cols_to_drop:
+                df.drop(columns=cols_to_drop, inplace=True)
+
+        if n_removed > 0:
+            print(f"[DataLoader] Filter active: removed {n_removed} features from disabled channels/feature-types.")
 
         if "sequence_dicts" not in df.columns:
             df.fillna(0, inplace=True)
