@@ -12,12 +12,12 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "st_transformer_aksan", "cnn_st_transformer"
-RUN_GRID_SEARCH = True
+RUN_GRID_SEARCH = False
 GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
 
 DEV_MODE = not ON_DELFTBLUE
-DEV_FRACTION = 0.25
+DEV_FRACTION = 0.10
 DEV_CV_FOLDS = 8
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
@@ -279,10 +279,10 @@ AUGMENTATION_CONFIG = {
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 9,               # Only used if strategy is 'kfold'
+    'n_folds': 17,              # 17-Fold LOPO (Leave-One-Participant-Out) since we have 17 active subjects
     'strategy': 'participant',  # Options: 'kfold', 'participant'
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
-    'strict_val_participants': 1 # Number of participants to hold out for early stopping
+    'strict_val_participants': 1 # Hold out 1 participant for early stopping validation to prevent overfitting
 }
 
 # SVM Configuration
@@ -561,22 +561,22 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
 }
 
 # Modality-Grouped Spatio-Temporal Transformer (Transformer3) Configuration
-# Updated to match Sweep Rank 8 (Iteration 214) parameters for T2, 
-# as requested to align the architectures with robust regularization.
+# Set to the optimal "Sweet Spot" Generalization baseline (Rank 2, Iteration 61)
+# Highly robust LOPO performance with a constrained 1.0M parameter footprint.
 SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
-    'd_model': 128,               # Optimal sweep model capacity
-    'nhead_spatial': 8,           # Expanded spatial heads for high-channel EMG/IMU mapping
+    'd_model': 96,                # Swept optimal Sweet Spot for cross-subject generalization
+    'nhead_spatial': 8,           # 8 spatial heads for detailed muscle activation mapping
     'num_layers': 4,              # Combined spatio-temporal layers (optimized to 4)
-    'nhead_temporal': 8,          # 8 temporal heads (optimized to 8)
-    'dim_feedforward': 256,       # Best FF dimension (optimized to 256)
-    'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent underfitting choke
+    'nhead_temporal': 2,          # 2 temporal heads for clean velocity/jerk tracking
+    'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
+    'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
     'learning_rate': 0.0003,      # Optimized stable learning rate
     'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
     'batch_size': 64,
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    'early_stopping_patience': 20, # Generous early stopping patience
-    'scheduler_patience': 7,       # Learning rate scheduler patience
+    'early_stopping_patience': 5, # Generous early stopping patience
+    'scheduler_patience': 3,       # Learning rate scheduler patience
     'scheduler_factor': 0.8,       # Smooth learning rate scheduler decay factor
     'use_checkpointing': True,
     'use_amp': True,
@@ -669,10 +669,10 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.update({
-        'd_model': 120,
-        'nhead_spatial': 4,
+        'd_model': 96,
+        'nhead_spatial': 8,
         'num_layers': 3,
-        'nhead_temporal': 4,
+        'nhead_temporal': 2,
         'dim_feedforward': 256,
         'dropout_rate': 0.5,
         'learning_rate': 0.0005,
