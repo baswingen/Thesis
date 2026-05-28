@@ -51,16 +51,17 @@ class SequenceAugmenter:
         """
         Resample the sequence along the time axis by a random factor,
         simulating different contraction / lifting speeds.
-
-        The output is interpolated back to the original seq_len so that
-        batch collation still works normally.
+        
+        Since the model natively supports variable sequence lengths,
+        we do not resample back to the original length, preserving
+        natural velocity duration and avoiding double-interpolation.
         """
         lo, hi = self.config.get('stretch_factor_range', (0.85, 1.15))
         factor = np.random.uniform(lo, hi)
         orig_len = seq.shape[0]
         new_len = max(2, int(round(orig_len * factor)))
 
-        # Interpolate each feature independently along the time axis
+        # Interpolate each feature independently along the time axis to the new length
         old_indices = np.linspace(0, orig_len - 1, orig_len)
         new_indices = np.linspace(0, orig_len - 1, new_len)
         stretched = np.stack(
@@ -68,14 +69,7 @@ class SequenceAugmenter:
             axis=1
         ).astype(np.float32)
 
-        # Resample back to original length so all sequences remain the same length
-        back_indices = np.linspace(0, new_len - 1, orig_len)
-        resampled = np.stack(
-            [np.interp(back_indices, np.arange(new_len), stretched[:, f]) for f in range(stretched.shape[1])],
-            axis=1
-        ).astype(np.float32)
-
-        return resampled
+        return stretched
 
     def channel_dropout(self, seq: np.ndarray) -> np.ndarray:
         """
