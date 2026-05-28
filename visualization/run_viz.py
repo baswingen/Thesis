@@ -43,35 +43,35 @@ PLOTS_TO_GENERATE = None
 # ===========================================================================
 
 class ThesisStyle:
-    # ─── 1. Sensor Modality Semantic Colors ───
-    COLOR_EMG = "#003366"       # Deep Navy (Primary EMG modality)
-    COLOR_IMU = "#B83838"       # Warm Terracotta Red (Secondary IMU modality)
-    COLOR_FUSION = "#6C3483"    # Royal Purple (Combined/Fusion blend of EMG + IMU)
+    # ─── 1. Paul Tol Scientific Semantic Colors ───
+    COLOR_EMG = "#BB5566"       # Paul Tol High-Contrast Red (Swapped: EMG)
+    COLOR_IMU = "#004488"       # Paul Tol High-Contrast Blue (Swapped: IMU)
+    COLOR_FUSION = "#AA3377"    # Paul Tol Bright Purple (Combined/Fusion blend of EMG + IMU)
 
-    # ─── 2. Statistical Metric Colors ───
-    COLOR_MAE = "#2938B0"       # Vibrant Cobalt Blue (ACCENT_BLUE: MAE / Training Loss)
-    COLOR_RMSE = "#D35400"      # Deep Copper Orange (RMSE / Validation Loss)
+    # ─── 2. Consistent Statistical Metric Colors ───
+    COLOR_MAE = "#004488"       # Paul Tol High-Contrast Blue (MAE)
+    COLOR_RMSE = "#BB5566"      # Paul Tol High-Contrast Red (RMSE)
     COLOR_COUNT = "#4A5568"     # Muted Charcoal (sample count bars/lines)
 
     # ─── 3. Reference and Boundary Colors ───
-    COLOR_UNITY = "#566573"     # Slate Gray (dashed perfect-prediction line)
-    COLOR_MEDIAN = "#D4AC0D"    # Bright Golden Amber (pop-out median line in boxplots)
-    COLOR_TARGET = "#27AE60"    # Sage Green (balanced dataset target threshold)
-    COLOR_OUTLIER = "#64748B"   # Semi-transparent Slate (scatter points)
+    COLOR_UNITY = "#888888"     # Paul Tol Slate Grey (dashed perfect-prediction line)
+    COLOR_MEDIAN = "#DDAA33"    # Paul Tol High-Contrast Yellow (pop-out median line in boxplots)
+    COLOR_TARGET = "#228833"    # Paul Tol Bright Green (balanced dataset target threshold)
+    COLOR_OUTLIER = "#BBBBBB"   # Paul Tol Light Grey (scatter points)
 
     # ─── 4. Pairwise Tukey HSD Significance Colors ───
-    COLOR_P_001 = "#C0392B"     # Muted Crimson (*** p < 0.001)
-    COLOR_P_01 = "#8E44AD"      # Amethyst Purple (** p < 0.01)
-    COLOR_P_05 = "#2980B9"      # Ocean Blue (* p < 0.05)
-    COLOR_P_NS = "#7F8C8D"      # Neutral Gray (n.s. p >= 0.05)
+    COLOR_P_001 = "#CC3311"     # Paul Tol Vibrant Red (*** p < 0.001)
+    COLOR_P_01 = "#AA4499"      # Paul Tol Muted Purple (** p < 0.01)
+    COLOR_P_05 = "#4477AA"      # Paul Tol Bright Blue (* p < 0.05)
+    COLOR_P_NS = "#BBBBBB"      # Paul Tol Light Grey (n.s. p >= 0.05)
 
     # Color Palette from rho.cls (for backwards compatibility)
-    RHO_BLUE = "#003366"        # Deep Navy (Primary brand color: \definecolor{rhocolor}{rgb}{0.0, 0.2, 0.4})
-    RHO_LIGHT_BLUE = "#E5EBF2"  # Light tint (rhocolor!13 used for abstracts / boxes)
-    ACCENT_RED = "#B83838"      # Warm Red (rhocodestring color)
-    ACCENT_BLUE = "#2938B0"     # Medium Blue (rhocodekey color)
-    NEUTRAL_GRAY = "#878787"    # Slate Gray (rhogray / rhocodecomment)
-    GRID_GRAY = "#E5EBF2"       # Soft background grid lines
+    RHO_BLUE = "#004488"        # Paul Tol High-Contrast Blue (Primary brand color)
+    RHO_LIGHT_BLUE = "#F0F4F8"  # Very soft Paul Tol blue tint
+    ACCENT_RED = "#BB5566"      # Paul Tol High-Contrast Red
+    ACCENT_BLUE = "#4477AA"     # Paul Tol Bright Blue
+    NEUTRAL_GRAY = "#888888"    # Paul Tol Slate Grey
+    GRID_GRAY = "#F0F0F0"       # Soft background grid lines
     
     @classmethod
     def apply(cls, layout_width="default"):
@@ -306,9 +306,24 @@ class RegressionPlotter:
         data_max = max(np.max(y_true), np.max(y_pred))
         max_val = min(7.5, max(6.25, data_max + 0.25))
         
+        # Determine colors based on the run suffix or metadata
+        out_name = output_path.name
+        if "emg_only" in out_name:
+            primary_color = ThesisStyle.COLOR_EMG
+            fill_color = "#FDF3F4"
+            accent_color = "#004488"
+        elif "imu_only" in out_name:
+            primary_color = ThesisStyle.COLOR_IMU
+            fill_color = ThesisStyle.RHO_LIGHT_BLUE
+            accent_color = "#BB5566"
+        else: # "all" or fallback
+            primary_color = ThesisStyle.COLOR_FUSION
+            fill_color = "#FAF0F5"
+            accent_color = "#DDAA33"
+
         # Perfect prediction line (Ideal Unity)
         ax.plot([min_val, max_val], [min_val, max_val], 
-                color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.2, alpha=0.8, 
+                color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.8, alpha=0.8, 
                 label='Perfect Prediction', zorder=1)
         
         # Cleanly downsample outliers (especially at 0 kg where density is extremely high)
@@ -337,19 +352,19 @@ class RegressionPlotter:
         # Grouped box plots styled like LaTeX environments with caps-free modern aesthetic
         bp = ax.boxplot(pred_groups, positions=actual_weights, widths=0.35, 
                         patch_artist=True, showfliers=False, showcaps=False,
-                        whiskerprops={'color': ThesisStyle.NEUTRAL_GRAY, 'linewidth': 0.7},
-                        boxprops={'edgecolor': ThesisStyle.COLOR_EMG, 'linewidth': 0.8},
+                        whiskerprops={'color': ThesisStyle.NEUTRAL_GRAY, 'linewidth': 1.6},
+                        boxprops={'edgecolor': primary_color, 'linewidth': 2.0},
                         zorder=3)
         
-        # Single uniform fill color for all boxes (soft light blue for a clean, professional look)
+        # Single uniform fill color for all boxes (soft light blue/red/purple for a clean, professional look)
         for box in bp['boxes']:
-            box.set_facecolor(ThesisStyle.RHO_LIGHT_BLUE)
+            box.set_facecolor(fill_color)
             box.set_alpha(0.9)
             
-        # Vibrant Golden Amber for all median lines for high contrast and clean consistency
+        # Vibrant Golden Amber/Red/Blue for all median lines for high contrast and clean consistency
         for median in bp['medians']:
-            median.set_color(ThesisStyle.COLOR_MEDIAN)
-            median.set_linewidth(1.3)
+            median.set_color(accent_color)
+            median.set_linewidth(2.5)
             
         # Stats annotation styled like a premium LaTeX card box (Rounded, with RMSE added)
         eval_pooled = data.get("evaluation", {}).get("pooled", {})
@@ -368,7 +383,7 @@ class RegressionPlotter:
         ax.text(0.04, 0.96, stats_text, 
                 transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
                 bbox=dict(facecolor='white', alpha=0.95, 
-                          edgecolor=ThesisStyle.RHO_BLUE, boxstyle='round,pad=0.6', linewidth=0.7))
+                          edgecolor=primary_color, boxstyle='round,pad=0.6', linewidth=1.2))
         
         ax.set_xlabel("Actual Weight (kg)", labelpad=8)
         ax.set_ylabel("Predicted Weight (kg)", labelpad=8)
@@ -1439,6 +1454,19 @@ def main():
             out_file = output_dir_path / f"{name}_plot"
             try:
                 success = plotter.plot(data, out_file, args.width)
+                if success:
+                    successful_count += 1
+            except Exception as e:
+                import traceback
+                print(f"  [ERROR] Plotter '{name}' failed with exception: {e}")
+                traceback.print_exc()
+        elif name == "distribution":
+            # Run once on single/sub-run dictionary
+            print(f"Running '{name}' plotter (once)...")
+            out_file = output_dir_path / f"{name}_plot"
+            try:
+                run_dict = data[sub_runs[0]] if is_multi_ablation else data
+                success = plotter.plot(run_dict, out_file, args.width)
                 if success:
                     successful_count += 1
             except Exception as e:

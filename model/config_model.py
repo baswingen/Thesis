@@ -601,9 +601,9 @@ SPATIO_TEMPORAL_TRANSFORMER4_CONFIG = {
     'batch_size': 64,
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    'early_stopping_patience': 5, # Generous early stopping patience
-    'scheduler_patience': 3,       # Learning rate scheduler patience
-    'scheduler_factor': 0.8,       # Smooth learning rate scheduler decay factor
+    'early_stopping_patience': 15, # Generous early stopping patience
+    'scheduler_patience': 5,       # Learning rate scheduler patience
+    'scheduler_factor': 0.5,       # Smooth learning rate scheduler decay factor
     'use_checkpointing': True,
     'use_amp': True,
     'scheduler': {
