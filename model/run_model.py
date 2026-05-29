@@ -406,7 +406,7 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             if val_p >= n_train_groups:
                 val_p = max(1, n_train_groups - 1)
                 
-            gss = GroupShuffleSplit(n_splits=1, test_size=val_p, random_state=GLOBAL_RANDOM_STATE)
+            gss = GroupShuffleSplit(n_splits=1, test_size=val_p, random_state=GLOBAL_RANDOM_STATE + fold)
             inner_train_idx, inner_val_idx = next(gss.split(X_train_fold, y_train_fold, groups=groups_train))
             
             X_val_fold = X_train_fold.iloc[inner_val_idx]

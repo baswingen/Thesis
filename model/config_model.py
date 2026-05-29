@@ -283,7 +283,7 @@ CV_CONFIG = {
     'n_folds': 17,              # 17-Fold LOPO (Leave-One-Participant-Out) since we have 17 active subjects
     'strategy': 'participant',  # Options: 'kfold', 'participant'
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
-    'strict_val_participants': 1 # Hold out 1 participant for early stopping validation to prevent overfitting
+    'strict_val_participants': 2 # Hold out 2 participants for early stopping validation to prevent overfitting
 }
 
 # SVM Configuration
