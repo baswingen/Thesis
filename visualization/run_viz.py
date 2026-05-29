@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 # ──────────────────────────────────────────────────────────
 # Path to the model run folder containing run_data.json.
 # Can be absolute, or relative to the project root.
-RUN_DIR = "model/model_results/run_20260521_100751"
+RUN_DIR = "model/model_results/final_run_emg+"
 
 # Target folder to save generated figures.
 OUTPUT_DIR = "/Users/baswingen/Library/Mobile Documents/com~apple~CloudDocs/Master Thesis/python/Thesis/visualization/run_plots"
@@ -1390,15 +1390,43 @@ def main():
         help=f"Specific plots to generate. Available options: {', '.join(plot_registry.list_plotters())}. If unspecified, all are generated."
     )
     
-    args = parser.parse_args()
+    # Use parse_known_args to ignore unexpected command-line arguments (e.g. from IDE runners)
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        print(f"Note: Ignoring unrecognized command-line arguments: {unknown}")
     
-    # 1. Resolve run_data.json path
-    run_dir_path = Path(args.run_dir).resolve()
+    # 1. Resolve run_data.json path using a multi-step search strategy
+    run_dir_raw = args.run_dir
+    run_dir_path = Path(run_dir_raw)
+    
+    if not run_dir_path.is_absolute():
+        # Try resolving relative to:
+        # A. Current working directory
+        cwd_resolved = run_dir_path.resolve()
+        # B. Project root directory (parent of the script's directory)
+        script_dir = Path(__file__).resolve().parent
+        project_root = script_dir.parent
+        proj_resolved = (project_root / run_dir_raw).resolve()
+        # C. Script's parent directory
+        script_resolved = (script_dir / run_dir_raw).resolve()
+        
+        if (cwd_resolved / "run_data.json").exists():
+            run_dir_path = cwd_resolved
+        elif (proj_resolved / "run_data.json").exists():
+            run_dir_path = proj_resolved
+        elif (script_resolved / "run_data.json").exists():
+            run_dir_path = script_resolved
+        else:
+            # Fallback to standard resolve relative to cwd
+            run_dir_path = cwd_resolved
+    else:
+        run_dir_path = run_dir_path.resolve()
+        
     json_path = run_dir_path / "run_data.json"
     
     if not json_path.exists():
         print(f"Error: run_data.json not found at: {json_path}")
-        print("Please point --run-dir to a valid run directory.")
+        print("Please point --run-dir to a valid run directory or edit RUN_DIR at the top of the script.")
         sys.exit(1)
         
     print(f"Loading run data from: {json_path}")
@@ -1410,7 +1438,16 @@ def main():
             sys.exit(1)
             
     # 2. Setup output folder
-    output_dir_path = Path(args.output_dir).resolve()
+    output_dir_raw = args.output_dir
+    output_dir_path = Path(output_dir_raw)
+    if not output_dir_path.is_absolute():
+        # Resolve relative to project root
+        script_dir = Path(__file__).resolve().parent
+        project_root = script_dir.parent
+        output_dir_path = (project_root / output_dir_raw).resolve()
+    else:
+        output_dir_path = output_dir_path.resolve()
+        
     output_dir_path.mkdir(parents=True, exist_ok=True)
     print(f"Saving figures to folder: {output_dir_path}")
     

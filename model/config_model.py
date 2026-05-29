@@ -11,13 +11,13 @@ GLOBAL_BALANCE_WEIGHTS = False
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer4"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "st_transformer_aksan", "cnn_st_transformer"
+MODEL_TYPE = "spatio_temporal_transformer5"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
 RUN_GRID_SEARCH = False
 GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = not ON_DELFTBLUE
-DEV_FRACTION = 0.10
+DEV_MODE = False
+DEV_FRACTION = 0.20
 DEV_CV_FOLDS = 8
 DEV_EPOCHS = 25
 DEV_EARLY_STOPPING_PATIENCE = 5
@@ -227,8 +227,7 @@ AUGMENTATION_CONFIG = {
     'p': 0.5,
 
     # Active augmentation methods.  Remove a method name to disable it.
-    # Removed 'magnitude_scale' and 'mixup' as they destroy the amplitude-weight correlation.
-    'methods': ['noise', 'stretch', 'channel_dropout'],
+    'methods': ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -242,8 +241,8 @@ AUGMENTATION_CONFIG = {
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
-    # Optimized to 0.1 based on Spatio-Temporal Transformer 3 Sweep Rank 1 (Iter 92)
-    'channel_dropout_p': 0.1,
+    # Optimized to 0.25 as requested
+    'channel_dropout_p': 0.25,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -612,6 +611,31 @@ SPATIO_TEMPORAL_TRANSFORMER4_CONFIG = {
     'random_state': GLOBAL_RANDOM_STATE
 }
 
+# Modality-Isolated SST5 Spatio-Temporal Transformer (SST5) Configuration
+# Features isolated spatial attention in deep core and standard spatial cross-modality lookup at the end.
+SPATIO_TEMPORAL_TRANSFORMER5_CONFIG = {
+    'd_model': 96,                # Swept optimal Sweet Spot for cross-subject generalization
+    'nhead_spatial': 8,           # 8 spatial heads for detailed muscle activation mapping
+    'num_layers': 4,              # Combined layers (3 isolated blocks + 1 spatial cross-modality block)
+    'nhead_temporal': 2,          # 2 temporal heads for clean velocity/jerk tracking
+    'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
+    'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
+    'learning_rate': 0.0003,      # Optimized stable learning rate
+    'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
+    'batch_size': 64,
+    'epochs': 200,                # Full epochs budget
+    'validation_split': 0.1,
+    'early_stopping_patience': 15, # Generous early stopping patience
+    'scheduler_patience': 5,       # Learning rate scheduler patience
+    'scheduler_factor': 0.5,       # Smooth learning rate scheduler decay factor
+    'use_checkpointing': True,
+    'use_amp': True,
+    'scheduler': {
+        'type': 'ReduceLROnPlateau'
+    },
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
 # CNN-ST-Transformer Configuration
 CNN_ST_TRANSFORMER_CONFIG = {
     'cnn_filters': [32, 64, 128],    # MUST end with d_model (128)
@@ -655,7 +679,7 @@ if DEV_MODE:
     print(f"[CONFIG] Scaled augmentation targets - Participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}, Weight: {AUGMENTATION_CONFIG['target_samples_per_weight']}, Group: {AUGMENTATION_CONFIG['target_samples_per_group']}")
     
     # Cap epochs and patience for fast deep learning runs
-    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, SPATIO_TEMPORAL_TRANSFORMER4_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
+    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, SPATIO_TEMPORAL_TRANSFORMER4_CONFIG, SPATIO_TEMPORAL_TRANSFORMER5_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
         if 'epochs' in cfg:
             cfg['epochs'] = min(cfg['epochs'], DEV_EPOCHS)
         if 'early_stopping_patience' in cfg:
@@ -709,6 +733,20 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER4_CONFIG.update({
+        'd_model': 96,
+        'nhead_spatial': 8,
+        'num_layers': 3,
+        'nhead_temporal': 2,
+        'dim_feedforward': 256,
+        'dropout_rate': 0.5,
+        'learning_rate': 0.0005,
+        'weight_decay': 0.005,
+        'batch_size': 64,
+        'use_checkpointing': False,
+        'use_amp': True,
+    })
+    
+    SPATIO_TEMPORAL_TRANSFORMER5_CONFIG.update({
         'd_model': 96,
         'nhead_spatial': 8,
         'num_layers': 3,
