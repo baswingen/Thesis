@@ -16,6 +16,28 @@ import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+
+# ──────────────────────────────────────────────────────────
+# DYNAMIC CUSTOM FONT REGISTRATION (rho.cls styles)
+# ──────────────────────────────────────────────────────────
+SCRIPT_DIR = Path(__file__).resolve().parent
+FONTS_DIR = SCRIPT_DIR / "fonts"
+
+custom_fonts = [
+    FONTS_DIR / "FiraSans-Bold.ttf",
+    FONTS_DIR / "STIXTwoText-VariableFont_wght.ttf",
+    FONTS_DIR / "STIXTwoMath-Regular.ttf"
+]
+
+for font_path in custom_fonts:
+    if font_path.exists():
+        try:
+            fm.fontManager.addfont(str(font_path))
+        except Exception as e:
+            print(f"Warning: Failed to dynamically register font {font_path.name}: {e}")
+    else:
+        print(f"Warning: Custom font file not found at {font_path}")
 
 # ──────────────────────────────────────────────────────────
 # VISUALIZATION CONFIGURATION (rho.cls style)
@@ -37,6 +59,35 @@ LAYOUT_WIDTH = "default"
 # Options: "loss", "regression", "seqlen", "participant", "distribution", "weight_error", "ablation", "importance_channel", "importance_feature", "tukey"
 # Set to None to automatically generate all available plots, or specify a list: e.g. ["loss", "regression"]
 PLOTS_TO_GENERATE = None
+
+# Custom titles for generated plots. If set to None or an empty string,
+# a default dynamic title based on the model run and metadata will be used.
+# Supports formatting placeholders: {model_type}, {top_n}, {n_folds}, {total_samples}
+PLOT_TITLES = {
+    "loss": "{model_type}: Training Progress",
+    "regression": "Participant-specialized ST-Transformer: Regression Performance",
+    "seqlen": "Participant-specialized ST-Transformer: Performance by Segment Length",
+    "participant": "{model_type}: Generalization per Participant",
+    "distribution": "{model_type}: Dataset Composition",
+    "weight_error": "Participant-specialized ST-Transformer: Performance by Weight Class",
+    "ablation": "Sensor Modality Ablation Study",
+    "importance_channel": "{model_type}: Channel Permutation Importance (Top {top_n})",
+    "importance_feature": "{model_type}: Feature Permutation Importance (Top {top_n})",
+    "tradeoff": "Generalization Accuracy vs. Inference Latency Trade-Off",
+    "importance_individual": "{model_type}: Granular Feature Permutation Importance (Top {top_n})",
+    "tukey": "Tukey HSD Pairwise Significance (Prediction Error)"
+}
+
+def get_plot_title(plot_name, default_val, **kwargs):
+    """Retrieves and formats the custom title from PLOT_TITLES if defined, else returns default_val."""
+    custom_title = PLOT_TITLES.get(plot_name) if PLOT_TITLES else None
+    if custom_title:
+        try:
+            return custom_title.format(**kwargs)
+        except Exception as e:
+            print(f"Warning: Failed to format custom title for '{plot_name}': {e}")
+            return custom_title
+    return default_val.format(**kwargs)
 
 # ===========================================================================================
 # 1. LaTeX Thesis Style Configurator (based on rho.cls)
@@ -66,54 +117,50 @@ class ThesisStyle:
     COLOR_P_NS = "#BBBBBB"      # Paul Tol Light Grey (n.s. p >= 0.05)
 
     # Color Palette from rho.cls (for backwards compatibility)
-    RHO_BLUE = "#004488"        # Paul Tol High-Contrast Blue (Primary brand color)
+    RHO_BLUE = "#003366"        # Deep dark blue from rho.cls (rgb: 0.0, 0.2, 0.4)
     RHO_LIGHT_BLUE = "#F0F4F8"  # Very soft Paul Tol blue tint
     ACCENT_RED = "#BB5566"      # Paul Tol High-Contrast Red
     ACCENT_BLUE = "#4477AA"     # Paul Tol Bright Blue
     NEUTRAL_GRAY = "#888888"    # Paul Tol Slate Grey
-    GRID_GRAY = "#F0F0F0"       # Soft background grid lines
+    GRID_GRAY = "#E5E7EB"       # Subtle, thin grid lines (light gray)
     
     @classmethod
     def apply(cls, layout_width="default"):
         """Applies global style parameters to Matplotlib for thesis-ready look."""
         plt.rcParams.update(plt.rcParamsDefault)
         
-        # Base clean style
-        try:
-            plt.style.use('seaborn-v0_8-paper')
-        except:
-            plt.style.use('ggplot')
-            
-        # Determine sizing and margins (to avoid scaling figures in LaTeX)
+        # Determine sizing and margins (optimized for LaTeX one-column format)
+        # We enforce a strict golden-ratio aspect ratio (~1.6:1) for consistancy across all plots
         if layout_width == "column":
-            # Fits perfectly in a single column (~3.46 inches wide)
-            figsize = (3.46, 2.8)
-            fontsize = 8
-            labelsize = 8
-            titlesize = 9
-            legendsize = 7
-            ticksize = 7
+            # Compact figure size (approx 1.6 aspect ratio)
+            figsize = (3.5, 2.2)
+            fontsize = 8.5
+            labelsize = 9.0
+            titlesize = 9.5
+            legendsize = 8.0
+            ticksize = 8.0
             linewidth = 1.0
-            markersize = 3
+            markersize = 3.5
         elif layout_width == "double":
-            # Fits across a two-column layout (~7.0 inches wide)
-            figsize = (7.0, 4.2)
-            fontsize = 9
-            labelsize = 9.5
+            # Large figure size (golden ratio 1.6 aspect ratio)
+            figsize = (7.0, 4.3)
+            fontsize = 10.0
+            labelsize = 10.5
+            titlesize = 11.0
+            legendsize = 9.0
+            ticksize = 9.0
+            linewidth = 1.4
+            markersize = 4.5
+        else: # "default" standard single-column width
+            # Standard single-column width (golden ratio 1.6 aspect ratio)
+            figsize = (6.0, 3.7)
+            fontsize = 9.5
+            labelsize = 10.0
             titlesize = 10.5
-            legendsize = 8
-            ticksize = 8
+            legendsize = 8.5
+            ticksize = 8.5
             linewidth = 1.2
-            markersize = 4
-        else: # "default" or full screen representation
-            figsize = (8.0, 5.0)
-            fontsize = 10
-            labelsize = 11
-            titlesize = 12
-            legendsize = 9
-            ticksize = 9
-            linewidth = 1.5
-            markersize = 5
+            markersize = 4.0
             
         # Configure rcParams dynamically
         plt.rcParams.update({
@@ -127,11 +174,12 @@ class ThesisStyle:
             'lines.linewidth': linewidth,
             'lines.markersize': markersize,
             
-            # Use Fira Sans if available, falling back to other clean sans-serif families
-            'font.family': 'sans-serif',
+            # Use STIX Two Text as default serif font family
+            'font.family': 'serif',
+            'font.serif': ['STIX Two Text', 'DejaVu Serif', 'Times New Roman', 'serif'],
             'font.sans-serif': ['Fira Sans', 'DejaVu Sans', 'Arial', 'Helvetica', 'sans-serif'],
             
-            # Match math text with LaTeX's STIX/Times font
+            # Match math text with LaTeX's STIX font set
             'mathtext.fontset': 'stix',
             
             # Borders & Spines (Clean, professional look)
@@ -139,31 +187,74 @@ class ThesisStyle:
             'axes.spines.right': False,
             'axes.spines.left': True,
             'axes.spines.bottom': True,
-            'axes.edgecolor': '#333333',
-            'axes.linewidth': 0.7,
+            'axes.edgecolor': '#2C3E50',
+            'axes.linewidth': 0.6,
             
-            # Clean Semibold mixed-case titles (consistent styled headers)
-            'axes.titleweight': 'semibold',
+            # Clean Bold titles (consistent styled headers)
+            'axes.titleweight': 'bold',
             'axes.titlecolor': cls.RHO_BLUE,
             
             # Thin, muted grid lines behind data
             'axes.grid': True,
             'grid.color': cls.GRID_GRAY,
-            'grid.alpha': 0.5,
+            'grid.alpha': 0.7,
             'grid.linestyle': '--',
             'grid.linewidth': 0.5,
             
+            # Legend styling
+            'legend.frameon': True,
+            'legend.facecolor': 'white',
+            'legend.edgecolor': cls.GRID_GRAY,
+            'legend.framealpha': 0.95,
+            'legend.fancybox': True,
+            
             # Ticks
-            'xtick.major.size': 3,
-            'xtick.major.width': 0.7,
-            'ytick.major.size': 3,
-            'ytick.major.width': 0.7,
+            'xtick.major.size': 3.5,
+            'xtick.major.width': 0.6,
+            'ytick.major.size': 3.5,
+            'ytick.major.width': 0.6,
             
             # Save settings
             'savefig.dpi': 300,
             'savefig.bbox': 'tight',
             'savefig.transparent': False
         })
+
+    @classmethod
+    def set_title(cls, ax, title_text):
+        """Applies consistent title styling using Fira Sans Bold in deep darkblue."""
+        ax.set_title(
+            title_text,
+            fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+            color=cls.RHO_BLUE,
+            pad=10
+        )
+
+    @classmethod
+    def set_suptitle(cls, fig, title_text):
+        """Applies consistent suptitle styling using Fira Sans Bold in deep darkblue."""
+        fig.suptitle(
+            title_text,
+            fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
+            color=cls.RHO_BLUE,
+            y=0.98
+        )
+
+    @classmethod
+    def style_ax(cls, ax):
+        """Standardizes axis label and tick fonts to STIX Two Text."""
+        for label in ax.get_xticklabels() + ax.get_yticklabels():
+            label.set_fontfamily('serif')
+        ax.xaxis.label.set_fontfamily('serif')
+        ax.yaxis.label.set_fontfamily('serif')
+
+    @classmethod
+    def save_figure(cls, fig, output_path):
+        """Saves figure in both high-resolution PDF vector format and PNG format."""
+        # Export PDF (academic standard vector graphic)
+        fig.savefig(output_path.with_suffix(".pdf"), dpi=300, bbox_inches='tight')
+        # Export PNG (preview/web format)
+        fig.savefig(output_path.with_suffix(".png"), dpi=300, bbox_inches='tight')
 
 
 # ===========================================================================
@@ -269,16 +360,16 @@ class LossPlotter:
         
         # Mixed-case semibold title formatting (consistent with paper guidelines)
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        title = f"{model_type}: Training Progress"
-        if is_cv:
-            title += f" ({len(histories)} Folds)"
-        ax.set_title(title, pad=12)
+        n_folds_str = f" ({len(histories)} Folds)" if is_cv else ""
+        default_title = f"{{model_type}}: Training Progress{n_folds_str}"
+        title = get_plot_title("loss", default_title, model_type=model_type)
+        ThesisStyle.set_title(ax, title)
         
         ax.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
         
-        # Export PNG only
-        fig.savefig(output_path.with_suffix(".png"))
+        # Save standard outputs
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -316,14 +407,14 @@ class RegressionPlotter:
             primary_color = ThesisStyle.COLOR_IMU
             fill_color = ThesisStyle.RHO_LIGHT_BLUE
             accent_color = "#BB5566"
-        else: # "all" or fallback
-            primary_color = ThesisStyle.COLOR_FUSION
-            fill_color = "#FAF0F5"
-            accent_color = "#DDAA33"
+        else: # "all" or fallback - Use clean deep darkblue instead of pink!
+            primary_color = ThesisStyle.RHO_BLUE
+            fill_color = "#F0F4F8"
+            accent_color = "#E67E22"
 
         # Perfect prediction line (Ideal Unity)
         ax.plot([min_val, max_val], [min_val, max_val], 
-                color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.8, alpha=0.8, 
+                color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.2, alpha=0.8, 
                 label='Perfect Prediction', zorder=1)
         
         # Cleanly downsample outliers (especially at 0 kg where density is extremely high)
@@ -345,26 +436,28 @@ class RegressionPlotter:
                         
                     label = "Outliers" if first_outlier else ""
                     ax.scatter(np.full_like(outliers, w), outliers, 
-                               alpha=0.18, s=10, color=ThesisStyle.COLOR_OUTLIER, edgecolors='none', 
+                               alpha=0.35, s=12, color='#7F8C8D', edgecolors='none', 
                                zorder=2, label=label)
                     first_outlier = False
                     
         # Grouped box plots styled like LaTeX environments with caps-free modern aesthetic
-        bp = ax.boxplot(pred_groups, positions=actual_weights, widths=0.35, 
+        bp = ax.boxplot(pred_groups, positions=actual_weights, widths=0.32, 
                         patch_artist=True, showfliers=False, showcaps=False,
-                        whiskerprops={'color': ThesisStyle.NEUTRAL_GRAY, 'linewidth': 1.6},
-                        boxprops={'edgecolor': primary_color, 'linewidth': 2.0},
+                        whiskerprops={'color': '#475569', 'linewidth': 1.0},
+                        boxprops={'edgecolor': primary_color, 'linewidth': 1.2},
                         zorder=3)
         
         # Single uniform fill color for all boxes (soft light blue/red/purple for a clean, professional look)
         for box in bp['boxes']:
             box.set_facecolor(fill_color)
-            box.set_alpha(0.9)
+            box.set_alpha(0.85)
             
         # Vibrant Golden Amber/Red/Blue for all median lines for high contrast and clean consistency
-        for median in bp['medians']:
+        for idx, median in enumerate(bp['medians']):
             median.set_color(accent_color)
-            median.set_linewidth(2.5)
+            median.set_linewidth(1.5)
+            if idx == 0:
+                median.set_label('Median')
             
         # Stats annotation styled like a premium LaTeX card box (Rounded, with RMSE added)
         eval_pooled = data.get("evaluation", {}).get("pooled", {})
@@ -378,23 +471,28 @@ class RegressionPlotter:
             mae = mean_absolute_error(y_true, y_pred)
             rmse = np.sqrt(mean_squared_error(y_true, y_pred))
             
-        stats_text = f"POOLED METRICS\n$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg\n$RMSE = {rmse:.3f}$ kg"
+        stats_text = f"$\\mathrm{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
         
         ax.text(0.04, 0.96, stats_text, 
                 transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
                 bbox=dict(facecolor='white', alpha=0.95, 
-                          edgecolor=primary_color, boxstyle='round,pad=0.6', linewidth=1.2))
+                          edgecolor=primary_color, boxstyle='round,pad=0.5', linewidth=1.0))
         
         ax.set_xlabel("Actual Weight (kg)", labelpad=8)
         ax.set_ylabel("Predicted Weight (kg)", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax.set_title(f"{model_type}: Predicted vs. Actual Weight", pad=12)
+        if "ST-transformer-par-spec" in str(output_path) or "spec-P01" in str(output_path):
+            default_title = "Participant-specialized ST-Transformer: Regression Performance"
+        else:
+            default_title = "{model_type}: Predicted vs. Actual Weight"
+        title = get_plot_title("regression", default_title, model_type=model_type)
+        ThesisStyle.set_title(ax, title)
         
         ax.set_xlim(min_val - 0.1, max_val)
         ax.set_ylim(min_val - 0.1, max_val)
         
-        # Custom ticks
+        # Custom Ticks
         ax.set_xticks(actual_weights)
         ax.set_yticks(actual_weights)
         
@@ -407,8 +505,8 @@ class RegressionPlotter:
         ax.legend(loc='lower right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
         
-        # Export PNG only
-        fig.savefig(output_path.with_suffix(".png"))
+        # Save standard outputs
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -420,7 +518,9 @@ class SeqLenPlotter:
     def plot(self, data, output_path, layout_width):
         per_seqlen_stats = data.get("evaluation", {}).get("per_seqlen")
         if not per_seqlen_stats:
-            print("  [Warning] No sequence length stats found. Skipping seqlen plot.")
+            per_seqlen_stats = data.get("evaluation", {}).get("per_duration")
+        if not per_seqlen_stats:
+            print("  [Warning] No sequence length or duration stats found. Skipping seqlen plot.")
             return False
             
         min_count = 10
@@ -445,9 +545,9 @@ class SeqLenPlotter:
         else:
             bar_width = 0.1
         ax2.bar(times, counts, width=bar_width, color=ThesisStyle.RHO_LIGHT_BLUE, alpha=0.6,
-                edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, label='Sample Count', zorder=1)
+                edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, label='Segment Count', zorder=1)
         
-        ax2.set_ylabel("Sample Count", color=ThesisStyle.NEUTRAL_GRAY)
+        ax2.set_ylabel("Segment Count", color=ThesisStyle.NEUTRAL_GRAY)
         ax2.tick_params(axis='y', labelcolor=ThesisStyle.NEUTRAL_GRAY)
         ax2.set_ylim(0, max(counts) * 3.0) # push area chart cleanly into bottom third
         ax2.spines['top'].set_visible(False)
@@ -459,20 +559,21 @@ class SeqLenPlotter:
         ax1.plot(times, maes, marker='o', color=ThesisStyle.COLOR_MAE, label='MAE', zorder=3)
         ax1.plot(times, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', zorder=3)
         
-        ax1.set_xlabel("Elapsed time into lift at prediction (s)", labelpad=8)
+        ax1.set_xlabel("Segment lengths (s)", labelpad=8)
         ax1.set_ylabel("Error (kg)", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax1.set_title(f"{model_type}: Error vs. Available Segment Length", pad=12)
+        title = get_plot_title("seqlen", "{model_type}: Error vs. Available Segment Length", model_type=model_type)
+        ThesisStyle.set_title(ax1, title)
         ax1.set_ylim(bottom=0)
         
         # Setup ticks
         ax1.set_xticks(times)
         if len(times) > 15:
-            labels = [f"{t:.2f}s" if idx % 2 == 0 or idx == len(times)-1 else "" for idx, t in enumerate(times)]
+            labels = [f"{t:.2f}" if idx % 2 == 0 or idx == len(times)-1 else "" for idx, t in enumerate(times)]
             ax1.set_xticklabels(labels, rotation=30, ha='right')
         else:
-            ax1.set_xticklabels([f"{t:.2f}s" for t in times], rotation=30, ha='right')
+            ax1.set_xticklabels([f"{t:.2f}" for t in times], rotation=30, ha='right')
             
         # Combine legends cleanly
         lines1, labels1 = ax1.get_legend_handles_labels()
@@ -482,17 +583,10 @@ class SeqLenPlotter:
         
         ax1.set_zorder(ax2.get_zorder() + 1)
         ax1.patch.set_visible(False)
-        
-        n_dropped = len(per_seqlen_stats) - len(filtered)
-        if n_dropped > 0:
-            footnote = f"Bins with < {min_count} samples omitted ({n_dropped} bin(s) excluded)."
-            fig.text(0.5, -0.05, footnote, ha='center', va='top',
-                     fontsize=plt.rcParams['font.size'] - 2, color=ThesisStyle.NEUTRAL_GRAY, style='italic')
-            
         plt.tight_layout()
         
-        # Export PNG only
-        fig.savefig(output_path.with_suffix(".png"))
+        # Save standard outputs
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -549,7 +643,8 @@ class ParticipantPlotter:
         ax.set_xlabel('Unseen Participant Left Out', labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax.set_title(f"{model_type}: Generalization per Participant", pad=12)
+        title = get_plot_title("participant", "{model_type}: Generalization per Participant", model_type=model_type)
+        ThesisStyle.set_title(ax, title)
         
         ax.set_xticks(x)
         ax.set_xticklabels(participants, rotation=45, ha='right')
@@ -560,8 +655,8 @@ class ParticipantPlotter:
         ax.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
         
-        # Export PNG only
-        fig.savefig(output_path.with_suffix(".png"))
+        # Save standard outputs
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -679,13 +774,12 @@ class DatasetDistributionPlotter:
         
         # Main figure title
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        title_text = f"{model_type}: Dataset Composition & Augmentation Balancing" if balance_enabled else f"{model_type}: Dataset Composition (Total Samples: {total_samples})"
-        fig.suptitle(title_text, 
-                     fontsize=plt.rcParams['axes.titlesize'] + 0.5, fontweight='semibold', 
-                     color=ThesisStyle.RHO_BLUE, y=0.98)
+        default_title = "{model_type}: Dataset Composition & Augmentation Balancing" if balance_enabled else "{model_type}: Dataset Composition (Total Samples: {total_samples})"
+        title_text = get_plot_title("distribution", default_title, model_type=model_type, total_samples=total_samples)
+        ThesisStyle.set_suptitle(fig, title_text)
                      
         plt.tight_layout(rect=[0, 0, 1, 0.93])
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -701,37 +795,63 @@ class WeightErrorPlotter:
             return False
             
         ThesisStyle.apply(layout_width)
-        fig, ax = plt.subplots()
+        fig, ax1 = plt.subplots()
         
-        w_labels = [row['Weight'] for row in per_weight]
+        w_labels = [row['Weight'].replace(' kg', '').replace('kg', '').strip() for row in per_weight]
         maes = [float(row['MAE']) for row in per_weight]
         rmses = [float(row['RMSE']) for row in per_weight]
+        counts = [int(row['Count']) for row in per_weight]
         
-        # Dual error lines
-        ax.plot(w_labels, maes, marker='o', color=ThesisStyle.COLOR_MAE, label='MAE', zorder=3)
-        ax.plot(w_labels, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', zorder=3)
+        # Elegant bar chart for segment count (right y-axis) representing samples in bins
+        ax2 = ax1.twinx()
+        bar_width = 0.35
+        x_positions = np.arange(len(w_labels))
         
-        # Annotate values above/below markers
-        for idx, (mae, rmse) in enumerate(zip(maes, rmses)):
-            # Draw MAE slightly below, RMSE slightly above
-            ax.annotate(f"{mae:.3f}", xy=(idx, mae), xytext=(0, -13),
-                        textcoords='offset points', ha='center', va='top',
-                        fontsize=plt.rcParams['font.size'] - 2, color=ThesisStyle.COLOR_MAE)
-            ax.annotate(f"{rmse:.3f}", xy=(idx, rmse), xytext=(0, 6),
-                        textcoords='offset points', ha='center', va='bottom',
-                        fontsize=plt.rcParams['font.size'] - 2, color=ThesisStyle.COLOR_RMSE)
-                        
-        ax.set_xlabel("Physical Weight Class", labelpad=8)
-        ax.set_ylabel("Prediction Error (kg)", labelpad=8)
-        ax.set_ylim(0, max(rmses) * 1.25)
+        ax2.bar(x_positions, counts, width=bar_width, color=ThesisStyle.RHO_LIGHT_BLUE, alpha=0.6,
+                edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, label='Segment Count', zorder=1)
+        
+        ax2.set_ylabel("Segment Count", color=ThesisStyle.NEUTRAL_GRAY)
+        ax2.tick_params(axis='y', labelcolor=ThesisStyle.NEUTRAL_GRAY)
+        ax2.set_ylim(0, max(counts) * 3.0) # push area chart cleanly into bottom third
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(True)
+        ax2.spines['left'].set_visible(True)
+        ax2.grid(False) # Disable secondary gridlines
+        
+        # Dual error lines on primary axis
+        ax1.plot(x_positions, maes, marker='o', color=ThesisStyle.COLOR_MAE, label='MAE', zorder=3)
+        ax1.plot(x_positions, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', zorder=3)
+        
+        ax1.set_xlabel("Weight Class (kg)", labelpad=8)
+        ax1.set_ylabel("Prediction Error (kg)", labelpad=8)
+        ax1.set_ylim(0, max(rmses) * 1.25)
+        
+        # Setup ticks
+        ax1.set_xticks(x_positions)
+        ax1.set_xticklabels(w_labels)
+        
+        ThesisStyle.style_ax(ax1)
+        ThesisStyle.style_ax(ax2)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax.set_title(f"{model_type}: Error Scaling by Weight Class", pad=12)
+        if "ST-transformer-par-spec" in str(output_path) or "spec-P01" in str(output_path):
+            default_title = "Participant-specialized ST-Transformer: Performance by Weight Class"
+        else:
+            default_title = "{model_type}: Error Scaling by Weight Class"
+        title = get_plot_title("weight_error", default_title, model_type=model_type)
+        ThesisStyle.set_title(ax1, title)
         
-        ax.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        # Combine legends cleanly
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2,
+                   loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+                   
+        ax1.set_zorder(ax2.get_zorder() + 1)
+        ax1.patch.set_visible(False)
+        
         plt.tight_layout()
-        
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -818,14 +938,15 @@ class AblationPlotter:
         
         ax.set_ylabel("Error (kg)", labelpad=8)
         ax.set_xlabel("Sensor Modality Configuration", labelpad=8)
-        ax.set_title("Sensor Modality Ablation Study", pad=12)
+        title = get_plot_title("ablation", "Sensor Modality Ablation Study")
+        ThesisStyle.set_title(ax, title)
         ax.set_xticks(x)
         ax.set_xticklabels(modalities)
         ax.set_ylim(0, max(rmses) * 1.22)
         
         ax.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -903,7 +1024,8 @@ class ImportanceChannelPlotter:
         ax.set_xlabel("Permutation Importance (Mean MSE Drop)", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax.set_title(f"{model_type}: Channel Permutation Importance (Top {top_n})", pad=12)
+        title = get_plot_title("importance_channel", "{model_type}: Channel Permutation Importance (Top {top_n})", model_type=model_type, top_n=top_n)
+        ThesisStyle.set_title(ax, title)
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         
         from matplotlib.patches import Patch
@@ -917,7 +1039,7 @@ class ImportanceChannelPlotter:
         ax.set_xlim(-max_val * 1.15 if min(values) < 0 else 0, max_val * 1.18)
         
         plt.tight_layout()
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -1014,7 +1136,8 @@ class ImportanceFeaturePlotter:
         ax.set_xlabel("Permutation Importance (Mean MSE Drop)", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax.set_title(f"{model_type}: Feature Permutation Importance (Top {top_n})", pad=12)
+        title = get_plot_title("importance_feature", "{model_type}: Feature Permutation Importance (Top {top_n})", model_type=model_type, top_n=top_n)
+        ThesisStyle.set_title(ax, title)
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         
         from matplotlib.patches import Patch
@@ -1028,7 +1151,7 @@ class ImportanceFeaturePlotter:
         ax.set_xlim(-max_val * 1.15 if min(values) < 0 else 0, max_val * 1.18)
         
         plt.tight_layout()
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -1109,7 +1232,8 @@ class TradeoffPlotter:
             
         ax.set_xlabel("Inference Latency per Sample (ms)", labelpad=8)
         ax.set_ylabel("Prediction Error (RMSE, kg)", labelpad=8)
-        ax.set_title("Generalization Accuracy vs. Inference Latency Trade-Off", pad=12)
+        title = get_plot_title("tradeoff", "Generalization Accuracy vs. Inference Latency Trade-Off")
+        ThesisStyle.set_title(ax, title)
         
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         
@@ -1118,7 +1242,7 @@ class TradeoffPlotter:
         ax.set_ylim(min(rmses) * 0.7, max(rmses) * 1.25)
         
         plt.tight_layout()
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -1247,7 +1371,8 @@ class ImportanceIndividualPlotter:
         ax.set_xlabel("Permutation Importance (Mean MSE Drop)", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        ax.set_title(f"{model_type}: Granular Feature Permutation Importance (Top {top_n})", pad=12)
+        title = get_plot_title("importance_individual", "{model_type}: Granular Feature Permutation Importance (Top {top_n})", model_type=model_type, top_n=top_n)
+        ThesisStyle.set_title(ax, title)
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         
         from matplotlib.patches import Patch
@@ -1261,7 +1386,7 @@ class ImportanceIndividualPlotter:
         ax.set_xlim(-max_val * 1.15 if min(values) < 0 else 0, max_val * 1.18)
         
         plt.tight_layout()
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 
@@ -1342,14 +1467,15 @@ class TukeyPlotter:
         ax.invert_yaxis()
         
         ax.set_xlabel("Mean Absolute Error Difference (kg)", labelpad=8)
-        ax.set_title("Tukey HSD Pairwise Significance (Prediction Error)", pad=12)
+        title = get_plot_title("tukey", "Tukey HSD Pairwise Significance (Prediction Error)")
+        ThesisStyle.set_title(ax, title)
         ax.axvline(0, color='#333333', linestyle='-', linewidth=0.8, alpha=0.5)
         
         max_diff = max(abs(d) for d in diffs) if diffs else 1.0
         ax.set_xlim(-max_diff * 1.35 if min(diffs) < 0 else 0, max_diff * 1.35)
         
         plt.tight_layout()
-        fig.savefig(output_path.with_suffix(".png"))
+        ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
 

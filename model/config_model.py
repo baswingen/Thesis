@@ -4,19 +4,20 @@ from pathlib import Path
 # Detect if we are on the DelftBlue server
 ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
 
-GLOBAL_RANDOM_STATE = 23
+GLOBAL_RANDOM_STATE = 245
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer6"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
+MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
+CV_STRATEGY = "participant"  # Options: "kfold" (calibration run), "participant" (cross-subject LOPO)
 RUN_GRID_SEARCH = False
 GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = not ON_DELFTBLUE
+DEV_MODE = False
 DEV_FRACTION = 0.20
 DEV_CV_FOLDS = 5
 DEV_EPOCHS = 50
@@ -55,7 +56,8 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18'],  # Options: 'all' or a list of IDs (e.g., ['P01', 'P02'])
+    'include': ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09',
+                'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18'],  # matches final_run (17 participants, P13 excluded)
 }
 
 ###########################################################
@@ -154,62 +156,62 @@ FEATURE_CONFIG = {
 
 
     # ── EMG Features (set False to disable) ──────────────
-    # Optimized for cross-subject generalization capacity over raw size.
-    # Kept: 11 highly generalizable features (e.g. LogDet, WL, RMS, HjMob).
-    # Disabled: 9 volatile/redundant features (e.g. Kurtosis, Skewness, SpecEntropy, MAV).
+    # Optimized dynamically for cross-subject generalization (LOPO) vs. calibrated potential (K-Fold).
+    # K-Fold: Enables a rich 20-feature high-fidelity set (matching dedicated single-subject runs).
+    # LOPO: Pruned to 11 robust features to reduce cross-subject variance.
     'emg_features': {
         # Time-domain
-        'MAV':        False,   # DISABLED — negative contribution (-0.00371), redundant with RMS/IEMG
+        'MAV':        True if CV_STRATEGY == 'kfold' else False,
         'RMS':        True,    # Root Mean Square (+0.00740)
         'WL':         True,    # Waveform Length (+0.00974)
         'ZC':         True,    # Zero Crossings (+0.00438)
         'SSC':        True,    # Slope Sign Changes (+0.00232)
-        'VAR':        False,   # DISABLED — negative contribution (-0.01334), highly redundant with RMS
+        'VAR':        True if CV_STRATEGY == 'kfold' else False,
         'WAMP':       True,    # Willison Amplitude (+0.00179)
-        'IEMG':       False,   # DISABLED — negative contribution (-0.00352)
+        'IEMG':       True if CV_STRATEGY == 'kfold' else False,
         'LogDet':     True,    # Log Detector (+0.01598) — excellent skin-impedance normalizer
-        'Skew':       False,   # DISABLED — negative contribution (-0.01149), volatile 3rd moment
-        'Kurt':       False,   # DISABLED — negative contribution (-0.01696), volatile 4th moment
+        'Skew':       True if CV_STRATEGY == 'kfold' else False,
+        'Kurt':       True if CV_STRATEGY == 'kfold' else False,
         'HjMob':      True,    # Hjorth Mobility (+0.01274) — clean time-domain frequency proxy
-        'HjComp':     False,   # DISABLED — negative contribution (-0.01047), high-variance bandwidth estimator
+        'HjComp':     True if CV_STRATEGY == 'kfold' else False,
         'Myopulse':   True,    # Myopulse Percentage Rate (+0.00283)
         # Frequency-domain
         'MNF':        True,    # Mean Frequency (+0.00508)
-        'MDF':        False,   # DISABLED — negative contribution (-0.00425)
+        'MDF':        True if CV_STRATEGY == 'kfold' else False,
         'Power':      True,    # Total Spectral Power (+0.00551)
-        'SpecEntropy':False,   # DISABLED — negative contribution (-0.01440), high cross-subject variance
-        'PeakFreq':   False,   # DISABLED — negative contribution (-0.00326)
+        'SpecEntropy':True if CV_STRATEGY == 'kfold' else False,
+        'PeakFreq':   True if CV_STRATEGY == 'kfold' else False,
         'BW':         True,    # Bandwidth (95%) (+0.00563)
     },
 
     # ── IMU Features (set False to disable) ──────────────
-    # ULTRA-PRUNED BIOMECHANICAL SET: Keeping only the absolute best, most robust generalizers.
-    # Disabling volatile, subject-specific transient signatures (Max, Jerk, Kurt, Skew) and redundant metrics.
+    # K-Fold: Enables a rich 13-feature kinematic set (matching dedicated runs).
+    # LOPO: Pruned to 3 robust features (Mean, Var, Std) to prevent overfitting on subject transients.
     'imu_features': {
-        # Time-domain (kept: 3)
+        # Time-domain
         'Mean':       True,    # Static Posture / Joint Angle (Ridge Rank 4)
         'Var':        True,    # Kinetic Dispersion (Ridge Rank 3)
         'Std':        True,    # Dynamic Intensity / Movement Energy (Ridge Rank 1)
-        'Max':        False,   # DISABLED — highly volatile subject transients
-        'Min':        False,   # DISABLED — redundant with Max via P2P
-        'RMS':        False,   # DISABLED — ≈Std for near-zero-mean signals
-        'SMA':        False,   # DISABLED — redundant with Std/Mean
-        'P2P':        False,   # DISABLED — redundant concentric/eccentric bound
-        'IQR':        False,   # DISABLED — highly correlated with Std
-        'Skew':       False,   # DISABLED — subject-specific lift symmetry
-        'Kurt':       False,   # DISABLED — subject-specific motion spikes
-        'Jerk':       False,   # DISABLED — noisy rate of acceleration change
-        'ZC':         False,   # DISABLED — low value for load estimation
-        'Energy':     False,   # DISABLED — ≈Var*N (redundant)
-        # Frequency-domain (kept: 0)
-        'DomFreq':    False,   # DISABLED — prone to noise/jitter in voluntary lifts
-        'SpecEnergy': False,   # DISABLED — negative contribution (-0.01337)
-        'MNF':        False,   # DISABLED — negative contribution (-0.00363)
-        'MDF':        False,   # DISABLED — highly correlated with MNF
-        'SpecEntropy':False,   # DISABLED — low discrimination for rigid-body
-        # Cross-channel (kept: 0)
-        'SVM_Mean':   False,   # DISABLED — negative contribution (-0.00157)
-        'SVM_Std':    False,   # DISABLED — SVM_Mean is the key statistic
+        'Max':        True,    # restored to match final_run (rich IMU set under LOPO)
+        'Min':        False,
+        'RMS':        True if CV_STRATEGY == 'kfold' else False,
+        'SMA':        True,    # restored to match final_run
+        'P2P':        True,    # restored to match final_run
+        'IQR':        False,
+        'Skew':       True,    # restored to match final_run
+        'Kurt':       True,    # restored to match final_run
+        'Jerk':       True,    # restored to match final_run
+        'ZC':         False,
+        'Energy':     False,
+        # Frequency-domain
+        'DomFreq':    True,    # restored to match final_run
+        'SpecEnergy': True if CV_STRATEGY == 'kfold' else False,
+        'MNF':        False,
+        'MDF':        False,
+        'SpecEntropy':False,
+        # Cross-channel
+        'SVM_Mean':   True if CV_STRATEGY == 'kfold' else False,
+        'SVM_Std':    False,
     },
 }
 
@@ -227,7 +229,7 @@ AUGMENTATION_CONFIG = {
     'p': 0.5,
 
     # Active augmentation methods.  Remove a method name to disable it.
-    'methods': ['noise', 'stretch', 'channel_dropout'],
+    'methods': ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -242,7 +244,7 @@ AUGMENTATION_CONFIG = {
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
     # Optimized to 0.25 as requested
-    'channel_dropout_p': 0.10,
+    'channel_dropout_p': 0.25,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -279,10 +281,11 @@ AUGMENTATION_CONFIG = {
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 17,              # 17-Fold LOPO (Leave-One-Participant-Out) since we have 17 active subjects
-    'strategy': 'participant',  # Options: 'kfold', 'participant'
+    'n_folds': 5 if CV_STRATEGY == 'kfold' else 17,              # 5-Fold standard Stratified Cross-Validation (K-Fold) vs. 17-Fold LOPO
+    'strategy': CV_STRATEGY,        # Options: 'kfold', 'participant'
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
-    'strict_val_participants': 2 # Hold out 2 participants for early stopping validation to prevent overfitting
+    'strict_val_participants': 1, # matches final_run (hold out 1 participant for early-stopping validation)
+    'limit_folds': None         # None = run all n_folds (matches final_run); set to an int only for fast prototyping
 }
 
 # SVM Configuration
@@ -571,17 +574,17 @@ SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
     'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
     'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
     'learning_rate': 0.0003,      # Optimized stable learning rate
-    'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
-    'batch_size': 64,
+    'weight_decay': 1e-5 if CV_STRATEGY == 'kfold' else 0.005,  # Light WD for K-Fold calibration, strong WD for LOPO
+    'batch_size': 128 if CV_STRATEGY == 'kfold' else 64,        # Larger batch size for K-Fold
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    'early_stopping_patience': 5, # Generous early stopping patience
-    'scheduler_patience': 3,       # Learning rate scheduler patience
-    'scheduler_factor': 0.8,       # Smooth learning rate scheduler decay factor
+    'early_stopping_patience': 30 if CV_STRATEGY == 'kfold' else 5, # High patience to ensure calibration convergence
+    'scheduler_patience': 7 if CV_STRATEGY == 'kfold' else 3,       
+    'scheduler_factor': 0.5 if CV_STRATEGY == 'kfold' else 0.8,       
     'use_checkpointing': True,
     'use_amp': True,
     'scheduler': {
-        'type': 'ReduceLROnPlateau'
+        'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-6
     },
     'random_state': GLOBAL_RANDOM_STATE
 }
@@ -645,17 +648,19 @@ SPATIO_TEMPORAL_TRANSFORMER6_CONFIG = {
     'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
     'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
     'learning_rate': 0.0003,      # Optimized stable learning rate
-    'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
-    'batch_size': 64,
+    'weight_decay': 1e-5 if CV_STRATEGY == 'kfold' else 0.005,  # Light WD for K-Fold calibration, strong WD for LOPO
+    'batch_size': 128 if CV_STRATEGY == 'kfold' else 64,        # Larger batch size for K-Fold
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    'early_stopping_patience': 15, # Generous early stopping patience
-    'scheduler_patience': 3,       # Learning rate scheduler patience
-    'scheduler_factor': 0.5,       # Smooth learning rate scheduler decay factor
+    'early_stopping_patience': 30 if CV_STRATEGY == 'kfold' else 15, # High patience to ensure calibration convergence
+    'scheduler_patience': 7 if CV_STRATEGY == 'kfold' else 3,       
+    'scheduler_factor': 0.5 if CV_STRATEGY == 'kfold' else 0.5,       
     'use_checkpointing': True,
     'use_amp': True,
     'fusion_mode': 'gated_feature', # Options: 'gated_feature' (standard Option B), 'gated_softmax' (Option A), 'concat'
     'scheduler': {
+        'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3
+    } if CV_STRATEGY == 'kfold' else {
         'type': 'ReduceLROnPlateau'
     },
     'random_state': GLOBAL_RANDOM_STATE

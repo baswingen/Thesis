@@ -267,6 +267,12 @@ def run_deep_shap_analysis(regressor, X_train, X_test, out_dir, n_bg=200, n_exp=
 
 def process_and_plot_shap(shap_values, channel_names, out_dir):
     """Aggregates SHAP values and generates importance plots."""
+    try:
+        from visualization.run_viz import ThesisStyle
+        ThesisStyle.apply()
+    except Exception as e:
+        print(f"Warning: Could not load ThesisStyle: {e}")
+        
     out_dir = Path(out_dir)
     mean_abs_shap = np.abs(shap_values).sum(axis=2).mean(axis=0)
     n_channels = len(mean_abs_shap)
@@ -342,9 +348,16 @@ def process_and_plot_shap(shap_values, channel_names, out_dir):
             feat_type = f"IMU_{feat_suffix}"
             modality = "IMU"
         else:
-            channel = "Anthropometrics"
-            feat_type = f"Anthro_{name}"
-            modality = "Anthro"
+            if modality == "EMG":
+                channel = name
+                feat_type = "raw"
+            elif modality == "IMU":
+                channel = name
+                feat_type = "raw"
+            else:
+                channel = "Anthropometrics"
+                feat_type = f"Anthro_{name}"
+                modality = "Anthro"
             
         channel_vals[channel] += val
         channel_modality[channel] = modality
@@ -367,6 +380,7 @@ def process_and_plot_shap(shap_values, channel_names, out_dir):
     ax.set_xticks(range(len(sorted_names)))
     ax.set_xticklabels(sorted_names, rotation=45, ha="right", fontsize=10)
     ax.set_ylabel("Mean |SHAP value|", fontsize=11)
+    ThesisStyle.style_ax(ax)
     ax.set_title("DeepSHAP Importance (Top Signal Channels)", fontsize=13, fontweight="bold")
     ax.spines[["top", "right"]].set_visible(False)
 
@@ -396,6 +410,7 @@ def process_and_plot_shap(shap_values, channel_names, out_dir):
         ax.set_xticks(range(len(f_names)))
         ax.set_xticklabels(f_names[f_order], rotation=45, ha="right", fontsize=10)
         ax.set_ylabel("Mean |SHAP value|", fontsize=11)
+        ThesisStyle.style_ax(ax)
         ax.set_title("DeepSHAP Importance (Feature Types across all signals)", fontsize=13, fontweight="bold")
         ax.spines[["top", "right"]].set_visible(False)
         plt.tight_layout()
@@ -441,6 +456,7 @@ def process_and_plot_shap(shap_values, channel_names, out_dir):
     axes[1].set_yticks(range(n_grouped))
     axes[1].set_yticklabels(grouped_names[plot_order][::-1], fontsize=9)
     axes[1].set_xlabel("Mean |SHAP value|")
+    ThesisStyle.style_ax(axes[1])
     axes[1].set_title("Importance per Feature (Grouped)", fontsize=12)
     axes[1].spines[["top", "right"]].set_visible(False)
 

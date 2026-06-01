@@ -345,7 +345,7 @@ def _build_feature_importance(perm_imp, run_dir: Path) -> Optional[dict]:
             modality_sums = {"EMG": 0.0, "IMU": 0.0, "Anthro": 0.0}
             for name, val in zip(grouped_names, grouped_vals):
                 name_str = str(name)
-                if "_EMG" in name_str:
+                if any(k in name_str for k in ["_EMG", "Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
                     modality_sums["EMG"] += float(val)
                 elif any(k in name_str for k in ["_IMU", "_SVM", "ax", "ay", "az", "roll", "pitch", "yaw", "rad", "$a_", "$\\alpha_", "diff"]):
                     modality_sums["IMU"] += float(val)

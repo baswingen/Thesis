@@ -347,6 +347,7 @@ class SpatioTemporalTransformerRegressor3:
         self.random_state = random_state
         self.max_seq_len = max_seq_len
         self.augmentation_config = augmentation_config if augmentation_config is not None else AUGMENTATION_CONFIG
+        self.scheduler_config_dict = scheduler
         
         self.loss_history = {"train": [], "val": []}
         self.train_samples = 0
@@ -492,8 +493,11 @@ class SpatioTemporalTransformerRegressor3:
         dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
         
-        from model.config_model import SPATIO_TEMPORAL_TRANSFORMER3_CONFIG
-        scheduler_config = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('scheduler', {'type': 'ReduceLROnPlateau'})
+        # Read from constructor-passed scheduler config first, then from global fallback
+        scheduler_config = getattr(self, 'scheduler_config_dict', None)
+        if scheduler_config is None:
+            from model.config_model import SPATIO_TEMPORAL_TRANSFORMER3_CONFIG
+            scheduler_config = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('scheduler', {'type': 'ReduceLROnPlateau'})
         
         if scheduler_config.get('type') == 'OneCycleLR':
             total_steps = self.epochs * len(loader_train)
@@ -503,6 +507,21 @@ class SpatioTemporalTransformerRegressor3:
                 total_steps=total_steps,
                 pct_start=scheduler_config.get('pct_start', 0.1),
                 anneal_strategy='cos'
+            )
+        elif scheduler_config.get('type') in ['WarmupCosine', 'WarmupReduceLROnPlateau', 'WarmupPlateau']:
+            from model.model_archs.lr_scheduler import WarmupScheduler
+            target_type = 'cosine' if 'Cosine' in scheduler_config.get('type') else 'plateau'
+            warmup_epochs = scheduler_config.get('warmup_epochs', 5)
+            min_lr = scheduler_config.get('min_lr', 1e-6)
+            scheduler = WarmupScheduler(
+                optimizer,
+                warmup_epochs=warmup_epochs,
+                initial_lr=self.learning_rate,
+                total_epochs=self.epochs,
+                target_scheduler_type=target_type,
+                min_lr=min_lr,
+                patience=self.scheduler_patience,
+                factor=self.scheduler_factor
             )
         else:
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -672,7 +691,8 @@ class SpatioTemporalTransformerRegressor3:
                 'use_amp': self.use_amp,
                 'random_state': self.random_state,
                 'max_seq_len': getattr(self, 'max_seq_len', None),
-                'augmentation_config': self.augmentation_config
+                'augmentation_config': self.augmentation_config,
+                'scheduler': getattr(self, 'scheduler_config_dict', None)
             },
             'split_info': {
                 'train_samples': self.train_samples,

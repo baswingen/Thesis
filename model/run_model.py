@@ -366,14 +366,22 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
                 gkf = GroupKFold(n_splits=n_splits)
                 cv_iterator = list(gkf.split(X, y, groups))
                 n_folds = len(cv_iterator)
-                print(f"\nStarting {n_folds}-Fold Cross-Participant Validation...")
+                limit_folds = CV_CONFIG.get('limit_folds', None)
+                if limit_folds is not None:
+                    print(f"\nStarting {n_folds}-Fold Cross-Participant Validation (Limited to first {limit_folds} folds)...")
+                else:
+                    print(f"\nStarting {n_folds}-Fold Cross-Participant Validation...")
 
     if cv_strategy != 'participant':
         from sklearn.model_selection import StratifiedKFold
         skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=GLOBAL_RANDOM_STATE)
         strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
         cv_iterator = list(skf.split(X, strat_labels))
-        print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
+        limit_folds = CV_CONFIG.get('limit_folds', None)
+        if limit_folds is not None:
+            print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation (Limited to first {limit_folds} folds)...")
+        else:
+            print(f"\nStarting {n_folds}-Fold Stratified Cross-Validation...")
 
     cv_metrics = []
     fold_results = []
@@ -384,6 +392,8 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     perm_importances_individual = []
     cv_histories = []
     cv_val_participants = []
+    evaluated_indices = []
+    limit_folds = CV_CONFIG.get('limit_folds', None)
 
     for fold, (train_idx, test_idx) in enumerate(cv_iterator, 1):
         if cv_strategy == 'participant':
@@ -499,18 +509,25 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             except Exception as e:
                 print(f"[WARN] Permutation importance computation failed: {e}")
                 
-        if cv_strategy == 'participant':
+        if groups is not None:
             fold_groups = groups[test_idx]
+            test_participants = np.unique(fold_groups)
             for p in test_participants:
                 p_mask = (fold_groups == p)
-                p_y_true = y_test_fold[p_mask]
-                p_preds = preds[p_mask]
-                participant_stats.append({
-                    'Participant': p,
-                    'MAE': mean_absolute_error(p_y_true, p_preds),
-                    'RMSE': np.sqrt(mean_squared_error(p_y_true, p_preds)),
-                    'Samples': sum(p_mask)
-                })
+                if np.any(p_mask):
+                    p_y_true = y_test_fold[p_mask]
+                    p_preds = preds[p_mask]
+                    participant_stats.append({
+                        'Participant': p,
+                        'MAE': mean_absolute_error(p_y_true, p_preds),
+                        'RMSE': np.sqrt(mean_squared_error(p_y_true, p_preds)),
+                        'Samples': int(np.sum(p_mask))
+                    })
+
+        evaluated_indices.extend(list(test_idx))
+        if limit_folds is not None and fold >= limit_folds:
+            print(f"\n[INFO] limit_folds={limit_folds} reached. Stopping cross-validation early after {fold} folds.")
+            break
 
     if DEV_MODE:
         print("\n[DEV MODE] Skipping final full-dataset training since model parameters are not needed.")
@@ -576,7 +593,40 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
     if not avg_permutation_importance:
         avg_permutation_importance = None
 
-    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories, cv_val_participants
+    # Aggregate participant stats if there are duplicates (e.g. under 'kfold' strategy)
+    if participant_stats:
+        from collections import defaultdict
+        p_groups = defaultdict(list)
+        for stat in participant_stats:
+            p_groups[stat['Participant']].append(stat)
+            
+        aggregated_stats = []
+        for p, stats_list in p_groups.items():
+            total_samples = sum(s['Samples'] for s in stats_list)
+            avg_mae = sum(s['MAE'] * s['Samples'] for s in stats_list) / max(total_samples, 1)
+            avg_mse = sum((s['RMSE'] ** 2) * s['Samples'] for s in stats_list) / max(total_samples, 1)
+            avg_rmse = np.sqrt(avg_mse)
+            
+            aggregated_stats.append({
+                'Participant': p,
+                'MAE': avg_mae,
+                'RMSE': avg_rmse,
+                'Samples': total_samples
+            })
+        participant_stats = sorted(aggregated_stats, key=lambda x: x['Participant'])
+
+    # Set n_folds to the actual number of folds run if limited
+    if limit_folds is not None and fold < n_folds:
+        n_folds = fold
+
+    # Slice oof_predictions to only include evaluated indices if we stopped early
+    if limit_folds is not None and len(evaluated_indices) < len(X):
+        sorted_eval_idx = sorted(evaluated_indices)
+        oof_predictions = oof_predictions[sorted_eval_idx]
+    else:
+        sorted_eval_idx = None
+
+    return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories, cv_val_participants, sorted_eval_idx
     # NOTE: cv_metrics is the raw list of per-fold metric dicts, needed by run_data_exporter
 
 
@@ -822,9 +872,22 @@ def main():
         print_data_summary(X, y, is_raw_segment, is_sequence)
         # 4. Training & Evaluation
         if CV_CONFIG.get('use_cross_val', True):
-            model, cv_metrics_list, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p = execute_cross_validation(
+            model, cv_metrics_list, oof_predictions, participant_stats, actual_n_folds, perm_imp, all_histories, cv_val_p, evaluated_indices = execute_cross_validation(
                 X, y, groups, df, model_type, CV_CONFIG.get('strategy', 'kfold'), CV_CONFIG.get('n_folds', 5)
             )
+            
+            # If we limited folds, slice X, y, groups, df to match the evaluated subset
+            if evaluated_indices is not None and len(evaluated_indices) < len(X):
+                print(f"[INFO] Truncating dataset arrays to {len(evaluated_indices)} evaluated samples from {actual_n_folds} folds.")
+                X = X.iloc[evaluated_indices]
+                y = y.iloc[evaluated_indices]
+                if groups is not None:
+                    groups = groups[evaluated_indices]
+                if df is not None:
+                    df = df.iloc[evaluated_indices].reset_index(drop=True)
+                X = X.reset_index(drop=True)
+                y = y.reset_index(drop=True)
+                
             avg_metrics = {k: np.mean([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
             std_metrics = {k: np.std([m[k] for m in cv_metrics_list]) for k in cv_metrics_list[0].keys()}
             metrics, X_train, X_test, y_train, y_test, y_pred = {}, None, None, None, None, None

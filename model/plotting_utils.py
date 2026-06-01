@@ -114,7 +114,7 @@ def plot_regression_results(y_true: pd.Series | np.ndarray, y_pred: np.ndarray, 
     
     # Professional metrics box top left
     # Note: These are 'Pooled' metrics (calculated across all samples)
-    stats_text = f"POOLED METRICS:\n$R^2 = {r2:.3f}$\n$MAE = {mae:.3f}$ kg"
+    stats_text = f"POOLED METRICS:\n$\\mathrm{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg"
     ax.text(0.02, 0.98, stats_text, 
              transform=ax.transAxes, verticalalignment='top',
              bbox=dict(facecolor='white', alpha=0.9, edgecolor='#CCCCCC', boxstyle='round,pad=0.5'))
@@ -315,11 +315,7 @@ def plot_seqlen_performance(per_seqlen_stats: list, save_path: str | Path,
     ax1.set_zorder(ax2.get_zorder() + 1)
     ax1.patch.set_visible(False)
 
-    # Footnote about omitted bins
-    footnote = f"Bins with < {min_count} samples omitted ({n_dropped} bin(s) excluded)."
-    fig.text(0.5, -0.02, footnote, ha='center', va='top',
-             fontsize=9, color='grey', style='italic')
-
+    # Footnote about omitted bins removed to avoid clutter
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
