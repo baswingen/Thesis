@@ -187,7 +187,7 @@
       "4.25": 4.15,
       "6.0": 5.93
     },
-    "ablation_modality": "all",
+    "ablation_modality": "emg_only",
     "global_loss_function": "mse",
     "global_random_state": 245,
     "dev_mode": false,

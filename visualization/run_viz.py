@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 # ──────────────────────────────────────────────────────────
 # Path to the model run folder containing run_data.json.
 # Can be absolute, or relative to the project root.
-RUN_DIR = "model/model_results/final_run_emg+"
+RUN_DIR = "model/model_results/final_run"
 
 # Target folder to save generated figures.
 OUTPUT_DIR = "/Users/baswingen/Library/Mobile Documents/com~apple~CloudDocs/Master Thesis/python/Thesis/visualization/run_plots"

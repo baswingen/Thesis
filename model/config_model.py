@@ -4,30 +4,30 @@ from pathlib import Path
 # Detect if we are on the DelftBlue server
 ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
 
-GLOBAL_RANDOM_STATE = 245
+GLOBAL_RANDOM_STATE = 23
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 
 # ──────────────────────────────────────────────────────────
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
-MODEL_TYPE = "spatio_temporal_transformer5"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
+MODEL_TYPE = "spatio_temporal_transformer6"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
 RUN_GRID_SEARCH = False
 GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
 
-DEV_MODE = False
+DEV_MODE = not ON_DELFTBLUE
 DEV_FRACTION = 0.20
-DEV_CV_FOLDS = 8
-DEV_EPOCHS = 25
-DEV_EARLY_STOPPING_PATIENCE = 5
+DEV_CV_FOLDS = 5
+DEV_EPOCHS = 50
+DEV_EARLY_STOPPING_PATIENCE = 10
 
 # Enables or disables the computation of feature importance (DeepSHAP & Permutation).
 # These computations can be very slow, so disabling them is useful for rapid prototyping.
 COMPUTE_FEATURE_IMPORTANCE = True
 COMPUTE_PERMUTATION_CHANNEL = True
 COMPUTE_PERMUTATION_FEATURE = True
-COMPUTE_PERMUTATION_INDIVIDUAL = True
+COMPUTE_PERMUTATION_INDIVIDUAL = False
 COMPUTE_DEEPSHAP = True
 RUN_MODALITY_ABLATION = True
 
@@ -183,26 +183,26 @@ FEATURE_CONFIG = {
     },
 
     # ── IMU Features (set False to disable) ──────────────
-    # Kept: 10 solid physical kinematics estimators (e.g. Std, Var, Mean, P2P, Jerk).
-    # Disabled: 3 noisy frequency/magnitude cross-channel metrics (SpecEnergy, SVM_Mean, MNF).
+    # ULTRA-PRUNED BIOMECHANICAL SET: Keeping only the absolute best, most robust generalizers.
+    # Disabling volatile, subject-specific transient signatures (Max, Jerk, Kurt, Skew) and redundant metrics.
     'imu_features': {
-        # Time-domain (kept: 10)
-        'Mean':       True,    # Mean value (+0.01379)
-        'Var':        True,    # Variance (+0.01571)
-        'Std':        True,    # Standard Deviation (+0.01619) — absolute best generalizer
-        'Max':        True,    # Maximum (+0.00262)
+        # Time-domain (kept: 3)
+        'Mean':       True,    # Static Posture / Joint Angle (Ridge Rank 4)
+        'Var':        True,    # Kinetic Dispersion (Ridge Rank 3)
+        'Std':        True,    # Dynamic Intensity / Movement Energy (Ridge Rank 1)
+        'Max':        False,   # DISABLED — highly volatile subject transients
         'Min':        False,   # DISABLED — redundant with Max via P2P
         'RMS':        False,   # DISABLED — ≈Std for near-zero-mean signals
-        'SMA':        True,    # Signal Magnitude Area (+0.00643)
-        'P2P':        True,    # Peak-to-Peak (+0.01239)
+        'SMA':        False,   # DISABLED — redundant with Std/Mean
+        'P2P':        False,   # DISABLED — redundant concentric/eccentric bound
         'IQR':        False,   # DISABLED — highly correlated with Std
-        'Skew':       True,    # Skewness (+0.00539)
-        'Kurt':       True,    # Kurtosis (+0.00634)
-        'Jerk':       True,    # Mean Absolute Jerk (+0.01139)
+        'Skew':       False,   # DISABLED — subject-specific lift symmetry
+        'Kurt':       False,   # DISABLED — subject-specific motion spikes
+        'Jerk':       False,   # DISABLED — noisy rate of acceleration change
         'ZC':         False,   # DISABLED — low value for load estimation
         'Energy':     False,   # DISABLED — ≈Var*N (redundant)
-        # Frequency-domain (kept: 1)
-        'DomFreq':    True,    # Dominant Frequency (+0.01096)
+        # Frequency-domain (kept: 0)
+        'DomFreq':    False,   # DISABLED — prone to noise/jitter in voluntary lifts
         'SpecEnergy': False,   # DISABLED — negative contribution (-0.01337)
         'MNF':        False,   # DISABLED — negative contribution (-0.00363)
         'MDF':        False,   # DISABLED — highly correlated with MNF
@@ -227,7 +227,7 @@ AUGMENTATION_CONFIG = {
     'p': 0.5,
 
     # Active augmentation methods.  Remove a method name to disable it.
-    'methods': ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'],
+    'methods': ['noise', 'stretch', 'channel_dropout'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -242,7 +242,7 @@ AUGMENTATION_CONFIG = {
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
     # Optimized to 0.25 as requested
-    'channel_dropout_p': 0.25,
+    'channel_dropout_p': 0.10,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -626,10 +626,35 @@ SPATIO_TEMPORAL_TRANSFORMER5_CONFIG = {
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
     'early_stopping_patience': 15, # Generous early stopping patience
-    'scheduler_patience': 5,       # Learning rate scheduler patience
+    'scheduler_patience': 3,       # Learning rate scheduler patience
     'scheduler_factor': 0.5,       # Smooth learning rate scheduler decay factor
     'use_checkpointing': True,
     'use_amp': True,
+    'scheduler': {
+        'type': 'ReduceLROnPlateau'
+    },
+    'random_state': GLOBAL_RANDOM_STATE
+}
+
+# Modality-Isolated SST6 Spatio-Temporal Transformer (SST6) with Gated Multimodal Fusion
+SPATIO_TEMPORAL_TRANSFORMER6_CONFIG = {
+    'd_model': 96,                # Swept optimal Sweet Spot for cross-subject generalization
+    'nhead_spatial': 8,           # 8 spatial heads for detailed muscle activation mapping
+    'num_layers': 4,              # Combined layers (3 isolated blocks + 1 spatial cross-modality block)
+    'nhead_temporal': 2,          # 2 temporal heads for clean velocity/jerk tracking
+    'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
+    'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
+    'learning_rate': 0.0003,      # Optimized stable learning rate
+    'weight_decay': 0.005,        # Strong WD for clean regularization without capacity choke
+    'batch_size': 64,
+    'epochs': 200,                # Full epochs budget
+    'validation_split': 0.1,
+    'early_stopping_patience': 15, # Generous early stopping patience
+    'scheduler_patience': 3,       # Learning rate scheduler patience
+    'scheduler_factor': 0.5,       # Smooth learning rate scheduler decay factor
+    'use_checkpointing': True,
+    'use_amp': True,
+    'fusion_mode': 'gated_feature', # Options: 'gated_feature' (standard Option B), 'gated_softmax' (Option A), 'concat'
     'scheduler': {
         'type': 'ReduceLROnPlateau'
     },
@@ -679,7 +704,7 @@ if DEV_MODE:
     print(f"[CONFIG] Scaled augmentation targets - Participant: {AUGMENTATION_CONFIG['target_samples_per_participant']}, Weight: {AUGMENTATION_CONFIG['target_samples_per_weight']}, Group: {AUGMENTATION_CONFIG['target_samples_per_group']}")
     
     # Cap epochs and patience for fast deep learning runs
-    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, SPATIO_TEMPORAL_TRANSFORMER4_CONFIG, SPATIO_TEMPORAL_TRANSFORMER5_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
+    for cfg in [MLP_CONFIG, GRU_CONFIG, LSTM_CONFIG, CNN_LSTM_CONFIG, CNN_GRU_CONFIG, CNN_BILSTM_ATTENTION_CONFIG, CNN_LSTM_ABLATION_CONFIG, TCN_CONFIG, TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER_CONFIG, SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, SPATIO_TEMPORAL_TRANSFORMER4_CONFIG, SPATIO_TEMPORAL_TRANSFORMER5_CONFIG, SPATIO_TEMPORAL_TRANSFORMER6_CONFIG, ST_TRANSFORMER_AKSAN_CONFIG, CNN_ST_TRANSFORMER_CONFIG]:
         if 'epochs' in cfg:
             cfg['epochs'] = min(cfg['epochs'], DEV_EPOCHS)
         if 'early_stopping_patience' in cfg:
@@ -747,6 +772,20 @@ if DEV_MODE:
     })
     
     SPATIO_TEMPORAL_TRANSFORMER5_CONFIG.update({
+        'd_model': 96,
+        'nhead_spatial': 8,
+        'num_layers': 3,
+        'nhead_temporal': 2,
+        'dim_feedforward': 256,
+        'dropout_rate': 0.5,
+        'learning_rate': 0.0005,
+        'weight_decay': 0.005,
+        'batch_size': 64,
+        'use_checkpointing': False,
+        'use_amp': True,
+    })
+    
+    SPATIO_TEMPORAL_TRANSFORMER6_CONFIG.update({
         'd_model': 96,
         'nhead_spatial': 8,
         'num_layers': 3,
