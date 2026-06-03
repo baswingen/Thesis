@@ -56,7 +56,7 @@ OUTPUT_DIR = "/Users/baswingen/Library/Mobile Documents/com~apple~CloudDocs/Mast
 LAYOUT_WIDTH = "default"
 
 # Specific plots to generate. 
-# Options: "loss", "regression", "seqlen", "participant", "distribution", "weight_error", "ablation", "importance_channel", "importance_feature", "tukey"
+# Options: "loss", "regression", "seqlen", "participant", "distribution", "weight_error", "ablation", "importance_channel", "importance_feature", "tukey", "deepshap_channel", "deepshap_feature_type", "deepshap_modality"
 # Set to None to automatically generate all available plots, or specify a list: e.g. ["loss", "regression"]
 PLOTS_TO_GENERATE = None
 
@@ -75,7 +75,10 @@ PLOT_TITLES = {
     "importance_feature": "{model_type}: Feature Permutation Importance (Top {top_n})",
     "tradeoff": "Generalization Accuracy vs. Inference Latency Trade-Off",
     "importance_individual": "{model_type}: Granular Feature Permutation Importance (Top {top_n})",
-    "tukey": "Tukey HSD Pairwise Significance (Prediction Error)"
+    "tukey": "Tukey HSD Pairwise Significance (Prediction Error)",
+    "deepshap_channel": "{model_type}: DeepSHAP Channel Importance (Top {top_n})",
+    "deepshap_feature_type": "{model_type}: DeepSHAP Feature Importance (Top {top_n})",
+    "deepshap_modality": "{model_type}: DeepSHAP Modality Split"
 }
 
 def get_plot_title(plot_name, default_val, **kwargs):
@@ -1480,6 +1483,317 @@ class TukeyPlotter:
         return True
 
 
+@plot_registry.register("deepshap_channel")
+class DeepShapChannelPlotter:
+    """Plots a premium horizontal bar chart showing input channel DeepSHAP attribution."""
+    
+    def plot(self, data, output_path, layout_width):
+        feat_imp = data.get("feature_importance", {})
+        channel_imp = feat_imp.get("deepshap_channel")
+        if not channel_imp:
+            print("  [Warning] Missing DeepSHAP channel attribution data. Skipping.")
+            return False
+            
+        ThesisStyle.apply(layout_width)
+        
+        items = []
+        for raw_lbl, val in channel_imp.items():
+            clean_lbl = raw_lbl.replace("_EMG", "").replace("_IMU", "")
+            # Sensors
+            clean_lbl = clean_lbl.replace("ax1", "S1 Accel X").replace("ay1", "S1 Accel Y").replace("az1", "S1 Accel Z")
+            clean_lbl = clean_lbl.replace("ax2", "S2 Accel X").replace("ay2", "S2 Accel Y").replace("az2", "S2 Accel Z")
+            clean_lbl = clean_lbl.replace("roll_rad1", "S1 Roll").replace("pitch_rad1", "S1 Pitch").replace("yaw_rad1", "S1 Yaw")
+            clean_lbl = clean_lbl.replace("roll_rad2", "S2 Roll").replace("pitch_rad2", "S2 Pitch").replace("yaw_rad2", "S2 Yaw")
+            
+            # Modality tag
+            if "_EMG" in raw_lbl or any(m in raw_lbl for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                modality = "EMG"
+            else:
+                modality = "IMU"
+                
+            items.append((clean_lbl, val, modality))
+            
+        # Sort by importance magnitude
+        items = sorted(items, key=lambda x: x[1], reverse=True)
+        
+        # Limit to top 15 for premium presentation
+        top_n = min(15, len(items))
+        items = items[:top_n]
+        
+        labels = [x[0] for x in items]
+        values = [x[1] for x in items]
+        modalities = [x[2] for x in items]
+        
+        fig, ax = plt.subplots(figsize=(6.5, 4.5) if layout_width == "default" else None)
+        
+        y_pos = np.arange(len(labels))
+        colors = [ThesisStyle.COLOR_EMG if m == "EMG" else ThesisStyle.COLOR_IMU for m in modalities]
+        
+        bars = ax.barh(y_pos, values, color=colors, alpha=0.85, height=0.55, edgecolor=colors, linewidth=0.5)
+        ax.axvline(0, color='#333333', linestyle='-', linewidth=0.7, alpha=0.5)
+        
+        # Annotate exact values
+        for idx, bar in enumerate(bars):
+            width = bar.get_width()
+            val_str = f"{width:.3f}"
+            ax.annotate(val_str,
+                        xy=(width, bar.get_y() + bar.get_height() / 2),
+                        xytext=(4, 0), textcoords="offset points",
+                        ha='left', va='center', fontsize=plt.rcParams['font.size'] - 2.5,
+                        color='#333333')
+                
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(labels)
+        ax.invert_yaxis()
+        
+        ax.set_xlabel("Mean |SHAP Value|", labelpad=8)
+        
+        model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
+        title = get_plot_title("deepshap_channel", "{model_type}: DeepSHAP Channel Importance (Top {top_n})", model_type=model_type, top_n=top_n)
+        ThesisStyle.set_title(ax, title)
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Channel'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Channel')
+        ]
+        ax.legend(handles=legend_elements, loc='lower right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        max_val = max(values) if values else 1.0
+        ax.set_xlim(0, max_val * 1.18)
+        
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_path)
+        plt.close(fig)
+        return True
+
+
+@plot_registry.register("deepshap_feature_type")
+class DeepShapFeatureTypePlotter:
+    """Plots a premium horizontal bar chart showing DeepSHAP attribution of feature types."""
+    
+    def plot(self, data, output_path, layout_width):
+        feat_imp = data.get("feature_importance", {})
+        feature_imp = feat_imp.get("deepshap_feature_type")
+        if not feature_imp:
+            print("  [Warning] Missing DeepSHAP feature type data. Skipping.")
+            return False
+            
+        ThesisStyle.apply(layout_width)
+        
+        items = []
+        for raw_lbl, val in feature_imp.items():
+            clean_lbl = raw_lbl.replace("EMG_", "EMG ").replace("IMU_", "IMU ")
+            
+            full_names = {
+                "MAV": "Mean Absolute Value (MAV)",
+                "RMS": "Root Mean Square (RMS)",
+                "WL": "Waveform Length (WL)",
+                "ZC": "Zero Crossings (ZC)",
+                "SSC": "Slope Sign Changes (SSC)",
+                "VAR": "Variance (VAR)",
+                "WAMP": "Willison Amplitude (WAMP)",
+                "IEMG": "Integrated EMG (IEMG)",
+                "LogDet": "Log Detector (LogDet)",
+                "Skew": "Skewness",
+                "Kurt": "Kurtosis",
+                "HjMob": "Hjorth Mobility",
+                "HjComp": "Hjorth Complexity",
+                "Myopulse": "Myopulse Rate",
+                "MNF": "Mean Frequency (MNF)",
+                "MDF": "Median Frequency (MDF)",
+                "Power": "Total Power",
+                "SpecEntropy": "Spectral Entropy",
+                "PeakFreq": "Peak Frequency",
+                "BW": "Bandwidth",
+                "DomFreq": "Dominant Frequency",
+                "Jerk": "Absolute Jerk",
+                "SMA": "Signal Magnitude Area (SMA)",
+                "P2P": "Peak-to-Peak (P2P)",
+                "SpecEnergy": "Spectral Energy",
+                "SVM_Mean": "Signal Vector Magnitude (Mean)"
+            }
+            
+            parts = clean_lbl.split(" ")
+            prefix = parts[0]
+            suffix = " ".join(parts[1:])
+            
+            refined_lbl = f"{prefix} {full_names.get(suffix, suffix)}"
+            items.append((refined_lbl, val, prefix))
+            
+        items = sorted(items, key=lambda x: x[1], reverse=True)
+        top_n = min(15, len(items))
+        items = items[:top_n]
+        
+        labels = [x[0] for x in items]
+        values = [x[1] for x in items]
+        prefixes = [x[2] for x in items]
+        
+        fig, ax = plt.subplots(figsize=(6.5, 4.5) if layout_width == "default" else None)
+        
+        y_pos = np.arange(len(labels))
+        colors = [ThesisStyle.COLOR_EMG if p == "EMG" else ThesisStyle.COLOR_IMU for p in prefixes]
+        
+        bars = ax.barh(y_pos, values, color=colors, alpha=0.85, height=0.55, edgecolor=colors, linewidth=0.5)
+        ax.axvline(0, color='#333333', linestyle='-', linewidth=0.7, alpha=0.5)
+        
+        for idx, bar in enumerate(bars):
+            width = bar.get_width()
+            val_str = f"{width:.3f}"
+            ax.annotate(val_str,
+                        xy=(width, bar.get_y() + bar.get_height() / 2),
+                        xytext=(4, 0), textcoords="offset points",
+                        ha='left', va='center', fontsize=plt.rcParams['font.size'] - 2.5,
+                        color='#333333')
+                
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(labels)
+        ax.invert_yaxis()
+        
+        ax.set_xlabel("Mean |SHAP Value|", labelpad=8)
+        
+        model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
+        title = get_plot_title("deepshap_feature_type", "{model_type}: DeepSHAP Feature Importance (Top {top_n})", model_type=model_type, top_n=top_n)
+        ThesisStyle.set_title(ax, title)
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        
+        from matplotlib.patches import Patch
+        legend_elements = [
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Feature Group'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Feature Group')
+        ]
+        ax.legend(handles=legend_elements, loc='lower right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        max_val = max(values) if values else 1.0
+        ax.set_xlim(0, max_val * 1.18)
+        
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_path)
+        plt.close(fig)
+        return True
+
+
+@plot_registry.register("deepshap_modality")
+class DeepShapModalityPlotter:
+    """Plots DeepSHAP Modality Split (Pie chart of EMG/IMU/Anthro shares + grouped bar chart)."""
+    
+    def plot(self, data, output_path, layout_width):
+        feat_imp = data.get("feature_importance", {})
+        mod_imp = feat_imp.get("deepshap_modality")
+        chan_imp = feat_imp.get("deepshap_channel")
+        
+        if not mod_imp or not chan_imp:
+            print("  [Warning] Missing DeepSHAP modality or channel data. Skipping.")
+            return False
+            
+        ThesisStyle.apply(layout_width)
+        
+        # 1. Left: Pie Chart
+        shares = []
+        labels = []
+        colors = []
+        
+        modality_colors = {
+            "EMG": ThesisStyle.COLOR_EMG,
+            "IMU": ThesisStyle.COLOR_IMU,
+            "Anthro": ThesisStyle.COLOR_MEDIAN  # High-contrast yellow/gold
+        }
+        
+        for k in ["EMG", "IMU", "Anthro"]:
+            val = mod_imp.get(k, 0.0)
+            if val > 0:
+                shares.append(val)
+                labels.append(k)
+                colors.append(modality_colors.get(k, ThesisStyle.COLOR_UNITY))
+                
+        if not shares:
+            print("  [Warning] No positive modality shares found. Skipping.")
+            return False
+            
+        # Draw 1 row, 2 columns layout
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.0, 5.0) if layout_width != "column" else (8.0, 4.0))
+        
+        total = sum(shares)
+        pct_labels = [f"{l}\n({(s/total)*100:.1f}%)" for l, s in zip(labels, shares)]
+        
+        ax1.pie(
+            shares,
+            labels=pct_labels,
+            colors=colors,
+            startangle=90,
+            autopct="%1.1f%%",
+            wedgeprops=dict(edgecolor="white", linewidth=1.5, antialiased=True),
+            textprops=dict(fontfamily='serif', size=plt.rcParams['font.size'] - 1.0)
+        )
+        ax1.set_title("Modality Share of Total |SHAP|", fontsize=plt.rcParams['font.size'])
+        
+        # 2. Right: Grouped Horizontal Bar Chart of Channels
+        items = []
+        for raw_lbl, val in chan_imp.items():
+            clean_lbl = raw_lbl.replace("_EMG", "").replace("_IMU", "")
+            # Sensors
+            clean_lbl = clean_lbl.replace("ax1", "S1 Accel X").replace("ay1", "S1 Accel Y").replace("az1", "S1 Accel Z")
+            clean_lbl = clean_lbl.replace("ax2", "S2 Accel X").replace("ay2", "S2 Accel Y").replace("az2", "S2 Accel Z")
+            clean_lbl = clean_lbl.replace("roll_rad1", "S1 Roll").replace("pitch_rad1", "S1 Pitch").replace("yaw_rad1", "S1 Yaw")
+            clean_lbl = clean_lbl.replace("roll_rad2", "S2 Roll").replace("pitch_rad2", "S2 Pitch").replace("yaw_rad2", "S2 Yaw")
+            
+            if "_EMG" in raw_lbl or any(m in raw_lbl for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                modality = "EMG"
+            elif "_IMU" in raw_lbl or any(m in raw_lbl for m in ["ax", "ay", "az", "roll", "pitch", "yaw", "diff", "$"]):
+                modality = "IMU"
+            else:
+                modality = "Anthro"
+                
+            items.append((clean_lbl, val, modality))
+            
+        # Group by Modality: EMG first, then IMU, then Anthro
+        grouped_items = []
+        for mod in ["EMG", "IMU", "Anthro"]:
+            mod_items = [x for x in items if x[2] == mod]
+            # Sort within group descending
+            mod_items = sorted(mod_items, key=lambda x: x[1], reverse=True)
+            grouped_items.extend(mod_items)
+            
+        # Limit to top 15 grouped features
+        grouped_items = grouped_items[:15]
+        
+        ch_labels = [x[0] for x in grouped_items]
+        ch_vals = [x[1] for x in grouped_items]
+        ch_mods = [x[2] for x in grouped_items]
+        
+        y_pos = np.arange(len(ch_labels))
+        ch_colors = [modality_colors.get(m, ThesisStyle.COLOR_UNITY) for m in ch_mods]
+        
+        bars = ax2.barh(y_pos, ch_vals, color=ch_colors, alpha=0.85, height=0.55, edgecolor=ch_colors, linewidth=0.5)
+        ax2.axvline(0, color='#333333', linestyle='-', linewidth=0.7, alpha=0.5)
+        
+        for idx, bar in enumerate(bars):
+            width = bar.get_width()
+            val_str = f"{width:.3f}"
+            ax2.annotate(val_str,
+                        xy=(width, bar.get_y() + bar.get_height() / 2),
+                        xytext=(4, 0), textcoords="offset points",
+                        ha='left', va='center', fontsize=plt.rcParams['font.size'] - 2.5,
+                        color='#333333')
+                        
+        ax2.set_yticks(y_pos)
+        ax2.set_yticklabels(ch_labels)
+        ax2.invert_yaxis()
+        ax2.set_xlabel("Mean |SHAP| Value", labelpad=8)
+        ax2.set_title("Importance per Grouped Feature", fontsize=plt.rcParams['font.size'])
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        
+        model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
+        title_text = get_plot_title("deepshap_modality", "{model_type}: DeepSHAP Modality Split", model_type=model_type)
+        ThesisStyle.set_suptitle(fig, title_text)
+        
+        plt.tight_layout(rect=[0, 0, 1, 0.93])
+        ThesisStyle.save_figure(fig, output_path)
+        plt.close(fig)
+        return True
+
+
 # ===========================================================================
 # 5. Command Line Orchestration
 # ===========================================================================
@@ -1611,10 +1925,40 @@ def main():
         if not plotter:
             continue
             
+    PLOT_CATEGORIES = {
+        "loss": "performance",
+        "regression": "performance",
+        "seqlen": "performance",
+        "participant": "performance",
+        "weight_error": "performance",
+        "ablation": "performance",
+        "tradeoff": "performance",
+        
+        "distribution": "dataset",
+        
+        "tukey": "statistics",
+        
+        "importance_channel": "importance",
+        "importance_feature": "importance",
+        "importance_individual": "importance",
+        "deepshap_channel": "importance",
+        "deepshap_feature_type": "importance",
+        "deepshap_modality": "importance"
+    }
+
+    for name in active_plots:
+        plotter = plot_registry.get_plotter(name)
+        if not plotter:
+            continue
+            
+        category = PLOT_CATEGORIES.get(name, "")
+        target_subfolder = output_dir_path / category
+        target_subfolder.mkdir(parents=True, exist_ok=True)
+            
         if name in ["ablation", "tradeoff"]:
             # These plotters run once on the root multi-run dictionary
             print(f"Running '{name}' plotter (on root multi-run data)...")
-            out_file = output_dir_path / f"{name}_plot"
+            out_file = target_subfolder / f"{name}_plot"
             try:
                 success = plotter.plot(data, out_file, args.width)
                 if success:
@@ -1626,7 +1970,7 @@ def main():
         elif name == "distribution":
             # Run once on single/sub-run dictionary
             print(f"Running '{name}' plotter (once)...")
-            out_file = output_dir_path / f"{name}_plot"
+            out_file = target_subfolder / f"{name}_plot"
             try:
                 run_dict = data[sub_runs[0]] if is_multi_ablation else data
                 success = plotter.plot(run_dict, out_file, args.width)
@@ -1641,7 +1985,7 @@ def main():
             for run_name, run_dict, suffix in runs_to_process:
                 run_desc = f" ({run_name})" if is_multi_ablation else ""
                 print(f"Running '{name}' plotter{run_desc}...")
-                out_file = output_dir_path / f"{name}_plot{suffix}"
+                out_file = target_subfolder / f"{name}_plot{suffix}"
                 try:
                     success = plotter.plot(run_dict, out_file, args.width)
                     if success:

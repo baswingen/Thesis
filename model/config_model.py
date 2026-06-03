@@ -229,7 +229,9 @@ AUGMENTATION_CONFIG = {
     'p': 0.5,
 
     # Active augmentation methods.  Remove a method name to disable it.
-    'methods': ['noise', 'stretch', 'channel_dropout', 'magnitude_scale', 'mixup'],
+    # CONTROL RUN: reverted to final_run BASE aug (magnitude_scale+mixup removed) so the
+    # within-distribution control differs from final_run ONLY by the data split.
+    'methods': ['noise', 'stretch', 'channel_dropout'],
 
     # ── Gaussian noise ────────────────────────────────────────────────
     # Standard deviation on the z-score scale (after StandardScaler).
@@ -243,8 +245,8 @@ AUGMENTATION_CONFIG = {
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
-    # Optimized to 0.25 as requested
-    'channel_dropout_p': 0.25,
+    # CONTROL RUN: reverted to final_run base value (0.10).
+    'channel_dropout_p': 0.10,
 
     # ── Magnitude scaling ─────────────────────────────────────────────
     # Per-feature multiplicative factor drawn uniformly from this range.
@@ -281,8 +283,10 @@ AUGMENTATION_CONFIG = {
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 5 if CV_STRATEGY == 'kfold' else 17,              # 5-Fold standard Stratified Cross-Validation (K-Fold) vs. 17-Fold LOPO
-    'strategy': CV_STRATEGY,        # Options: 'kfold', 'participant'
+    'n_folds': 5,               # CONTROL: pooled 5-fold (overrides participant-mode 17)
+    'strategy': 'kfold',        # CONTROL: pooled StratifiedKFold splitter — DECOUPLED from module
+                                # CV_STRATEGY (kept 'participant' so features/hyperparams/aug stay
+                                # matched to final_run). Only the DATA SPLIT changes vs final_run.
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
     'strict_val_participants': 1, # matches final_run (hold out 1 participant for early-stopping validation)
     'limit_folds': None         # None = run all n_folds (matches final_run); set to an int only for fast prototyping
