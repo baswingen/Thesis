@@ -529,8 +529,9 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
             print(f"\n[INFO] limit_folds={limit_folds} reached. Stopping cross-validation early after {fold} folds.")
             break
 
-    if DEV_MODE:
-        print("\n[DEV MODE] Skipping final full-dataset training since model parameters are not needed.")
+    if DEV_MODE or CV_CONFIG.get('skip_final_full_train', False):
+        print("\n[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); "
+              "reusing the last evaluated fold model for SHAP/saving.")
     else:
         print("\nTraining final model on full dataset for saving...")
         model = initialize_model(model_type)

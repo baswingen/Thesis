@@ -307,6 +307,7 @@ class SpatioTemporalTransformerRegressor3:
                  imu_window_size_sec: float = FEATURE_CONFIG['imu_window_size_sec'],
                  window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
+                 class_balanced_loss: bool = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('class_balanced_loss', False),
                  use_checkpointing: bool = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('use_checkpointing', True),
                  use_amp: bool = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG.get('use_amp', True),
                  random_state: int = SPATIO_TEMPORAL_TRANSFORMER3_CONFIG['random_state'],
@@ -342,6 +343,7 @@ class SpatioTemporalTransformerRegressor3:
         self.imu_window_size_sec = imu_window_size_sec
         self.window_step_sec = window_step_sec
         self.loss_type = loss_type.lower()
+        self.class_balanced_loss = class_balanced_loss
         self.use_checkpointing = use_checkpointing
         self.use_amp = use_amp
         self.random_state = random_state
@@ -485,10 +487,33 @@ class SpatioTemporalTransformerRegressor3:
         
         optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
         
+        # Class-balanced (inverse-frequency) per-sample loss weighting to prevent the
+        # 0kg-dominated gain bias. When enabled, the base criterion is computed per-element
+        # and reduced with per-class weights derived from the (post-augmentation) train labels.
+        self._balanced = bool(getattr(self, 'class_balanced_loss', False))
+        _reduction = 'none' if self._balanced else 'mean'
         if self.loss_type == 'mae':
-            criterion = nn.L1Loss()
+            criterion = nn.L1Loss(reduction=_reduction)
         else:
-            criterion = nn.MSELoss()
+            criterion = nn.MSELoss(reduction=_reduction)
+
+        if self._balanced:
+            _vals, _counts = np.unique(np.round(y_np_train, 2), return_counts=True)
+            _n_cls = len(_vals); _N = int(_counts.sum())
+            _cw = _N / (_n_cls * _counts)  # sklearn 'balanced'; mean per-sample weight == 1
+            self._cls_vals = torch.tensor(_vals, dtype=torch.float32, device=self.device)
+            self._cls_w = torch.tensor(_cw, dtype=torch.float32, device=self.device)
+            print(f"[class-balanced loss] {_n_cls} weight classes; per-class loss weights: "
+                  f"{ {round(float(v), 2): round(float(w), 3) for v, w in zip(_vals, _cw)} }")
+
+        def _reduce(per_elem, batch_y):
+            """Reduce loss to a scalar; inverse-frequency weighted when balancing is on."""
+            if not self._balanced:
+                return per_elem  # criterion already returned the mean
+            per = per_elem.view(per_elem.size(0), -1).mean(dim=1)            # (B,)
+            idx = torch.argmin((batch_y.view(-1, 1) - self._cls_vals.view(1, -1)).abs(), dim=1)
+            w = self._cls_w[idx]                                            # (B,)
+            return (per * w).sum() / w.sum().clamp_min(1e-8)
         
         dataset_train = SequenceDataset(scaled_seqs_train, y_tensor_train)
         loader_train = DataLoader(dataset_train, batch_size=self.batch_size, shuffle=True, collate_fn=pad_collate_fn)
@@ -551,8 +576,8 @@ class SpatioTemporalTransformerRegressor3:
                     
                     with torch.amp.autocast(self.device.type, enabled=(self.use_amp and self.device.type == 'cuda')):
                         outputs = self.model(batch_x, lengths)
-                        loss = criterion(outputs, batch_y)
-                    
+                        loss = _reduce(criterion(outputs, batch_y), batch_y)
+
                     if not torch.isfinite(loss):
                         optimizer.zero_grad()
                         continue
@@ -579,7 +604,7 @@ class SpatioTemporalTransformerRegressor3:
                             batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                             lengths = lengths.to(self.device)
                             outputs = self.model(batch_x, lengths)
-                            loss = criterion(outputs, batch_y)
+                            loss = _reduce(criterion(outputs, batch_y), batch_y)
                             val_loss += loss.item() * batch_x.size(0)
                 
                 avg_val_loss = val_loss / len(dataset_val)
@@ -761,14 +786,7 @@ class SpatioTemporalTransformerRegressor3:
                     group = fname.split('_EMG_')[0] + "_EMG"
                 elif '_IMU_' in fname:
                     parts = fname.split('_IMU_')
-                    prefix = parts[0] + "_IMU"
-                    suffix = parts[1] if len(parts) > 1 else ""
-                    if any(k in suffix for k in ['ax', 'ay', 'az', 'acc']):
-                        group = prefix + "_Accel"
-                    elif any(k in suffix for k in ['roll', 'pitch', 'yaw', 'gyro', 'rad']):
-                        group = prefix + "_Orient"
-                    else:
-                        group = prefix
+                    group = parts[0] + "_IMU"
                 elif '_SVM_' in fname:
                     group = fname.split('_SVM_')[0] + "_SVM"
                 else:

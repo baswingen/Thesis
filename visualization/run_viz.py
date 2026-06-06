@@ -42,12 +42,27 @@ for font_path in custom_fonts:
 # ──────────────────────────────────────────────────────────
 # VISUALIZATION CONFIGURATION (rho.cls style)
 # ──────────────────────────────────────────────────────────
-# Path to the model run folder containing run_data.json.
-# Can be absolute, or relative to the project root.
-RUN_DIR = "model/model_results/final_run"
+# Configure the paths to the model run folders (containing run_data.json)
+# and their corresponding plot target directories.
+MODEL_RUNS = {
+    "generalized": {
+        "run_dir": "model/model_results/final_run",
+        "output_dir": "visualization/run_plots_gen"
+    },
+    "specialized": {
+        # canonical par-spec standard: st3 (no-balance, OneCycleLR) full modality-ablation run.
+        # Points at the multi-modality ROOT so one pass produces per-modality + modality-comparison
+        # plots in run_plots_par_spec (no separate _ablation folder needed). The gen-vs-par comparison
+        # collapses this root to its 'all' sub-run via _load(). Source: run_20260605_113834.
+        # Previous standard: ST-transformer-par-spec-P01 (st1, kept as historical baseline).
+        "run_dir": "model/model_results/ST-transformer-par-spec-P01-st3-cal",
+        "output_dir": "visualization/run_plots_par_spec"
+    }
+}
 
-# Target folder to save generated figures.
-OUTPUT_DIR = "/Users/baswingen/Library/Mobile Documents/com~apple~CloudDocs/Master Thesis/python/Thesis/visualization/run_plots"
+# Fallback values for single-run arguments
+RUN_DIR = "model/model_results/final_run"
+OUTPUT_DIR = "visualization/run_plots_gen"
 
 # Physical page width scaling template: 
 # - "column": single-column width (~3.46")
@@ -76,48 +91,170 @@ PLOT_TITLES = {
     "tradeoff": "Generalization Accuracy vs. Inference Latency Trade-Off",
     "importance_individual": "{model_type}: Granular Feature Permutation Importance (Top {top_n})",
     "tukey": "Tukey HSD Pairwise Significance (Prediction Error)",
-    "deepshap_channel": "{model_type}: DeepSHAP Channel Importance (Top {top_n})",
+    "deepshap_channel": "{model_type}: DeepSHAP Channel Importance",
     "deepshap_feature_type": "{model_type}: DeepSHAP Feature Importance (Top {top_n})",
-    "deepshap_modality": "{model_type}: DeepSHAP Modality Split"
+    "deepshap_modality": "{model_type}: DeepSHAP Modality Split",
+    "modality_metrics": "Modality Performance Comparison",
+    "modality_seqlen_mae": "MAE by Segment Length and Modality",
+    "modality_seqlen_rmse": "RMSE by Segment Length and Modality",
+    "modality_participant_mae": "MAE per Participant by Modality",
+    "modality_participant_rmse": "RMSE per Participant by Modality",
+    "modality_participant_gap": "Generalization Gap (MAE) per Participant by Modality",
+    "modality_participant_ratio": "Generalization Ratio (RMSE) per Participant by Modality",
+    "modality_errors": "Overall Error Distributions by Modality",
+    "modality_weight_mae": "MAE by Weight Class and Modality",
+    "modality_weight_rmse": "RMSE by Weight Class and Modality"
 }
+
+CURRENT_OUTPUT_DIR = None
 
 def get_plot_title(plot_name, default_val, **kwargs):
     """Retrieves and formats the custom title from PLOT_TITLES if defined, else returns default_val."""
+    global CURRENT_OUTPUT_DIR
+    is_gen = False
+    if CURRENT_OUTPUT_DIR and "run_plots_gen" in CURRENT_OUTPUT_DIR:
+        is_gen = True
+
     custom_title = PLOT_TITLES.get(plot_name) if PLOT_TITLES else None
+    
+    if is_gen:
+        # Override dynamic model_type to 'Generalized ST-Transformer' with modality suffix
+        modality = kwargs.get("modality")
+        mod_map = {
+            "all": "Sensor-Fused",
+            "emg_only": "EMG-only",
+            "imu_only": "IMU-only"
+        }
+        mod_suffix = f" ({mod_map.get(modality, modality.replace('_', '-'))})" if modality else ""
+        kwargs["model_type"] = f"Generalized ST-Transformer{mod_suffix}"
+        
+        # Replace Participant-specialized with Generalized ST-Transformer
+        if custom_title:
+            custom_title = custom_title.replace("Participant-specialized ST-Transformer", "Generalized ST-Transformer")
+            custom_title = custom_title.replace("Participant-specialized", "Generalized")
+        default_val = default_val.replace("Participant-specialized ST-Transformer", "Generalized ST-Transformer")
+        default_val = default_val.replace("Participant-specialized", "Generalized")
+
     if custom_title:
         try:
-            return custom_title.format(**kwargs)
+            formatted_title = custom_title.format(**kwargs)
         except Exception as e:
             print(f"Warning: Failed to format custom title for '{plot_name}': {e}")
-            return custom_title
-    return default_val.format(**kwargs)
+            formatted_title = custom_title
+    else:
+        formatted_title = default_val.format(**kwargs)
+
+    # Force 'Generalized ST-Transformer:' to be in the title prefix if we are in run_plots_gen
+    if is_gen and "Generalized ST-Transformer" not in formatted_title:
+        formatted_title = f"Generalized ST-Transformer: {formatted_title}"
+
+    return formatted_title
 
 # ===========================================================================================
 # 1. LaTeX Thesis Style Configurator (based on rho.cls)
 # ===========================================================================
 
+# ──────────────────────────────────────────────────────────
+# DYNAMIC COLOR PALETTE IMPORT FROM COLOR_PICKER.PY
+# ──────────────────────────────────────────────────────────
+try:
+    # Add script dir to sys.path to enable loading color_picker if run from root
+    import sys
+    from pathlib import Path
+    _script_dir = str(Path(__file__).resolve().parent)
+    if _script_dir not in sys.path:
+        sys.path.insert(0, _script_dir)
+        
+    from color_picker import (
+        COLOR_EMG, COLOR_IMU, COLOR_FUSION,
+        COLOR_MAE, COLOR_RMSE, COLOR_R2, COLOR_GAP, COLOR_COUNT,
+        COLOR_UNITY, COLOR_MEDIAN, COLOR_TARGET, COLOR_OUTLIER,
+        COLOR_P_001, COLOR_P_01, COLOR_P_05, COLOR_P_NS
+    )
+except ImportError:
+    # Fallback to local declarations if import fails
+    COLOR_EMG = "#95356F"
+    COLOR_IMU = "#007355"
+    COLOR_FUSION = "#FF9000"
+    COLOR_MAE = "#004488"
+    COLOR_RMSE = "#BB5566"
+    COLOR_R2 = "#774499"
+    COLOR_GAP = "#C85200"
+    COLOR_COUNT = "#4A5568"
+    COLOR_UNITY = "#888888"
+    COLOR_MEDIAN = "#DDAA33"
+    COLOR_TARGET = "#228833"
+    COLOR_OUTLIER = "#BBBBBB"
+    COLOR_P_001 = "#CC3311"
+    COLOR_P_01 = "#AA4499"
+    COLOR_P_05 = "#4477AA"
+    COLOR_P_NS = "#BBBBBB"
+
+
+
+def clean_channel_label(raw_lbl):
+    clean_lbl = raw_lbl.replace("_EMG", "").replace("_IMU", "")
+    clean_lbl = clean_lbl.replace("Extensor Carpi Radialis (ECR)", "ECR").replace("Extensor Carpi Radialis", "ECR")
+    clean_lbl = clean_lbl.replace("Flexor Carpi Ulnaris (FCU)", "FCU").replace("Flexor Carpi Ulnaris", "FCU")
+    
+    # Check if there is an _Accel suffix or similar
+    suffix = ""
+    if clean_lbl.endswith("_Accel"):
+        clean_lbl = clean_lbl[:-6]
+        suffix = " (Accel)"
+    elif clean_lbl.endswith(" (Accel)"):
+        clean_lbl = clean_lbl[:-8]
+        suffix = " (Accel)"
+        
+    # Replace sensors with LaTeX math symbols
+    replacements = {
+        "roll_rad1": r"$\phi_1$",
+        "pitch_rad1": r"$\theta_1$",
+        "yaw_rad1": r"$\psi_1$",
+        "ax1": r"$a_{x,1}$",
+        "ay1": r"$a_{y,1}$",
+        "az1": r"$a_{z,1}$",
+        
+        "roll_rad2": r"$\phi_2$",
+        "pitch_rad2": r"$\theta_2$",
+        "yaw_rad2": r"$\psi_2$",
+        "ax2": r"$a_{x,2}$",
+        "ay2": r"$a_{y,2}$",
+        "az2": r"$a_{z,2}$",
+    }
+    
+    for k, v in replacements.items():
+        if k in clean_lbl:
+            clean_lbl = clean_lbl.replace(k, v)
+            break
+            
+    return clean_lbl + suffix
+
+
 class ThesisStyle:
     # ─── 1. Paul Tol Scientific Semantic Colors ───
-    COLOR_EMG = "#BB5566"       # Paul Tol High-Contrast Red (Swapped: EMG)
-    COLOR_IMU = "#004488"       # Paul Tol High-Contrast Blue (Swapped: IMU)
-    COLOR_FUSION = "#AA3377"    # Paul Tol Bright Purple (Combined/Fusion blend of EMG + IMU)
+    COLOR_EMG = COLOR_EMG
+    COLOR_IMU = COLOR_IMU
+    COLOR_FUSION = COLOR_FUSION
 
     # ─── 2. Consistent Statistical Metric Colors ───
-    COLOR_MAE = "#004488"       # Paul Tol High-Contrast Blue (MAE)
-    COLOR_RMSE = "#BB5566"      # Paul Tol High-Contrast Red (RMSE)
-    COLOR_COUNT = "#4A5568"     # Muted Charcoal (sample count bars/lines)
+    COLOR_MAE = COLOR_MAE
+    COLOR_RMSE = COLOR_RMSE
+    COLOR_R2 = COLOR_R2
+    COLOR_GAP = COLOR_GAP
+    COLOR_COUNT = COLOR_COUNT
 
     # ─── 3. Reference and Boundary Colors ───
-    COLOR_UNITY = "#888888"     # Paul Tol Slate Grey (dashed perfect-prediction line)
-    COLOR_MEDIAN = "#DDAA33"    # Paul Tol High-Contrast Yellow (pop-out median line in boxplots)
-    COLOR_TARGET = "#228833"    # Paul Tol Bright Green (balanced dataset target threshold)
-    COLOR_OUTLIER = "#BBBBBB"   # Paul Tol Light Grey (scatter points)
+    COLOR_UNITY = COLOR_UNITY
+    COLOR_MEDIAN = COLOR_MEDIAN
+    COLOR_TARGET = COLOR_TARGET
+    COLOR_OUTLIER = COLOR_OUTLIER
 
     # ─── 4. Pairwise Tukey HSD Significance Colors ───
-    COLOR_P_001 = "#CC3311"     # Paul Tol Vibrant Red (*** p < 0.001)
-    COLOR_P_01 = "#AA4499"      # Paul Tol Muted Purple (** p < 0.01)
-    COLOR_P_05 = "#4477AA"      # Paul Tol Bright Blue (* p < 0.05)
-    COLOR_P_NS = "#BBBBBB"      # Paul Tol Light Grey (n.s. p >= 0.05)
+    COLOR_P_001 = COLOR_P_001
+    COLOR_P_01 = COLOR_P_01
+    COLOR_P_05 = COLOR_P_05
+    COLOR_P_NS = COLOR_P_NS
 
     # Color Palette from rho.cls (for backwards compatibility)
     RHO_BLUE = "#003366"        # Deep dark blue from rho.cls (rgb: 0.0, 0.2, 0.4)
@@ -192,6 +329,7 @@ class ThesisStyle:
             'axes.spines.bottom': True,
             'axes.edgecolor': '#2C3E50',
             'axes.linewidth': 0.6,
+            'axes.axisbelow': True,
             
             # Clean Bold titles (consistent styled headers)
             'axes.titleweight': 'bold',
@@ -365,7 +503,7 @@ class LossPlotter:
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
         n_folds_str = f" ({len(histories)} Folds)" if is_cv else ""
         default_title = f"{{model_type}}: Training Progress{n_folds_str}"
-        title = get_plot_title("loss", default_title, model_type=model_type)
+        title = get_plot_title("loss", default_title, model_type=model_type, modality=data.get("config", {}).get("ablation_modality"))
         ThesisStyle.set_title(ax, title)
         
         ax.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
@@ -404,16 +542,16 @@ class RegressionPlotter:
         out_name = output_path.name
         if "emg_only" in out_name:
             primary_color = ThesisStyle.COLOR_EMG
-            fill_color = "#FDF3F4"
-            accent_color = "#004488"
+            fill_color = "#FAF0F5"
+            accent_color = "#551133"
         elif "imu_only" in out_name:
             primary_color = ThesisStyle.COLOR_IMU
-            fill_color = ThesisStyle.RHO_LIGHT_BLUE
-            accent_color = "#BB5566"
-        else: # "all" or fallback - Use clean deep darkblue instead of pink!
-            primary_color = ThesisStyle.RHO_BLUE
-            fill_color = "#F0F4F8"
-            accent_color = "#E67E22"
+            fill_color = "#F0F7F4"
+            accent_color = "#115522"
+        else: # "all" (Fusion) or fallback
+            primary_color = ThesisStyle.COLOR_FUSION
+            fill_color = "#EBF7FA"
+            accent_color = "#004D60"
 
         # Perfect prediction line (Ideal Unity)
         ax.plot([min_val, max_val], [min_val, max_val], 
@@ -474,7 +612,7 @@ class RegressionPlotter:
             mae = mean_absolute_error(y_true, y_pred)
             rmse = np.sqrt(mean_squared_error(y_true, y_pred))
             
-        stats_text = f"$\\mathrm{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
+        stats_text = f"$\\text{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
         
         ax.text(0.04, 0.96, stats_text, 
                 transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
@@ -489,7 +627,7 @@ class RegressionPlotter:
             default_title = "Participant-specialized ST-Transformer: Regression Performance"
         else:
             default_title = "{model_type}: Predicted vs. Actual Weight"
-        title = get_plot_title("regression", default_title, model_type=model_type)
+        title = get_plot_title("regression", default_title, model_type=model_type, modality=data.get("config", {}).get("ablation_modality"))
         ThesisStyle.set_title(ax, title)
         
         ax.set_xlim(min_val - 0.1, max_val)
@@ -509,6 +647,75 @@ class RegressionPlotter:
         plt.tight_layout()
         
         # Save standard outputs
+        ThesisStyle.save_figure(fig, output_path)
+        plt.close(fig)
+        return True
+
+
+@plot_registry.register("calibration")
+class CalibrationPlotter:
+    """Visualizes the affine recalibration: per-weight mean prediction before vs after,
+    against the identity line, with the fitted calibration transform and MAE/RMSE deltas.
+    Requires a calibrated run (predictions must contain 'y_pred_uncalibrated')."""
+
+    def plot(self, data, output_path, layout_width):
+        preds = data.get("predictions") or {}
+        if "y_pred_uncalibrated" not in preds or "y_true" not in preds or "y_pred" not in preds:
+            print("  [Warning] No uncalibrated predictions in run data. Skipping calibration plot.")
+            return False
+
+        y_true = np.array(preds["y_true"], dtype=float).flatten()
+        y_cal = np.array(preds["y_pred"], dtype=float).flatten()
+        y_unc = np.array(preds["y_pred_uncalibrated"], dtype=float).flatten()
+
+        recal = data.get("recalibration", {}) or {}
+        b, a = recal.get("slope_b"), recal.get("intercept_a")
+        mb, ma = recal.get("metrics_before", {}), recal.get("metrics_after", {})
+
+        weights = np.sort(np.unique(np.round(y_true, 2)))
+        mean_unc = [float(y_unc[np.abs(y_true - w) < 0.05].mean()) for w in weights]
+        mean_cal = [float(y_cal[np.abs(y_true - w) < 0.05].mean()) for w in weights]
+
+        ThesisStyle.apply(layout_width)
+        fig, ax = plt.subplots()
+
+        out_name = output_path.name
+        if "emg_only" in out_name:
+            cal_color = ThesisStyle.COLOR_EMG
+        elif "imu_only" in out_name:
+            cal_color = ThesisStyle.COLOR_IMU
+        else:
+            cal_color = ThesisStyle.COLOR_FUSION
+
+        lim = float(max(weights.max(), max(mean_unc), max(mean_cal)) * 1.08)
+        ax.plot([0, lim], [0, lim], color=ThesisStyle.COLOR_UNITY, linestyle="--",
+                linewidth=1.2, alpha=0.8, label="Perfect prediction", zorder=1)
+        ax.plot(weights, mean_unc, marker="o", linestyle="-", color="#C0392B",
+                linewidth=1.6, markersize=6, label="Uncalibrated (per-weight mean)", zorder=3)
+        ax.plot(weights, mean_cal, marker="s", linestyle="-", color=cal_color,
+                linewidth=1.6, markersize=6, label="Calibrated (per-weight mean)", zorder=4)
+
+        ann = []
+        if b is not None and a is not None:
+            ann.append(f"$\\hat{{y}}_{{\\mathrm{{cal}}}} = {b:.3f}\\,\\hat{{y}} + {a:.3f}$")
+        if mb.get("MAE") is not None and ma.get("MAE") is not None:
+            ann.append(f"$\\mathrm{{MAE}}$: {mb['MAE']:.3f} $\\to$ {ma['MAE']:.3f} kg")
+        if mb.get("RMSE") is not None and ma.get("RMSE") is not None:
+            ann.append(f"$\\mathrm{{RMSE}}$: {mb['RMSE']:.3f} $\\to$ {ma['RMSE']:.3f} kg")
+        if ann:
+            ax.text(0.04, 0.96, "\n".join(ann), transform=ax.transAxes, va="top",
+                    bbox=dict(boxstyle="round", facecolor="white", edgecolor="#E0E0E0", alpha=0.95))
+
+        ax.set_xlabel("Actual Weight (kg)")
+        ax.set_ylabel("Mean Predicted Weight (kg)")
+        ThesisStyle.set_title(ax, "Affine Recalibration: Mean Prediction per Weight")
+        ax.set_xticks(weights)
+        ax.set_xticklabels([f"{w:.2f}".rstrip("0").rstrip(".") for w in weights])
+        ax.set_xlim(-0.1, lim)
+        ax.set_ylim(-0.1, lim)
+        ax.legend(loc="lower right", frameon=True, facecolor="white",
+                  edgecolor="#E0E0E0", framealpha=0.95)
+        plt.tight_layout()
         ThesisStyle.save_figure(fig, output_path)
         plt.close(fig)
         return True
@@ -534,10 +741,24 @@ class SeqLenPlotter:
             
         ThesisStyle.apply(layout_width)
         
-        times = [float(row['TimeAtPrediction'].rstrip('s')) for row in filtered]
-        maes = [float(row['MAE']) for row in filtered]
-        rmses = [float(row['RMSE']) for row in filtered]
-        counts = [int(row['Count']) for row in filtered]
+        # Check if we are running generalized model plots to limit x-axis to 3.0s
+        global CURRENT_OUTPUT_DIR
+        is_gen = False
+        if CURRENT_OUTPUT_DIR and "run_plots_gen" in CURRENT_OUTPUT_DIR:
+            is_gen = True
+
+        times = []
+        maes = []
+        rmses = []
+        counts = []
+        for row in filtered:
+            t = float(row['TimeAtPrediction'].rstrip('s'))
+            if is_gen and t > 3.0:
+                continue
+            times.append(t)
+            maes.append(float(row['MAE']))
+            rmses.append(float(row['RMSE']))
+            counts.append(int(row['Count']))
         
         fig, ax1 = plt.subplots()
         
@@ -560,13 +781,13 @@ class SeqLenPlotter:
         
         # Primary error lines (window counts text removed for clutter-free paper format)
         ax1.plot(times, maes, marker='o', color=ThesisStyle.COLOR_MAE, label='MAE', zorder=3)
-        ax1.plot(times, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', zorder=3)
+        ax1.plot(times, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', linestyle='--', zorder=3)
         
         ax1.set_xlabel("Segment lengths (s)", labelpad=8)
         ax1.set_ylabel("Error (kg)", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        title = get_plot_title("seqlen", "{model_type}: Error vs. Available Segment Length", model_type=model_type)
+        title = get_plot_title("seqlen", "{model_type}: Error vs. Available Segment Length", model_type=model_type, modality=data.get("config", {}).get("ablation_modality"))
         ThesisStyle.set_title(ax1, title)
         ax1.set_ylim(bottom=0)
         
@@ -646,7 +867,7 @@ class ParticipantPlotter:
         ax.set_xlabel('Unseen Participant Left Out', labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        title = get_plot_title("participant", "{model_type}: Generalization per Participant", model_type=model_type)
+        title = get_plot_title("participant", "{model_type}: Generalization per Participant", model_type=model_type, modality=data.get("config", {}).get("ablation_modality"))
         ThesisStyle.set_title(ax, title)
         
         ax.set_xticks(x)
@@ -823,7 +1044,7 @@ class WeightErrorPlotter:
         
         # Dual error lines on primary axis
         ax1.plot(x_positions, maes, marker='o', color=ThesisStyle.COLOR_MAE, label='MAE', zorder=3)
-        ax1.plot(x_positions, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', zorder=3)
+        ax1.plot(x_positions, rmses, marker='s', color=ThesisStyle.COLOR_RMSE, label='RMSE', linestyle='--', zorder=3)
         
         ax1.set_xlabel("Weight Class (kg)", labelpad=8)
         ax1.set_ylabel("Prediction Error (kg)", labelpad=8)
@@ -841,7 +1062,7 @@ class WeightErrorPlotter:
             default_title = "Participant-specialized ST-Transformer: Performance by Weight Class"
         else:
             default_title = "{model_type}: Error Scaling by Weight Class"
-        title = get_plot_title("weight_error", default_title, model_type=model_type)
+        title = get_plot_title("weight_error", default_title, model_type=model_type, modality=data.get("config", {}).get("ablation_modality"))
         ThesisStyle.set_title(ax1, title)
         
         # Combine legends cleanly
@@ -882,9 +1103,9 @@ class AblationPlotter:
         
         # Clean formatting names for paper presentation
         name_map = {
-            "all": "EMG + IMU\n(Full Model)",
-            "emg_only": "EMG Only",
-            "imu_only": "IMU Only"
+            "all": "EMG + IMU\n(Sensor-Fused)",
+            "emg_only": "EMG-only",
+            "imu_only": "IMU-only"
         }
         
         # Prioritize predefined modality order
@@ -954,6 +1175,772 @@ class AblationPlotter:
         return True
 
 
+@plot_registry.register("modality_comparison")
+class ModalityComparisonPlotter:
+    """Generates comparison plots across EMG+IMU, EMG only, and IMU only modalities."""
+    
+    def plot(self, data, output_path, layout_width):
+        is_multi = False
+        if "meta" not in data:
+            sub_runs = [k for k, v in data.items() if isinstance(v, dict) and "meta" in v]
+            if sub_runs:
+                is_multi = True
+                
+        if not is_multi:
+            print("  [Warning] Modality comparison plotter requires a multi-modality ablation run dataset at root. Skipping.")
+            return False
+            
+        target_dir = output_path.parent
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        required_keys = ["all", "emg_only", "imu_only"]
+        for key in required_keys:
+            if key not in data or not isinstance(data[key], dict):
+                print(f"  [Warning] Missing modality key '{key}' in run data. Skipping modality comparison.")
+                return False
+                
+        prefix = output_path.name.replace("modality_comparison_plot", "")
+        
+        # 1. Bar Chart: metrics_comparison
+        self._plot_metrics_comparison(data, target_dir / f"{prefix}metrics_comparison", layout_width)
+        
+        # 2. Line Charts: seqlen_mae_comparison and seqlen_rmse_comparison
+        self._plot_seqlen_comparison(data, target_dir, prefix, layout_width)
+        
+        # 3. Grouped Bar: participant_mae_comparison and participant_rmse_comparison
+        self._plot_participant_comparison(data, target_dir, prefix, layout_width)
+        
+        # 3.5 Grouped Bar: participant_gap_comparison and participant_ratio_comparison
+        self._plot_participant_gap_comparison(data, target_dir, prefix, layout_width)
+        self._plot_participant_ratio_comparison(data, target_dir, prefix, layout_width)
+        
+        # 4. Boxplot: error_distribution_comparison
+        self._plot_error_distribution_comparison(data, target_dir / f"{prefix}error_distribution_comparison", layout_width)
+        
+        # 5. Line Charts: weight_mae_comparison and weight_rmse_comparison
+        self._plot_weight_error_comparison(data, target_dir, prefix, layout_width)
+        
+        return True
+
+    def _plot_metrics_comparison(self, data, output_path, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        modalities = ["EMG + IMU\n(Sensor-Fused)", "EMG-only", "IMU-only"]
+        keys = ["all", "emg_only", "imu_only"]
+        
+        maes = []
+        rmses = []
+        r2s = []
+        gaps = []
+        for k in keys:
+            eval_dict = data[k].get("evaluation", {})
+            # Use macro_avg (cross-participant generalization metrics) if available, else fallback to pooled
+            if "macro_avg" in eval_dict and eval_dict["macro_avg"] is not None:
+                maes.append(eval_dict["macro_avg"].get("MAE", 0.0))
+                rmses.append(eval_dict["macro_avg"].get("RMSE", 0.0))
+                r2s.append(eval_dict["macro_avg"].get("R2", 0.0))
+                gaps.append(float(eval_dict["macro_avg"].get("Generalization Gap (MAE)", 0.0)))
+            else:
+                maes.append(eval_dict.get("pooled", {}).get("MAE", 0.0))
+                rmses.append(eval_dict.get("pooled", {}).get("RMSE", 0.0))
+                r2s.append(eval_dict.get("pooled", {}).get("R2", 0.0))
+                
+                per_fold = eval_dict.get("per_fold", [])
+                if isinstance(per_fold, list) and per_fold:
+                    fold_gaps = [row.get("Generalization Gap (MAE)", None) for row in per_fold if isinstance(row, dict)]
+                    fold_gaps = [g for g in fold_gaps if g is not None]
+                else:
+                    fold_gaps = []
+                gaps.append(float(np.mean(fold_gaps)) if fold_gaps else 0.0)
+        
+        fig, ax1 = plt.subplots()
+        x = np.arange(len(modalities))
+        width = 0.20
+        offsets = [-1.5 * width, -0.5 * width, 0.5 * width, 1.5 * width]
+        
+        rects1 = ax1.bar(x + offsets[0], maes, width, label='MAE', color=ThesisStyle.COLOR_MAE, alpha=0.85, edgecolor=ThesisStyle.COLOR_MAE, linewidth=0.5)
+        rects2 = ax1.bar(x + offsets[1], rmses, width, label='RMSE', color=ThesisStyle.COLOR_RMSE, alpha=0.85, edgecolor=ThesisStyle.COLOR_RMSE, linewidth=0.5)
+        rects4 = ax1.bar(x + offsets[2], gaps, width, label='Gen. Gap', color=ThesisStyle.COLOR_GAP, alpha=0.85, edgecolor=ThesisStyle.COLOR_GAP, linewidth=0.5)
+        
+        ax2 = ax1.twinx()
+        rects3 = ax2.bar(x + offsets[3], r2s, width, label=r'$\text{R}^2$', color=ThesisStyle.COLOR_R2, alpha=0.85, edgecolor=ThesisStyle.COLOR_R2, linewidth=0.5)
+        
+        for rect in rects1:
+            h = rect.get_height()
+            ax1.annotate(f"{h:.3f}",
+                        xy=(rect.get_x() + rect.get_width() / 2, h),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=plt.rcParams['font.size'] - 2.0, color=ThesisStyle.COLOR_MAE, weight='semibold')
+                        
+        for rect in rects2:
+            h = rect.get_height()
+            ax1.annotate(f"{h:.3f}",
+                        xy=(rect.get_x() + rect.get_width() / 2, h),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=plt.rcParams['font.size'] - 2.0, color=ThesisStyle.COLOR_RMSE, weight='semibold')
+        
+        for rect in rects4:
+            h = rect.get_height()
+            va = 'bottom' if h >= 0 else 'top'
+            offset = 3 if h >= 0 else -3
+            ax1.annotate(f"{h:.3f}",
+                        xy=(rect.get_x() + rect.get_width() / 2, h),
+                        xytext=(0, offset), textcoords="offset points",
+                        ha='center', va=va, fontsize=plt.rcParams['font.size'] - 2.0, color=ThesisStyle.COLOR_GAP, weight='semibold')
+                        
+        for rect in rects3:
+            h = rect.get_height()
+            ax2.annotate(f"{h:.3f}",
+                        xy=(rect.get_x() + rect.get_width() / 2, h),
+                        xytext=(0, 3), textcoords="offset points",
+                        ha='center', va='bottom', fontsize=plt.rcParams['font.size'] - 2.0, color=ThesisStyle.COLOR_R2, weight='semibold')
+                        
+        # Zero baseline for generalization gap (can be negative)
+        ax1.axhline(y=0, color=ThesisStyle.COLOR_UNITY, linewidth=0.8, linestyle='--', alpha=0.7)
+        
+        ax1.set_ylabel("Error / Gen. Gap (kg)", labelpad=8)
+        ax1.set_xlabel("Sensor Modality Configuration", labelpad=8)
+        
+        ax2.set_ylabel(r"$\text{R}^2$ Score", labelpad=8, color=ThesisStyle.COLOR_R2)
+        ax2.tick_params(axis='y', labelcolor=ThesisStyle.COLOR_R2)
+        
+        title = get_plot_title("modality_metrics", "Modality Performance Comparison")
+        ThesisStyle.set_title(ax1, title)
+        
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(modalities)
+        
+        # Y-axis: accommodate negative gap values
+        left_min = min(min(gaps), 0) * 1.3
+        left_max = max(rmses) * 1.30
+        ax1.set_ylim(left_min, left_max)
+        ax2.set_ylim(0, 1.05)
+        
+        ax1.grid(True, which='both', axis='y', linestyle='--', alpha=0.5)
+        ax2.grid(False)
+        
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(True)
+        ax1.spines['left'].set_visible(True)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(True)
+        ax2.spines['left'].set_visible(True)
+        
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax2.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_path)
+        plt.close(fig)
+
+    def _plot_seqlen_comparison(self, data, output_dir, prefix, layout_width):
+        keys = ["all", "emg_only", "imu_only"]
+        labels = ["EMG + IMU", "EMG-only", "IMU-only"]
+        colors = [ThesisStyle.COLOR_FUSION, ThesisStyle.COLOR_EMG, ThesisStyle.COLOR_IMU]
+        markers = ["o", "s", "^"]
+        
+        # Get segment counts from 'all' configuration (same across configurations)
+        run_data_all = data["all"]
+        per_seqlen_all = run_data_all.get("evaluation", {}).get("per_seqlen")
+        if not per_seqlen_all:
+            per_seqlen_all = run_data_all.get("evaluation", {}).get("per_duration", [])
+        filtered_all = [row for row in per_seqlen_all if int(row.get('Count', 0)) >= 10]
+        
+        times_all = []
+        counts_all = []
+        for row in filtered_all:
+            t = float(row['TimeAtPrediction'].rstrip('s'))
+            if t > 3.0:
+                continue
+            times_all.append(t)
+            counts_all.append(int(row['Count']))
+            
+        # 1. Generate MAE Plot
+        ThesisStyle.apply(layout_width)
+        fig1, ax1 = plt.subplots()
+        
+        # Segment counts on secondary axis
+        ax1_twin = ax1.twinx()
+        if times_all:
+            if len(times_all) > 1:
+                bar_width = 0.5 * np.min(np.diff(times_all))
+            else:
+                bar_width = 0.1
+            ax1_twin.bar(times_all, counts_all, width=bar_width, color=ThesisStyle.RHO_LIGHT_BLUE, alpha=0.6,
+                         edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, label='Segment Count', zorder=1)
+            ax1_twin.set_ylabel("Segment Count", color=ThesisStyle.NEUTRAL_GRAY)
+            ax1_twin.tick_params(axis='y', labelcolor=ThesisStyle.NEUTRAL_GRAY)
+            ax1_twin.set_ylim(0, max(counts_all) * 3.0)
+            ax1_twin.spines['top'].set_visible(False)
+            ax1_twin.spines['right'].set_visible(True)
+            ax1_twin.spines['left'].set_visible(True)
+            ax1_twin.grid(False)
+            
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            run_data = data[k]
+            per_seqlen = run_data.get("evaluation", {}).get("per_seqlen")
+            if not per_seqlen:
+                per_seqlen = run_data.get("evaluation", {}).get("per_duration", [])
+            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 10]
+            
+            times = []
+            maes = []
+            for row in filtered:
+                t = float(row['TimeAtPrediction'].rstrip('s'))
+                if t > 3.0:
+                    continue
+                times.append(t)
+                maes.append(float(row['MAE']))
+                
+            if times:
+                ax1.plot(times, maes, marker=marker, color=color, label=label, linewidth=1.5, markersize=4.5, zorder=3)
+                
+        ax1.set_xlabel("Segment Length (s)", labelpad=8)
+        ax1.set_ylabel("MAE (kg)", labelpad=8)
+        
+        title_mae = get_plot_title("modality_seqlen_mae", "MAE by Segment Length and Modality")
+        ThesisStyle.set_title(ax1, title_mae)
+        ax1.set_ylim(bottom=0)
+        ax1.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax1)
+        
+        # Combine legends cleanly
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        lines2, labels2 = ax1_twin.get_legend_handles_labels()
+        ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        ax1.set_zorder(ax1_twin.get_zorder() + 1)
+        ax1.patch.set_visible(False)
+        
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig1, output_dir / f"{prefix}seqlen_mae_comparison")
+        plt.close(fig1)
+
+        # 2. Generate RMSE Plot
+        ThesisStyle.apply(layout_width)
+        fig2, ax2 = plt.subplots()
+        
+        # Segment counts on secondary axis
+        ax2_twin = ax2.twinx()
+        if times_all:
+            if len(times_all) > 1:
+                bar_width = 0.5 * np.min(np.diff(times_all))
+            else:
+                bar_width = 0.1
+            ax2_twin.bar(times_all, counts_all, width=bar_width, color=ThesisStyle.RHO_LIGHT_BLUE, alpha=0.6,
+                         edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, label='Segment Count', zorder=1)
+            ax2_twin.set_ylabel("Segment Count", color=ThesisStyle.NEUTRAL_GRAY)
+            ax2_twin.tick_params(axis='y', labelcolor=ThesisStyle.NEUTRAL_GRAY)
+            ax2_twin.set_ylim(0, max(counts_all) * 3.0)
+            ax2_twin.spines['top'].set_visible(False)
+            ax2_twin.spines['right'].set_visible(True)
+            ax2_twin.spines['left'].set_visible(True)
+            ax2_twin.grid(False)
+            
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            run_data = data[k]
+            per_seqlen = run_data.get("evaluation", {}).get("per_seqlen")
+            if not per_seqlen:
+                per_seqlen = run_data.get("evaluation", {}).get("per_duration", [])
+            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 10]
+            
+            times = []
+            rmses = []
+            for row in filtered:
+                t = float(row['TimeAtPrediction'].rstrip('s'))
+                if t > 3.0:
+                    continue
+                times.append(t)
+                rmses.append(float(row['RMSE']))
+                
+            if times:
+                ax2.plot(times, rmses, marker=marker, color=color, label=label, linewidth=1.5, markersize=4.5, linestyle='--', zorder=3)
+                
+        ax2.set_xlabel("Segment Length (s)", labelpad=8)
+        ax2.set_ylabel("RMSE (kg)", labelpad=8)
+        
+        title_rmse = get_plot_title("modality_seqlen_rmse", "RMSE by Segment Length and Modality")
+        ThesisStyle.set_title(ax2, title_rmse)
+        ax2.set_ylim(bottom=0)
+        ax2.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax2)
+        
+        # Combine legends cleanly
+        lines1, labels1 = ax2.get_legend_handles_labels()
+        lines2, labels2 = ax2_twin.get_legend_handles_labels()
+        ax2.legend(lines1 + lines2, labels1 + labels2, loc='upper right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        ax2.set_zorder(ax2_twin.get_zorder() + 1)
+        ax2.patch.set_visible(False)
+        
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig2, output_dir / f"{prefix}seqlen_rmse_comparison")
+        plt.close(fig2)
+
+
+    def _plot_participant_comparison(self, data, output_dir, prefix, layout_width):
+        # Gather metrics for each participant
+        part_maes = {}
+        part_rmses = {}
+        
+        for k in ["all", "emg_only", "imu_only"]:
+            per_part = data[k].get("evaluation", {}).get("per_participant", [])
+            for row in per_part:
+                p_id = row["Participant"]
+                if p_id not in part_maes:
+                    part_maes[p_id] = {}
+                if p_id not in part_rmses:
+                    part_rmses[p_id] = {}
+                part_maes[p_id][k] = float(row["MAE"])
+                part_rmses[p_id][k] = float(row["RMSE"])
+                
+        # 1. MAE Comparison Plot
+        ThesisStyle.apply(layout_width)
+        sorted_participants_mae = sorted(part_maes.keys(), key=lambda p: part_maes[p].get("all", 999.0))
+        
+        all_vals_mae = [part_maes[p].get("all", 0.0) for p in sorted_participants_mae]
+        emg_vals_mae = [part_maes[p].get("emg_only", 0.0) for p in sorted_participants_mae]
+        imu_vals_mae = [part_maes[p].get("imu_only", 0.0) for p in sorted_participants_mae]
+        
+        fig1, ax1 = plt.subplots()
+        x = np.arange(len(sorted_participants_mae))
+        width = 0.25
+        
+        rects1 = ax1.bar(x - width, all_vals_mae, width, label='EMG + IMU', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
+        rects2 = ax1.bar(x, emg_vals_mae, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        
+        # Clip IMU only values at 1.0
+        imu_plot_vals_mae = [min(v, 1.0) for v in imu_vals_mae]
+        rects3 = ax1.bar(x + width, imu_plot_vals_mae, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        # Annotate clipped IMU bars
+        for idx, val in enumerate(imu_vals_mae):
+            if val > 1.0:
+                ax1.text(x[idx] + width, 1.01, f"{val:.2f}", ha='center', va='bottom',
+                         color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
+                         fontsize=plt.rcParams['font.size'] - 2.5)
+                 
+        eval_all = data["all"].get("evaluation", {})
+        eval_emg = data["emg_only"].get("evaluation", {})
+        eval_imu = data["imu_only"].get("evaluation", {})
+        
+        if "macro_avg" in eval_all and eval_all["macro_avg"] is not None:
+            mean_all_mae = eval_all["macro_avg"].get("MAE", 0.0)
+        else:
+            mean_all_mae = eval_all.get("pooled", {}).get("MAE", 0.0)
+            
+        if "macro_avg" in eval_emg and eval_emg["macro_avg"] is not None:
+            mean_emg_mae = eval_emg["macro_avg"].get("MAE", 0.0)
+        else:
+            mean_emg_mae = eval_emg.get("pooled", {}).get("MAE", 0.0)
+            
+        if "macro_avg" in eval_imu and eval_imu["macro_avg"] is not None:
+            mean_imu_mae = eval_imu["macro_avg"].get("MAE", 0.0)
+        else:
+            mean_imu_mae = eval_imu.get("pooled", {}).get("MAE", 0.0)
+        
+        ax1.axhline(mean_all_mae, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7)
+        ax1.axhline(mean_emg_mae, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7)
+        ax1.axhline(mean_imu_mae, color=ThesisStyle.COLOR_IMU, linestyle='--', linewidth=1.0, alpha=0.7)
+        
+        # Add labels next to the dashed lines on the right side of the plot
+        ax1.text(0.98, mean_all_mae, f"Mean: {mean_all_mae:.3f}", transform=ax1.get_yaxis_transform(),
+                 color=ThesisStyle.COLOR_FUSION, va='bottom', ha='right',
+                 fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                 bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+                 
+        ax1.text(0.98, mean_emg_mae, f"Mean: {mean_emg_mae:.3f}", transform=ax1.get_yaxis_transform(),
+                 color=ThesisStyle.COLOR_EMG, va='top', ha='right',
+                 fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                 bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+                 
+        ax1.text(0.98, mean_imu_mae, f"Mean: {mean_imu_mae:.3f}", transform=ax1.get_yaxis_transform(),
+                 color=ThesisStyle.COLOR_IMU, va='bottom', ha='right',
+                 fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                 bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+        
+        ax1.set_ylabel('MAE (kg)', labelpad=8)
+        ax1.set_xlabel('Unseen Participant Left Out', labelpad=8)
+        
+        title_mae = get_plot_title("modality_participant_mae", "MAE per Participant by Modality")
+        ThesisStyle.set_title(ax1, title_mae)
+        
+        ax1.set_xticks(x)
+        ax1.set_xticklabels(sorted_participants_mae, rotation=45, ha='right')
+        
+        ax1.set_ylim(0, 1.0)
+        
+        ax1.legend(loc='upper left', ncol=1, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig1, output_dir / f"{prefix}participant_mae_comparison")
+        plt.close(fig1)
+
+        # 2. RMSE Comparison Plot
+        ThesisStyle.apply(layout_width)
+        sorted_participants_rmse = sorted(part_rmses.keys(), key=lambda p: part_rmses[p].get("all", 999.0))
+        
+        all_vals_rmse = [part_rmses[p].get("all", 0.0) for p in sorted_participants_rmse]
+        emg_vals_rmse = [part_rmses[p].get("emg_only", 0.0) for p in sorted_participants_rmse]
+        imu_vals_rmse = [part_rmses[p].get("imu_only", 0.0) for p in sorted_participants_rmse]
+        
+        fig2, ax2 = plt.subplots()
+        x = np.arange(len(sorted_participants_rmse))
+        width = 0.25
+        
+        rects1 = ax2.bar(x - width, all_vals_rmse, width, label='EMG + IMU', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
+        rects2 = ax2.bar(x, emg_vals_rmse, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        
+        # Clip IMU only values at 2.0
+        imu_plot_vals_rmse = [min(v, 2.0) for v in imu_vals_rmse]
+        rects3 = ax2.bar(x + width, imu_plot_vals_rmse, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        # Annotate clipped IMU bars
+        for idx, val in enumerate(imu_vals_rmse):
+            if val > 2.0:
+                ax2.text(x[idx] + width, 2.01, f"{val:.2f}", ha='center', va='bottom',
+                         color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
+                         fontsize=plt.rcParams['font.size'] - 2.5)
+                 
+        if "macro_avg" in eval_all and eval_all["macro_avg"] is not None:
+            mean_all_rmse = eval_all["macro_avg"].get("RMSE", 0.0)
+        else:
+            mean_all_rmse = eval_all.get("pooled", {}).get("RMSE", 0.0)
+            
+        if "macro_avg" in eval_emg and eval_emg["macro_avg"] is not None:
+            mean_emg_rmse = eval_emg["macro_avg"].get("RMSE", 0.0)
+        else:
+            mean_emg_rmse = eval_emg.get("pooled", {}).get("RMSE", 0.0)
+            
+        if "macro_avg" in eval_imu and eval_imu["macro_avg"] is not None:
+            mean_imu_rmse = eval_imu["macro_avg"].get("RMSE", 0.0)
+        else:
+            mean_imu_rmse = eval_imu.get("pooled", {}).get("RMSE", 0.0)
+        
+        ax2.axhline(mean_all_rmse, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7)
+        ax2.axhline(mean_emg_rmse, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7)
+        ax2.axhline(mean_imu_rmse, color=ThesisStyle.COLOR_IMU, linestyle='--', linewidth=1.0, alpha=0.7)
+        
+        # Add labels next to the dashed lines on the right side of the plot
+        ax2.text(0.98, mean_all_rmse, f"Mean: {mean_all_rmse:.3f}", transform=ax2.get_yaxis_transform(),
+                 color=ThesisStyle.COLOR_FUSION, va='bottom', ha='right',
+                 fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                 bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+                 
+        ax2.text(0.98, mean_emg_rmse, f"Mean: {mean_emg_rmse:.3f}", transform=ax2.get_yaxis_transform(),
+                 color=ThesisStyle.COLOR_EMG, va='top', ha='right',
+                 fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                 bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+                 
+        ax2.text(0.98, mean_imu_rmse, f"Mean: {mean_imu_rmse:.3f}", transform=ax2.get_yaxis_transform(),
+                 color=ThesisStyle.COLOR_IMU, va='bottom', ha='right',
+                 fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                 bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+        
+        ax2.set_ylabel('RMSE (kg)', labelpad=8)
+        ax2.set_xlabel('Unseen Participant Left Out', labelpad=8)
+        
+        title_rmse = get_plot_title("modality_participant_rmse", "RMSE per Participant by Modality")
+        ThesisStyle.set_title(ax2, title_rmse)
+        
+        ax2.set_xticks(x)
+        ax2.set_xticklabels(sorted_participants_rmse, rotation=45, ha='right')
+        
+        ax2.set_ylim(0, 2.0)
+        
+        ax2.legend(loc='upper left', ncol=1, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig2, output_dir / f"{prefix}participant_rmse_comparison")
+        plt.close(fig2)
+
+    def _plot_participant_gap_comparison(self, data, output_dir, prefix, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        part_gaps = {}
+        for k in ["all", "emg_only", "imu_only"]:
+            per_part = data[k].get("evaluation", {}).get("per_participant", [])
+            per_fold = data[k].get("evaluation", {}).get("per_fold", [])
+            for idx, part_row in enumerate(per_part):
+                p_id = part_row["Participant"]
+                fold_row = per_fold[idx]
+                if p_id not in part_gaps:
+                    part_gaps[p_id] = {}
+                part_gaps[p_id][k] = float(fold_row["Generalization Gap (MAE)"])
+                
+        sorted_participants = sorted(part_gaps.keys(), key=lambda p: part_gaps[p].get("all", 999.0))
+        
+        all_vals = [part_gaps[p].get("all", 0.0) for p in sorted_participants]
+        emg_vals = [part_gaps[p].get("emg_only", 0.0) for p in sorted_participants]
+        imu_vals = [part_gaps[p].get("imu_only", 0.0) for p in sorted_participants]
+        
+        fig, ax = plt.subplots()
+        
+        x = np.arange(len(sorted_participants))
+        width = 0.25
+        
+        rects1 = ax.bar(x - width, all_vals, width, label='EMG + IMU', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
+        rects2 = ax.bar(x, emg_vals, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        
+        # Clip IMU only values at 1.0
+        imu_plot_vals = [min(v, 1.0) for v in imu_vals]
+        rects3 = ax.bar(x + width, imu_plot_vals, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        # Annotate clipped IMU bars
+        for idx, val in enumerate(imu_vals):
+            if val > 1.0:
+                ax.text(x[idx] + width, 1.01, f"{val:.2f}", ha='center', va='bottom',
+                        color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
+                        fontsize=plt.rcParams['font.size'] - 2.5)
+        
+        mean_all = np.mean(all_vals)
+        mean_emg = np.mean(emg_vals)
+        mean_imu = np.mean(imu_vals)
+        
+        # Zero baseline reference line
+        ax.axhline(0, color=ThesisStyle.COLOR_UNITY, linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        ax.axhline(mean_all, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7, label='Mean EMG + IMU')
+        ax.axhline(mean_emg, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7, label='Mean EMG-only')
+        ax.axhline(mean_imu, color=ThesisStyle.COLOR_IMU, linestyle='--', linewidth=1.0, alpha=0.7, label='Mean IMU-only')
+        
+        ax.set_ylabel('Generalization Gap (MAE) (kg)', labelpad=8)
+        ax.set_xlabel('Unseen Participant Left Out', labelpad=8)
+        
+        title = get_plot_title("modality_participant_gap", "Generalization Gap per Participant by Modality")
+        ThesisStyle.set_title(ax, title)
+        
+        ax.set_xticks(x)
+        ax.set_xticklabels(sorted_participants, rotation=45, ha='right')
+        
+        min_val = min(min(all_vals), min(emg_vals), min(imu_vals))
+        y_bottom = min_val - 0.05 if min_val < 0 else -0.05
+        ax.set_ylim(y_bottom, 1.0)
+        
+        ax.legend(loc='upper left', ncol=2, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_dir / f"{prefix}participant_gap_comparison")
+        plt.close(fig)
+
+    def _plot_participant_ratio_comparison(self, data, output_dir, prefix, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        part_ratios = {}
+        for k in ["all", "emg_only", "imu_only"]:
+            per_part = data[k].get("evaluation", {}).get("per_participant", [])
+            per_fold = data[k].get("evaluation", {}).get("per_fold", [])
+            for idx, part_row in enumerate(per_part):
+                p_id = part_row["Participant"]
+                fold_row = per_fold[idx]
+                if p_id not in part_ratios:
+                    part_ratios[p_id] = {}
+                part_ratios[p_id][k] = float(fold_row["Overfit Ratio (RMSE)"])
+                
+        sorted_participants = sorted(part_ratios.keys(), key=lambda p: part_ratios[p].get("all", 999.0))
+        
+        all_vals = [part_ratios[p].get("all", 0.0) for p in sorted_participants]
+        emg_vals = [part_ratios[p].get("emg_only", 0.0) for p in sorted_participants]
+        imu_vals = [part_ratios[p].get("imu_only", 0.0) for p in sorted_participants]
+        
+        fig, ax = plt.subplots()
+        
+        x = np.arange(len(sorted_participants))
+        width = 0.25
+        
+        rects1 = ax.bar(x - width, all_vals, width, label='EMG + IMU', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
+        rects2 = ax.bar(x, emg_vals, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        
+        # Clip IMU only values at 3.0
+        imu_plot_vals = [min(v, 3.0) for v in imu_vals]
+        rects3 = ax.bar(x + width, imu_plot_vals, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        # Annotate clipped IMU bars
+        for idx, val in enumerate(imu_vals):
+            if val > 3.0:
+                ax.text(x[idx] + width, 3.01, f"{val:.2f}", ha='center', va='bottom',
+                        color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
+                        fontsize=plt.rcParams['font.size'] - 2.5)
+        
+        mean_all = np.mean(all_vals)
+        mean_emg = np.mean(emg_vals)
+        mean_imu = np.mean(imu_vals)
+        
+        # Baseline reference at 1.0 (perfect generalization)
+        ax.axhline(1.0, color=ThesisStyle.COLOR_UNITY, linestyle=':', linewidth=0.8, alpha=0.5)
+        
+        ax.axhline(mean_all, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7, label='Mean EMG + IMU')
+        ax.axhline(mean_emg, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7, label='Mean EMG-only')
+        ax.axhline(mean_imu, color=ThesisStyle.COLOR_IMU, linestyle='--', linewidth=1.0, alpha=0.7, label='Mean IMU-only')
+        
+        ax.set_ylabel('Generalization Ratio (RMSE)', labelpad=8)
+        ax.set_xlabel('Unseen Participant Left Out', labelpad=8)
+        
+        title = get_plot_title("modality_participant_ratio", "Generalization Ratio per Participant by Modality")
+        ThesisStyle.set_title(ax, title)
+        
+        ax.set_xticks(x)
+        ax.set_xticklabels(sorted_participants, rotation=45, ha='right')
+        
+        ax.set_ylim(0, 3.0)
+        
+        ax.legend(loc='upper left', ncol=2, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_dir / f"{prefix}participant_ratio_comparison")
+        plt.close(fig)
+
+    def _plot_error_distribution_comparison(self, data, output_path, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        keys = ["all", "emg_only", "imu_only"]
+        labels = ["EMG + IMU", "EMG-only", "IMU-only"]
+        
+        error_groups = []
+        for k in keys:
+            preds = data[k].get("predictions", {})
+            y_true = np.array(preds.get("y_true", []))
+            y_pred = np.maximum(0.0, np.array(preds.get("y_pred", [])))
+            if len(y_true) > 0 and len(y_pred) > 0:
+                abs_errors = np.abs(y_pred - y_true)
+                error_groups.append(abs_errors)
+            else:
+                error_groups.append(np.array([]))
+                
+        fig, ax = plt.subplots()
+        
+        border_colors = [ThesisStyle.COLOR_FUSION, ThesisStyle.COLOR_EMG, ThesisStyle.COLOR_IMU]
+        fill_colors = ["#EBF7FA", "#FAF0F5", "#F0F7F4"]
+        median_colors = ["#004D60", "#551133", "#115522"]
+        
+        first_outlier = True
+        positions = [1, 2, 3]
+        
+        for i, (preds_err, pos) in enumerate(zip(error_groups, positions)):
+            if len(preds_err) > 0:
+                q1 = np.percentile(preds_err, 25)
+                q3 = np.percentile(preds_err, 75)
+                iqr = q3 - q1
+                outliers = preds_err[(preds_err < q1 - 1.5 * iqr) | (preds_err > q3 + 1.5 * iqr)]
+                
+                if len(outliers) > 0:
+                    if len(outliers) > 100:
+                        np.random.seed(42)
+                        outliers = np.random.choice(outliers, size=100, replace=False)
+                    label = "Outliers" if first_outlier else ""
+                    ax.scatter(np.full_like(outliers, pos), outliers,
+                               alpha=0.35, s=12, color='#7F8C8D', edgecolors='none',
+                               zorder=2, label=label)
+                    first_outlier = False
+                    
+        bp = ax.boxplot(error_groups, positions=positions, widths=0.4,
+                        patch_artist=True, showfliers=False, showcaps=False,
+                        whiskerprops={'color': '#475569', 'linewidth': 1.0},
+                        zorder=3)
+        
+        for idx, (box, fill_c, border_c) in enumerate(zip(bp['boxes'], fill_colors, border_colors)):
+            box.set_facecolor(fill_c)
+            box.set_edgecolor(border_c)
+            box.set_linewidth(1.2)
+            box.set_alpha(0.85)
+            
+        for idx, (median, med_c) in enumerate(zip(bp['medians'], median_colors)):
+            median.set_color(med_c)
+            median.set_linewidth(1.5)
+            if idx == 0:
+                median.set_label('Median')
+                
+        ax.set_ylabel("Absolute Prediction Error (kg)", labelpad=8)
+        ax.set_xlabel("Sensor Modality Configuration", labelpad=8)
+        
+        title = get_plot_title("modality_errors", "Overall Error Distributions by Modality")
+        ThesisStyle.set_title(ax, title)
+        
+        ax.set_xticks(positions)
+        ax.set_xticklabels(labels)
+        
+        ax.legend(loc='upper right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_path)
+        plt.close(fig)
+
+    def _plot_weight_error_comparison(self, data, output_dir, prefix, layout_width):
+        keys = ["all", "emg_only", "imu_only"]
+        labels = ["EMG + IMU", "EMG-only", "IMU-only"]
+        colors = [ThesisStyle.COLOR_FUSION, ThesisStyle.COLOR_EMG, ThesisStyle.COLOR_IMU]
+        markers = ["o", "s", "^"]
+        
+        # Extract weight classes and their metrics for each run
+        weight_data = {}
+        for k in keys:
+            per_weight = data[k].get("evaluation", {}).get("per_weight", [])
+            for row in per_weight:
+                w_val = row['Weight'].replace(' kg', '').replace('kg', '').strip()
+                if w_val not in weight_data:
+                    weight_data[w_val] = {}
+                weight_data[w_val][k] = {
+                    "MAE": float(row["MAE"]),
+                    "RMSE": float(row["RMSE"])
+                }
+                
+        # Sort weights numerically
+        sorted_weights = sorted(weight_data.keys(), key=lambda w: float(w))
+        x_positions = np.arange(len(sorted_weights))
+        
+        # 1. Generate MAE Plot
+        ThesisStyle.apply(layout_width)
+        fig1, ax1 = plt.subplots()
+        
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            maes = []
+            valid_x = []
+            for idx, w in enumerate(sorted_weights):
+                if k in weight_data[w]:
+                    maes.append(weight_data[w][k]["MAE"])
+                    valid_x.append(idx)
+            if valid_x:
+                ax1.plot(valid_x, maes, marker=marker, color=color, label=label, linewidth=1.5, markersize=4.5)
+                
+        ax1.set_xlabel("Weight Class (kg)", labelpad=8)
+        ax1.set_ylabel("MAE (kg)", labelpad=8)
+        title_mae = get_plot_title("modality_weight_mae", "MAE by Weight Class and Modality")
+        ThesisStyle.set_title(ax1, title_mae)
+        ax1.set_xticks(x_positions)
+        ax1.set_xticklabels(sorted_weights)
+        ax1.set_ylim(bottom=0)
+        ax1.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax1)
+        ax1.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig1, output_dir / f"{prefix}weight_mae_comparison")
+        plt.close(fig1)
+
+        # 2. Generate RMSE Plot
+        ThesisStyle.apply(layout_width)
+        fig2, ax2 = plt.subplots()
+        
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            rmses = []
+            valid_x = []
+            for idx, w in enumerate(sorted_weights):
+                if k in weight_data[w]:
+                    rmses.append(weight_data[w][k]["RMSE"])
+                    valid_x.append(idx)
+            if valid_x:
+                ax2.plot(valid_x, rmses, marker=marker, color=color, label=label, linewidth=1.5, markersize=4.5, linestyle='--')
+                
+        ax2.set_xlabel("Weight Class (kg)", labelpad=8)
+        ax2.set_ylabel("RMSE (kg)", labelpad=8)
+        title_rmse = get_plot_title("modality_weight_rmse", "RMSE by Weight Class and Modality")
+        ThesisStyle.set_title(ax2, title_rmse)
+        ax2.set_xticks(x_positions)
+        ax2.set_xticklabels(sorted_weights)
+        ax2.set_ylim(bottom=0)
+        ax2.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax2)
+        ax2.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig2, output_dir / f"{prefix}weight_rmse_comparison")
+        plt.close(fig2)
+
+
 @plot_registry.register("importance_channel")
 class ImportanceChannelPlotter:
     """Plots a premium horizontal bar chart showing input channel permutation importance."""
@@ -969,12 +1956,7 @@ class ImportanceChannelPlotter:
         
         items = []
         for raw_lbl, val in channel_imp.items():
-            clean_lbl = raw_lbl.replace("_EMG", "").replace("_IMU", "")
-            # Sensors
-            clean_lbl = clean_lbl.replace("ax1", "S1 Accel X").replace("ay1", "S1 Accel Y").replace("az1", "S1 Accel Z")
-            clean_lbl = clean_lbl.replace("ax2", "S2 Accel X").replace("ay2", "S2 Accel Y").replace("az2", "S2 Accel Z")
-            clean_lbl = clean_lbl.replace("roll_rad1", "S1 Roll").replace("pitch_rad1", "S1 Pitch").replace("yaw_rad1", "S1 Yaw")
-            clean_lbl = clean_lbl.replace("roll_rad2", "S2 Roll").replace("pitch_rad2", "S2 Pitch").replace("yaw_rad2", "S2 Yaw")
+            clean_lbl = clean_channel_label(raw_lbl)
             
             # Modality tag
             if "_EMG" in raw_lbl or any(m in raw_lbl for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
@@ -1173,9 +2155,9 @@ class TradeoffPlotter:
         fig, ax = plt.subplots(figsize=(7.0, 4.8) if layout_width == "default" else None)
         
         name_map = {
-            "all": "EMG + IMU\n(Full Model)",
-            "emg_only": "EMG Only",
-            "imu_only": "IMU Only"
+            "all": "EMG + IMU\n(Sensor-Fused)",
+            "emg_only": "EMG-only",
+            "imu_only": "IMU-only"
         }
         
         color_map = {
@@ -1498,12 +2480,7 @@ class DeepShapChannelPlotter:
         
         items = []
         for raw_lbl, val in channel_imp.items():
-            clean_lbl = raw_lbl.replace("_EMG", "").replace("_IMU", "")
-            # Sensors
-            clean_lbl = clean_lbl.replace("ax1", "S1 Accel X").replace("ay1", "S1 Accel Y").replace("az1", "S1 Accel Z")
-            clean_lbl = clean_lbl.replace("ax2", "S2 Accel X").replace("ay2", "S2 Accel Y").replace("az2", "S2 Accel Z")
-            clean_lbl = clean_lbl.replace("roll_rad1", "S1 Roll").replace("pitch_rad1", "S1 Pitch").replace("yaw_rad1", "S1 Yaw")
-            clean_lbl = clean_lbl.replace("roll_rad2", "S2 Roll").replace("pitch_rad2", "S2 Pitch").replace("yaw_rad2", "S2 Yaw")
+            clean_lbl = clean_channel_label(raw_lbl)
             
             # Modality tag
             if "_EMG" in raw_lbl or any(m in raw_lbl for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
@@ -1516,15 +2493,16 @@ class DeepShapChannelPlotter:
         # Sort by importance magnitude
         items = sorted(items, key=lambda x: x[1], reverse=True)
         
-        # Limit to top 15 for premium presentation
-        top_n = min(15, len(items))
-        items = items[:top_n]
+        # No longer limit to top 15 as requested: show all channels
+        top_n = len(items)
         
         labels = [x[0] for x in items]
         values = [x[1] for x in items]
         modalities = [x[2] for x in items]
         
-        fig, ax = plt.subplots(figsize=(6.5, 4.5) if layout_width == "default" else None)
+        # Dynamically scale figure height based on the number of channels to prevent overlapping
+        fig_height = max(4.5, len(labels) * 0.22)
+        fig, ax = plt.subplots(figsize=(6.5, fig_height) if layout_width == "default" else None)
         
         y_pos = np.arange(len(labels))
         colors = [ThesisStyle.COLOR_EMG if m == "EMG" else ThesisStyle.COLOR_IMU for m in modalities]
@@ -1549,7 +2527,7 @@ class DeepShapChannelPlotter:
         ax.set_xlabel("Mean |SHAP Value|", labelpad=8)
         
         model_type = data.get("meta", {}).get("model_type", "Model").replace("_", " ").title()
-        title = get_plot_title("deepshap_channel", "{model_type}: DeepSHAP Channel Importance (Top {top_n})", model_type=model_type, top_n=top_n)
+        title = get_plot_title("deepshap_channel", "{model_type}: DeepSHAP Channel Importance", model_type=model_type)
         ThesisStyle.set_title(ax, title)
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         
@@ -1689,16 +2667,44 @@ class DeepShapModalityPlotter:
             
         ThesisStyle.apply(layout_width)
         
-        # 1. Left: Pie Chart
-        shares = []
-        labels = []
-        colors = []
-        
+        # 1. Prepare modality colors
         modality_colors = {
             "EMG": ThesisStyle.COLOR_EMG,
             "IMU": ThesisStyle.COLOR_IMU,
             "Anthro": ThesisStyle.COLOR_MEDIAN  # High-contrast yellow/gold
         }
+        
+        # 2. Gather and group channel items by Modality: EMG first, then IMU, then Anthro
+        items = []
+        for raw_lbl, val in chan_imp.items():
+            clean_lbl = clean_channel_label(raw_lbl)
+            
+            if "_EMG" in raw_lbl or any(m in raw_lbl for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                modality = "EMG"
+            elif "_IMU" in raw_lbl or any(m in raw_lbl for m in ["ax", "ay", "az", "roll", "pitch", "yaw", "diff", "$"]):
+                modality = "IMU"
+            else:
+                modality = "Anthro"
+                
+            items.append((clean_lbl, val, modality))
+            
+        grouped_items = []
+        for mod in ["EMG", "IMU", "Anthro"]:
+            mod_items = [x for x in items if x[2] == mod]
+            # Sort within group descending
+            mod_items = sorted(mod_items, key=lambda x: x[1], reverse=True)
+            grouped_items.extend(mod_items)
+            
+        # No longer limit to top 15 grouped features: show all channels
+        
+        # 3. Draw 1 row, 2 columns layout with dynamic height based on the number of channels
+        fig_height = max(5.0, len(grouped_items) * 0.22)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.0, fig_height) if layout_width != "column" else (8.0, fig_height * 0.8))
+        
+        # 4. Left: Pie Chart
+        shares = []
+        labels = []
+        colors = []
         
         for k in ["EMG", "IMU", "Anthro"]:
             val = mod_imp.get(k, 0.0)
@@ -1709,11 +2715,9 @@ class DeepShapModalityPlotter:
                 
         if not shares:
             print("  [Warning] No positive modality shares found. Skipping.")
+            plt.close(fig)
             return False
             
-        # Draw 1 row, 2 columns layout
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.0, 5.0) if layout_width != "column" else (8.0, 4.0))
-        
         total = sum(shares)
         pct_labels = [f"{l}\n({(s/total)*100:.1f}%)" for l, s in zip(labels, shares)]
         
@@ -1728,36 +2732,7 @@ class DeepShapModalityPlotter:
         )
         ax1.set_title("Modality Share of Total |SHAP|", fontsize=plt.rcParams['font.size'])
         
-        # 2. Right: Grouped Horizontal Bar Chart of Channels
-        items = []
-        for raw_lbl, val in chan_imp.items():
-            clean_lbl = raw_lbl.replace("_EMG", "").replace("_IMU", "")
-            # Sensors
-            clean_lbl = clean_lbl.replace("ax1", "S1 Accel X").replace("ay1", "S1 Accel Y").replace("az1", "S1 Accel Z")
-            clean_lbl = clean_lbl.replace("ax2", "S2 Accel X").replace("ay2", "S2 Accel Y").replace("az2", "S2 Accel Z")
-            clean_lbl = clean_lbl.replace("roll_rad1", "S1 Roll").replace("pitch_rad1", "S1 Pitch").replace("yaw_rad1", "S1 Yaw")
-            clean_lbl = clean_lbl.replace("roll_rad2", "S2 Roll").replace("pitch_rad2", "S2 Pitch").replace("yaw_rad2", "S2 Yaw")
-            
-            if "_EMG" in raw_lbl or any(m in raw_lbl for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
-                modality = "EMG"
-            elif "_IMU" in raw_lbl or any(m in raw_lbl for m in ["ax", "ay", "az", "roll", "pitch", "yaw", "diff", "$"]):
-                modality = "IMU"
-            else:
-                modality = "Anthro"
-                
-            items.append((clean_lbl, val, modality))
-            
-        # Group by Modality: EMG first, then IMU, then Anthro
-        grouped_items = []
-        for mod in ["EMG", "IMU", "Anthro"]:
-            mod_items = [x for x in items if x[2] == mod]
-            # Sort within group descending
-            mod_items = sorted(mod_items, key=lambda x: x[1], reverse=True)
-            grouped_items.extend(mod_items)
-            
-        # Limit to top 15 grouped features
-        grouped_items = grouped_items[:15]
-        
+        # 5. Right: Grouped Horizontal Bar Chart of Channels
         ch_labels = [x[0] for x in grouped_items]
         ch_vals = [x[1] for x in grouped_items]
         ch_mods = [x[2] for x in grouped_items]
@@ -1794,49 +2769,798 @@ class DeepShapModalityPlotter:
         return True
 
 
+
+# ===========================================================================
+# 4b. Cross-Run Comparison Plotter (Generalized vs Participant-Specific)
+# ===========================================================================
+
+class RunComparisonPlotter:
+    """Generates side-by-side comparison plots between two model run configurations
+    (e.g. Generalized LOPO model vs Participant-Specific model).
+
+    Gen run  → uses macro_avg (mean ± std across LOPO folds) for all metrics.
+    Par-spec → uses pooled values (single split).
+    """
+
+    LABEL_GEN = "Generalized\n(LOPO)"
+    LABEL_PAR = "Participant-Specific\n(Single Split)"
+    COLOR_GEN = "#4477AA"    # Paul Tol Bright Blue  – generalized model
+    COLOR_PAR = "#95356F"    # Paul Tol Muted Purple – participant-specific model
+
+    def _load(self, run_dir_raw):
+        """Resolve and load run_data.json from a run directory (supports multi-run root)."""
+        path = Path(run_dir_raw)
+        if not path.is_absolute():
+            script_dir = Path(__file__).resolve().parent
+            for base in [Path.cwd(), script_dir.parent, script_dir]:
+                candidate = (base / run_dir_raw)
+                if (candidate / "run_data.json").exists():
+                    path = candidate
+                    break
+        json_path = path / "run_data.json"
+        if json_path.exists():
+            with open(json_path) as f:
+                data = json.load(f)
+            # Consolidated multi-modality root: collapse to the 'all' (fused) sub-run
+            # so callers expecting a single-run schema (e.g. the par-spec comparison) work.
+            if isinstance(data, dict) and 'all' in data and set(data.keys()) <= {'all', 'emg_only', 'imu_only'}:
+                return data['all']
+            return data
+        # Multi-run root: load the "all" sub-run
+        all_path = path / "all" / "run_data.json"
+        if all_path.exists():
+            with open(all_path) as f:
+                return json.load(f)
+        raise FileNotFoundError(f"Cannot find run_data.json in {run_dir_raw}")
+
+    def _get_gen_metrics(self, data):
+        """Extract macro_avg metrics (mean ± std) from a LOPO run."""
+        macro = data.get("evaluation", {}).get("macro_avg", {})
+        return {
+            "MAE":  (macro.get("MAE", 0.0),  macro.get("MAE_std", 0.0)),
+            "RMSE": (macro.get("RMSE", 0.0), macro.get("RMSE_std", 0.0)),
+            "R2":   (macro.get("R2", 0.0),   macro.get("R2_std", 0.0)),
+            "Gap":  (macro.get("Generalization Gap (MAE)", 0.0),
+                     macro.get("Generalization Gap (MAE)_std", 0.0)),
+        }
+
+    def _get_par_metrics(self, data):
+        """Extract pooled metrics from a single-split run."""
+        pooled = data.get("evaluation", {}).get("pooled", {})
+        return {
+            "MAE":  pooled.get("MAE", 0.0),
+            "RMSE": pooled.get("RMSE", 0.0),
+            "R2":   pooled.get("R2", 0.0),
+        }
+
+    # ------------------------------------------------------------------
+    # Plot 1: Summary bar chart – MAE, RMSE, R², Gen Gap
+    # ------------------------------------------------------------------
+    def _plot_metrics_summary(self, gen_data, par_data, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+        gen = self._get_gen_metrics(gen_data)
+        par = self._get_par_metrics(par_data)
+
+        metrics_left  = ["MAE", "RMSE"]          # left y-axis (kg)
+        metrics_right = ["R2"]                    # right y-axis (score)
+
+        fig, ax1 = plt.subplots()
+        ax2 = ax1.twinx()
+
+        x = np.arange(len(metrics_left + ["Gen Gap"]))
+        width = 0.30
+
+        # ── Left axis: MAE, RMSE, Gen Gap ──
+        # Generalized bars
+        gen_left_vals  = [gen["MAE"][0],  gen["RMSE"][0],  gen["Gap"][0]]
+        gen_left_errs  = [gen["MAE"][1],  gen["RMSE"][1],  gen["Gap"][1]]
+        par_left_vals  = [par["MAE"],     par["RMSE"],     None]  # No Gen Gap for par-spec
+
+        rects_gen = ax1.bar(
+            x - width / 2, gen_left_vals, width,
+            label=self.LABEL_GEN, color=self.COLOR_GEN, alpha=0.85,
+            edgecolor=self.COLOR_GEN, linewidth=0.5,
+            yerr=gen_left_errs, capsize=3,
+            error_kw={"elinewidth": 1.0, "ecolor": self.COLOR_GEN, "alpha": 0.7}
+        )
+
+        par_bars = [par["MAE"], par["RMSE"], 0.0]  # placeholder 0 for gap
+        rects_par = ax1.bar(
+            x + width / 2, par_bars, width,
+            label=self.LABEL_PAR, color=self.COLOR_PAR, alpha=0.85,
+            edgecolor=self.COLOR_PAR, linewidth=0.5
+        )
+
+        # Annotate gen bars (left axis)
+        for rect, val, err in zip(rects_gen, gen_left_vals, gen_left_errs):
+            ax1.annotate(f"{val:.3f}",
+                         xy=(rect.get_x() + rect.get_width() / 2, val + err),
+                         xytext=(0, 4), textcoords="offset points",
+                         ha='center', va='bottom',
+                         fontsize=plt.rcParams['font.size'] - 2.0,
+                         color=self.COLOR_GEN, weight='semibold')
+
+        # Annotate par bars (only MAE and RMSE, skip gap)
+        for i, (rect, val) in enumerate(zip(rects_par, [par["MAE"], par["RMSE"], None])):
+            if val is None:
+                # Mark "N/A" for Gen Gap on par-spec bar
+                ax1.text(rect.get_x() + rect.get_width() / 2, 0.01,
+                         "N/A", ha='center', va='bottom',
+                         fontsize=plt.rcParams['font.size'] - 2.5,
+                         color=self.COLOR_PAR, weight='semibold', style='italic')
+                rect.set_visible(False)
+            else:
+                ax1.annotate(f"{val:.3f}",
+                             xy=(rect.get_x() + rect.get_width() / 2, val),
+                             xytext=(0, 4), textcoords="offset points",
+                             ha='center', va='bottom',
+                             fontsize=plt.rcParams['font.size'] - 2.0,
+                             color=self.COLOR_PAR, weight='semibold')
+
+        # ── Right axis: R² ──
+        r2_x = np.array([len(x)])   # position after Gen Gap
+        r2_gen_val, r2_gen_err = gen["R2"]
+        r2_par_val = par["R2"]
+
+        rect_r2_gen = ax2.bar(
+            r2_x - width / 2, [r2_gen_val], width,
+            color=self.COLOR_GEN, alpha=0.85, edgecolor=self.COLOR_GEN, linewidth=0.5,
+            yerr=[r2_gen_err], capsize=3,
+            error_kw={"elinewidth": 1.0, "ecolor": self.COLOR_GEN, "alpha": 0.7}
+        )
+        rect_r2_par = ax2.bar(
+            r2_x + width / 2, [r2_par_val], width,
+            color=self.COLOR_PAR, alpha=0.85, edgecolor=self.COLOR_PAR, linewidth=0.5
+        )
+        ax2.annotate(f"{r2_gen_val:.3f}",
+                     xy=(r2_x[0] - width / 2, r2_gen_val + r2_gen_err),
+                     xytext=(0, 4), textcoords="offset points",
+                     ha='center', va='bottom',
+                     fontsize=plt.rcParams['font.size'] - 2.0,
+                     color=self.COLOR_GEN, weight='semibold')
+        ax2.annotate(f"{r2_par_val:.3f}",
+                     xy=(r2_x[0] + width / 2, r2_par_val),
+                     xytext=(0, 4), textcoords="offset points",
+                     ha='center', va='bottom',
+                     fontsize=plt.rcParams['font.size'] - 2.0,
+                     color=self.COLOR_PAR, weight='semibold')
+
+        # Zero baseline for gen gap (can be negative)
+        ax1.axhline(0, color=ThesisStyle.COLOR_UNITY, linewidth=0.8, linestyle='--', alpha=0.6)
+
+        # Axes labels
+        ax1.set_ylabel("Error / Gen. Gap (kg)", labelpad=8)
+        ax2.set_ylabel(r"$\text{R}^2$ Score", labelpad=8, color=ThesisStyle.COLOR_R2)
+        ax2.tick_params(axis='y', labelcolor=ThesisStyle.COLOR_R2)
+        ax1.set_xlabel("Metric", labelpad=8)
+
+        # x-ticks across both axes
+        all_x = np.append(x, r2_x)
+        ax1.set_xticks(all_x)
+        ax1.set_xticklabels(["MAE", "RMSE", "Gen Gap", r"$\text{R}^2$"])
+
+        # Y limits
+        left_vals_all = gen_left_vals + [gen_left_errs[i] + gen_left_vals[i] for i in range(3)]
+        left_max = max(v for v in left_vals_all if v is not None) * 1.35
+        left_min = min(min(gen_left_vals), 0) * 1.3
+        ax1.set_ylim(left_min, left_max)
+        ax2.set_ylim(0, 1.1)
+
+        ax1.grid(True, axis='y', linestyle='--', alpha=0.5)
+        ax2.grid(False)
+        ax1.spines['top'].set_visible(False)
+        ax2.spines['top'].set_visible(False)
+
+        lines1, labels1 = ax1.get_legend_handles_labels()
+        ax1.legend(lines1[:2], labels1[:2], loc='upper right', frameon=True,
+                   facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        ThesisStyle.set_title(ax1, "Generalized vs. Participant-Specific: Performance Metrics")
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_dir / "comp_metrics_summary")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------
+    # Plot 2: Per-participant MAE (gen LOPO folds) + par-spec reference
+    # ------------------------------------------------------------------
+    def _plot_per_participant_mae(self, gen_data, par_data, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+
+        per_part = gen_data.get("evaluation", {}).get("per_participant", [])
+        if not per_part:
+            return
+        participants = [r["Participant"] for r in per_part]
+        gen_maes = [r["MAE"] for r in per_part]
+        par_pooled_mae = par_data.get("evaluation", {}).get("pooled", {}).get("MAE", None)
+
+        sorted_pairs = sorted(zip(gen_maes, participants))
+        gen_maes_sorted = [v for v, _ in sorted_pairs]
+        participants_sorted = [p for _, p in sorted_pairs]
+
+        fig, ax = plt.subplots()
+        x = np.arange(len(participants_sorted))
+
+        ax.bar(x, gen_maes_sorted, color=self.COLOR_GEN, alpha=0.85,
+               edgecolor=self.COLOR_GEN, linewidth=0.5, label=self.LABEL_GEN)
+
+        gen_macro = gen_data.get("evaluation", {}).get("macro_avg", {})
+        gen_mean = gen_macro.get("MAE", float(np.mean(gen_maes_sorted)))
+        ax.axhline(gen_mean, color=self.COLOR_GEN, linestyle='--', linewidth=1.0,
+                   alpha=0.8, label=f"Mean Gen. (μ={gen_mean:.3f})")
+
+        if par_pooled_mae is not None:
+            ax.axhline(par_pooled_mae, color=self.COLOR_PAR, linestyle='--', linewidth=1.0,
+                       alpha=0.8, label=f"Par-Spec Pooled MAE (μ={par_pooled_mae:.3f})")
+
+        ax.set_ylabel("MAE (kg)", labelpad=8)
+        ax.set_xlabel("Unseen Participant (LOPO fold)", labelpad=8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(participants_sorted, rotation=45, ha='right')
+        ax.set_ylim(0, max(gen_maes_sorted) * 1.30)
+        ax.grid(True, axis='y', linestyle='--', alpha=0.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.legend(frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        ThesisStyle.set_title(ax, "Per-Participant MAE: Generalized LOPO vs. Participant-Specific Reference")
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_dir / "comp_per_participant_mae")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------
+    # Plot 3: Per-participant RMSE (gen LOPO folds) + par-spec reference
+    # ------------------------------------------------------------------
+    def _plot_per_participant_rmse(self, gen_data, par_data, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+
+        per_part = gen_data.get("evaluation", {}).get("per_participant", [])
+        if not per_part:
+            return
+        participants = [r["Participant"] for r in per_part]
+        gen_rmses = [r["RMSE"] for r in per_part]
+        par_pooled_rmse = par_data.get("evaluation", {}).get("pooled", {}).get("RMSE", None)
+
+        sorted_pairs = sorted(zip(gen_rmses, participants))
+        gen_rmses_sorted = [v for v, _ in sorted_pairs]
+        participants_sorted = [p for _, p in sorted_pairs]
+
+        fig, ax = plt.subplots()
+        x = np.arange(len(participants_sorted))
+
+        ax.bar(x, gen_rmses_sorted, color=self.COLOR_GEN, alpha=0.85,
+               edgecolor=self.COLOR_GEN, linewidth=0.5, label=self.LABEL_GEN)
+
+        gen_macro = gen_data.get("evaluation", {}).get("macro_avg", {})
+        gen_mean = gen_macro.get("RMSE", float(np.mean(gen_rmses_sorted)))
+        ax.axhline(gen_mean, color=self.COLOR_GEN, linestyle='--', linewidth=1.0,
+                   alpha=0.8, label=f"Mean Gen. (μ={gen_mean:.3f})")
+
+        if par_pooled_rmse is not None:
+            ax.axhline(par_pooled_rmse, color=self.COLOR_PAR, linestyle='--', linewidth=1.0,
+                       alpha=0.8, label=f"Par-Spec Pooled RMSE (μ={par_pooled_rmse:.3f})")
+
+        ax.set_ylabel("RMSE (kg)", labelpad=8)
+        ax.set_xlabel("Unseen Participant (LOPO fold)", labelpad=8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(participants_sorted, rotation=45, ha='right')
+        ax.set_ylim(0, max(gen_rmses_sorted) * 1.30)
+        ax.grid(True, axis='y', linestyle='--', alpha=0.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.legend(frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        ThesisStyle.set_title(ax, "Per-Participant RMSE: Generalized LOPO vs. Participant-Specific Reference")
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_dir / "comp_per_participant_rmse")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------
+    # Plot 4: Generalization Gap per participant (gen only) + mean line
+    # ------------------------------------------------------------------
+    def _plot_gen_gap(self, gen_data, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+
+        per_fold = gen_data.get("evaluation", {}).get("per_fold", [])
+        if not per_fold:
+            return
+
+        participants = [row["val_participants"][0] if isinstance(row.get("val_participants"), list)
+                        else str(row.get("val_participants", f"fold_{i}"))
+                        for i, row in enumerate(per_fold)]
+        gaps = [row.get("Generalization Gap (MAE)", 0.0) for row in per_fold]
+
+        sorted_pairs = sorted(zip(gaps, participants))
+        gaps_sorted = [v for v, _ in sorted_pairs]
+        participants_sorted = [p for _, p in sorted_pairs]
+
+        fig, ax = plt.subplots()
+        x = np.arange(len(participants_sorted))
+
+        bar_colors = [ThesisStyle.COLOR_GAP if g >= 0 else ThesisStyle.COLOR_RMSE
+                      for g in gaps_sorted]
+        ax.bar(x, gaps_sorted, color=bar_colors, alpha=0.85, linewidth=0.5)
+
+        mean_gap = float(np.mean(gaps_sorted))
+        ax.axhline(0, color=ThesisStyle.COLOR_UNITY, linewidth=0.8, linestyle='-', alpha=0.5)
+        ax.axhline(mean_gap, color=ThesisStyle.COLOR_GAP, linestyle='--', linewidth=1.2,
+                   alpha=0.85, label=f"Mean Gap (μ={mean_gap:.3f} kg)")
+
+        ax.set_ylabel("Generalization Gap — MAE (kg)\n(Test MAE − Train MAE)", labelpad=8)
+        ax.set_xlabel("Unseen Participant (LOPO fold)", labelpad=8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(participants_sorted, rotation=45, ha='right')
+
+        y_min = min(min(gaps_sorted), 0) * 1.3
+        y_max = max(max(gaps_sorted), 0) * 1.35
+        ax.set_ylim(y_min, y_max)
+        ax.grid(True, axis='y', linestyle='--', alpha=0.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.legend(frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        ThesisStyle.set_title(ax, "Generalization Gap per LOPO Fold (Generalized Model)")
+        plt.tight_layout()
+        ThesisStyle.save_figure(fig, output_dir / "comp_gen_gap_per_fold")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------
+    # Importance helpers
+    # ------------------------------------------------------------------
+    def _load_subrun(self, base_run_dir, sub):
+        """Load a specific sub-run (e.g. 'emg_only') from a multi-modality root dir."""
+        path = Path(base_run_dir)
+        if not path.is_absolute():
+            script_dir = Path(__file__).resolve().parent
+            for base in [Path.cwd(), script_dir.parent, script_dir]:
+                candidate = base / base_run_dir
+                if candidate.exists():
+                    path = candidate
+                    break
+        json_path = path / sub / "run_data.json"
+        if json_path.exists():
+            with open(json_path) as f:
+                return json.load(f)
+        raise FileNotFoundError(f"Cannot find {sub}/run_data.json in {base_run_dir}")
+
+    def _top_n(self, d, n=10):
+        """Return top-n items from a dict sorted by value descending."""
+        if not d:
+            return [], []
+        sorted_items = sorted(d.items(), key=lambda x: abs(x[1]), reverse=True)[:n]
+        labels = [k for k, _ in sorted_items]
+        values = [v for _, v in sorted_items]
+        return labels, values
+
+    # ------------------------------------------------------------------
+    # Plot 5: DeepSHAP modality split – all 4 runs grouped
+    # ------------------------------------------------------------------
+    def _plot_deepshap_modality(self, all_data, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+
+        # Retrieve the generalized (EMG + IMU) and participant-specialized data
+        gen_data = all_data.get("EMG + IMU (Gen)")
+        par_data = all_data.get("Par-Specific")
+
+        if not gen_data or not par_data:
+            print("  [Warning] Missing required runs for combined DeepSHAP modality comparison. Skipping.")
+            return
+
+        gen_mod = gen_data.get("feature_importance", {}).get("deepshap_modality", {})
+        gen_chan = gen_data.get("feature_importance", {}).get("deepshap_channel", {})
+        par_mod = par_data.get("feature_importance", {}).get("deepshap_modality", {})
+        par_chan = par_data.get("feature_importance", {}).get("deepshap_channel", {})
+        
+        gen_perm = gen_data.get("feature_importance", {}).get("permutation_channel", {})
+        par_perm = par_data.get("feature_importance", {}).get("permutation_channel", {})
+
+        if not gen_mod or not gen_chan or not par_mod or not par_chan or not gen_perm or not par_perm:
+            print("  [Warning] Missing deepshap_modality, deepshap_channel or permutation_channel in run data. Skipping.")
+            return
+
+        # Determine the size based on double the active layout size for double-column format (significantly less tall):
+        if layout_width == "column":
+            figsize = (7.0, 2.8)
+        elif layout_width == "double":
+            figsize = (14.0, 5.5)
+        else: # "default"
+            figsize = (12.0, 4.8)
+
+        # Setup 3-subplot horizontal layout:
+        # ax1: stacked bars of Modality Share (%)
+        # ax2: Combined channel importance (all channels) using solid/dashed lines for DeepSHAP
+        # ax3: Combined channel importance (all channels) using solid/dashed lines for Permutation Importance
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize,
+                                             gridspec_kw={'width_ratios': [1.0, 2.5, 2.5]})
+
+        # --------------------------------------------------
+        # 1. Left Panel: Stacked Modality Share (%)
+        # --------------------------------------------------
+        models = ["Generalized\n(EMG + IMU)", "Participant\nSpecialized"]
+        
+        gen_total = sum(gen_mod.values()) or 1.0
+        par_total = sum(par_mod.values()) or 1.0
+        
+        emg_shares = [
+            gen_mod.get("EMG", 0.0) / gen_total * 100,
+            par_mod.get("EMG", 0.0) / par_total * 100
+        ]
+        imu_shares = [
+            gen_mod.get("IMU", 0.0) / gen_total * 100,
+            par_mod.get("IMU", 0.0) / par_total * 100
+        ]
+        anthro_shares = [
+            gen_mod.get("Anthro", 0.0) / gen_total * 100,
+            par_mod.get("Anthro", 0.0) / par_total * 100
+        ]
+        
+        x_pos = np.arange(len(models))
+        bar_width = 0.55
+        
+        bars_emg = ax1.bar(x_pos, emg_shares, bar_width, label="EMG", color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        bars_imu = ax1.bar(x_pos, imu_shares, bar_width, bottom=emg_shares, label="IMU", color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        bottom_anthro = [e + i for e, i in zip(emg_shares, imu_shares)]
+        if sum(anthro_shares) > 0:
+            bars_anthro = ax1.bar(x_pos, anthro_shares, bar_width, bottom=bottom_anthro, label="Anthro", color=ThesisStyle.COLOR_MEDIAN, alpha=0.85, edgecolor=ThesisStyle.COLOR_MEDIAN, linewidth=0.5)
+            
+        ax1.set_ylabel("Modality Share (%)", labelpad=8)
+        ax1.set_xticks(x_pos)
+        ax1.set_xticklabels(models)
+        ax1.set_ylim(0, 100)
+        ThesisStyle.set_title(ax1, "Modality Share of Total |SHAP|")
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.grid(True, axis='y', linestyle='--', alpha=0.5)
+        
+        # Annotate percentages
+        for idx in range(len(models)):
+            if emg_shares[idx] > 5:
+                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+            if imu_shares[idx] > 5:
+                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+            if anthro_shares[idx] > 5:
+                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                
+        # Legend removed (moved to global legend)
+
+        # --------------------------------------------------
+        # 2. Middle Panel: Combined Channel Importance (DeepSHAP Relative Share %)
+        # --------------------------------------------------
+        # Compute relative values for DeepSHAP (Middle Panel)
+        gen_chan_total = sum(gen_chan.values()) or 1.0
+        par_chan_total = sum(par_chan.values()) or 1.0
+        gen_rel = {k: v / gen_chan_total * 100 for k, v in gen_chan.items()}
+        par_rel = {k: v / par_chan_total * 100 for k, v in par_chan.items()}
+        
+        # Compute relative values for Permutation (Right Panel)
+        gen_perm_total = sum(gen_perm.values()) or 1.0
+        par_perm_total = sum(par_perm.values()) or 1.0
+        gen_perm_rel = {k: v / gen_perm_total * 100 for k, v in gen_perm.items()}
+        par_perm_rel = {k: v / par_perm_total * 100 for k, v in par_perm.items()}
+
+        # Sort channels by their average relative importance across both plots (metrics) and models
+        all_channels_set = set(gen_rel.keys()) | set(par_rel.keys()) | set(gen_perm_rel.keys()) | set(par_perm_rel.keys())
+        mean_scores = {}
+        for ch in all_channels_set:
+            mean_scores[ch] = (
+                gen_rel.get(ch, 0.0) + 
+                par_rel.get(ch, 0.0) + 
+                gen_perm_rel.get(ch, 0.0) + 
+                par_perm_rel.get(ch, 0.0)
+            ) / 4.0
+        sorted_channels = [x[0] for x in sorted(mean_scores.items(), key=lambda x: x[1], reverse=True)]
+        
+        # Build labels, values, and colors for Middle Panel (DeepSHAP)
+        labels = []
+        vals_gen = []
+        vals_par = []
+        colors = []
+        for ch in sorted_channels:
+            clean_lbl = clean_channel_label(ch)
+            labels.append(clean_lbl)
+            vals_gen.append(gen_rel.get(ch, 0.0))
+            vals_par.append(par_rel.get(ch, 0.0))
+            if "_EMG" in ch or any(m in ch for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                colors.append(ThesisStyle.COLOR_EMG)
+            else:
+                colors.append(ThesisStyle.COLOR_IMU)
+                
+        y_pos = np.arange(len(labels))
+        offset = 0.12
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax2.hlines(y_pos - offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.5, alpha=0.85)
+        ax2.scatter(vals_gen, y_pos - offset, color=colors, marker='o', zorder=3, s=30, alpha=0.85)
+        
+        # Plot Participant-Specialized (dashed lines + hollow circles)
+        ax2.hlines(y_pos + offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.5, alpha=0.85)
+        ax2.scatter(vals_par, y_pos + offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=30, linewidths=1.5, alpha=0.85)
+        
+        ax2.set_yticks(y_pos)
+        ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax2.invert_yaxis()
+        ax2.set_xlabel("Relative Importance (% of Total |SHAP|)", labelpad=4)
+        ThesisStyle.set_title(ax2, "DeepSHAP Channel Importance")
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        
+        # Add custom legend representing the different model lines and channel modalities
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        custom_legend = [
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
+            Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.5, markersize=6, label='Participant-Specialized Model'),
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Channel'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Channel')
+        ]
+        # Legend removed (moved to global legend)
+        
+        max_val = max(max(vals_gen), max(vals_par)) if vals_gen else 1.0
+        ax2.set_xlim(0, max_val * 1.1)
+
+        # --------------------------------------------------
+        # 3. Right Panel: Combined Permutation Channel Importance (Relative Share %)
+        # --------------------------------------------------
+        # (Relative share dictionaries gen_perm_rel and par_perm_rel are already computed above)
+        sorted_perm_channels = sorted_channels
+        
+        labels_perm = []
+        vals_gen_perm = []
+        vals_par_perm = []
+        colors_perm = []
+        
+        for ch in sorted_perm_channels:
+            clean_lbl = clean_channel_label(ch)
+            labels_perm.append(clean_lbl)
+            
+            vals_gen_perm.append(gen_perm_rel.get(ch, 0.0))
+            vals_par_perm.append(par_perm_rel.get(ch, 0.0))
+            
+            # Determine modality for coloring
+            if "_EMG" in ch or any(m in ch for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                colors_perm.append(ThesisStyle.COLOR_EMG)
+            else:
+                colors_perm.append(ThesisStyle.COLOR_IMU)
+                
+        y_pos_perm = np.arange(len(labels_perm))
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax3.hlines(y_pos_perm - offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.5, alpha=0.85)
+        ax3.scatter(vals_gen_perm, y_pos_perm - offset, color=colors_perm, marker='o', s=30, alpha=0.85, zorder=3)
+        
+        # Plot Participant-Specialized (dashed lines + hollow circles)
+        ax3.hlines(y_pos_perm + offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.5, alpha=0.85)
+        ax3.scatter(vals_par_perm, y_pos_perm + offset, facecolors='white', edgecolors=colors_perm, marker='o', s=30, linewidths=1.5, alpha=0.85, zorder=3)
+        
+        ax3.set_yticks(y_pos_perm)
+        ax3.set_yticklabels(labels_perm, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax3.invert_yaxis()
+        ax3.set_xlabel("Relative Importance (% of Total MAE Increase)", labelpad=4)
+        ThesisStyle.set_title(ax3, "Permutation Channel Importance")
+        ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax3.spines['top'].set_visible(False)
+        ax3.spines['right'].set_visible(False)
+        
+        # Legend removed (moved to global legend)
+        ax3.axvline(0, color='#333333', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        min_val_perm = min(min(vals_gen_perm), min(vals_par_perm)) if vals_gen_perm else 0.0
+        max_val_perm = max(max(vals_gen_perm), max(vals_par_perm)) if vals_gen_perm else 1.0
+        if min_val_perm < 0:
+            range_val = max_val_perm - min_val_perm
+            x_min = min_val_perm - range_val * 0.05
+            x_max = max_val_perm + range_val * 0.05
+        else:
+            x_min = 0.0
+            x_max = max_val_perm * 1.1
+        ax3.set_xlim(x_min, x_max)
+
+        # Add global legend at the bottom
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        global_legend_handles = [
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
+            Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.5, markersize=6, label='Participant-Specialized Model'),
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU')
+        ]
+        fig.legend(handles=global_legend_handles, loc='lower center', ncol=4,
+                   bbox_to_anchor=(0.5, 0.11),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        # Title and layout (reserve bottom space for global legend)
+        plt.tight_layout(rect=[0, 0.15, 1, 1])
+        ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_modality")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------
+    # Plot 6: DeepSHAP channel importance – 2×2 panel, top-10 per run
+    # ------------------------------------------------------------------
+    def _plot_importance_panels(self, all_data, fi_key, xlabel, filename,
+                                title, output_dir, layout_width, top_n=12):
+        ThesisStyle.apply(layout_width)
+
+        run_items = list(all_data.items())
+        n_runs = len(run_items)
+        ncols = 2
+        nrows = (n_runs + 1) // ncols
+
+        fig, axes = plt.subplots(nrows, ncols,
+                                 figsize=(plt.rcParams['figure.figsize'][0] * 2,
+                                          plt.rcParams['figure.figsize'][1] * nrows))
+        axes = np.array(axes).flatten()
+
+        run_colors = {
+            "EMG + IMU (Gen)":   self.COLOR_GEN,
+            "EMG-only (Gen)":    ThesisStyle.COLOR_EMG,
+            "IMU-only (Gen)":    ThesisStyle.COLOR_IMU,
+            "Par-Specific":      self.COLOR_PAR,
+        }
+
+        for ax, (rname, rdata) in zip(axes, run_items):
+            fi = rdata.get("feature_importance", {}).get(fi_key, {})
+            labels, values = self._top_n(fi, n=top_n)
+            if fi_key in ["deepshap_channel", "permutation_channel"]:
+                labels = [clean_channel_label(lbl) for lbl in labels]
+            if not labels:
+                ax.text(0.5, 0.5, "No data", ha='center', va='center',
+                        transform=ax.transAxes)
+                ax.set_title(rname)
+                continue
+
+            color = run_colors.get(rname, "#4477AA")
+            y = np.arange(len(labels))
+            ax.barh(y, values, color=color, alpha=0.85, edgecolor=color, linewidth=0.4)
+            ax.axvline(0, color='#333333', linestyle='-', linewidth=0.7, alpha=0.5)
+            ax.set_yticks(y)
+            ax.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
+            ax.invert_yaxis()
+            ax.set_xlabel(xlabel, labelpad=6, fontsize=plt.rcParams['font.size'] - 1.0)
+            ax.set_title(rname, fontsize=plt.rcParams['font.size'],
+                         color=color, weight='semibold')
+            ax.grid(True, axis='x', linestyle='--', alpha=0.5)
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
+        # Hide any unused panels
+        for ax in axes[n_runs:]:
+            ax.set_visible(False)
+
+        ThesisStyle.set_suptitle(fig, title)
+        plt.tight_layout(rect=[0, 0, 1, 0.93])
+        ThesisStyle.save_figure(fig, output_dir / filename)
+        plt.close(fig)
+
+    def plot(self, gen_run_dir, par_run_dir, output_dir, layout_width):
+        """Main entry point. Loads all run variants and generates all comparison plots."""
+        # Load generalized sub-runs
+        try:
+            gen_all  = self._load_subrun(gen_run_dir, "all")
+        except FileNotFoundError:
+            try:
+                gen_all = self._load(gen_run_dir)
+            except FileNotFoundError as e:
+                print(f"  [ERROR] Could not load gen all run data: {e}")
+                return 0
+        try:
+            gen_emg = self._load_subrun(gen_run_dir, "emg_only")
+        except FileNotFoundError:
+            gen_emg = None
+            print("  [Warning] gen emg_only sub-run not found, skipping.")
+
+        try:
+            gen_imu = self._load_subrun(gen_run_dir, "imu_only")
+        except FileNotFoundError:
+            gen_imu = None
+            print("  [Warning] gen imu_only sub-run not found, skipping.")
+
+        # Load par-spec run
+        try:
+            par_data = self._load(par_run_dir)
+        except FileNotFoundError as e:
+            print(f"  [ERROR] Could not load participant-specific run data: {e}")
+            return 0
+
+        # Dict of all 4 runs used for importance comparison (ordered)
+        all_runs = {"EMG + IMU (Gen)": gen_all}
+        if gen_emg:  all_runs["EMG-only (Gen)"]  = gen_emg
+        if gen_imu:  all_runs["IMU-only (Gen)"]  = gen_imu
+        all_runs["Par-Specific"] = par_data
+
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        count = 0
+
+        # ── Performance metrics ──
+        print("  Plotting comp_metrics_summary...")
+        self._plot_metrics_summary(gen_all, par_data, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_per_participant_mae...")
+        self._plot_per_participant_mae(gen_all, par_data, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_per_participant_rmse...")
+        self._plot_per_participant_rmse(gen_all, par_data, output_dir, layout_width)
+        count += 1
+
+        # ── Importance comparisons ──
+        print("  Plotting comp_deepshap_modality...")
+        self._plot_deepshap_modality(all_runs, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_deepshap_channel...")
+        self._plot_importance_panels(
+            all_runs, "deepshap_channel",
+            xlabel="Mean |SHAP| Value",
+            filename="comp_deepshap_channel",
+            title="DeepSHAP Channel Importance — Top 12 per Model",
+            output_dir=output_dir, layout_width=layout_width, top_n=12
+        )
+        count += 1
+
+        print("  Plotting comp_deepshap_feature_type...")
+        self._plot_importance_panels(
+            all_runs, "deepshap_feature_type",
+            xlabel="Mean |SHAP| Value",
+            filename="comp_deepshap_feature_type",
+            title="DeepSHAP Feature-Type Importance — All Models",
+            output_dir=output_dir, layout_width=layout_width, top_n=20
+        )
+        count += 1
+
+        print("  Plotting comp_permutation_channel...")
+        self._plot_importance_panels(
+            all_runs, "permutation_channel",
+            xlabel="Permutation Importance (MAE increase)",
+            filename="comp_permutation_channel",
+            title="Permutation Channel Importance — Top 12 per Model",
+            output_dir=output_dir, layout_width=layout_width, top_n=12
+        )
+        count += 1
+
+        print("  Plotting comp_permutation_feature_type...")
+        self._plot_importance_panels(
+            all_runs, "permutation_feature",
+            xlabel="Permutation Importance (MAE increase)",
+            filename="comp_permutation_feature_type",
+            title="Permutation Feature-Type Importance — All Models",
+            output_dir=output_dir, layout_width=layout_width, top_n=20
+        )
+        count += 1
+
+        return count
+
+
+
+def run_comparison_pipeline(gen_run_dir, par_run_dir, output_dir_raw, width_style):
+    """Runs the cross-run comparison pipeline for generalized vs participant-specific models."""
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+
+    # Resolve output directory
+    out_path = Path(output_dir_raw)
+    if not out_path.is_absolute():
+        for base in [Path.cwd(), project_root, script_dir]:
+            candidate = base / output_dir_raw
+            out_path = candidate
+            break
+
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    plotter = RunComparisonPlotter()
+    n = plotter.plot(gen_run_dir, par_run_dir, out_path, width_style)
+    print(f"Completed comparison run! Generated {n} plot formats in {out_path}.\n")
+
+
 # ===========================================================================
 # 5. Command Line Orchestration
 # ===========================================================================
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Generates premium, modular, and rho.cls styled LaTeX thesis plots from run_data.json.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument(
-        "--run-dir", "-r",
-        type=str,
-        default=RUN_DIR,
-        help="Path to the model run folder containing run_data.json."
-    )
-    parser.add_argument(
-        "--output-dir", "-o",
-        type=str,
-        default=OUTPUT_DIR,
-        help="Target folder to save generated figures. Grouped cleanly in 'visualization/run_plots'."
-    )
-    parser.add_argument(
-        "--width", "-w",
-        type=str,
-        choices=["column", "double", "default"],
-        default=LAYOUT_WIDTH,
-        help="Physical page width scaling template: 'column' (3.5\"), 'double' (7.0\"), or 'default' (8.0\")."
-    )
-    parser.add_argument(
-        "--plots", "-p",
-        type=str,
-        nargs="+",
-        default=PLOTS_TO_GENERATE,
-        help=f"Specific plots to generate. Available options: {', '.join(plot_registry.list_plotters())}. If unspecified, all are generated."
-    )
-    
-    # Use parse_known_args to ignore unexpected command-line arguments (e.g. from IDE runners)
-    args, unknown = parser.parse_known_args()
-    if unknown:
-        print(f"Note: Ignoring unrecognized command-line arguments: {unknown}")
-    
+def run_viz_pipeline(run_dir_raw, output_dir_raw, active_plots, width_style):
     # 1. Resolve run_data.json path using a multi-step search strategy
-    run_dir_raw = args.run_dir
     run_dir_path = Path(run_dir_raw)
     
     if not run_dir_path.is_absolute():
@@ -1866,8 +3590,8 @@ def main():
     
     if not json_path.exists():
         print(f"Error: run_data.json not found at: {json_path}")
-        print("Please point --run-dir to a valid run directory or edit RUN_DIR at the top of the script.")
-        sys.exit(1)
+        print("Please check the configuration or command line arguments.")
+        return False
         
     print(f"Loading run data from: {json_path}")
     with open(json_path, 'r') as f:
@@ -1875,10 +3599,9 @@ def main():
             data = json.load(f)
         except Exception as e:
             print(f"Error reading JSON: {e}")
-            sys.exit(1)
+            return False
             
     # 2. Setup output folder
-    output_dir_raw = args.output_dir
     output_dir_path = Path(output_dir_raw)
     if not output_dir_path.is_absolute():
         # Resolve relative to project root
@@ -1888,21 +3611,12 @@ def main():
     else:
         output_dir_path = output_dir_path.resolve()
         
+    global CURRENT_OUTPUT_DIR
+    CURRENT_OUTPUT_DIR = str(output_dir_path)
+    
     output_dir_path.mkdir(parents=True, exist_ok=True)
     print(f"Saving figures to folder: {output_dir_path}")
     
-    # 3. Determine which plotters to run
-    active_plots = args.plots
-    if active_plots is None:
-        active_plots = plot_registry.list_plotters()
-    else:
-        # Validate selected plotters
-        invalid = [p for p in active_plots if p not in plot_registry.list_plotters()]
-        if invalid:
-            print(f"Error: Selected invalid plotters: {invalid}")
-            print(f"Choose from: {plot_registry.list_plotters()}")
-            sys.exit(1)
-            
     # Detect if we have a multi-modality ablation or flat run
     is_multi_ablation = False
     sub_runs = []
@@ -1920,19 +3634,16 @@ def main():
     else:
         runs_to_process = [("default", data, "")]
         
-    for name in active_plots:
-        plotter = plot_registry.get_plotter(name)
-        if not plotter:
-            continue
-            
     PLOT_CATEGORIES = {
         "loss": "performance",
         "regression": "performance",
+        "calibration": "calibration",
         "seqlen": "performance",
         "participant": "performance",
         "weight_error": "performance",
         "ablation": "performance",
         "tradeoff": "performance",
+        "modality_comparison": "modality comparison",
         
         "distribution": "dataset",
         
@@ -1946,6 +3657,13 @@ def main():
         "deepshap_modality": "importance"
     }
 
+    # Determine prefix from folder name
+    folder_name = output_dir_path.name
+    if folder_name.startswith("run_plots_"):
+        prefix = folder_name.replace("run_plots_", "") + "_"
+    else:
+        prefix = folder_name + "_"
+
     for name in active_plots:
         plotter = plot_registry.get_plotter(name)
         if not plotter:
@@ -1955,12 +3673,12 @@ def main():
         target_subfolder = output_dir_path / category
         target_subfolder.mkdir(parents=True, exist_ok=True)
             
-        if name in ["ablation", "tradeoff"]:
+        if name in ["ablation", "tradeoff", "modality_comparison"]:
             # These plotters run once on the root multi-run dictionary
             print(f"Running '{name}' plotter (on root multi-run data)...")
-            out_file = target_subfolder / f"{name}_plot"
+            out_file = target_subfolder / f"{prefix}{name}_plot"
             try:
-                success = plotter.plot(data, out_file, args.width)
+                success = plotter.plot(data, out_file, width_style)
                 if success:
                     successful_count += 1
             except Exception as e:
@@ -1970,10 +3688,10 @@ def main():
         elif name == "distribution":
             # Run once on single/sub-run dictionary
             print(f"Running '{name}' plotter (once)...")
-            out_file = target_subfolder / f"{name}_plot"
+            out_file = target_subfolder / f"{prefix}{name}_plot"
             try:
                 run_dict = data[sub_runs[0]] if is_multi_ablation else data
-                success = plotter.plot(run_dict, out_file, args.width)
+                success = plotter.plot(run_dict, out_file, width_style)
                 if success:
                     successful_count += 1
             except Exception as e:
@@ -1985,9 +3703,9 @@ def main():
             for run_name, run_dict, suffix in runs_to_process:
                 run_desc = f" ({run_name})" if is_multi_ablation else ""
                 print(f"Running '{name}' plotter{run_desc}...")
-                out_file = target_subfolder / f"{name}_plot{suffix}"
+                out_file = target_subfolder / f"{prefix}{name}_plot{suffix}"
                 try:
-                    success = plotter.plot(run_dict, out_file, args.width)
+                    success = plotter.plot(run_dict, out_file, width_style)
                     if success:
                         successful_count += 1
                 except Exception as e:
@@ -1995,7 +3713,87 @@ def main():
                     print(f"  [ERROR] Plotter '{name}' failed{run_desc} with exception: {e}")
                     traceback.print_exc()
                 
-    print(f"\nCompleted! Generated {successful_count} visual formats successfully in {output_dir_path}.")
+    print(f"Completed run! Generated {successful_count} visual formats successfully in {output_dir_path}.\n")
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generates premium, modular, and rho.cls styled LaTeX thesis plots from run_data.json.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--run-dir", "-r",
+        type=str,
+        default=None,
+        help="Path to the model run folder containing run_data.json. If omitted, runs configured in MODEL_RUNS are processed."
+    )
+    parser.add_argument(
+        "--output-dir", "-o",
+        type=str,
+        default=None,
+        help="Target folder to save generated figures. If omitted, runs configured in MODEL_RUNS are processed."
+    )
+    parser.add_argument(
+        "--width", "-w",
+        type=str,
+        choices=["column", "double", "default"],
+        default=LAYOUT_WIDTH,
+        help="Physical page width scaling template: 'column' (3.5\"), 'double' (7.0\"), or 'default' (8.0\")."
+    )
+    parser.add_argument(
+        "--plots", "-p",
+        type=str,
+        nargs="+",
+        default=PLOTS_TO_GENERATE,
+        help=f"Specific plots to generate. Available options: {', '.join(plot_registry.list_plotters())}. If unspecified, all are generated."
+    )
+    
+    # Use parse_known_args to ignore unexpected command-line arguments (e.g. from IDE runners)
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        print(f"Note: Ignoring unrecognized command-line arguments: {unknown}")
+        
+    # Determine which plotters to run
+    active_plots = args.plots
+    if active_plots is None:
+        active_plots = plot_registry.list_plotters()
+    else:
+        # Validate selected plotters
+        invalid = [p for p in active_plots if p not in plot_registry.list_plotters()]
+        if invalid:
+            print(f"Error: Selected invalid plotters: {invalid}")
+            print(f"Choose from: {plot_registry.list_plotters()}")
+            sys.exit(1)
+            
+    # If run-dir or output-dir is specified via command line arguments, process that single run.
+    if args.run_dir is not None or args.output_dir is not None:
+        run_dir = args.run_dir if args.run_dir is not None else RUN_DIR
+        output_dir = args.output_dir if args.output_dir is not None else OUTPUT_DIR
+        run_viz_pipeline(run_dir, output_dir, active_plots, args.width)
+    else:
+        # Default: Process both generalized and specialized runs configured in MODEL_RUNS
+        for run_name, config in MODEL_RUNS.items():
+            print(f"\n==========================================================================")
+            print(f" PROCESSING MODEL RUN CONFIGURATION: {run_name.upper()}")
+            print(f"==========================================================================")
+            run_viz_pipeline(config["run_dir"], config["output_dir"], active_plots, args.width)
+
+        # Cross-run comparison: generalized vs participant-specific
+        gen_cfg  = MODEL_RUNS.get("generalized", {})
+        par_cfg  = MODEL_RUNS.get("specialized", {})
+        if gen_cfg and par_cfg:
+            print(f"\n==========================================================================")
+            print(f" PROCESSING CROSS-RUN COMPARISON: GENERALIZED vs PARTICIPANT-SPECIFIC")
+            print(f"==========================================================================")
+            run_comparison_pipeline(
+                gen_run_dir  = gen_cfg["run_dir"],
+                par_run_dir  = par_cfg["run_dir"],
+                output_dir_raw = "visualization/run_plots_comp",
+                width_style  = args.width
+            )
+
+
 
 if __name__ == "__main__":
     main()

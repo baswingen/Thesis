@@ -12,7 +12,7 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
-CV_STRATEGY = "participant"  # Options: "kfold" (calibration run), "participant" (cross-subject LOPO)
+CV_STRATEGY = "kfold"  # Options: "kfold" (calibration run), "participant" (cross-subject LOPO)  [par-spec-P01 st3 ablation]
 RUN_GRID_SEARCH = False
 GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
@@ -56,8 +56,9 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    'include': ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09',
-                'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18'],  # matches final_run (17 participants, P13 excluded)
+    # POOLED KFOLD CONTROL: all 17 participants (P13 excluded, matches final_run)
+    'include': ['P01','P02','P03','P04','P05','P06','P07','P08','P09',
+                'P10','P11','P12','P14','P15','P16','P17','P18'],
 }
 
 ###########################################################
@@ -289,7 +290,7 @@ CV_CONFIG = {
                                 # matched to final_run). Only the DATA SPLIT changes vs final_run.
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
     'strict_val_participants': 1, # matches final_run (hold out 1 participant for early-stopping validation)
-    'limit_folds': None         # None = run all n_folds (matches final_run); set to an int only for fast prototyping
+    'limit_folds': None         # POOLED KFOLD CONTROL: run all 5 folds
 }
 
 # SVM Configuration
@@ -578,16 +579,21 @@ SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
     'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
     'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
     'learning_rate': 0.0003,      # Optimized stable learning rate
+    'class_balanced_loss': False, # True = inverse-frequency per-sample loss weighting (prevents 0kg-dominated gain bias)
     'weight_decay': 1e-5 if CV_STRATEGY == 'kfold' else 0.005,  # Light WD for K-Fold calibration, strong WD for LOPO
     'batch_size': 128 if CV_STRATEGY == 'kfold' else 64,        # Larger batch size for K-Fold
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    'early_stopping_patience': 30 if CV_STRATEGY == 'kfold' else 5, # High patience to ensure calibration convergence
-    'scheduler_patience': 7 if CV_STRATEGY == 'kfold' else 3,       
-    'scheduler_factor': 0.5 if CV_STRATEGY == 'kfold' else 0.8,       
+    # AUG-BALANCE RUN: patience=50 and OneCycleLR match the bal-loss run exactly so the
+    # ONLY difference between the two is balance_weights=True (aug) vs class_balanced_loss=True (loss).
+    'early_stopping_patience': 50 if CV_STRATEGY == 'kfold' else 5,
+    'scheduler_patience': 7 if CV_STRATEGY == 'kfold' else 3,
+    'scheduler_factor': 0.5 if CV_STRATEGY == 'kfold' else 0.8,
     'use_checkpointing': True,
     'use_amp': True,
     'scheduler': {
+        'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3,
+    } if CV_STRATEGY == 'kfold' else {
         'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-6
     },
     'random_state': GLOBAL_RANDOM_STATE

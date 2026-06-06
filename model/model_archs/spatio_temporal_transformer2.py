@@ -669,14 +669,7 @@ class SpatioTemporalTransformerRegressor2:
                     group = fname.split('_EMG_')[0] + "_EMG"
                 elif '_IMU_' in fname:
                     parts = fname.split('_IMU_')
-                    prefix = parts[0] + "_IMU"
-                    suffix = parts[1] if len(parts) > 1 else ""
-                    if any(k in suffix for k in ['ax', 'ay', 'az', 'acc']):
-                        group = prefix + "_Accel"
-                    elif any(k in suffix for k in ['roll', 'pitch', 'yaw', 'gyro', 'rad']):
-                        group = prefix + "_Orient"
-                    else:
-                        group = prefix
+                    group = parts[0] + "_IMU"
                 elif '_SVM_' in fname:
                     group = fname.split('_SVM_')[0] + "_SVM"
                 else:

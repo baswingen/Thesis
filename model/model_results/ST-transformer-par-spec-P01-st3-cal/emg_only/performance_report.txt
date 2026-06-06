@@ -1,0 +1,33 @@
+============================================================
+RECALIBRATED MODEL PERFORMANCE REPORT
+Modality: EMG_ONLY
+============================================================
+
+--- RECALIBRATION ---
+Affine post-hoc calibration:  pred_cal = b * pred + a
+  slope b   : 0.951996
+  intercept a: 0.048113
+  samples    : 756
+  CAVEAT: fit IN-SAMPLE on the held-out fold predictions (no separate
+  calibration set was stored). Numbers are an optimistic upper bound
+  showing the bias is affine/removable; for an unbiased estimate fit
+  the calibration on train/val predictions and apply to untouched test.
+
+--- OVERALL METRICS: BEFORE -> AFTER ---
+  MAE  : 0.1604  ->  0.1719
+  RMSE : 0.3119  ->  0.2963
+  R2   : 0.9738  ->  0.9764
+  Corr : 0.9881  ->  0.9881
+
+--- PER-WEIGHT METRICS (recalibrated) ---
+  Weight  Count  MAE_before  MAE_after  RMSE_after  bias_after
+--------------------------------------------------------------
+    0.00    441      0.0027     0.0507      0.0588     +0.0507
+    0.98     63      0.3174     0.3021      0.4029     -0.0853
+    1.97     63      0.3951     0.3802      0.4511     -0.0886
+    2.95     64      0.3370     0.3129      0.4072     -0.0359
+    4.15     62      0.3812     0.3740      0.5116     -0.0956
+    5.93     63      0.4756     0.3404      0.4875     -0.0502
+
+Note: per-seqlen / per-participant / importance / timing sections are
+unchanged from performance_report_ORIGINAL.txt (not recalibrated).
