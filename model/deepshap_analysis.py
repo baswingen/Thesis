@@ -328,14 +328,8 @@ def process_and_plot_shap(shap_values, channel_names, out_dir):
             modality = "EMG"
         elif '_IMU_' in name:
             parts = name.split('_IMU_')
-            prefix = parts[0] + "_IMU"
+            channel = parts[0] + "_IMU"
             suffix = parts[1] if len(parts) > 1 else ""
-            if any(k in suffix for k in ['ax', 'ay', 'az', 'acc']):
-                channel = prefix + "_Accel"
-            elif any(k in suffix for k in ['roll', 'pitch', 'yaw', 'gyro', 'rad']):
-                channel = prefix + "_Orient"
-            else:
-                channel = prefix
             sub_parts = suffix.rsplit('_', 1)
             feat_suffix = sub_parts[-1] if len(sub_parts) > 1 else suffix
             if not feat_suffix: feat_suffix = "raw"

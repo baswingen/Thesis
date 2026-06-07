@@ -1,0 +1,3 @@
+CALIBRATED (emg_only)  pred_cal = 0.951996*pred + 0.048113  (in-sample OLS)
+MAE 0.1604 -> 0.1719 | RMSE 0.3119 -> 0.2963 | R2 0.9738 -> 0.9764
+NOTE: per_seqlen/per_duration/anova in run_data.json are NOT recalibrated (no per-sample metadata stored).
