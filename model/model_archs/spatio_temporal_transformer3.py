@@ -445,15 +445,21 @@ class SpatioTemporalTransformerRegressor3:
         all_features_train = self._sanitise(np.vstack(flat_data_train))
         self.scaler.fit(all_features_train)
         
+        # Floor standard deviation scale to prevent dividing by near-zero values (feature explosion)
+        if hasattr(self.scaler, "scale_") and self.scaler.scale_ is not None:
+            self.scaler.scale_ = np.maximum(self.scaler.scale_, 1e-4)
+            
         scaled_seqs_train = []
         for arr in flat_data_train:
-            scaled_arr = self.scaler.transform(self._sanitise(arr)).astype(np.float32)
+            scaled_arr = self.scaler.transform(self._sanitise(arr))
+            scaled_arr = np.clip(scaled_arr, -15.0, 15.0).astype(np.float32)
             scaled_seqs_train.append(scaled_arr) 
             
         scaled_seqs_val = []
         for seq in sequences_val:
             seq_arr = np.array([[w.get(k, 0.0) for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
+            scaled_arr = self.scaler.transform(self._sanitise(seq_arr))
+            scaled_arr = np.clip(scaled_arr, -15.0, 15.0).astype(np.float32)
             scaled_seqs_val.append(scaled_arr)
             
         y_np_train = y_train.values.astype(np.float32)
@@ -641,7 +647,8 @@ class SpatioTemporalTransformerRegressor3:
         scaled_seqs = []
         for seq in sequences:
             seq_arr = np.array([[w.get(k, 0.0) for k in self.feature_names] for w in seq])
-            scaled_arr = self.scaler.transform(self._sanitise(seq_arr)).astype(np.float32)
+            scaled_arr = self.scaler.transform(self._sanitise(seq_arr))
+            scaled_arr = np.clip(scaled_arr, -15.0, 15.0).astype(np.float32)
             scaled_seqs.append(torch.from_numpy(scaled_arr))
             
         dummy_y = torch.zeros((len(scaled_seqs), 1))

@@ -274,33 +274,26 @@ class ThesisStyle:
         if layout_width == "column":
             # Compact figure size (approx 1.6 aspect ratio)
             figsize = (3.5, 2.2)
-            fontsize = 8.5
-            labelsize = 9.0
-            titlesize = 9.5
-            legendsize = 8.0
-            ticksize = 8.0
             linewidth = 1.0
             markersize = 3.5
         elif layout_width == "double":
             # Large figure size (golden ratio 1.6 aspect ratio)
             figsize = (7.0, 4.3)
-            fontsize = 10.0
-            labelsize = 10.5
-            titlesize = 11.0
-            legendsize = 9.0
-            ticksize = 9.0
             linewidth = 1.4
             markersize = 4.5
         else: # "default" standard single-column width
             # Standard single-column width (golden ratio 1.6 aspect ratio)
             figsize = (6.0, 3.7)
-            fontsize = 9.5
-            labelsize = 10.0
-            titlesize = 10.5
-            legendsize = 8.5
-            ticksize = 8.5
             linewidth = 1.2
             markersize = 4.0
+            
+        # Unified font sizes across all layouts to match the double column format 
+        # (ensuring consistent printed text and math sizing in LaTeX documents)
+        fontsize = 10.0
+        labelsize = 10.5
+        titlesize = 11.0
+        legendsize = 9.0
+        ticksize = 9.0
             
         # Configure rcParams dynamically
         plt.rcParams.update({
@@ -2834,6 +2827,218 @@ class RunComparisonPlotter:
         }
 
     # ------------------------------------------------------------------
+    # Plot 1a: 6-Grid Regression Plot Comparison
+    # ------------------------------------------------------------------
+    def _get_regression_metrics(self, data, is_specialized=False):
+        """Extract MAE, RMSE, and R2 for regression plotting."""
+        if is_specialized:
+            eval_recal = data.get("evaluation", {}).get("recalibrated_metrics")
+            if eval_recal:
+                return {
+                    "MAE": eval_recal.get("MAE"),
+                    "RMSE": eval_recal.get("RMSE"),
+                    "R2": eval_recal.get("R2") or eval_recal.get("R2_score") or eval_recal.get("R2_Score")
+                }
+        
+        eval_pooled = data.get("evaluation", {}).get("pooled", {})
+        mae = eval_pooled.get("MAE")
+        rmse = eval_pooled.get("RMSE")
+        r2 = eval_pooled.get("R2") or eval_pooled.get("R2_score")
+        
+        if mae is None or rmse is None or r2 is None:
+            predictions = data.get("predictions", {})
+            if "y_true" in predictions and "y_pred" in predictions:
+                y_true = np.array(predictions["y_true"])
+                y_pred = np.maximum(0.0, np.array(predictions["y_pred"]))
+                from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+                if mae is None:
+                    mae = mean_absolute_error(y_true, y_pred)
+                if rmse is None:
+                    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+                if r2 is None:
+                    r2 = r2_score(y_true, y_pred)
+        
+        return {"MAE": mae, "RMSE": rmse, "R2": r2}
+
+    def _plot_regression_6grid(self, gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        # Grid dimensions: 3 rows (Modalities) x 2 columns (Specialized vs Generalized)
+        # Made more compact vertically to ensure plots are clearly rectangular (aspect ratio ~1.6:1)
+        if layout_width == "column":
+            figsize = (3.5, 3.4)
+        elif layout_width == "double":
+            figsize = (7.0, 6.2)
+        else: # "default"
+            figsize = (8.0, 7.1)
+            
+        fig, axes = plt.subplots(nrows=3, ncols=2, figsize=figsize, sharex=True, sharey=True)
+        
+        # Map runs to their grid slots
+        grid_runs = [
+            # Row 0: Sensor-Fused (EMG + IMU)
+            [(par_all, "Participant-Specialized", True, ThesisStyle.COLOR_FUSION, "#EBF7FA", "#004D60"),
+             (gen_all, "Generalized (LOPO)", False, ThesisStyle.COLOR_FUSION, "#EBF7FA", "#004D60")],
+            # Row 1: EMG-only
+            [(par_emg, "Participant-Specialized", True, ThesisStyle.COLOR_EMG, "#FAF0F5", "#551133"),
+             (gen_emg, "Generalized (LOPO)", False, ThesisStyle.COLOR_EMG, "#FAF0F5", "#551133")],
+            # Row 2: IMU-only
+            [(par_imu, "Participant-Specialized", True, ThesisStyle.COLOR_IMU, "#F0F7F4", "#115522"),
+             (gen_imu, "Generalized (LOPO)", False, ThesisStyle.COLOR_IMU, "#F0F7F4", "#115522")]
+        ]
+        
+        row_labels = ["Sensor-Fused (EMG + IMU)", "EMG-only", "IMU-only"]
+        
+        # Determine shared actual weights from all available predictions
+        all_y_true = []
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_true" in run["predictions"]:
+                    all_y_true.extend(run["predictions"]["y_true"])
+        if len(all_y_true) > 0:
+            actual_weights = np.sort(np.unique(all_y_true))
+        else:
+            actual_weights = np.array([0.0, 0.98, 1.97, 2.95, 4.15, 5.93])
+            
+        # Determine dynamic y_pred max for axes limits
+        max_val = 6.5
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_pred" in run["predictions"]:
+                    max_val = max(max_val, np.max(run["predictions"]["y_pred"]))
+        max_val = min(7.5, max_val + 0.25)
+        min_val = -0.2
+        
+        for row_idx, cols in enumerate(grid_runs):
+            for col_idx, (run, label, is_spec, primary_color, fill_color, accent_color) in enumerate(cols):
+                ax = axes[row_idx, col_idx]
+                
+                # Plot perfect prediction diagonal
+                ax.plot([min_val, max_val], [min_val, max_val], 
+                        color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.0, alpha=0.7, 
+                        label='Perfect Prediction' if (row_idx == 0 and col_idx == 0) else '', zorder=1)
+                
+                if not run or "predictions" not in run:
+                    ax.text(0.5, 0.5, "Data Not Available", ha='center', va='center', transform=ax.transAxes,
+                            fontproperties=fm.FontProperties(family='serif', style='italic'))
+                    continue
+                
+                preds = run["predictions"]
+                y_true = np.array(preds["y_true"])
+                y_pred = np.maximum(0.0, np.array(preds["y_pred"]))
+                
+                pred_groups = [y_pred[y_true == w] for w in actual_weights]
+                
+                # Downsample and plot outliers
+                first_outlier = True
+                for w_idx, w in enumerate(actual_weights):
+                    g_preds = pred_groups[w_idx]
+                    if len(g_preds) > 0:
+                        q1 = np.percentile(g_preds, 25)
+                        q3 = np.percentile(g_preds, 75)
+                        iqr = q3 - q1
+                        outliers = g_preds[(g_preds < q1 - 1.5 * iqr) | (g_preds > q3 + 1.5 * iqr)]
+                        
+                        if len(outliers) > 0:
+                            if len(outliers) > 50:
+                                np.random.seed(42)
+                                outliers = np.random.choice(outliers, size=50, replace=False)
+                                
+                            label_out = "Outliers" if (first_outlier and row_idx == 0 and col_idx == 0) else ""
+                            ax.scatter(np.full_like(outliers, w), outliers, 
+                                       alpha=0.3, s=8, color=ThesisStyle.COLOR_OUTLIER, edgecolors='none', 
+                                       zorder=2, label=label_out)
+                            if label_out:
+                                first_outlier = False
+                                
+                # Create styled boxplots
+                bp = ax.boxplot(pred_groups, positions=actual_weights, widths=0.28, 
+                                patch_artist=True, showfliers=False, showcaps=False,
+                                whiskerprops={'color': '#475569', 'linewidth': 0.8},
+                                boxprops={'edgecolor': primary_color, 'linewidth': 1.0},
+                                zorder=3)
+                
+                for box in bp['boxes']:
+                    box.set_facecolor(fill_color)
+                    box.set_alpha(0.8)
+                    
+                for idx, median in enumerate(bp['medians']):
+                    median.set_color(accent_color)
+                    median.set_linewidth(1.2)
+                    if idx == 0 and row_idx == 0 and col_idx == 0:
+                        median.set_label('Median')
+                        
+                # Extract metrics
+                metrics = self._get_regression_metrics(run, is_specialized=is_spec)
+                mae = metrics["MAE"]
+                rmse = metrics["RMSE"]
+                r2 = metrics["R2"]
+                
+                stats_text = f"$\\text{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
+                
+                ax.text(0.04, 0.96, stats_text, 
+                        transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
+                        bbox=dict(facecolor='white', alpha=0.92, 
+                                  edgecolor=primary_color, boxstyle='round,pad=0.4', linewidth=0.8))
+                
+                # Column titles at the top row (row_idx == 0) - styled in bold black sans-serif
+                if row_idx == 0:
+                    ax.set_title(
+                        label,
+                        fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                        color='black',
+                        pad=10
+                    )
+                
+                # Row titles and Y-axis label on the leftmost plots (col_idx == 0)
+                if col_idx == 0:
+                    # Standard y-axis label in Serif font (with a very tight labelpad)
+                    ax.set_ylabel("Predicted Weight (kg)", labelpad=4)
+                    
+                    # Distinct bold Fira Sans header label for the modality row, colored in black (very tight margin)
+                    ax.annotate(row_labels[row_idx], xy=(-0.24, 0.5), xycoords='axes fraction',
+                                rotation=90, ha='center', va='center',
+                                fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.labelsize']),
+                                color='black')
+                else:
+                    ax.set_ylabel("", labelpad=0)
+                    
+                # X-axis label on the bottom row (row_idx == 2)
+                if row_idx == 2:
+                    ax.set_xlabel("Actual Weight (kg)", labelpad=8)
+                else:
+                    ax.set_xlabel("", labelpad=0)
+                    
+        # Apply unified ticks and limits
+        for ax in axes.flatten():
+            ax.set_xlim(min_val, max_val)
+            ax.set_ylim(min_val, max_val)
+            ax.set_xticks(actual_weights)
+            ax.set_yticks(actual_weights)
+            
+            def format_label(x):
+                return f"{x:.2f}".rstrip('0').rstrip('.')
+                
+            ax.set_xticklabels([format_label(w) for w in actual_weights])
+            ax.set_yticklabels([format_label(w) for w in actual_weights])
+            ThesisStyle.style_ax(ax)
+            
+        # Add legend to the top-left subplot
+        axes[0, 0].legend(loc='lower right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.9)
+        
+        # Set main title (positioned closer to plots to reduce top margin spacing)
+        fig.suptitle(
+            "Regression Performance: Modality and Generalization Comparison",
+            fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
+            color=ThesisStyle.RHO_BLUE,
+            y=0.985
+        )
+        
+        plt.tight_layout(rect=[0.01, 0, 1, 0.98])
+        ThesisStyle.save_figure(fig, output_dir / "comp_regression_6grid")
+        plt.close(fig)
+
+    # ------------------------------------------------------------------
     # Plot 1: Summary bar chart – MAE, RMSE, R², Gen Gap
     # ------------------------------------------------------------------
     def _plot_metrics_summary(self, gen_data, par_data, output_dir, layout_width):
@@ -3374,6 +3579,498 @@ class RunComparisonPlotter:
         ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_modality")
         plt.close(fig)
 
+    def _plot_deepshap_feature(self, all_data, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+
+        # Retrieve the generalized (EMG + IMU) and participant-specialized data
+        gen_data = all_data.get("EMG + IMU (Gen)")
+        par_data = all_data.get("Par-Specific")
+
+        if not gen_data or not par_data:
+            print("  [Warning] Missing required runs for combined DeepSHAP feature comparison. Skipping.")
+            return
+
+        gen_mod = gen_data.get("feature_importance", {}).get("deepshap_modality", {})
+        par_mod = par_data.get("feature_importance", {}).get("deepshap_modality", {})
+
+        gen_feat = gen_data.get("feature_importance", {}).get("deepshap_feature_type", {})
+        par_feat = par_data.get("feature_importance", {}).get("deepshap_feature_type", {})
+        
+        gen_perm = gen_data.get("feature_importance", {}).get("permutation_feature", {})
+        par_perm = par_data.get("feature_importance", {}).get("permutation_feature", {})
+
+        if not gen_mod or not gen_feat or not par_mod or not par_feat or not gen_perm or not par_perm:
+            print("  [Warning] Missing deepshap_modality, deepshap_feature_type or permutation_feature in run data. Skipping.")
+            return
+
+        # Determine the size based on double the active layout size for double-column format:
+        if layout_width == "column":
+            figsize = (7.0, 3.2)
+        elif layout_width == "double":
+            figsize = (14.0, 6.0)
+        else: # "default"
+            figsize = (12.0, 5.2)
+
+        # Setup 3-subplot horizontal layout:
+        # ax1: stacked bars of Modality Share (%)
+        # ax2: DeepSHAP Feature-Type Importance
+        # ax3: Permutation Feature-Type Importance
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize,
+                                             gridspec_kw={'width_ratios': [1.0, 2.5, 2.5]})
+
+        # --------------------------------------------------
+        # 1. Left Panel: Stacked Modality Share (%)
+        # --------------------------------------------------
+        models = ["Generalized\n(EMG + IMU)", "Participant\nSpecialized"]
+        
+        gen_total = sum(gen_mod.values()) or 1.0
+        par_total = sum(par_mod.values()) or 1.0
+        
+        emg_shares = [
+            gen_mod.get("EMG", 0.0) / gen_total * 100,
+            par_mod.get("EMG", 0.0) / par_total * 100
+        ]
+        imu_shares = [
+            gen_mod.get("IMU", 0.0) / gen_total * 100,
+            par_mod.get("IMU", 0.0) / par_total * 100
+        ]
+        anthro_shares = [
+            gen_mod.get("Anthro", 0.0) / gen_total * 100,
+            par_mod.get("Anthro", 0.0) / par_total * 100
+        ]
+        
+        x_pos = np.arange(len(models))
+        bar_width = 0.55
+        
+        bars_emg = ax1.bar(x_pos, emg_shares, bar_width, label="EMG", color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        bars_imu = ax1.bar(x_pos, imu_shares, bar_width, bottom=emg_shares, label="IMU", color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        bottom_anthro = [e + i for e, i in zip(emg_shares, imu_shares)]
+        if sum(anthro_shares) > 0:
+            bars_anthro = ax1.bar(x_pos, anthro_shares, bar_width, bottom=bottom_anthro, label="Anthro", color=ThesisStyle.COLOR_MEDIAN, alpha=0.85, edgecolor=ThesisStyle.COLOR_MEDIAN, linewidth=0.5)
+            
+        ax1.set_ylabel("Modality Share (%)", labelpad=8)
+        ax1.set_xticks(x_pos)
+        ax1.set_xticklabels(models)
+        ax1.set_ylim(0, 100)
+        ThesisStyle.set_title(ax1, "Modality Share of Total |SHAP|")
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.grid(True, axis='y', linestyle='--', alpha=0.5)
+        
+        # Annotate percentages
+        for idx in range(len(models)):
+            if emg_shares[idx] > 5:
+                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+            if imu_shares[idx] > 5:
+                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+            if anthro_shares[idx] > 5:
+                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+
+        # --------------------------------------------------
+        # Helper for Feature Cleaning & Parsing
+        # --------------------------------------------------
+        def clean_feature_label(raw_lbl):
+            clean_lbl = raw_lbl.replace("EMG_", "EMG ").replace("IMU_", "IMU ")
+            full_names = {
+                "MAV": "Mean Absolute Value (MAV)",
+                "RMS": "Root Mean Square (RMS)",
+                "WL": "Waveform Length (WL)",
+                "ZC": "Zero Crossings (ZC)",
+                "SSC": "Slope Sign Changes (SSC)",
+                "VAR": "Variance (VAR)",
+                "WAMP": "Willison Amplitude (WAMP)",
+                "IEMG": "Integrated EMG (IEMG)",
+                "LogDet": "Log Detector (LogDet)",
+                "Skew": "Skewness",
+                "Kurt": "Kurtosis",
+                "HjMob": "Hjorth Mobility",
+                "HjComp": "Hjorth Complexity",
+                "Myopulse": "Myopulse Rate",
+                "MNF": "Mean Frequency (MNF)",
+                "MDF": "Median Frequency (MDF)",
+                "Power": "Total Power",
+                "SpecEntropy": "Spectral Entropy",
+                "PeakFreq": "Peak Frequency",
+                "BW": "Bandwidth",
+                "DomFreq": "Dominant Frequency",
+                "Jerk": "Absolute Jerk",
+                "SMA": "Signal Magnitude Area (SMA)",
+                "P2P": "Peak-to-Peak (P2P)",
+                "SpecEnergy": "Spectral Energy",
+                "SVM_Mean": "Signal Vector Magnitude (Mean)"
+            }
+            parts = clean_lbl.split(" ")
+            prefix = parts[0]
+            suffix = " ".join(parts[1:])
+            return f"{prefix} {full_names.get(suffix, suffix)}", prefix
+
+        # --------------------------------------------------
+        # 2. Middle Panel: Combined Feature-Type Importance (DeepSHAP Relative Share %)
+        # --------------------------------------------------
+        gen_feat_total = sum(gen_feat.values()) or 1.0
+        par_feat_total = sum(par_feat.values()) or 1.0
+        gen_feat_rel = {k: v / gen_feat_total * 100 for k, v in gen_feat.items()}
+        par_feat_rel = {k: v / par_feat_total * 100 for k, v in par_feat.items()}
+        
+        gen_perm_total = sum(gen_perm.values()) or 1.0
+        par_perm_total = sum(par_perm.values()) or 1.0
+        gen_perm_rel = {k: v / gen_perm_total * 100 for k, v in gen_perm.items()}
+        par_perm_rel = {k: v / par_perm_total * 100 for k, v in par_perm.items()}
+
+        # Sort features by their average relative importance across both metrics and models
+        all_features_set = set(gen_feat_rel.keys()) | set(par_feat_rel.keys()) | set(gen_perm_rel.keys()) | set(par_perm_rel.keys())
+        mean_scores = {}
+        for feat in all_features_set:
+            mean_scores[feat] = (
+                gen_feat_rel.get(feat, 0.0) + 
+                par_feat_rel.get(feat, 0.0) + 
+                gen_perm_rel.get(feat, 0.0) + 
+                par_perm_rel.get(feat, 0.0)
+            ) / 4.0
+        sorted_features = [x[0] for x in sorted(mean_scores.items(), key=lambda x: x[1], reverse=True)]
+        
+        # Keep top 15 features
+        top_n = min(15, len(sorted_features))
+        sorted_features = sorted_features[:top_n]
+        
+        # DeepSHAP Panel
+        labels = []
+        vals_gen = []
+        vals_par = []
+        colors = []
+        for feat in sorted_features:
+            refined_lbl, prefix = clean_feature_label(feat)
+            labels.append(refined_lbl)
+            vals_gen.append(gen_feat_rel.get(feat, 0.0))
+            vals_par.append(par_feat_rel.get(feat, 0.0))
+            colors.append(ThesisStyle.COLOR_EMG if prefix == "EMG" else ThesisStyle.COLOR_IMU)
+                
+        y_pos = np.arange(len(labels))
+        offset = 0.15
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax2.hlines(y_pos - offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.5, alpha=0.85)
+        ax2.scatter(vals_gen, y_pos - offset, color=colors, marker='o', zorder=3, s=30, alpha=0.85)
+        
+        # Plot Participant-Specialized (dashed lines + hollow circles)
+        ax2.hlines(y_pos + offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.5, alpha=0.85)
+        ax2.scatter(vals_par, y_pos + offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=30, linewidths=1.5, alpha=0.85)
+        
+        ax2.set_yticks(y_pos)
+        ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax2.invert_yaxis()
+        ax2.set_xlabel("Relative Importance (% of Total |SHAP|)", labelpad=4)
+        ThesisStyle.set_title(ax2, "DeepSHAP Feature-Type Importance")
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        
+        max_val = max(max(vals_gen), max(vals_par)) if vals_gen else 1.0
+        ax2.set_xlim(0, max_val * 1.1)
+
+        # --------------------------------------------------
+        # 3. Right Panel: Combined Permutation Feature Importance (Relative Share %)
+        # --------------------------------------------------
+        labels_perm = []
+        vals_gen_perm = []
+        vals_par_perm = []
+        colors_perm = []
+        
+        for feat in sorted_features:
+            refined_lbl, prefix = clean_feature_label(feat)
+            labels_perm.append(refined_lbl)
+            vals_gen_perm.append(gen_perm_rel.get(feat, 0.0))
+            vals_par_perm.append(par_perm_rel.get(feat, 0.0))
+            colors_perm.append(ThesisStyle.COLOR_EMG if prefix == "EMG" else ThesisStyle.COLOR_IMU)
+                
+        y_pos_perm = np.arange(len(labels_perm))
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax3.hlines(y_pos_perm - offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.5, alpha=0.85)
+        ax3.scatter(vals_gen_perm, y_pos_perm - offset, color=colors_perm, marker='o', s=30, alpha=0.85, zorder=3)
+        
+        # Plot Participant-Specialized (dashed lines + hollow circles)
+        ax3.hlines(y_pos_perm + offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.5, alpha=0.85)
+        ax3.scatter(vals_par_perm, y_pos_perm + offset, facecolors='white', edgecolors=colors_perm, marker='o', s=30, linewidths=1.5, alpha=0.85, zorder=3)
+        
+        ax3.set_yticks(y_pos_perm)
+        ax3.set_yticklabels(labels_perm, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax3.invert_yaxis()
+        ax3.set_xlabel("Relative Importance (% of Total MAE Increase)", labelpad=4)
+        ThesisStyle.set_title(ax3, "Permutation Feature-Type Importance")
+        ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax3.spines['top'].set_visible(False)
+        ax3.spines['right'].set_visible(False)
+        
+        ax3.axvline(0, color='#333333', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        min_val_perm = min(min(vals_gen_perm), min(vals_par_perm)) if vals_gen_perm else 0.0
+        max_val_perm = max(max(vals_gen_perm), max(vals_par_perm)) if vals_gen_perm else 1.0
+        if min_val_perm < 0:
+            range_val = max_val_perm - min_val_perm
+            x_min = min_val_perm - range_val * 0.05
+            x_max = max_val_perm + range_val * 0.05
+        else:
+            x_min = 0.0
+            x_max = max_val_perm * 1.1
+        ax3.set_xlim(x_min, x_max)
+
+        # Add global legend at the bottom
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        global_legend_handles = [
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
+            Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.5, markersize=6, label='Participant-Specialized Model'),
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Feature'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Feature')
+        ]
+        fig.legend(handles=global_legend_handles, loc='lower center', ncol=4,
+                   bbox_to_anchor=(0.5, 0.11),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        # Title and layout (reserve bottom space for global legend)
+        plt.tight_layout(rect=[0, 0.15, 1, 1])
+        ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_feature")
+        plt.close(fig)
+
+    def _plot_deepshap_all(self, gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+
+        # Retrieve modality shares
+        gen_all_mod = gen_all.get("feature_importance", {}).get("deepshap_modality", {}) if gen_all else {}
+        par_all_mod = par_all.get("feature_importance", {}).get("deepshap_modality", {}) if par_all else {}
+        
+        def get_mod_share(run, modality):
+            if not run: return {}
+            m = run.get("feature_importance", {}).get("deepshap_modality", {})
+            if m: return m
+            c = run.get("feature_importance", {}).get("deepshap_channel", {})
+            if c: return {modality: sum(c.values())}
+            return {modality: 1.0}
+            
+        gen_emg_mod = get_mod_share(gen_emg, "EMG")
+        par_emg_mod = get_mod_share(par_emg, "EMG")
+        gen_imu_mod = get_mod_share(gen_imu, "IMU")
+        par_imu_mod = get_mod_share(par_imu, "IMU")
+
+        # Set up fig size based on layout width (height increased to give more vertical channel spacing)
+        if layout_width == "column":
+            figsize = (7.0, 4.0)
+        elif layout_width == "double":
+            figsize = (14.0, 8.0)
+        else: # "default"
+            figsize = (12.0, 7.0)
+
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize,
+                                             gridspec_kw={'width_ratios': [1.0, 2.5, 2.5]})
+
+        # 1. Left Panel: Stacked Modality Share (%) for Fused Model only
+        models = ["Generalized\n(EMG + IMU)", "Participant\nSpecialized"]
+        
+        gen_total = sum(gen_all_mod.values()) or 1.0
+        par_total = sum(par_all_mod.values()) or 1.0
+        
+        emg_shares = [
+            gen_all_mod.get("EMG", 0.0) / gen_total * 100,
+            par_all_mod.get("EMG", 0.0) / par_total * 100
+        ]
+        imu_shares = [
+            gen_all_mod.get("IMU", 0.0) / gen_total * 100,
+            par_all_mod.get("IMU", 0.0) / par_total * 100
+        ]
+        anthro_shares = [
+            gen_all_mod.get("Anthro", 0.0) / gen_total * 100,
+            par_all_mod.get("Anthro", 0.0) / par_total * 100
+        ]
+        
+        x_pos = np.arange(len(models))
+        bar_width = 0.55
+        
+        bars_emg = ax1.bar(x_pos, emg_shares, bar_width, label="EMG", color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        bars_imu = ax1.bar(x_pos, imu_shares, bar_width, bottom=emg_shares, label="IMU", color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        bottom_anthro = [e + i for e, i in zip(emg_shares, imu_shares)]
+        if sum(anthro_shares) > 0:
+            bars_anthro = ax1.bar(x_pos, anthro_shares, bar_width, bottom=bottom_anthro, label="Anthro", color=ThesisStyle.COLOR_MEDIAN, alpha=0.85, edgecolor=ThesisStyle.COLOR_MEDIAN, linewidth=0.5)
+            
+        ax1.set_ylabel("Modality Share (%)", labelpad=8)
+        ax1.set_xticks(x_pos)
+        ax1.set_xticklabels(models, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax1.set_ylim(0, 100)
+        ThesisStyle.set_title(ax1, "Modality Share of Total |SHAP|")
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.grid(True, axis='y', linestyle='--', alpha=0.5)
+        
+        for idx in range(len(models)):
+            if emg_shares[idx] > 5:
+                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5)
+            if imu_shares[idx] > 5:
+                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5)
+            if anthro_shares[idx] > 5:
+                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5)
+
+        # 2. Extract Relative Importances for Channel Plotting
+        def to_rel(d):
+            if not d: return {}
+            tot = sum(d.values()) or 1.0
+            return {k: v / tot * 100 for k, v in d.items()}
+            
+        gen_all_rel = to_rel(gen_all.get("feature_importance", {}).get("deepshap_channel", {})) if gen_all else {}
+        par_all_rel = to_rel(par_all.get("feature_importance", {}).get("deepshap_channel", {})) if par_all else {}
+        gen_emg_rel = to_rel(gen_emg.get("feature_importance", {}).get("deepshap_channel", {})) if gen_emg else {}
+        par_emg_rel = to_rel(par_emg.get("feature_importance", {}).get("deepshap_channel", {})) if par_emg else {}
+        gen_imu_rel = to_rel(gen_imu.get("feature_importance", {}).get("deepshap_channel", {})) if gen_imu else {}
+        par_imu_rel = to_rel(par_imu.get("feature_importance", {}).get("deepshap_channel", {})) if par_imu else {}
+        
+        gen_all_perm_rel = to_rel(gen_all.get("feature_importance", {}).get("permutation_channel", {})) if gen_all else {}
+        par_all_perm_rel = to_rel(par_all.get("feature_importance", {}).get("permutation_channel", {})) if par_all else {}
+        gen_emg_perm_rel = to_rel(gen_emg.get("feature_importance", {}).get("permutation_channel", {})) if gen_emg else {}
+        par_emg_perm_rel = to_rel(par_emg.get("feature_importance", {}).get("permutation_channel", {})) if par_emg else {}
+        gen_imu_perm_rel = to_rel(gen_imu.get("feature_importance", {}).get("permutation_channel", {})) if gen_imu else {}
+        par_imu_perm_rel = to_rel(par_imu.get("feature_importance", {}).get("permutation_channel", {})) if par_imu else {}
+
+        # Get all channels from Fused model
+        all_channels_set = set(gen_all_rel.keys()) | set(par_all_rel.keys())
+        mean_scores = {}
+        for ch in all_channels_set:
+            mean_scores[ch] = (gen_all_rel.get(ch, 0.0) + par_all_rel.get(ch, 0.0)) / 2.0
+        sorted_channels = [x[0] for x in sorted(mean_scores.items(), key=lambda x: x[1], reverse=True)]
+
+        labels = []
+        colors = []
+        
+        # DeepSHAP values lists
+        ds_fused_gen = []
+        ds_fused_spec = []
+        ds_mod_gen = []
+        ds_mod_spec = []
+        
+        # Permutation values lists
+        perm_fused_gen = []
+        perm_fused_spec = []
+        perm_mod_gen = []
+        perm_mod_spec = []
+        
+        for ch in sorted_channels:
+            clean_lbl = clean_channel_label(ch)
+            labels.append(clean_lbl)
+            
+            is_emg = "_EMG" in ch or any(m in ch for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"])
+            color = ThesisStyle.COLOR_EMG if is_emg else ThesisStyle.COLOR_IMU
+            colors.append(color)
+            
+            # DeepSHAP
+            ds_fused_gen.append(gen_all_rel.get(ch, 0.0))
+            ds_fused_spec.append(par_all_rel.get(ch, 0.0))
+            if is_emg:
+                ds_mod_gen.append(gen_emg_rel.get(ch, 0.0))
+                ds_mod_spec.append(par_emg_rel.get(ch, 0.0))
+            else:
+                ds_mod_gen.append(gen_imu_rel.get(ch, 0.0))
+                ds_mod_spec.append(par_imu_rel.get(ch, 0.0))
+                
+            # Permutation
+            perm_fused_gen.append(gen_all_perm_rel.get(ch, 0.0))
+            perm_fused_spec.append(par_all_perm_rel.get(ch, 0.0))
+            if is_emg:
+                perm_mod_gen.append(gen_emg_perm_rel.get(ch, 0.0))
+                perm_mod_spec.append(par_emg_perm_rel.get(ch, 0.0))
+            else:
+                perm_mod_gen.append(gen_imu_perm_rel.get(ch, 0.0))
+                perm_mod_spec.append(par_imu_perm_rel.get(ch, 0.0))
+
+        y_pos = np.arange(len(labels))
+        off1, off2, off3, off4 = -0.18, -0.06, 0.06, 0.18
+
+        # 3. Middle Panel: DeepSHAP Channel Importance
+        # Fused Gen
+        ax2.hlines(y_pos + off1, 0, ds_fused_gen, colors=colors, linestyles='-', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_fused_gen, y_pos + off1, color=colors, marker='o', zorder=3, s=20, alpha=0.8)
+        # Fused Spec
+        ax2.hlines(y_pos + off2, 0, ds_fused_spec, colors=colors, linestyles='--', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_fused_spec, y_pos + off2, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=20, linewidths=1.2, alpha=0.8)
+        # Modality-only Gen
+        ax2.hlines(y_pos + off3, 0, ds_mod_gen, colors=colors, linestyles=':', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_mod_gen, y_pos + off3, color=colors, marker='s', zorder=3, s=18, alpha=0.8)
+        # Modality-only Spec
+        ax2.hlines(y_pos + off4, 0, ds_mod_spec, colors=colors, linestyles='-.', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_mod_spec, y_pos + off4, facecolors='white', edgecolors=colors, marker='s', zorder=3, s=18, linewidths=1.2, alpha=0.8)
+
+        ax2.set_yticks(y_pos)
+        ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax2.invert_yaxis()
+        ax2.set_xlabel("Relative Importance (% of Total |SHAP|)", labelpad=4)
+        ThesisStyle.set_title(ax2, "DeepSHAP Channel Importance")
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        max_val_ds = max(max(ds_fused_gen + ds_fused_spec + ds_mod_gen + ds_mod_spec), 1.0)
+        ax2.set_xlim(0, max_val_ds * 1.1)
+
+        # 4. Right Panel: Permutation Channel Importance
+        # Fused Gen
+        ax3.hlines(y_pos + off1, 0, perm_fused_gen, colors=colors, linestyles='-', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_fused_gen, y_pos + off1, color=colors, marker='o', zorder=3, s=20, alpha=0.8)
+        # Fused Spec
+        ax3.hlines(y_pos + off2, 0, perm_fused_spec, colors=colors, linestyles='--', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_fused_spec, y_pos + off2, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=20, linewidths=1.2, alpha=0.8)
+        # Modality-only Gen
+        ax3.hlines(y_pos + off3, 0, perm_mod_gen, colors=colors, linestyles=':', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_mod_gen, y_pos + off3, color=colors, marker='s', zorder=3, s=18, alpha=0.8)
+        # Modality-only Spec
+        ax3.hlines(y_pos + off4, 0, perm_mod_spec, colors=colors, linestyles='-.', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_mod_spec, y_pos + off4, facecolors='white', edgecolors=colors, marker='s', zorder=3, s=18, linewidths=1.2, alpha=0.8)
+
+        ax3.set_yticks(y_pos)
+        ax3.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax3.invert_yaxis()
+        ax3.set_xlabel("Relative Importance (% of Total MAE Increase)", labelpad=4)
+        ThesisStyle.set_title(ax3, "Permutation Channel Importance")
+        ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax3.spines['top'].set_visible(False)
+        ax3.spines['right'].set_visible(False)
+        ax3.axvline(0, color='#333333', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        min_val_perm = min(min(perm_fused_gen + perm_fused_spec + perm_mod_gen + perm_mod_spec), 0.0)
+        max_val_perm = max(max(perm_fused_gen + perm_fused_spec + perm_mod_gen + perm_mod_spec), 1.0)
+        if min_val_perm < 0:
+            range_val = max_val_perm - min_val_perm
+            x_min = min_val_perm - range_val * 0.05
+            x_max = max_val_perm + range_val * 0.05
+        else:
+            x_min = 0.0
+            x_max = max_val_perm * 1.1
+        ax3.set_xlim(x_min, x_max)
+
+        # 5. Global Legend
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        global_legend_handles = [
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized (Fused)'),
+            Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.2, markersize=6, label='Specialized (Fused)'),
+            Line2D([0], [0], color='#555555', linestyle=':', marker='s', markerfacecolor='#555555', markersize=6, label='Generalized (Modality-only)'),
+            Line2D([0], [0], color='#555555', linestyle='-.', marker='s', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.2, markersize=6, label='Specialized (Modality-only)'),
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Channel'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Channel')
+        ]
+        fig.legend(handles=global_legend_handles, loc='lower center', ncol=3,
+                   bbox_to_anchor=(0.5, 0.03),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        # Main figure title and layout
+        fig.suptitle(
+            "Channel and Modality Importance: Fused vs Modality-Only Comparisons",
+            fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
+            color=ThesisStyle.RHO_BLUE,
+            y=0.985
+        )
+
+        plt.tight_layout(rect=[0, 0.14, 1, 0.94])
+        ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_all")
+        plt.close(fig)
+
     # ------------------------------------------------------------------
     # Plot 6: DeepSHAP channel importance – 2×2 panel, top-10 per run
     # ------------------------------------------------------------------
@@ -3455,12 +4152,29 @@ class RunComparisonPlotter:
             gen_imu = None
             print("  [Warning] gen imu_only sub-run not found, skipping.")
 
-        # Load par-spec run
+        # Load par-spec sub-runs
         try:
-            par_data = self._load(par_run_dir)
-        except FileNotFoundError as e:
-            print(f"  [ERROR] Could not load participant-specific run data: {e}")
-            return 0
+            par_all  = self._load_subrun(par_run_dir, "all")
+        except FileNotFoundError:
+            try:
+                par_all = self._load(par_run_dir)
+            except FileNotFoundError as e:
+                print(f"  [ERROR] Could not load participant-specific 'all' run data: {e}")
+                return 0
+
+        try:
+            par_emg = self._load_subrun(par_run_dir, "emg_only")
+        except FileNotFoundError:
+            par_emg = None
+            print("  [Warning] par emg_only sub-run not found, skipping.")
+
+        try:
+            par_imu = self._load_subrun(par_run_dir, "imu_only")
+        except FileNotFoundError:
+            par_imu = None
+            print("  [Warning] par imu_only sub-run not found, skipping.")
+
+        par_data = par_all
 
         # Dict of all 4 runs used for importance comparison (ordered)
         all_runs = {"EMG + IMU (Gen)": gen_all}
@@ -3478,6 +4192,10 @@ class RunComparisonPlotter:
         self._plot_metrics_summary(gen_all, par_data, output_dir, layout_width)
         count += 1
 
+        print("  Plotting comp_regression_6grid...")
+        self._plot_regression_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width)
+        count += 1
+
         print("  Plotting comp_per_participant_mae...")
         self._plot_per_participant_mae(gen_all, par_data, output_dir, layout_width)
         count += 1
@@ -3489,6 +4207,14 @@ class RunComparisonPlotter:
         # ── Importance comparisons ──
         print("  Plotting comp_deepshap_modality...")
         self._plot_deepshap_modality(all_runs, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_deepshap_feature...")
+        self._plot_deepshap_feature(all_runs, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_deepshap_all...")
+        self._plot_deepshap_all(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width)
         count += 1
 
         print("  Plotting comp_deepshap_channel...")
@@ -3766,18 +4492,28 @@ def main():
             print(f"Choose from: {plot_registry.list_plotters()}")
             sys.exit(1)
             
+    # Determine width style to use: by default, single plots are single-column ('column')
+    # and comparison plots are double-column ('double').
+    # If the user explicitly requested a width style choice, respect it for both.
+    if args.width == "default":
+        single_width = "column"
+        comp_width = "double"
+    else:
+        single_width = args.width
+        comp_width = args.width
+
     # If run-dir or output-dir is specified via command line arguments, process that single run.
     if args.run_dir is not None or args.output_dir is not None:
         run_dir = args.run_dir if args.run_dir is not None else RUN_DIR
         output_dir = args.output_dir if args.output_dir is not None else OUTPUT_DIR
-        run_viz_pipeline(run_dir, output_dir, active_plots, args.width)
+        run_viz_pipeline(run_dir, output_dir, active_plots, single_width)
     else:
         # Default: Process both generalized and specialized runs configured in MODEL_RUNS
         for run_name, config in MODEL_RUNS.items():
             print(f"\n==========================================================================")
             print(f" PROCESSING MODEL RUN CONFIGURATION: {run_name.upper()}")
             print(f"==========================================================================")
-            run_viz_pipeline(config["run_dir"], config["output_dir"], active_plots, args.width)
+            run_viz_pipeline(config["run_dir"], config["output_dir"], active_plots, single_width)
 
         # Cross-run comparison: generalized vs participant-specific
         gen_cfg  = MODEL_RUNS.get("generalized", {})
@@ -3790,7 +4526,7 @@ def main():
                 gen_run_dir  = gen_cfg["run_dir"],
                 par_run_dir  = par_cfg["run_dir"],
                 output_dir_raw = "visualization/run_plots_comp",
-                width_style  = args.width
+                width_style  = comp_width
             )
 
 
