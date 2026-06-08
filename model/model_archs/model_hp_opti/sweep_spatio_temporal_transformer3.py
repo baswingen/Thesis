@@ -49,7 +49,7 @@ from model.config_model import (
     SPATIO_TEMPORAL_TRANSFORMER3_CONFIG, FEATURE_CONFIG,
     DATABASE_CONFIG, AUGMENTATION_CONFIG,
     DEV_MODE, DEV_FRACTION, DEV_EPOCHS, DEV_EARLY_STOPPING_PATIENCE,
-    GLOBAL_RANDOM_STATE, GRID_SEARCH_MODE
+    GLOBAL_RANDOM_STATE, GRID_SEARCH_MODE, CV_STRATEGY
 )
 
 # Define 33 core feature categories for "features" mode
@@ -128,7 +128,7 @@ def main():
         if DEV_MODE:
             n_iter = 10 if mode == "features" else 12
         else:
-            n_iter = 150
+            n_iter = 60
 
     test_participants_count = args.test_participants
     sweep_epochs = DEV_EPOCHS if DEV_MODE else 200
@@ -204,25 +204,35 @@ def main():
     X["subject"] = subjects
 
     # ------------------------------------------------------------------
-    # 2. Setup a fixed cross-participant split for fair evaluation
+    # 2. Setup a fixed cross-participant or stratified split for fair evaluation
     # ------------------------------------------------------------------
-    n_unique_subs = len(np.unique(subjects))
-    test_ratio = min(0.3, max(0.1, test_participants_count / max(1, n_unique_subs)))
-
-    gss = GroupShuffleSplit(n_splits=1, test_size=test_ratio, random_state=42)
-    train_idx, val_idx = next(gss.split(X, y, groups=subjects))
+    if CV_STRATEGY == "kfold":
+        from sklearn.model_selection import StratifiedShuffleSplit
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+        strat_labels = df["weight"].astype(str) if "weight" in df.columns else None
+        train_idx, val_idx = next(sss.split(X, strat_labels))
+    else:
+        n_unique_subs = len(np.unique(subjects))
+        test_ratio = min(0.3, max(0.1, test_participants_count / max(1, n_unique_subs)))
+        gss = GroupShuffleSplit(n_splits=1, test_size=test_ratio, random_state=42)
+        train_idx, val_idx = next(gss.split(X, y, groups=subjects))
 
     X_train_raw = X.iloc[train_idx].copy()
     y_train     = y.iloc[train_idx].copy()
     X_val_raw   = X.iloc[val_idx].copy()
     y_val       = y.iloc[val_idx].copy()
 
-    val_subs = sorted(X_val_raw["subject"].unique())
-    train_subs = sorted(X_train_raw["subject"].unique())
+    val_subs = sorted(X_val_raw["subject"].unique()) if "subject" in X_val_raw.columns else []
+    train_subs = sorted(X_train_raw["subject"].unique()) if "subject" in X_train_raw.columns else []
 
-    print(f"\nParticipant Split:")
-    print(f"  Training   ({len(train_subs)} subjects, {len(X_train_raw)} segs): {', '.join(train_subs)}")
-    print(f"  Validation ({len(val_subs)} subjects, {len(X_val_raw)} segs): {', '.join(val_subs)}")
+    if CV_STRATEGY == "kfold":
+        print(f"\nStratified Split (Mixed-Participant):")
+        print(f"  Training   ({len(X_train_raw)} segs)")
+        print(f"  Validation ({len(X_val_raw)} segs)")
+    else:
+        print(f"\nParticipant Split:")
+        print(f"  Training   ({len(train_subs)} subjects, {len(X_train_raw)} segs): {', '.join(train_subs)}")
+        print(f"  Validation ({len(val_subs)} subjects, {len(X_val_raw)} segs): {', '.join(val_subs)}")
 
     # ------------------------------------------------------------------
     # 3. Mode Routing & Parameter Sweeps
@@ -261,9 +271,9 @@ def main():
             X_train_filtered = filter_features(X_train_raw, active_categories)
             X_val_filtered   = filter_features(X_val_raw, active_categories)
 
-            # Drop subject column for model training
-            X_train = X_train_filtered.drop(columns=["subject"])
-            X_val   = X_val_filtered.drop(columns=["subject"])
+            # Retain subject column to allow participant balancing during augmentation
+            X_train = X_train_filtered.copy()
+            X_val   = X_val_filtered.copy()
 
             # Count individual active features
             active_features = []
@@ -281,8 +291,14 @@ def main():
             # Load baseline model config
             model_config = copy.deepcopy(SPATIO_TEMPORAL_TRANSFORMER3_CONFIG)
             model_config['epochs'] = sweep_epochs
-            model_config['early_stopping_patience'] = sweep_patience
             model_config['use_checkpointing'] = False  # Faster sweep execution
+
+            # Disable early stopping if baseline is OneCycleLR or WarmupCosine
+            sched_type = model_config.get('scheduler', {}).get('type', 'ReduceLROnPlateau')
+            if sched_type in ['OneCycleLR', 'WarmupCosine']:
+                model_config['early_stopping_patience'] = sweep_epochs
+            else:
+                model_config['early_stopping_patience'] = sweep_patience
 
             model = SpatioTemporalTransformerRegressor3(**model_config)
 
@@ -329,9 +345,9 @@ def main():
         # ──────────────────────────────────────────────────────────────
         # MODEL_ARCH & GENERALIZATION MODES: Hyperparameter Search
         # ──────────────────────────────────────────────────────────────
-        # Drop subject columns as we are using the full baseline features
-        X_train = X_train_raw.drop(columns=["subject"])
-        X_val   = X_val_raw.drop(columns=["subject"])
+        # Retain subject columns to allow participant balancing during augmentation
+        X_train = X_train_raw.copy()
+        X_val   = X_val_raw.copy()
 
         if mode == "model_arch":
             # Sweep core architecture holding regularization fixed
@@ -350,30 +366,28 @@ def main():
                 'aug_noise_std':        [0.05],
                 'aug_stretch_range':    [(0.75, 1.25)],
                 'aug_channel_dropout':  [0.1],
-                'scheduler_type':       ['ReduceLROnPlateau'],
-                'scheduler_factor':     [0.8],
-                'scheduler_patience':   [7],
+                'scheduler_type':       ['OneCycleLR'],
+                'scheduler_pct_start':  [0.3],
             }
         else:
             # Sweep regularization holding architecture fixed
             param_grid = {
-                'd_model':              [128],
-                'nhead_spatial':        [4, 8],
-                'num_layers_spatial':   [3],
-                'nhead_temporal':       [4],
-                'num_layers_temporal':  [3],
-                'dim_feedforward':      [1024],
-                'dropout_rate':         [0.25, 0.35, 0.5], 
+                'd_model':              [96, 128],
+                'nhead_spatial':        [8],
+                'num_layers_spatial':   [4],
+                'nhead_temporal':       [2],
+                'num_layers_temporal':  [4],
+                'dim_feedforward':      [512, 1024],
+                'dropout_rate':         [0.2, 0.25, 0.35, 0.5], 
                 'weight_decay':         [1e-05, 1e-04, 1e-03, 5e-03],
-                'learning_rate':        [3e-4, 5e-4],
+                'learning_rate':        [1e-4, 2e-4, 3e-4, 5e-4],
                 'batch_size':           [64, 128],
                 'aug_p':                [0.5, 0.8],
                 'aug_noise_std':        [0.05, 0.1],
                 'aug_stretch_range':    [(0.75, 1.25), (0.9, 1.1)],
                 'aug_channel_dropout':  [0.1, 0.25],
-                'scheduler_type':       ['ReduceLROnPlateau'],
-                'scheduler_factor':     [0.5, 0.8],
-                'scheduler_patience':   [5, 7],
+                'scheduler_type':       ['OneCycleLR'],
+                'scheduler_pct_start':  [0.1, 0.2, 0.3, 0.4, 0.5],
             }
 
         sampler = ParameterSampler(param_grid, n_iter=n_iter, random_state=42)
@@ -394,8 +408,8 @@ def main():
             params['nhead_temporal'] = nhead_t
 
             # Extract scheduler & augmentation params
-            scheduler_type = params.pop('scheduler_type')
-            pct_start = params.pop('pct_start', 0.1)
+            scheduler_type = params.pop('scheduler_type', 'OneCycleLR')
+            scheduler_pct_start = params.pop('scheduler_pct_start', 0.3)
             scheduler_patience = params.pop('scheduler_patience', 5)
             scheduler_factor = params.pop('scheduler_factor', 0.5)
             
@@ -405,11 +419,15 @@ def main():
             aug_cfg['noise_std'] = params.pop('aug_noise_std', aug_cfg.get('noise_std', 0.05))
             aug_cfg['stretch_factor_range'] = params.pop('aug_stretch_range', aug_cfg.get('stretch_factor_range', (0.85, 1.15)))
 
+            # Override early stopping patience for OneCycleLR to let the schedule complete
+            current_early_stopping_patience = sweep_epochs
+
             print(f"\n{'='*65}")
             print(f"Hyperparameter Iteration {i}/{n_iter} [Elapsed: {elapsed/60:.1f}m]")
             print(f"  d_model={d_model}, nhead_s={nhead_s}, nhead_t={nhead_t}, "
                   f"layers_s={params['num_layers_spatial']}, layers_t={params['num_layers_temporal']}")
             print(f"  ff={params['dim_feedforward']}, dropout={params['dropout_rate']}, wd={params['weight_decay']}")
+            print(f"  scheduler={scheduler_type}, pct_start={scheduler_pct_start}, learning_rate={params['learning_rate']}")
             print(f"{'='*65}")
 
             try:
@@ -425,12 +443,16 @@ def main():
                     weight_decay=params['weight_decay'],
                     batch_size=params['batch_size'],
                     epochs=sweep_epochs,
-                    early_stopping_patience=sweep_patience,
+                    early_stopping_patience=current_early_stopping_patience,
                     scheduler_patience=scheduler_patience,
                     scheduler_factor=scheduler_factor,
                     use_checkpointing=False,
                     use_amp=True,
-                    scheduler={'type': 'ReduceLROnPlateau'},
+                    scheduler={
+                        'type': 'OneCycleLR',
+                        'max_lr': params['learning_rate'],
+                        'pct_start': scheduler_pct_start
+                    },
                     augmentation_config=aug_cfg,
                     random_state=GLOBAL_RANDOM_STATE,
                 )
@@ -453,9 +475,16 @@ def main():
                 print(f"    RMSE: {rmse:.4f} | MAE: {mae:.4f} | R²: {r2:.4f}")
                 print(f"    Parameters: {total_params:,} | Training Time: {elapsed_iter:.1f}s")
 
+                # Log all parameters including scheduler settings
+                saved_params = copy.deepcopy(params)
+                saved_params["scheduler_type"] = scheduler_type
+                saved_params["scheduler_pct_start"] = scheduler_pct_start
+                saved_params["scheduler_patience"] = scheduler_patience
+                saved_params["scheduler_factor"] = scheduler_factor
+
                 results.append({
                     "iteration": i,
-                    "params": {**params, "scheduler_type": scheduler_type},
+                    "params": saved_params,
                     "metrics": {"RMSE": rmse, "MAE": mae, "R2": r2},
                     "rmse": rmse,
                     "mae": mae,
@@ -602,7 +631,7 @@ def main():
             f.write("| :---: | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |\n")
             for rank, res in enumerate(results, 1):
                 p = res["params"]
-                p_desc = f"d={p['d_model']}, layers_s={p['num_layers_spatial']}, layers_t={p['num_layers_temporal']}, ff={p['dim_feedforward']}, lr={p['learning_rate']}, wd={p['weight_decay']}"
+                p_desc = f"d={p['d_model']}, layers_s={p['num_layers_spatial']}, layers_t={p['num_layers_temporal']}, ff={p['dim_feedforward']}, lr={p['learning_rate']}, wd={p['weight_decay']}, sched_pct={p.get('scheduler_pct_start', 'N/A')}"
                 f.write(f"| {rank} | #{res['iteration']} | `{p_desc}` | **{res['rmse']:.4f}** | {res['mae']:.4f} | {res['r2']:.4f} | {res['total_params']:,} | {res['training_time']:.1f}s | {res['epochs_trained']} |\n")
 
     print(f"\nConsolidated sweep report saved to: {report_file}")

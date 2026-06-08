@@ -27,4 +27,15 @@ fi
 echo "Database found at $DB_ROOT"
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
-srun $ENV_PYTHON -u -m model.run_model "$@"
+# Default pipeline execution (commented out to run sequential sweeps instead):
+# srun $ENV_PYTHON -u -m model.run_model "$@"
+
+echo "================================================================="
+echo "STAGE 1: Feature Selection Sweep (60 iterations)"
+echo "================================================================="
+srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py --mode features --n_iter 60
+
+echo "================================================================="
+echo "STAGE 2: Hyperparameter Sweep (60 iterations)"
+echo "================================================================="
+srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py --mode generalization --n_iter 60
