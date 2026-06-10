@@ -27,15 +27,28 @@ fi
 echo "Database found at $DB_ROOT"
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
-# Default pipeline execution (commented out to run sequential sweeps instead):
+# Default pipeline execution (commented out to run sweeps instead):
 # srun $ENV_PYTHON -u -m model.run_model "$@"
 
-echo "================================================================="
-echo "STAGE 1: Feature Selection Sweep (60 iterations)"
-echo "================================================================="
-srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py --mode features --n_iter 60
+# Results are checkpointed to sweep_results_partial.csv after every fit;
+# if a job is killed, resume with --start_iter <last completed + 1>
+# (features/model_arch/generalization modes only).
+#
+# Recommended: the budgeted full pipeline (feature set + HP/regularization/
+# OneCycleLR via successive halving), guaranteed to finish within budget:
+#   sbatch run_delftblue.sh --mode full --time_budget_hours 23
+#
+# Legacy single-stage sweeps (a 60-iteration stage takes ~27.5h > 24h limit,
+# so these need a resume submission):
+#   sbatch run_delftblue.sh --mode features --n_iter 60 --start_iter 52
+#   sbatch run_delftblue.sh --mode generalization --n_iter 60
+if [ $# -eq 0 ]; then
+    echo "ERROR: No sweep arguments given. Example:"
+    echo "  sbatch run_delftblue.sh --mode full --time_budget_hours 23"
+    exit 1
+fi
 
 echo "================================================================="
-echo "STAGE 2: Hyperparameter Sweep (60 iterations)"
+echo "SWEEP: $@"
 echo "================================================================="
-srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py --mode generalization --n_iter 60
+srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py "$@"

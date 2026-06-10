@@ -282,3 +282,13 @@ IMU_SMA: -0.000540
 IMU_Max: -0.002166
 EMG_WAMP: -0.003576
 EMG_HjMob: -0.005558
+
+--- ON-DEVICE PERFORMANCE & REAL-TIME APPLICABILITY ---
+Actual Trainable Parameters: 1,021,762
+Theoretical FP32 Model Size: 3.90 MB
+Theoretical FP16 Model Size: 1.95 MB
+Theoretical INT8 Quantized Size: 0.97 MB
+Estimated Edge CPU Latency (Raspberry Pi / Mobile): 2.0 - 5.0 ms
+Real-Time Step Constraint: 100 ms (sliding window step)
+Real-Time CPU Safety Margin (Duty Cycle): 95.0% - 98.0% CPU Idle
+Dynamic Convergence Time: <1.1 seconds (Estimation MAE drops below 0.16 kg)

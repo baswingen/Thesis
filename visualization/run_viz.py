@@ -55,7 +55,7 @@ MODEL_RUNS = {
         # plots in run_plots_par_spec (no separate _ablation folder needed). The gen-vs-par comparison
         # collapses this root to its 'all' sub-run via _load(). Source: run_20260605_113834.
         # Previous standard: ST-transformer-par-spec-P01 (st1, kept as historical baseline).
-        "run_dir": "model/model_results/ST-transformer-par-spec-P01-st3-cal",
+        "run_dir": "model/model_results/ST-transformer-par-spec-cross-val",
         "output_dir": "visualization/run_plots_par_spec"
     }
 }
@@ -289,11 +289,11 @@ class ThesisStyle:
             
         # Unified font sizes across all layouts to match the double column format 
         # (ensuring consistent printed text and math sizing in LaTeX documents)
-        fontsize = 10.0
-        labelsize = 10.5
-        titlesize = 11.0
-        legendsize = 9.0
-        ticksize = 9.0
+        fontsize = 9.0
+        labelsize = 9.5
+        titlesize = 10.0
+        legendsize = 8.0
+        ticksize = 8.0
             
         # Configure rcParams dynamically
         plt.rcParams.update({
@@ -353,6 +353,21 @@ class ThesisStyle:
             'savefig.bbox': 'tight',
             'savefig.transparent': False
         })
+
+        # Monkey patch plt.tight_layout to automatically add padding
+        if not hasattr(plt, '_original_tight_layout'):
+            plt._original_tight_layout = plt.tight_layout
+            
+        def custom_tight_layout(*args, **kwargs):
+            if 'pad' not in kwargs:
+                kwargs['pad'] = 1.2
+            if 'h_pad' not in kwargs:
+                kwargs['h_pad'] = 1.5
+            if 'w_pad' not in kwargs:
+                kwargs['w_pad'] = 1.5
+            return plt._original_tight_layout(*args, **kwargs)
+            
+        plt.tight_layout = custom_tight_layout
 
     @classmethod
     def set_title(cls, ax, title_text):
@@ -1655,10 +1670,13 @@ class ModalityComparisonPlotter:
             per_fold = data[k].get("evaluation", {}).get("per_fold", [])
             for idx, part_row in enumerate(per_part):
                 p_id = part_row["Participant"]
-                fold_row = per_fold[idx]
+                gap = 0.0
+                if idx < len(per_fold):
+                    fold_row = per_fold[idx]
+                    gap = float(fold_row.get("Generalization Gap (MAE)", 0.0))
                 if p_id not in part_gaps:
                     part_gaps[p_id] = {}
-                part_gaps[p_id][k] = float(fold_row["Generalization Gap (MAE)"])
+                part_gaps[p_id][k] = gap
                 
         sorted_participants = sorted(part_gaps.keys(), key=lambda p: part_gaps[p].get("all", 999.0))
         
@@ -1723,10 +1741,13 @@ class ModalityComparisonPlotter:
             per_fold = data[k].get("evaluation", {}).get("per_fold", [])
             for idx, part_row in enumerate(per_part):
                 p_id = part_row["Participant"]
-                fold_row = per_fold[idx]
+                ratio = 0.0
+                if idx < len(per_fold):
+                    fold_row = per_fold[idx]
+                    ratio = float(fold_row.get("Overfit Ratio (RMSE)", 0.0))
                 if p_id not in part_ratios:
                     part_ratios[p_id] = {}
-                part_ratios[p_id][k] = float(fold_row["Overfit Ratio (RMSE)"])
+                part_ratios[p_id][k] = ratio
                 
         sorted_participants = sorted(part_ratios.keys(), key=lambda p: part_ratios[p].get("all", 999.0))
         
@@ -2830,21 +2851,24 @@ class RunComparisonPlotter:
     # Plot 1a: 6-Grid Regression Plot Comparison
     # ------------------------------------------------------------------
     def _get_regression_metrics(self, data, is_specialized=False):
-        """Extract MAE, RMSE, and R2 for regression plotting."""
-        if is_specialized:
-            eval_recal = data.get("evaluation", {}).get("recalibrated_metrics")
-            if eval_recal:
-                return {
-                    "MAE": eval_recal.get("MAE"),
-                    "RMSE": eval_recal.get("RMSE"),
-                    "R2": eval_recal.get("R2") or eval_recal.get("R2_score") or eval_recal.get("R2_Score")
-                }
+        """Extract MAE, RMSE, and R2 for regression plotting using participant macro-averages."""
+        eval_dict = data.get("evaluation", {})
+        per_part = eval_dict.get("per_participant", [])
         
-        eval_pooled = data.get("evaluation", {}).get("pooled", {})
-        mae = eval_pooled.get("MAE")
-        rmse = eval_pooled.get("RMSE")
-        r2 = eval_pooled.get("R2") or eval_pooled.get("R2_score")
+        # Calculate participant-level MAE and RMSE if per_participant is available
+        if per_part:
+            mae = float(np.mean([float(p["MAE"]) for p in per_part]))
+            rmse = float(np.mean([float(p["RMSE"]) for p in per_part]))
+        else:
+            macro = eval_dict.get("macro_avg", {})
+            mae = macro.get("MAE") or eval_dict.get("pooled", {}).get("MAE")
+            rmse = macro.get("RMSE") or eval_dict.get("pooled", {}).get("RMSE")
+            
+        # For R2, use the macro_avg R2 if available, otherwise fallback to pooled
+        macro = eval_dict.get("macro_avg", {})
+        r2 = macro.get("R2") or macro.get("R2_score") or eval_dict.get("pooled", {}).get("R2")
         
+        # Fallback calculations if anything is still None
         if mae is None or rmse is None or r2 is None:
             predictions = data.get("predictions", {})
             if "y_true" in predictions and "y_pred" in predictions:
@@ -3026,16 +3050,380 @@ class RunComparisonPlotter:
         # Add legend to the top-left subplot
         axes[0, 0].legend(loc='lower right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.9)
         
-        # Set main title (positioned closer to plots to reduce top margin spacing)
-        fig.suptitle(
-            "Regression Performance: Modality and Generalization Comparison",
-            fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
-            color=ThesisStyle.RHO_BLUE,
-            y=0.985
-        )
-        
-        plt.tight_layout(rect=[0.01, 0, 1, 0.98])
+        plt.tight_layout(rect=[0.01, 0, 1, 1.0])
         ThesisStyle.save_figure(fig, output_dir / "comp_regression_6grid")
+        plt.close(fig)
+
+    def _plot_participant_bars_subplot(self, ax, participants, vals_all, vals_emg, vals_imu, mean_all, mean_emg, mean_imu, clip_val=1.0):
+        x = np.arange(len(participants))
+        width = 0.25
+        
+        # Clip values at clip_val for plotting
+        plot_all = [min(v, clip_val) for v in vals_all]
+        plot_emg = [min(v, clip_val) for v in vals_emg]
+        plot_imu = [min(v, clip_val) for v in vals_imu]
+        
+        rects1 = ax.bar(x - width, plot_all, width, label='Sensor-Fused (EMG + IMU)', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
+        rects2 = ax.bar(x, plot_emg, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
+        rects3 = ax.bar(x + width, plot_imu, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
+        
+        # Annotate any clipped bars vertically to prevent adjacent overlap
+        for idx, val in enumerate(vals_all):
+            if val > clip_val:
+                ax.text(x[idx] - width, clip_val * 1.02, f"{val:.2f}", ha='center', va='bottom',
+                         color=ThesisStyle.COLOR_FUSION, fontweight='bold', clip_on=False,
+                         fontsize=plt.rcParams['font.size'] - 2.8, rotation=90)
+        for idx, val in enumerate(vals_emg):
+            if val > clip_val:
+                ax.text(x[idx], clip_val * 1.02, f"{val:.2f}", ha='center', va='bottom',
+                         color=ThesisStyle.COLOR_EMG, fontweight='bold', clip_on=False,
+                         fontsize=plt.rcParams['font.size'] - 2.8, rotation=90)
+        for idx, val in enumerate(vals_imu):
+            if val > clip_val:
+                ax.text(x[idx] + width, clip_val * 1.02, f"{val:.2f}", ha='center', va='bottom',
+                         color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
+                         fontsize=plt.rcParams['font.size'] - 2.8, rotation=90)
+                          
+        # Add mean lines
+        ax.axhline(mean_all, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7)
+        ax.axhline(mean_emg, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7)
+        ax.axhline(mean_imu, color=ThesisStyle.COLOR_IMU, linestyle='--', linewidth=1.0, alpha=0.7)
+        
+        # Horizontally stagger the mean labels to prevent overlap
+        means_data = [
+            (mean_all, ThesisStyle.COLOR_FUSION),
+            (mean_emg, ThesisStyle.COLOR_EMG),
+            (mean_imu, ThesisStyle.COLOR_IMU)
+        ]
+        # Sort them by value ascending
+        means_sorted = sorted(means_data, key=lambda val: val[0])
+        
+        # Stagger positions across left, center, right to avoid overlap
+        for idx, (val, color) in enumerate(means_sorted):
+            if idx == 0:
+                x_pos = 0.02
+                ha = 'left'
+            elif idx == 1:
+                x_pos = 0.50
+                ha = 'center'
+            else:
+                x_pos = 0.98
+                ha = 'right'
+            ax.text(x_pos, val, f"Mean: {val:.3f}", transform=ax.get_yaxis_transform(),
+                     color=color, va='bottom', ha=ha,
+                     fontsize=plt.rcParams['font.size'] - 2.5, fontweight='semibold',
+                     bbox=dict(facecolor='white', alpha=0.85, edgecolor='none', pad=1.0, boxstyle='round,pad=0.15'))
+                  
+        ylim_val = clip_val * 1.15
+        ax.set_ylim(0, ylim_val)
+        if clip_val == 3.0:
+            ticks = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+            tick_labels = ["0.0", "0.5", "1.0", "1.5", "2.0", "2.5", "3.0"]
+        elif clip_val == 2.0:
+            ticks = [0.0, 0.5, 1.0, 1.5, 2.0]
+            tick_labels = ["0.0", "0.5", "1.0", "1.5", "2.0"]
+        elif clip_val == 1.5:
+            ticks = [0.0, 0.5, 1.0, 1.5]
+            tick_labels = ["0.0", "0.5", "1.0", "1.5"]
+        elif clip_val == 1.0:
+            ticks = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+            tick_labels = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
+        else:
+            ticks = list(np.linspace(0, clip_val, 6))
+            tick_labels = [f"{t:.1f}" for t in ticks]
+            
+        ax.set_yticks(ticks)
+        ax.set_yticklabels(tick_labels)
+        ax.set_xticks(x)
+        ax.set_xticklabels(participants, rotation=45, ha='right', fontsize=plt.rcParams['font.size'] - 1.5)
+        ax.grid(True, which='both', axis='y', linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax)
+
+    def _plot_generalization_6grid(self, gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width, metric="MAE"):
+        ThesisStyle.apply(layout_width)
+        
+        # Grid dimensions: 3 rows x 2 columns (Left: Specialized, Right: LOPO)
+        # Sized to match comp_regression_6grid exactly
+        if layout_width == "column":
+            figsize = (3.5, 3.4)
+        elif layout_width == "double":
+            figsize = (7.0, 6.2)
+        else: # "default"
+            figsize = (8.0, 7.1)
+            
+        fig, axes = plt.subplots(nrows=3, ncols=2, figsize=figsize)
+
+        # Retrieve modalities mapping
+        keys = ["all", "emg_only", "imu_only"]
+        labels = ["Sensor-Fused (EMG + IMU)", "EMG-only", "IMU-only"]
+        colors = [ThesisStyle.COLOR_FUSION, ThesisStyle.COLOR_EMG, ThesisStyle.COLOR_IMU]
+        markers = ["o", "s", "^"]
+
+        # Column Titles (Row 0 subplots) - Black in Fira Sans Bold
+        axes[0, 0].set_title("Participant-Specialized", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=8)
+        axes[0, 1].set_title("Generalized (LOPO)", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=8)
+
+        # --------------------------------------------------
+        # 1. Row 1: Participant Comparison
+        # --------------------------------------------------
+        par_part_errs = {}
+        par_runs = {"all": par_all, "emg_only": par_emg, "imu_only": par_imu}
+        for k, run in par_runs.items():
+            if run:
+                per_part = run.get("evaluation", {}).get("per_participant", [])
+                for row in per_part:
+                    p_id = row["Participant"]
+                    if p_id not in par_part_errs:
+                        par_part_errs[p_id] = {}
+                    par_part_errs[p_id][k] = float(row[metric])
+
+        gen_part_errs = {}
+        gen_runs = {"all": gen_all, "emg_only": gen_emg, "imu_only": gen_imu}
+        for k, run in gen_runs.items():
+            if run:
+                per_part = run.get("evaluation", {}).get("per_participant", [])
+                for row in per_part:
+                    p_id = row["Participant"]
+                    if p_id not in gen_part_errs:
+                        gen_part_errs[p_id] = {}
+                    gen_part_errs[p_id][k] = float(row[metric])
+
+        # Order the participants in ascending error, averaged over both plots for consistency
+        def get_avg_error(p):
+            par_err = par_part_errs.get(p, {}).get("all", 0.0)
+            gen_err = gen_part_errs.get(p, {}).get("all", 0.0)
+            return (par_err + gen_err) / 2.0
+
+        all_participants = sorted(list(set(par_part_errs.keys()) | set(gen_part_errs.keys())), key=get_avg_error)
+        
+        par_vals_all = [par_part_errs.get(p, {}).get("all", 0.0) for p in all_participants]
+        par_vals_emg = [par_part_errs.get(p, {}).get("emg_only", 0.0) for p in all_participants]
+        par_vals_imu = [par_part_errs.get(p, {}).get("imu_only", 0.0) for p in all_participants]
+
+        gen_vals_all = [gen_part_errs.get(p, {}).get("all", 0.0) for p in all_participants]
+        gen_vals_emg = [gen_part_errs.get(p, {}).get("emg_only", 0.0) for p in all_participants]
+        gen_vals_imu = [gen_part_errs.get(p, {}).get("imu_only", 0.0) for p in all_participants]
+
+        def get_mean_metric(run_data):
+            if not run_data: return 0.0
+            eval_dict = run_data.get("evaluation", {})
+            if "macro_avg" in eval_dict and eval_dict["macro_avg"] is not None:
+                return eval_dict["macro_avg"].get(metric, 0.0)
+            return eval_dict.get("pooled", {}).get(metric, 0.0)
+
+        par_mean_all = float(np.mean(par_vals_all))
+        par_mean_emg = float(np.mean(par_vals_emg))
+        par_mean_imu = float(np.mean(par_vals_imu))
+
+        gen_mean_all = float(np.mean(gen_vals_all))
+        gen_mean_emg = float(np.mean(gen_vals_emg))
+        gen_mean_imu = float(np.mean(gen_vals_imu))
+
+        clip_val = 1.5 if metric == "RMSE" else 1.0
+
+        # Plot Left (Specialized)
+        ax_r1_l = axes[0, 0]
+        self._plot_participant_bars_subplot(ax_r1_l, all_participants, par_vals_all, par_vals_emg, par_vals_imu, par_mean_all, par_mean_emg, par_mean_imu, clip_val=clip_val)
+        ax_r1_l.set_ylabel(f"{metric} (kg)", labelpad=8)
+        ax_r1_l.set_xlabel("Participant ID", labelpad=4)
+
+        # Plot Right (Generalized)
+        ax_r1_r = axes[0, 1]
+        self._plot_participant_bars_subplot(ax_r1_r, all_participants, gen_vals_all, gen_vals_emg, gen_vals_imu, gen_mean_all, gen_mean_emg, gen_mean_imu, clip_val=clip_val)
+        ax_r1_r.set_xlabel("Participant ID", labelpad=4)
+        ax_r1_r.yaxis.set_tick_params(labelleft=False)
+
+        # --------------------------------------------------
+        # 2. Row 2: Seqlen Comparison
+        # --------------------------------------------------
+        def get_seqlen_data(run_data):
+            if not run_data: return [], [], []
+            per_seqlen = run_data.get("evaluation", {}).get("per_seqlen") or run_data.get("evaluation", {}).get("per_duration", [])
+            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 10]
+            times = []
+            vals = []
+            counts = []
+            for row in filtered:
+                t = float(row['TimeAtPrediction'].rstrip('s'))
+                if t > 3.0:
+                    continue
+                times.append(t)
+                vals.append(float(row[metric]))
+                counts.append(int(row['Count']))
+            return times, vals, counts
+
+        all_seqlen_vals = []
+        all_seqlen_counts = []
+        
+        par_seqlen_runs = {"all": par_all, "emg_only": par_emg, "imu_only": par_imu}
+        par_seqlen_data = {}
+        for k, run in par_seqlen_runs.items():
+            if run:
+                times, vals, counts = get_seqlen_data(run)
+                par_seqlen_data[k] = (times, vals, counts)
+                all_seqlen_vals.extend(vals)
+                all_seqlen_counts.extend(counts)
+
+        gen_seqlen_runs = {"all": gen_all, "emg_only": gen_emg, "imu_only": gen_imu}
+        gen_seqlen_data = {}
+        for k, run in gen_seqlen_runs.items():
+            if run:
+                times, vals, counts = get_seqlen_data(run)
+                gen_seqlen_data[k] = (times, vals, counts)
+                all_seqlen_vals.extend(vals)
+                all_seqlen_counts.extend(counts)
+
+        ylim_seqlen_val = max(0.8, max(all_seqlen_vals) * 1.15) if all_seqlen_vals else 0.8
+        ylim_count_val = max(1000, max(all_seqlen_counts) * 3.0) if all_seqlen_counts else 3000
+
+        # Plot Left (Specialized)
+        ax_r2_l = axes[1, 0]
+        ax_r2_l_twin = ax_r2_l.twinx()
+        
+        if "all" in par_seqlen_data and par_seqlen_data["all"][0]:
+            t_all, _, c_all = par_seqlen_data["all"]
+            bar_width = 0.5 * np.min(np.diff(t_all)) if len(t_all) > 1 else 0.1
+            ax_r2_l_twin.bar(t_all, c_all, width=bar_width, color=ThesisStyle.RHO_LIGHT_BLUE, alpha=0.6,
+                             edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, zorder=1)
+        ax_r2_l_twin.set_ylim(0, ylim_count_val)
+        ax_r2_l_twin.yaxis.set_tick_params(labelright=False)
+        ax_r2_l_twin.spines['top'].set_visible(False)
+        ax_r2_l_twin.spines['right'].set_visible(True)
+        ax_r2_l_twin.spines['left'].set_visible(True)
+        ax_r2_l_twin.grid(False)
+
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            if k in par_seqlen_data:
+                t, m, _ = par_seqlen_data[k]
+                ax_r2_l.plot(t, m, marker=marker, color=color, label=label, linewidth=1.0, markersize=3.0, zorder=3)
+        ax_r2_l.set_xlabel("Segment Length (s)", labelpad=4)
+        ax_r2_l.set_ylabel(f"{metric} (kg)", labelpad=8)
+        ax_r2_l.set_ylim(0, ylim_seqlen_val)
+        ax_r2_l.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax_r2_l)
+        ax_r2_l.set_zorder(ax_r2_l_twin.get_zorder() + 1)
+        ax_r2_l.patch.set_visible(False)
+
+        # Plot Right (Generalized)
+        ax_r2_r = axes[1, 1]
+        ax_r2_r_twin = ax_r2_r.twinx()
+        
+        if "all" in gen_seqlen_data and gen_seqlen_data["all"][0]:
+            t_all, _, c_all = gen_seqlen_data["all"]
+            bar_width = 0.5 * np.min(np.diff(t_all)) if len(t_all) > 1 else 0.1
+            ax_r2_r_twin.bar(t_all, c_all, width=bar_width, color=ThesisStyle.RHO_LIGHT_BLUE, alpha=0.6,
+                             edgecolor=ThesisStyle.COLOR_UNITY, linewidth=0.5, label='Segment Count', zorder=1)
+        ax_r2_r_twin.set_ylabel("Segment Count", color=ThesisStyle.NEUTRAL_GRAY, labelpad=8)
+        ax_r2_r_twin.tick_params(axis='y', labelcolor=ThesisStyle.NEUTRAL_GRAY)
+        ax_r2_r_twin.set_ylim(0, ylim_count_val)
+        ax_r2_r_twin.spines['top'].set_visible(False)
+        ax_r2_r_twin.spines['right'].set_visible(True)
+        ax_r2_r_twin.spines['left'].set_visible(True)
+        ax_r2_r_twin.grid(False)
+
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            if k in gen_seqlen_data:
+                t, m, _ = gen_seqlen_data[k]
+                ax_r2_r.plot(t, m, marker=marker, color=color, label=label, linewidth=1.0, markersize=3.0, zorder=3)
+        ax_r2_r.set_xlabel("Segment Length (s)", labelpad=4)
+        ax_r2_r.yaxis.set_tick_params(labelleft=False)
+        ax_r2_r.set_ylim(0, ylim_seqlen_val)
+        ax_r2_r.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax_r2_r)
+        ax_r2_r.set_zorder(ax_r2_r_twin.get_zorder() + 1)
+        ax_r2_r.patch.set_visible(False)
+
+        # --------------------------------------------------
+        # 3. Row 3: Weight Class Comparison
+        # --------------------------------------------------
+        def get_weight_data(run_data):
+            if not run_data: return {}
+            per_weight = run_data.get("evaluation", {}).get("per_weight", [])
+            weight_vals = {}
+            for row in per_weight:
+                w_val = row['Weight'].replace(' kg', '').replace('kg', '').strip()
+                weight_vals[w_val] = float(row[metric])
+            return weight_vals
+
+        par_weight_vals = {k: get_weight_data(run) for k, run in par_runs.items()}
+        gen_weight_vals = {k: get_weight_data(run) for k, run in gen_runs.items()}
+
+        all_weights_set = set()
+        for k in keys:
+            all_weights_set.update(par_weight_vals.get(k, {}).keys())
+            all_weights_set.update(gen_weight_vals.get(k, {}).keys())
+        sorted_weights = sorted(list(all_weights_set), key=lambda w: float(w))
+        x_positions = np.arange(len(sorted_weights))
+
+        all_weight_vals = []
+        for k in keys:
+            all_weight_vals.extend(par_weight_vals.get(k, {}).values())
+            all_weight_vals.extend(gen_weight_vals.get(k, {}).values())
+        ylim_weight_val = max(0.8, max(all_weight_vals) * 1.15) if all_weight_vals else 0.8
+
+        # Plot Left (Specialized)
+        ax_r3_l = axes[2, 0]
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            vals = []
+            valid_x = []
+            for idx, w in enumerate(sorted_weights):
+                if w in par_weight_vals.get(k, {}):
+                    vals.append(par_weight_vals[k][w])
+                    valid_x.append(idx)
+            if valid_x:
+                ax_r3_l.plot(valid_x, vals, marker=marker, color=color, label=label, linewidth=1.0, markersize=3.0)
+        ax_r3_l.set_xlabel("Weight Class (kg)", labelpad=4)
+        ax_r3_l.set_ylabel(f"{metric} (kg)", labelpad=8)
+        ax_r3_l.set_xticks(x_positions)
+        ax_r3_l.set_xticklabels(sorted_weights)
+        ax_r3_l.set_ylim(0, ylim_weight_val)
+        ax_r3_l.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax_r3_l)
+
+        # Plot Right (Generalized)
+        ax_r3_r = axes[2, 1]
+        for k, label, color, marker in zip(keys, labels, colors, markers):
+            vals = []
+            valid_x = []
+            for idx, w in enumerate(sorted_weights):
+                if w in gen_weight_vals.get(k, {}):
+                    vals.append(gen_weight_vals[k][w])
+                    valid_x.append(idx)
+            if valid_x:
+                ax_r3_r.plot(valid_x, vals, marker=marker, color=color, label=label, linewidth=1.0, markersize=3.0)
+        ax_r3_r.set_xlabel("Weight Class (kg)", labelpad=4)
+        ax_r3_r.yaxis.set_tick_params(labelleft=False)
+        ax_r3_r.set_xticks(x_positions)
+        ax_r3_r.set_xticklabels(sorted_weights)
+        ax_r3_r.set_ylim(0, ylim_weight_val)
+        ax_r3_r.grid(True, linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax_r3_r)
+
+        # Style all axes spines (hide top and right) & Add rotated Row Labels on the left edge of first column
+        row_labels = ["Participant", "Segment Length", "Weight Class"]
+        for row_idx in range(3):
+            for col_idx in range(2):
+                ax = axes[row_idx, col_idx]
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                
+                # Row labels on the left edge of the first column
+                if col_idx == 0:
+                    ax.annotate(row_labels[row_idx], xy=(-0.24, 0.5), xycoords='axes fraction',
+                                rotation=90, ha='center', va='center',
+                                fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.labelsize']),
+                                color='black')
+            
+        # Add single global legend at the bottom of the grid
+        lines_mae, labels_mae = ax_r3_l.get_legend_handles_labels()
+        lines_twin, labels_twin = ax_r2_r_twin.get_legend_handles_labels()
+        
+        fig.legend(handles=lines_mae + lines_twin, labels=labels_mae + labels_twin, loc='lower center', ncol=4,
+                   bbox_to_anchor=(0.5, 0.01),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+
+        plt.tight_layout(rect=[0.01, 0.04, 1, 1.0])
+        ThesisStyle.save_figure(fig, output_dir / f"comp_generalization_{metric.lower()}_6grid")
         plt.close(fig)
 
     # ------------------------------------------------------------------
@@ -3364,38 +3752,38 @@ class RunComparisonPlotter:
 
         # Determine the size based on double the active layout size for double-column format (significantly less tall):
         if layout_width == "column":
-            figsize = (7.0, 2.8)
+            figsize = (3.5, 2.0)
         elif layout_width == "double":
-            figsize = (14.0, 5.5)
+            figsize = (7.0, 4.0)
         else: # "default"
-            figsize = (12.0, 4.8)
+            figsize = (8.0, 4.5)
 
         # Setup 3-subplot horizontal layout:
         # ax1: stacked bars of Modality Share (%)
         # ax2: Combined channel importance (all channels) using solid/dashed lines for DeepSHAP
         # ax3: Combined channel importance (all channels) using solid/dashed lines for Permutation Importance
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize,
-                                             gridspec_kw={'width_ratios': [1.0, 2.5, 2.5]})
+                                             gridspec_kw={'width_ratios': [1.6, 2.2, 2.2]})
 
         # --------------------------------------------------
         # 1. Left Panel: Stacked Modality Share (%)
         # --------------------------------------------------
-        models = ["Generalized\n(EMG + IMU)", "Participant\nSpecialized"]
+        models = ["Participant-\nSpecialized", "Generalized\n(LOPO)"]
         
         gen_total = sum(gen_mod.values()) or 1.0
         par_total = sum(par_mod.values()) or 1.0
         
         emg_shares = [
-            gen_mod.get("EMG", 0.0) / gen_total * 100,
-            par_mod.get("EMG", 0.0) / par_total * 100
+            par_mod.get("EMG", 0.0) / par_total * 100,
+            gen_mod.get("EMG", 0.0) / gen_total * 100
         ]
         imu_shares = [
-            gen_mod.get("IMU", 0.0) / gen_total * 100,
-            par_mod.get("IMU", 0.0) / par_total * 100
+            par_mod.get("IMU", 0.0) / par_total * 100,
+            gen_mod.get("IMU", 0.0) / gen_total * 100
         ]
         anthro_shares = [
-            gen_mod.get("Anthro", 0.0) / gen_total * 100,
-            par_mod.get("Anthro", 0.0) / par_total * 100
+            par_mod.get("Anthro", 0.0) / par_total * 100,
+            gen_mod.get("Anthro", 0.0) / gen_total * 100
         ]
         
         x_pos = np.arange(len(models))
@@ -3410,21 +3798,22 @@ class RunComparisonPlotter:
             
         ax1.set_ylabel("Modality Share (%)", labelpad=8)
         ax1.set_xticks(x_pos)
-        ax1.set_xticklabels(models)
+        ax1.set_xticklabels(models, fontsize=plt.rcParams['font.size'] - 2.5, rotation=0, ha='center')
         ax1.set_ylim(0, 100)
-        ThesisStyle.set_title(ax1, "Modality Share of Total |SHAP|")
+        ax1.set_title("Modality Share of Total |SHAP|", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=10)
         ax1.spines['top'].set_visible(False)
         ax1.spines['right'].set_visible(False)
         ax1.grid(True, axis='y', linestyle='--', alpha=0.5)
+        ThesisStyle.style_ax(ax1)
         
         # Annotate percentages
         for idx in range(len(models)):
             if emg_shares[idx] > 5:
-                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0, rotation=90)
             if imu_shares[idx] > 5:
-                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0, rotation=90)
             if anthro_shares[idx] > 5:
-                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0, rotation=90)
                 
         # Legend removed (moved to global legend)
 
@@ -3473,22 +3862,23 @@ class RunComparisonPlotter:
         y_pos = np.arange(len(labels))
         offset = 0.12
         
-        # Plot Generalized (solid lines + solid circles)
-        ax2.hlines(y_pos - offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.5, alpha=0.85)
-        ax2.scatter(vals_gen, y_pos - offset, color=colors, marker='o', zorder=3, s=30, alpha=0.85)
-        
         # Plot Participant-Specialized (dashed lines + hollow circles)
-        ax2.hlines(y_pos + offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.5, alpha=0.85)
-        ax2.scatter(vals_par, y_pos + offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=30, linewidths=1.5, alpha=0.85)
+        ax2.hlines(y_pos - offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.0, alpha=0.85)
+        ax2.scatter(vals_par, y_pos - offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=12, linewidths=1.0, alpha=0.85)
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax2.hlines(y_pos + offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.0, alpha=0.85)
+        ax2.scatter(vals_gen, y_pos + offset, color=colors, marker='o', zorder=3, s=12, alpha=0.85)
         
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
         ax2.invert_yaxis()
-        ax2.set_xlabel("Relative Importance (% of Total |SHAP|)", labelpad=4)
-        ThesisStyle.set_title(ax2, "DeepSHAP Channel Importance")
+        ax2.set_xlabel("Relative Importance\n(% of Total |SHAP|)", labelpad=4)
+        ax2.set_title("DeepSHAP Channel Importance", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=10)
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax2.spines['top'].set_visible(False)
         ax2.spines['right'].set_visible(False)
+        ThesisStyle.style_ax(ax2)
         
         # Add custom legend representing the different model lines and channel modalities
         from matplotlib.lines import Line2D
@@ -3530,22 +3920,23 @@ class RunComparisonPlotter:
                 
         y_pos_perm = np.arange(len(labels_perm))
         
-        # Plot Generalized (solid lines + solid circles)
-        ax3.hlines(y_pos_perm - offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.5, alpha=0.85)
-        ax3.scatter(vals_gen_perm, y_pos_perm - offset, color=colors_perm, marker='o', s=30, alpha=0.85, zorder=3)
-        
         # Plot Participant-Specialized (dashed lines + hollow circles)
-        ax3.hlines(y_pos_perm + offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.5, alpha=0.85)
-        ax3.scatter(vals_par_perm, y_pos_perm + offset, facecolors='white', edgecolors=colors_perm, marker='o', s=30, linewidths=1.5, alpha=0.85, zorder=3)
+        ax3.hlines(y_pos_perm - offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.0, alpha=0.85)
+        ax3.scatter(vals_par_perm, y_pos_perm - offset, facecolors='white', edgecolors=colors_perm, marker='o', s=12, linewidths=1.0, alpha=0.85, zorder=3)
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax3.hlines(y_pos_perm + offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.0, alpha=0.85)
+        ax3.scatter(vals_gen_perm, y_pos_perm + offset, color=colors_perm, marker='o', s=12, alpha=0.85, zorder=3)
         
         ax3.set_yticks(y_pos_perm)
         ax3.set_yticklabels(labels_perm, fontsize=plt.rcParams['font.size'] - 1.5)
         ax3.invert_yaxis()
-        ax3.set_xlabel("Relative Importance (% of Total MAE Increase)", labelpad=4)
-        ThesisStyle.set_title(ax3, "Permutation Channel Importance")
+        ax3.set_xlabel("Relative Importance\n(% of Total MAE Increase)", labelpad=4)
+        ax3.set_title("Permutation Channel Importance", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=10)
         ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax3.spines['top'].set_visible(False)
         ax3.spines['right'].set_visible(False)
+        ThesisStyle.style_ax(ax3)
         
         # Legend removed (moved to global legend)
         ax3.axvline(0, color='#333333', linestyle='-', linewidth=0.8, alpha=0.5)
@@ -3565,17 +3956,17 @@ class RunComparisonPlotter:
         from matplotlib.lines import Line2D
         from matplotlib.patches import Patch
         global_legend_handles = [
-            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
             Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.5, markersize=6, label='Participant-Specialized Model'),
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
             Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG'),
             Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU')
         ]
         fig.legend(handles=global_legend_handles, loc='lower center', ncol=4,
-                   bbox_to_anchor=(0.5, 0.11),
+                   bbox_to_anchor=(0.5, 0.03),
                    frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
 
-        # Title and layout (reserve bottom space for global legend)
-        plt.tight_layout(rect=[0, 0.15, 1, 1])
+        # Title and layout (reserve bottom space for global legend and right side for labels)
+        plt.tight_layout(rect=[0.02, 0.09, 0.94, 0.98])
         ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_modality")
         plt.close(fig)
 
@@ -3616,27 +4007,27 @@ class RunComparisonPlotter:
         # ax2: DeepSHAP Feature-Type Importance
         # ax3: Permutation Feature-Type Importance
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize,
-                                             gridspec_kw={'width_ratios': [1.0, 2.5, 2.5]})
+                                             gridspec_kw={'width_ratios': [1.6, 2.2, 2.2]})
 
         # --------------------------------------------------
         # 1. Left Panel: Stacked Modality Share (%)
         # --------------------------------------------------
-        models = ["Generalized\n(EMG + IMU)", "Participant\nSpecialized"]
+        models = ["Participant-\nSpecialized", "Generalized\n(LOPO)"]
         
         gen_total = sum(gen_mod.values()) or 1.0
         par_total = sum(par_mod.values()) or 1.0
         
         emg_shares = [
-            gen_mod.get("EMG", 0.0) / gen_total * 100,
-            par_mod.get("EMG", 0.0) / par_total * 100
+            par_mod.get("EMG", 0.0) / par_total * 100,
+            gen_mod.get("EMG", 0.0) / gen_total * 100
         ]
         imu_shares = [
-            gen_mod.get("IMU", 0.0) / gen_total * 100,
-            par_mod.get("IMU", 0.0) / par_total * 100
+            par_mod.get("IMU", 0.0) / par_total * 100,
+            gen_mod.get("IMU", 0.0) / gen_total * 100
         ]
         anthro_shares = [
-            gen_mod.get("Anthro", 0.0) / gen_total * 100,
-            par_mod.get("Anthro", 0.0) / par_total * 100
+            par_mod.get("Anthro", 0.0) / par_total * 100,
+            gen_mod.get("Anthro", 0.0) / gen_total * 100
         ]
         
         x_pos = np.arange(len(models))
@@ -3651,7 +4042,7 @@ class RunComparisonPlotter:
             
         ax1.set_ylabel("Modality Share (%)", labelpad=8)
         ax1.set_xticks(x_pos)
-        ax1.set_xticklabels(models)
+        ax1.set_xticklabels(models, fontsize=plt.rcParams['font.size'] - 1.5, rotation=0, ha='center')
         ax1.set_ylim(0, 100)
         ThesisStyle.set_title(ax1, "Modality Share of Total |SHAP|")
         ax1.spines['top'].set_visible(False)
@@ -3661,11 +4052,11 @@ class RunComparisonPlotter:
         # Annotate percentages
         for idx in range(len(models)):
             if emg_shares[idx] > 5:
-                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0, rotation=90)
             if imu_shares[idx] > 5:
-                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0, rotation=90)
             if anthro_shares[idx] > 5:
-                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0)
+                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.0, rotation=90)
 
         # --------------------------------------------------
         # Helper for Feature Cleaning & Parsing
@@ -3749,13 +4140,13 @@ class RunComparisonPlotter:
         y_pos = np.arange(len(labels))
         offset = 0.15
         
-        # Plot Generalized (solid lines + solid circles)
-        ax2.hlines(y_pos - offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.5, alpha=0.85)
-        ax2.scatter(vals_gen, y_pos - offset, color=colors, marker='o', zorder=3, s=30, alpha=0.85)
-        
         # Plot Participant-Specialized (dashed lines + hollow circles)
-        ax2.hlines(y_pos + offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.5, alpha=0.85)
-        ax2.scatter(vals_par, y_pos + offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=30, linewidths=1.5, alpha=0.85)
+        ax2.hlines(y_pos - offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.5, alpha=0.85)
+        ax2.scatter(vals_par, y_pos - offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=30, linewidths=1.5, alpha=0.85)
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax2.hlines(y_pos + offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.5, alpha=0.85)
+        ax2.scatter(vals_gen, y_pos + offset, color=colors, marker='o', zorder=3, s=30, alpha=0.85)
         
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
@@ -3786,13 +4177,13 @@ class RunComparisonPlotter:
                 
         y_pos_perm = np.arange(len(labels_perm))
         
-        # Plot Generalized (solid lines + solid circles)
-        ax3.hlines(y_pos_perm - offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.5, alpha=0.85)
-        ax3.scatter(vals_gen_perm, y_pos_perm - offset, color=colors_perm, marker='o', s=30, alpha=0.85, zorder=3)
-        
         # Plot Participant-Specialized (dashed lines + hollow circles)
-        ax3.hlines(y_pos_perm + offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.5, alpha=0.85)
-        ax3.scatter(vals_par_perm, y_pos_perm + offset, facecolors='white', edgecolors=colors_perm, marker='o', s=30, linewidths=1.5, alpha=0.85, zorder=3)
+        ax3.hlines(y_pos_perm - offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.5, alpha=0.85)
+        ax3.scatter(vals_par_perm, y_pos_perm - offset, facecolors='white', edgecolors=colors_perm, marker='o', s=30, linewidths=1.5, alpha=0.85, zorder=3)
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax3.hlines(y_pos_perm + offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.5, alpha=0.85)
+        ax3.scatter(vals_gen_perm, y_pos_perm + offset, color=colors_perm, marker='o', s=30, alpha=0.85, zorder=3)
         
         ax3.set_yticks(y_pos_perm)
         ax3.set_yticklabels(labels_perm, fontsize=plt.rcParams['font.size'] - 1.5)
@@ -3820,17 +4211,17 @@ class RunComparisonPlotter:
         from matplotlib.lines import Line2D
         from matplotlib.patches import Patch
         global_legend_handles = [
-            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
             Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.5, markersize=6, label='Participant-Specialized Model'),
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized Model'),
             Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Feature'),
             Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Feature')
         ]
         fig.legend(handles=global_legend_handles, loc='lower center', ncol=4,
-                   bbox_to_anchor=(0.5, 0.11),
+                   bbox_to_anchor=(0.5, 0.01),
                    frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
 
-        # Title and layout (reserve bottom space for global legend)
-        plt.tight_layout(rect=[0, 0.15, 1, 1])
+        # Title and layout (reserve bottom space for global legend and right side for labels)
+        plt.tight_layout(rect=[0.02, 0.10, 0.95, 0.98])
         ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_feature")
         plt.close(fig)
 
@@ -3863,25 +4254,25 @@ class RunComparisonPlotter:
             figsize = (12.0, 7.0)
 
         fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=figsize,
-                                             gridspec_kw={'width_ratios': [1.0, 2.5, 2.5]})
+                                             gridspec_kw={'width_ratios': [1.6, 2.2, 2.2]})
 
         # 1. Left Panel: Stacked Modality Share (%) for Fused Model only
-        models = ["Generalized\n(EMG + IMU)", "Participant\nSpecialized"]
+        models = ["Participant-\nSpecialized", "Generalized\n(LOPO)"]
         
         gen_total = sum(gen_all_mod.values()) or 1.0
         par_total = sum(par_all_mod.values()) or 1.0
         
         emg_shares = [
-            gen_all_mod.get("EMG", 0.0) / gen_total * 100,
-            par_all_mod.get("EMG", 0.0) / par_total * 100
+            par_all_mod.get("EMG", 0.0) / par_total * 100,
+            gen_all_mod.get("EMG", 0.0) / gen_total * 100
         ]
         imu_shares = [
-            gen_all_mod.get("IMU", 0.0) / gen_total * 100,
-            par_all_mod.get("IMU", 0.0) / par_total * 100
+            par_all_mod.get("IMU", 0.0) / par_total * 100,
+            gen_all_mod.get("IMU", 0.0) / gen_total * 100
         ]
         anthro_shares = [
-            gen_all_mod.get("Anthro", 0.0) / gen_total * 100,
-            par_all_mod.get("Anthro", 0.0) / par_total * 100
+            par_all_mod.get("Anthro", 0.0) / par_total * 100,
+            gen_all_mod.get("Anthro", 0.0) / gen_total * 100
         ]
         
         x_pos = np.arange(len(models))
@@ -3896,7 +4287,7 @@ class RunComparisonPlotter:
             
         ax1.set_ylabel("Modality Share (%)", labelpad=8)
         ax1.set_xticks(x_pos)
-        ax1.set_xticklabels(models, fontsize=plt.rcParams['font.size'] - 1.5)
+        ax1.set_xticklabels(models, fontsize=plt.rcParams['font.size'] - 1.5, rotation=0, ha='center')
         ax1.set_ylim(0, 100)
         ThesisStyle.set_title(ax1, "Modality Share of Total |SHAP|")
         ax1.spines['top'].set_visible(False)
@@ -3905,11 +4296,11 @@ class RunComparisonPlotter:
         
         for idx in range(len(models)):
             if emg_shares[idx] > 5:
-                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5)
+                ax1.text(idx, emg_shares[idx] / 2, f"{emg_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5, rotation=90)
             if imu_shares[idx] > 5:
-                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5)
+                ax1.text(idx, emg_shares[idx] + imu_shares[idx] / 2, f"{imu_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5, rotation=90)
             if anthro_shares[idx] > 5:
-                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5)
+                ax1.text(idx, bottom_anthro[idx] + anthro_shares[idx] / 2, f"{anthro_shares[idx]:.1f}%", ha='center', va='center', color='white', fontweight='bold', fontsize=plt.rcParams['font.size'] - 1.5, rotation=90)
 
         # 2. Extract Relative Importances for Channel Plotting
         def to_rel(d):
@@ -3985,18 +4376,18 @@ class RunComparisonPlotter:
         off1, off2, off3, off4 = -0.18, -0.06, 0.06, 0.18
 
         # 3. Middle Panel: DeepSHAP Channel Importance
-        # Fused Gen
-        ax2.hlines(y_pos + off1, 0, ds_fused_gen, colors=colors, linestyles='-', linewidth=1.2, alpha=0.8)
-        ax2.scatter(ds_fused_gen, y_pos + off1, color=colors, marker='o', zorder=3, s=20, alpha=0.8)
         # Fused Spec
-        ax2.hlines(y_pos + off2, 0, ds_fused_spec, colors=colors, linestyles='--', linewidth=1.2, alpha=0.8)
-        ax2.scatter(ds_fused_spec, y_pos + off2, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=20, linewidths=1.2, alpha=0.8)
-        # Modality-only Gen
-        ax2.hlines(y_pos + off3, 0, ds_mod_gen, colors=colors, linestyles=':', linewidth=1.2, alpha=0.8)
-        ax2.scatter(ds_mod_gen, y_pos + off3, color=colors, marker='s', zorder=3, s=18, alpha=0.8)
+        ax2.hlines(y_pos + off1, 0, ds_fused_spec, colors=colors, linestyles='--', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_fused_spec, y_pos + off1, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=20, linewidths=1.2, alpha=0.8)
+        # Fused Gen
+        ax2.hlines(y_pos + off2, 0, ds_fused_gen, colors=colors, linestyles='-', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_fused_gen, y_pos + off2, color=colors, marker='o', zorder=3, s=20, alpha=0.8)
         # Modality-only Spec
-        ax2.hlines(y_pos + off4, 0, ds_mod_spec, colors=colors, linestyles='-.', linewidth=1.2, alpha=0.8)
-        ax2.scatter(ds_mod_spec, y_pos + off4, facecolors='white', edgecolors=colors, marker='s', zorder=3, s=18, linewidths=1.2, alpha=0.8)
+        ax2.hlines(y_pos + off3, 0, ds_mod_spec, colors=colors, linestyles='-.', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_mod_spec, y_pos + off3, facecolors='white', edgecolors=colors, marker='s', zorder=3, s=18, linewidths=1.2, alpha=0.8)
+        # Modality-only Gen
+        ax2.hlines(y_pos + off4, 0, ds_mod_gen, colors=colors, linestyles=':', linewidth=1.2, alpha=0.8)
+        ax2.scatter(ds_mod_gen, y_pos + off4, color=colors, marker='s', zorder=3, s=18, alpha=0.8)
 
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
@@ -4010,18 +4401,18 @@ class RunComparisonPlotter:
         ax2.set_xlim(0, max_val_ds * 1.1)
 
         # 4. Right Panel: Permutation Channel Importance
-        # Fused Gen
-        ax3.hlines(y_pos + off1, 0, perm_fused_gen, colors=colors, linestyles='-', linewidth=1.2, alpha=0.8)
-        ax3.scatter(perm_fused_gen, y_pos + off1, color=colors, marker='o', zorder=3, s=20, alpha=0.8)
         # Fused Spec
-        ax3.hlines(y_pos + off2, 0, perm_fused_spec, colors=colors, linestyles='--', linewidth=1.2, alpha=0.8)
-        ax3.scatter(perm_fused_spec, y_pos + off2, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=20, linewidths=1.2, alpha=0.8)
-        # Modality-only Gen
-        ax3.hlines(y_pos + off3, 0, perm_mod_gen, colors=colors, linestyles=':', linewidth=1.2, alpha=0.8)
-        ax3.scatter(perm_mod_gen, y_pos + off3, color=colors, marker='s', zorder=3, s=18, alpha=0.8)
+        ax3.hlines(y_pos + off1, 0, perm_fused_spec, colors=colors, linestyles='--', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_fused_spec, y_pos + off1, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=20, linewidths=1.2, alpha=0.8)
+        # Fused Gen
+        ax3.hlines(y_pos + off2, 0, perm_fused_gen, colors=colors, linestyles='-', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_fused_gen, y_pos + off2, color=colors, marker='o', zorder=3, s=20, alpha=0.8)
         # Modality-only Spec
-        ax3.hlines(y_pos + off4, 0, perm_mod_spec, colors=colors, linestyles='-.', linewidth=1.2, alpha=0.8)
-        ax3.scatter(perm_mod_spec, y_pos + off4, facecolors='white', edgecolors=colors, marker='s', zorder=3, s=18, linewidths=1.2, alpha=0.8)
+        ax3.hlines(y_pos + off3, 0, perm_mod_spec, colors=colors, linestyles='-.', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_mod_spec, y_pos + off3, facecolors='white', edgecolors=colors, marker='s', zorder=3, s=18, linewidths=1.2, alpha=0.8)
+        # Modality-only Gen
+        ax3.hlines(y_pos + off4, 0, perm_mod_gen, colors=colors, linestyles=':', linewidth=1.2, alpha=0.8)
+        ax3.scatter(perm_mod_gen, y_pos + off4, color=colors, marker='s', zorder=3, s=18, alpha=0.8)
 
         ax3.set_yticks(y_pos)
         ax3.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
@@ -4048,15 +4439,15 @@ class RunComparisonPlotter:
         from matplotlib.lines import Line2D
         from matplotlib.patches import Patch
         global_legend_handles = [
-            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized (Fused)'),
             Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.2, markersize=6, label='Specialized (Fused)'),
-            Line2D([0], [0], color='#555555', linestyle=':', marker='s', markerfacecolor='#555555', markersize=6, label='Generalized (Modality-only)'),
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=6, label='Generalized (Fused)'),
             Line2D([0], [0], color='#555555', linestyle='-.', marker='s', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.2, markersize=6, label='Specialized (Modality-only)'),
+            Line2D([0], [0], color='#555555', linestyle=':', marker='s', markerfacecolor='#555555', markersize=6, label='Generalized (Modality-only)'),
             Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG Channel'),
             Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU Channel')
         ]
         fig.legend(handles=global_legend_handles, loc='lower center', ncol=3,
-                   bbox_to_anchor=(0.5, 0.03),
+                   bbox_to_anchor=(0.5, 0.01),
                    frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
 
         # Main figure title and layout
@@ -4067,7 +4458,7 @@ class RunComparisonPlotter:
             y=0.985
         )
 
-        plt.tight_layout(rect=[0, 0.14, 1, 0.94])
+        plt.tight_layout(rect=[0, 0.09, 1, 0.94])
         ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_all")
         plt.close(fig)
 
@@ -4194,6 +4585,14 @@ class RunComparisonPlotter:
 
         print("  Plotting comp_regression_6grid...")
         self._plot_regression_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_generalization_mae_6grid...")
+        self._plot_generalization_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width, metric="MAE")
+        count += 1
+
+        print("  Plotting comp_generalization_rmse_6grid...")
+        self._plot_generalization_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width, metric="RMSE")
         count += 1
 
         print("  Plotting comp_per_participant_mae...")

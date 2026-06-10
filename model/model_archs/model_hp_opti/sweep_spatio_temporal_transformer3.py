@@ -25,6 +25,7 @@ Usage:
 import sys
 import time
 import copy
+import json
 import argparse
 import numpy as np
 import pandas as pd
@@ -92,6 +93,40 @@ def filter_features(X_df, active_categories):
     return X_filtered
 
 
+def save_partial_csv(results, run_dir, mode):
+    """Persist results after every iteration so a wall-time kill loses at most
+    the iteration in flight (final report still overwrites this at sweep end)."""
+    rows = []
+    for res in results:
+        if mode == "features":
+            row = {
+                "iteration": res["iteration"],
+                "n_categories": res["n_categories"],
+                "n_features": res["n_features"],
+                "rmse": res["rmse"],
+                "mae": res["mae"],
+                "r2": res["r2"],
+                "total_params": res["total_params"],
+                "training_time": res["training_time"],
+                "epochs_trained": res["epochs_trained"],
+            }
+            for cat in ALL_CATEGORIES:
+                row[f"toggle_{cat}"] = 1 if res["toggles"][cat] else 0
+        else:
+            row = {
+                "iteration": res["iteration"],
+                "rmse": res["rmse"],
+                "mae": res["mae"],
+                "r2": res["r2"],
+                "total_params": res["total_params"],
+                "training_time": res["training_time"],
+                "epochs_trained": res["epochs_trained"],
+                **res["params"]
+            }
+        rows.append(row)
+    pd.DataFrame(rows).to_csv(run_dir / "sweep_results_partial.csv", index=False)
+
+
 def main():
     # ------------------------------------------------------------------
     # CLI & Dynamic Defaulting
@@ -106,12 +141,20 @@ def main():
     parser = argparse.ArgumentParser(
         description="Unified hyperparameter and feature selection sweep for Spatio-Temporal Transformer 3"
     )
-    parser.add_argument("--mode", type=str, choices=["model_arch", "generalization", "features", "architecture", "regularization"], default=default_mode,
-                        help="Which sweep mode to run (model_arch, generalization, features).")
+    parser.add_argument("--mode", type=str, choices=["model_arch", "generalization", "features", "architecture", "regularization", "full"], default=default_mode,
+                        help="Which sweep mode to run (model_arch, generalization, features, "
+                             "or 'full' for the budgeted feature+HP+OneCycleLR pipeline).")
+    parser.add_argument("--time_budget_hours", type=float, default=23.0,
+                        help="Wall-clock budget for --mode full; the sweep stops scheduling new "
+                             "fits when the remaining budget cannot fit the next one (default 23h, "
+                             "leaving margin under the 24h SLURM limit).")
     parser.add_argument("--n_iter", type=int, default=None,
                         help="Number of iterations (default: 12 in DEV, 150/250 in production).")
     parser.add_argument("--test_participants", type=int, default=4,
                         help="Number of participants to hold out for validation")
+    parser.add_argument("--start_iter", type=int, default=1,
+                        help="Resume from this iteration (1-based). Configs are sampled with a "
+                             "fixed seed, so earlier iterations are reproduced and skipped.")
     args = parser.parse_args()
 
     # Map older string arguments to new ones for backward compatibility
@@ -259,6 +302,8 @@ def main():
                 sampled_configs.append(toggles)
 
         for idx, toggles in enumerate(sampled_configs, 1):
+            if idx < args.start_iter:
+                continue
             active_categories = sorted([cat for cat, active in toggles.items() if active])
             
             print(f"\n{'='*65}")
@@ -335,11 +380,348 @@ def main():
                     "training_time": elapsed,
                     "epochs_trained": len(model.loss_history["train"]),
                 })
+                save_partial_csv(results, run_dir, mode)
             except Exception as exc:
                 import traceback
                 traceback.print_exc()
                 print(f"  [ERROR] Iteration failed: {exc}. Skipping.")
                 continue
+
+    elif mode == "full":
+        # ──────────────────────────────────────────────────────────────
+        # FULL MODE: feature set + HP/regularization/OneCycleLR in one
+        # wall-clock-budgeted job.
+        #
+        # Stage A re-evaluates the four strongest feature sets from the
+        # recovered features sweep (job 10122647) at the 200-epoch
+        # baseline; differences there were within noise (R² 0.959–0.971
+        # across 51 random sets), so four targeted candidates replace a
+        # full re-randomization. Stage B runs successive halving on the
+        # winning set: OneCycleLR compresses cleanly because total_steps
+        # = epochs × batches, so a 60-epoch schedule is a complete cycle
+        # usable as a cheap fidelity. A wall-clock guard (measured
+        # sec/epoch) stops scheduling fits that cannot finish in budget.
+        # ──────────────────────────────────────────────────────────────
+        budget_s = args.time_budget_hours * 3600.0
+        finalize_margin_s = 20 * 60.0
+        timing = {"sec_per_epoch": 9.0, "overhead_s": 180.0}  # prior from job 10122647 (~7.8–8.5 s/epoch)
+
+        def est_fit_s(n_epochs):
+            return n_epochs * timing["sec_per_epoch"] + timing["overhead_s"]
+
+        def budget_left_s():
+            return budget_s - (time.time() - sweep_start)
+
+        def save_full_partial():
+            rows = []
+            for r in results:
+                rows.append({
+                    "stage": r["stage"],
+                    "tag": r["tag"],
+                    "feature_set": r.get("feature_set", ""),
+                    "config_id": r.get("config_id", ""),
+                    "fidelity_epochs": r["fidelity_epochs"],
+                    "rmse": r["rmse"],
+                    "mae": r["mae"],
+                    "r2": r["r2"],
+                    "n_features": r.get("n_features", ""),
+                    "total_params": r["total_params"],
+                    "training_time": r["training_time"],
+                    "epochs_trained": r["epochs_trained"],
+                    "params_json": json.dumps(r.get("params", {}), default=str),
+                })
+            pd.DataFrame(rows).to_csv(run_dir / "sweep_results_partial.csv", index=False)
+
+        def run_config(stage, tag, X_tr, X_v, model_kwargs, n_epochs, extra=None):
+            kwargs = copy.deepcopy(model_kwargs)
+            kwargs["epochs"] = n_epochs
+            kwargs["use_checkpointing"] = False
+            t0 = time.time()
+            print(f"\n{'='*65}")
+            print(f"[{stage}] {tag} | epochs={n_epochs} | budget left: {budget_left_s()/3600:.2f}h")
+            print(f"{'='*65}")
+            try:
+                mdl = SpatioTemporalTransformerRegressor3(**kwargs)
+                mdl.fit(X_tr, y_train, X_val=X_v, y_val=y_val)
+                preds = np.maximum(0.0, mdl.predict(X_v))
+                rmse = float(np.sqrt(mean_squared_error(y_val, preds)))
+                mae = float(mean_absolute_error(y_val, preds))
+                r2 = float(r2_score(y_val, preds))
+                iter_s = time.time() - t0
+                epochs_trained = len(mdl.loss_history["train"])
+                spe = max(0.5, (iter_s - timing["overhead_s"]) / max(1, epochs_trained))
+                timing["sec_per_epoch"] = 0.5 * timing["sec_per_epoch"] + 0.5 * spe
+                res = {
+                    "stage": stage,
+                    "tag": tag,
+                    "fidelity_epochs": n_epochs,
+                    "rmse": rmse,
+                    "mae": mae,
+                    "r2": r2,
+                    "total_params": sum(p.numel() for p in mdl.model.parameters()),
+                    "training_time": iter_s,
+                    "epochs_trained": epochs_trained,
+                    **(extra or {}),
+                }
+                results.append(res)
+                save_full_partial()
+                print(f"\n  [{stage}] {tag}: RMSE {rmse:.4f} | MAE {mae:.4f} | R² {r2:.4f} "
+                      f"({iter_s/60:.1f} min, sec/epoch now {timing['sec_per_epoch']:.1f})")
+                return res
+            except Exception as exc:
+                import traceback
+                traceback.print_exc()
+                print(f"  [ERROR] [{stage}] {tag} failed: {exc}. Skipping.")
+                return None
+
+        # ── Stage A: feature set confirmation ────────────────────────
+        # Candidates derived from the recovered features sweep
+        # (model_results/sweep_st_transformer3_features_20260609_223220_RECOVERED):
+        # the two best single runs, the ridge-positive categories, and
+        # the all-categories baseline.
+        candidate_feature_sets = {
+            "all_33": list(ALL_CATEGORIES),
+            "sweep_best_rmse_20": [
+                "EMG_BW", "EMG_HjComp", "EMG_IEMG", "EMG_MAV", "EMG_MNF",
+                "EMG_Power", "EMG_RMS", "EMG_SSC", "EMG_Skew", "EMG_SpecEntropy",
+                "EMG_VAR", "EMG_WAMP", "IMU_Jerk", "IMU_Kurt", "IMU_Max",
+                "IMU_Mean", "IMU_SMA", "IMU_SVM_Mean", "IMU_SpecEnergy", "IMU_Var",
+            ],
+            "sweep_lean_14": [
+                "EMG_BW", "EMG_IEMG", "EMG_Kurt", "EMG_LogDet", "EMG_MAV",
+                "EMG_Myopulse", "EMG_WL", "IMU_Jerk", "IMU_MNF", "IMU_Max",
+                "IMU_SMA", "IMU_SVM_Mean", "IMU_SpecEnergy", "IMU_Var",
+            ],
+            "ridge_positive_17": [
+                "EMG_BW", "EMG_HjComp", "EMG_IEMG", "EMG_LogDet", "EMG_MAV",
+                "EMG_MNF", "EMG_Power", "EMG_RMS", "EMG_Skew", "EMG_VAR",
+                "EMG_WL", "IMU_Mean", "IMU_P2P", "IMU_SMA", "IMU_SpecEnergy",
+                "IMU_Std", "IMU_Var",
+            ],
+        }
+
+        if DEV_MODE:
+            stage_a_epochs = DEV_EPOCHS
+            rung_epochs = [2, 3, max(4, DEV_EPOCHS)]
+            rung1_width = args.n_iter if args.n_iter is not None else 6
+        else:
+            stage_a_epochs = 200
+            rung_epochs = [60, 120, 200]
+            rung1_width = args.n_iter if args.n_iter is not None else 48
+        rung_survivors = [12, 4]
+
+        base_cfg = copy.deepcopy(SPATIO_TEMPORAL_TRANSFORMER3_CONFIG)
+        base_sched = base_cfg.get("scheduler", {}).get("type", "ReduceLROnPlateau")
+        base_cfg["early_stopping_patience"] = (
+            stage_a_epochs if base_sched in ["OneCycleLR", "WarmupCosine"] else sweep_patience
+        )
+
+        stage_a_results = []
+        filtered_cache = {}
+        for set_name, cats in candidate_feature_sets.items():
+            if budget_left_s() < est_fit_s(stage_a_epochs) + finalize_margin_s:
+                print(f"[Budget] Skipping remaining Stage A sets (left: {budget_left_s()/60:.0f}m).")
+                break
+            X_tr = filter_features(X_train_raw, sorted(cats)).copy()
+            X_v = filter_features(X_val_raw, sorted(cats)).copy()
+            filtered_cache[set_name] = (X_tr, X_v)
+            n_features = 0
+            for seq in X_tr["sequence_dicts"]:
+                if seq and seq[0]:
+                    n_features = len(seq[0])
+                    break
+            res = run_config(
+                "Stage A", set_name, X_tr, X_v, base_cfg, stage_a_epochs,
+                extra={"feature_set": set_name, "n_categories": len(cats), "n_features": n_features},
+            )
+            if res:
+                stage_a_results.append(res)
+
+        # Winner: leanest set within 0.010 RMSE of the best — single runs
+        # cannot resolve smaller differences, so prefer fewer features.
+        if stage_a_results:
+            best_a_rmse = min(r["rmse"] for r in stage_a_results)
+            eligible = [r for r in stage_a_results if r["rmse"] <= best_a_rmse + 0.010]
+            winner = min(eligible, key=lambda r: r["n_features"])
+            winner_name = winner["feature_set"]
+        else:
+            winner_name = "sweep_best_rmse_20"
+            if winner_name not in filtered_cache:
+                cats = candidate_feature_sets[winner_name]
+                filtered_cache[winner_name] = (
+                    filter_features(X_train_raw, sorted(cats)).copy(),
+                    filter_features(X_val_raw, sorted(cats)).copy(),
+                )
+        print(f"\n[Stage A] Winning feature set: {winner_name} "
+              f"({len(candidate_feature_sets[winner_name])} categories)")
+        X_tr_b, X_v_b = filtered_cache[winner_name]
+
+        # ── Stage B: successive halving over arch/regularization/OneCycle ──
+        # Architecture dims are searched in a neighborhood of the best
+        # model_arch-sweep config (d=96-128, 4 spatial / 4 temporal layers,
+        # nhead 8/2) rather than the full blind grid.
+        param_grid = {
+            'd_model':              [96, 128, 160],
+            'nhead_spatial':        [4, 8],
+            'num_layers_spatial':   [3, 4],
+            'nhead_temporal':       [2, 4],
+            'num_layers_temporal':  [3, 4],
+            'dim_feedforward':      [512, 1024],
+            'dropout_rate':         [0.2, 0.25, 0.35, 0.5],
+            'weight_decay':         [1e-05, 1e-04, 1e-03, 5e-03],
+            'learning_rate':        [1e-4, 2e-4, 3e-4, 5e-4, 8e-4],
+            'batch_size':           [64, 128],
+            'aug_p':                [0.5, 0.8],
+            'aug_noise_std':        [0.05, 0.1],
+            'aug_stretch_range':    [(0.75, 1.25), (0.9, 1.1)],
+            'aug_channel_dropout':  [0.1, 0.25],
+            'scheduler_pct_start':  [0.05, 0.1, 0.2, 0.3, 0.4],
+        }
+        sampled = list(ParameterSampler(param_grid, n_iter=rung1_width, random_state=42))
+        current = [{"config_id": i, "params": p} for i, p in enumerate(sampled, 1)]
+
+        rung_leaderboards = []
+        for rung_idx, n_epochs in enumerate(rung_epochs, 1):
+            scored = []
+            for cfg in current:
+                if budget_left_s() < est_fit_s(n_epochs) + finalize_margin_s:
+                    print(f"[Budget] Stopping rung {rung_idx} after {len(scored)} of "
+                          f"{len(current)} configs (left: {budget_left_s()/60:.0f}m).")
+                    break
+                params = copy.deepcopy(cfg["params"])
+
+                d_model = params['d_model']
+                nhead_s = params['nhead_spatial']
+                nhead_t = params['nhead_temporal']
+                while d_model % nhead_s != 0 and nhead_s > 1:
+                    nhead_s -= 1
+                while d_model % nhead_t != 0 and nhead_t > 1:
+                    nhead_t -= 1
+
+                pct_start = params.pop('scheduler_pct_start')
+                aug_cfg = copy.deepcopy(AUGMENTATION_CONFIG)
+                aug_cfg['p'] = params.pop('aug_p')
+                aug_cfg['channel_dropout_p'] = params.pop('aug_channel_dropout')
+                aug_cfg['noise_std'] = params.pop('aug_noise_std')
+                aug_cfg['stretch_factor_range'] = params.pop('aug_stretch_range')
+
+                model_kwargs = dict(
+                    d_model=d_model,
+                    nhead_spatial=nhead_s,
+                    num_layers_spatial=params['num_layers_spatial'],
+                    nhead_temporal=nhead_t,
+                    num_layers_temporal=params['num_layers_temporal'],
+                    dim_feedforward=params['dim_feedforward'],
+                    dropout_rate=params['dropout_rate'],
+                    learning_rate=params['learning_rate'],
+                    weight_decay=params['weight_decay'],
+                    batch_size=params['batch_size'],
+                    early_stopping_patience=n_epochs,  # let the OneCycle schedule complete
+                    use_amp=True,
+                    scheduler={
+                        'type': 'OneCycleLR',
+                        'max_lr': params['learning_rate'],
+                        'pct_start': pct_start,
+                    },
+                    augmentation_config=aug_cfg,
+                    random_state=GLOBAL_RANDOM_STATE,
+                )
+                res = run_config(
+                    f"Stage B rung {rung_idx}", f"config #{cfg['config_id']}",
+                    X_tr_b, X_v_b, model_kwargs, n_epochs,
+                    extra={"config_id": cfg["config_id"], "feature_set": winner_name,
+                           "params": cfg["params"]},
+                )
+                if res:
+                    scored.append((res["rmse"], cfg))
+
+            scored.sort(key=lambda t: t[0])
+            rung_leaderboards.append((rung_idx, n_epochs, list(scored)))
+            if not scored:
+                print(f"[Stage B] Rung {rung_idx} produced no results; stopping.")
+                break
+            if rung_idx == len(rung_epochs):
+                break
+            k = rung_survivors[rung_idx - 1]
+            next_epochs = rung_epochs[rung_idx]
+            affordable = int(max(0, (budget_left_s() - finalize_margin_s) // est_fit_s(next_epochs)))
+            k = min(k, len(scored), affordable)
+            if k == 0:
+                print(f"[Budget] No budget for rung {rung_idx + 1}; finalizing with rung {rung_idx} results.")
+                break
+            current = [c for _, c in scored[:k]]
+            print(f"\n[Stage B] Promoting {k} configs to rung {rung_idx + 1} ({next_epochs} epochs): "
+                  f"{', '.join('#' + str(c['config_id']) for c in current)}")
+
+        # ── Final report ──────────────────────────────────────────────
+        # Best config = lowest RMSE at the highest fidelity that ran.
+        b_results = [r for r in results if r["stage"].startswith("Stage B")]
+        best = None
+        if b_results:
+            top_fidelity = max(r["fidelity_epochs"] for r in b_results)
+            best = min((r for r in b_results if r["fidelity_epochs"] == top_fidelity),
+                       key=lambda r: r["rmse"])
+
+        total_sweep_time = time.time() - sweep_start
+        print("\n" + "=" * 65)
+        print("  FULL SWEEP FINISHED")
+        print(f"  Total execution time: {total_sweep_time/60:.1f} minutes "
+              f"(budget: {args.time_budget_hours:.1f}h)")
+        print("=" * 65)
+
+        if best:
+            best_dump = {
+                "feature_set": winner_name,
+                "feature_categories": sorted(candidate_feature_sets[winner_name]),
+                "params": best["params"],
+                "fidelity_epochs": best["fidelity_epochs"],
+                "metrics": {"rmse": best["rmse"], "mae": best["mae"], "r2": best["r2"]},
+            }
+            with open(run_dir / "best_config.json", "w") as f:
+                json.dump(best_dump, f, indent=2, default=str)
+            print(f"\nBest config ({best['tag']} @ {best['fidelity_epochs']} epochs): "
+                  f"RMSE {best['rmse']:.4f} | MAE {best['mae']:.4f} | R² {best['r2']:.4f}")
+            print(json.dumps(best_dump, indent=2, default=str))
+
+        report_file = run_dir / "sweep_report.md"
+        with open(report_file, "w") as f:
+            f.write("# Spatio-Temporal Transformer 3 Full Sweep Report (FEATURES + HP + OneCycleLR)\n\n")
+            f.write(f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+            f.write(f"**DEV_MODE:** {DEV_MODE}\n\n")
+            f.write(f"**Total Execution Time:** {total_sweep_time/60:.1f} minutes "
+                    f"(budget {args.time_budget_hours:.1f}h)\n\n")
+            f.write("## Stage A — Feature Set Confirmation\n\n")
+            f.write("| Feature Set | Categories | Features | Val RMSE | Val MAE | Val R² |\n")
+            f.write("| :--- | :---: | :---: | :---: | :---: | :---: |\n")
+            for r in sorted(stage_a_results, key=lambda r: r["rmse"]):
+                marker = " **(winner)**" if r["feature_set"] == winner_name else ""
+                f.write(f"| `{r['feature_set']}`{marker} | {r['n_categories']} | {r['n_features']} | "
+                        f"**{r['rmse']:.4f}** | {r['mae']:.4f} | {r['r2']:.4f} |\n")
+            f.write(f"\nWinner: `{winner_name}` (leanest set within 0.010 RMSE of the best).\n\n")
+            f.write("## Stage B — Successive Halving (OneCycleLR fidelities)\n\n")
+            for rung_idx, n_epochs, scored in rung_leaderboards:
+                f.write(f"### Rung {rung_idx} — {n_epochs}-epoch schedules ({len(scored)} configs)\n\n")
+                f.write("| Rank | Config | Val RMSE | Parameters |\n")
+                f.write("| :---: | :---: | :---: | :--- |\n")
+                for rank, (rmse_v, cfg) in enumerate(scored, 1):
+                    p = cfg["params"]
+                    p_desc = (f"d={p['d_model']}, ls={p['num_layers_spatial']}, lt={p['num_layers_temporal']}, "
+                              f"nh={p['nhead_spatial']}/{p['nhead_temporal']}, ff={p['dim_feedforward']}, "
+                              f"do={p['dropout_rate']}, wd={p['weight_decay']}, lr={p['learning_rate']}, "
+                              f"bs={p['batch_size']}, pct={p['scheduler_pct_start']}, aug_p={p['aug_p']}")
+                    f.write(f"| {rank} | #{cfg['config_id']} | **{rmse_v:.4f}** | `{p_desc}` |\n")
+                f.write("\n")
+            if best:
+                f.write("## 🏆 Best Configuration\n\n")
+                f.write("```json\n")
+                f.write(json.dumps(best_dump, indent=2, default=str))
+                f.write("\n```\n")
+
+        print(f"\nFull sweep report saved to: {report_file}")
+        print(f"Per-fit results saved to: {run_dir / 'sweep_results_partial.csv'}")
+        if best:
+            print(f"Best config JSON saved to: {run_dir / 'best_config.json'}")
+        return
 
     else:
         # ──────────────────────────────────────────────────────────────
@@ -393,6 +775,8 @@ def main():
         sampler = ParameterSampler(param_grid, n_iter=n_iter, random_state=42)
 
         for i, params in enumerate(sampler, 1):
+            if i < args.start_iter:
+                continue
             iter_start = time.time()
             elapsed = time.time() - sweep_start
 
@@ -493,6 +877,7 @@ def main():
                     "training_time": elapsed_iter,
                     "epochs_trained": len(model.loss_history["train"]),
                 })
+                save_partial_csv(results, run_dir, mode)
             except Exception as exc:
                 import traceback
                 traceback.print_exc()

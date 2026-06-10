@@ -1,0 +1,56 @@
+\chapter{Statistical Significance Analysis}
+\label{app:statistical_significance}
+
+This appendix provides the statistical significance evaluation of the weight estimation results across different sensor modality configurations (ALL, EMG-only, and IMU-only) and validation strategies.
+
+\section{Methodology}
+To assess whether the performance differences between sensor configurations are statistically meaningful, we perform a One-Way Repeated Measures Analysis of Variance (RM-ANOVA) on the participant-level error metrics ($N = 17$ subjects). RM-ANOVA is the standard parametric method for comparing multiple treatments (modalities) measured on the same subjects, accounting for inter-subject variability.
+
+Let $x_{ij}$ represent the error metric (MAE or RMSE) of participant $i$ under modality $j$. The RM-ANOVA tests the null hypothesis that the mean errors across all modalities are equal:
+\begin{equation}
+    H_0: \mu_{\text{ALL}} = \mu_{\text{EMG}} = \mu_{\text{IMU}}
+\end{equation}
+
+For cases where the ANOVA null hypothesis is rejected ($p < 0.05$), we perform post-hoc pairwise comparisons using two-tailed paired $t$-tests. To control the family-wise error rate and avoid Type I errors (false positives) arising from multiple comparisons, we apply the Bonferroni correction:
+\begin{equation}
+    p_{\text{adj}} = \min(1.0, p \times c)
+\end{equation}
+where $c = 3$ is the number of pairwise comparisons (ALL vs. EMG, ALL vs. IMU, and EMG vs. IMU).
+
+\section{ANOVA and Post-Hoc Results}
+Table~\ref{tab:anova_results} summarizes the mean errors, RM-ANOVA statistics, and post-hoc pairwise comparisons for both the Participant-Specific (5-Fold CV) and Participant-Independent (LOPO CV) settings.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Repeated Measures ANOVA and Bonferroni-corrected post-hoc comparisons of the modalities ($N=17$ participants).}
+    \label{tab:anova_results}
+    \begin{tabular}{lcccccc}
+        \toprule
+        & \multicolumn{3}{c}{Modality Mean MAE/RMSE (kg)} & \multicolumn{2}{c}{RM-ANOVA} & Post-hoc comparisons \\
+        \cmidrule(lr){2-4} \cmidrule(lr){5-6} \cmidrule(lr){7-7}
+        Metric \& Strategy & ALL (EMG+IMU) & EMG-only & IMU-only & $F(2,32)$ & $p$-value & Pairwise relations \\
+        \midrule
+        \textbf{Mean Absolute Error (MAE)} \\
+        \quad Participant-Specific & 0.1843 & 0.2160 & 0.3669 & 122.66 & $<0.001$ & ALL $<$ EMG $<$ IMU $^{***}$ \\
+        \quad Participant-Independent (LOPO) & 0.3320 & 0.2963 & 0.9087 & 17.02 & $<0.001$ & ALL $\approx$ EMG $<$ IMU $^{**}$ \\
+        \midrule
+        \textbf{Root Mean Squared Error (RMSE)} \\
+        \quad Participant-Specific & 0.3931 & 0.4454 & 0.7081 & 87.56 & $<0.001$ & ALL $<$ EMG $<$ IMU $^{***}$ \\
+        \quad Participant-Independent (LOPO) & 0.5888 & 0.5753 & 1.3570 & 22.07 & $<0.001$ & ALL $\approx$ EMG $<$ IMU $^{***}$ \\
+        \bottomrule
+    \end{tabular}
+    \begin{flushleft}
+        \small Note: In the post-hoc pairwise relations, ``$<$'' denotes a statistically significant improvement (lower error) at the adjusted level of $\alpha = 0.05$ (Bonferroni-corrected), while ``$\approx$'' indicates no statistically significant difference ($p_{\text{adj}} > 0.05$). The asterisks indicate the significance level of the largest pairwise difference: $^{**}p_{\text{adj}} < 0.01$, $^{***}p_{\text{adj}} < 0.001$.
+    \end{flushleft}
+\end{table}
+
+\section{Discussion of Key Findings}
+The RM-ANOVA results support two primary conclusions:
+\begin{enumerate}
+    \item \textbf{Sensor Fusion is Strategy-Dependent:} 
+    In the Participant-Specific setting, combining EMG and IMU sensors (\texttt{ALL}) yields the best performance, outperforming \texttt{EMG-only} ($p_{\text{adj}} = 2.15 \times 10^{-4}$ for MAE) and \texttt{IMU-only} ($p_{\text{adj}} = 5.59 \times 10^{-9}$ for MAE) with high statistical significance.
+    Conversely, in the Participant-Independent (LOPO) setting, the multi-modality model does \textit{not} provide a statistically significant benefit over using EMG alone ($p_{\text{adj}} = 0.40$ for MAE; $p_{\text{adj}} = 1.0$ for RMSE). In fact, the EMG-only model achieves a slightly lower nominal mean MAE (0.2963 kg vs. 0.3320 kg), although this difference is not statistically significant.
+    
+    \item \textbf{Generalizability Limitations of Kinematics:}
+    The \texttt{IMU-only} configuration performs significantly worse than both \texttt{ALL} and \texttt{EMG-only} across both evaluation strategies ($p_{\text{adj}} < 0.01$). Crucially, in the LOPO setting, the IMU-only performance degrades severely (MAE = 0.9087 kg), indicating that kinematic signatures are highly subject-specific and fail to generalize to unseen users. EMG signals, reflecting direct physiological muscle activation, remain robust and generalize significantly better across individuals.
+\end{enumerate}

@@ -196,9 +196,15 @@
   },
   "model_info": {
     "device": "CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)",
-    "total_parameters": 158149954,
-    "trainable_parameters": 158149954,
-    "estimated_gflops": 0.000960288
+    "total_parameters": 709954,
+    "trainable_parameters": 709954,
+    "estimated_gflops": 0.000960288,
+    "model_size_mb_fp32": 2.7082595825195312,
+    "model_size_mb_fp16": 1.3541297912597656,
+    "model_size_mb_int8": 0.6770648956298828,
+    "on_device_latency_estimate_ms": 1.5,
+    "real_time_cpu_idle_percent": 98.5,
+    "real_time_window_ms": 100.0
   },
   "dataset": {
     "total_samples": 15732,

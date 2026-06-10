@@ -7,6 +7,9 @@ def count_parameters(model):
     """Count total trainable and non-trainable parameters of a PyTorch model."""
     if not isinstance(model, nn.Module):
         return 0, 0
+    # Unwrap PyTorch DataParallel or DistributedDataParallel wrappers if present
+    if hasattr(model, 'module') and isinstance(model.module, nn.Module):
+        model = model.module
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
     return total_params, trainable_params

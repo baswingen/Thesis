@@ -232,10 +232,84 @@ def process_emg_data(file_path: str | Path, fs_fallback: float = 2000.0, overwri
         print(f"Processed data saved to {out_dataset_name} successfully.")
         
 
-def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrite: bool = True):
+def _build_imu_processed_channels(data, col_names_str, fs_imu):
+    """Construct the processed IMU channels (accel LPF(15Hz), Euler->radians LPF(15Hz),
+    and Sensor2-Sensor1 difference channels), EXCLUDING timestamp columns.
+
+    Returns (names, arrays) where names is the ordered channel-name list and arrays is the
+    matching list of 1-D numpy arrays. Shared by process_imu_data (which writes them) and
+    get_session_imu_stats (which computes calibration statistics from them) so the two can
+    never diverge.
+    """
+    from scipy.signal import butter, lfilter
+
+    imu_base_names = ['ax', 'ay', 'az', 'roll', 'pitch', 'yaw']
+    imu_cols_dict = {1: {}, 2: {}}
+    for s in [1, 2]:
+        for base in imu_base_names:
+            col_name = f"{base}{s}"
+            if col_name in col_names_str:
+                imu_cols_dict[s][base] = col_names_str.index(col_name)
+
+    if not imu_cols_dict[1] and not imu_cols_dict[2]:
+        return [], []
+
+    nyq = 0.5 * fs_imu
+    cutoff = 15.0
+    if cutoff >= nyq:
+        cutoff = nyq * 0.99
+    b, a = butter(4, cutoff / nyq, btype='low', analog=False)
+
+    processed_sensors = {}
+    for s in [1, 2]:
+        if not imu_cols_dict[s]:
+            continue
+        s_data = {}
+        # Accelerations: keep raw signal directly (no gravity/linear split)
+        for axis in ['ax', 'ay', 'az']:
+            if axis in imu_cols_dict[s]:
+                raw_acc = np.nan_to_num(data[:, imu_cols_dict[s][axis]], nan=0.0)
+                if len(raw_acc) > 18:
+                    raw_acc = lfilter(b, a, raw_acc)
+                s_data[f'{axis}{s}'] = raw_acc
+        # Euler angles: convert degrees -> radians, filter after unwrapping
+        for angle in ['roll', 'pitch', 'yaw']:
+            if angle in imu_cols_dict[s]:
+                raw_ang = np.nan_to_num(data[:, imu_cols_dict[s][angle]], nan=0.0)
+                rad_ang = np.deg2rad(raw_ang)
+                if len(rad_ang) > 18:
+                    unwrapped = np.unwrap(rad_ang)
+                    smoothed = lfilter(b, a, unwrapped)
+                    rad_ang = (smoothed + np.pi) % (2 * np.pi) - np.pi
+                s_data[f'{angle}_rad{s}'] = rad_ang
+        processed_sensors[s] = s_data
+
+    names, arrays = [], []
+    for s in [1, 2]:
+        if s in processed_sensors:
+            for k, v in processed_sensors[s].items():
+                names.append(k)
+                arrays.append(v)
+    # Difference channels (Sensor 2 - Sensor 1): relative elbow kinematics
+    if 1 in processed_sensors and 2 in processed_sensors:
+        for k1 in processed_sensors[1].keys():
+            base = k1[:-1]  # strip the '1'
+            k2 = f"{base}2"
+            if k2 in processed_sensors[2]:
+                names.append(f"{base}_diff")
+                arrays.append(processed_sensors[2][k2] - processed_sensors[1][k1])
+    return names, arrays
+
+
+def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrite: bool = True, channel_stats: dict = None):
     """
     Reads the synced matrix from an HDF5 file, processes the IMU channels.
     Calculates effective sampling rate from PC clock.
+
+    If ``channel_stats`` (per-channel {'median','iqr'}) is provided, applies per-session
+    robust subject calibration: ``(x - median) / iqr`` per channel. This is the IMU
+    analogue of the EMG MVC session-level peak scaling and removes the per-subject IMU
+    gain/offset (a=F/m + sensor placement) that otherwise leaks across participants.
     """
     file_path = Path(file_path)
     if not file_path.exists():
@@ -293,113 +367,112 @@ def process_imu_data(file_path: str | Path, fs_fallback: float = 500.0, overwrit
         else:
             print(f"Warning: '_raw/stm32' not found. Falling back to fs_orig = {fs_imu_orig:.2f} Hz")
 
-        # Look for IMU channels
-        imu_base_names = ['ax', 'ay', 'az', 'roll', 'pitch', 'yaw']
-        imu_cols_dict = {1: {}, 2: {}} # sensor 1 and 2
-        for s in [1, 2]:
-            for base in imu_base_names:
-                col_name = f"{base}{s}"
-                if col_name in col_names_str:
-                    imu_cols_dict[s][base] = col_names_str.index(col_name)
-                    
-        if not imu_cols_dict[1] and not imu_cols_dict[2]:
+        # Build processed IMU channels via the shared helper (accel LPF, euler->rad LPF, diffs)
+        names, arrays = _build_imu_processed_channels(data, col_names_str, fs_imu)
+        if not names:
             print("Warning: No IMU channels found in the dataset.")
             return
-            
+
         final_data = []
         final_names = []
-        
-        # Bring over timestamp columns
+
+        # Bring over timestamp columns first
         if "t_pc_common" in col_names_str:
             idx = col_names_str.index("t_pc_common")
             final_data.append(data[:, idx:idx+1])
             final_names.append("t_pc_common")
-            
         if "t_tmsi" in col_names_str:
             idx = col_names_str.index("t_tmsi")
             final_data.append(data[:, idx:idx+1])
             final_names.append("t_tmsi")
 
-        processed_sensors = {}
-        
-        from scipy.signal import butter, lfilter
-        # Design a causal lowpass filter to smooth the zero-order hold stair-steps
-        # A 15 Hz cutoff clears the steps while preserving human movement frequencies
-        nyq = 0.5 * fs_imu
-        cutoff = 15.0
-        if cutoff >= nyq:
-            cutoff = nyq * 0.99
-        b, a = butter(4, cutoff / nyq, btype='low', analog=False)
+        # Per-session robust IMU calibration (subject normalization): center by the session
+        # median and scale by the session IQR, per channel. This is the IMU analogue of the
+        # EMG MVC session-level peak scaling above — it removes the per-subject IMU gain/offset
+        # (a=F/m + sensor placement) that breaks cross-participant transfer. Only applied when
+        # channel_stats is supplied; otherwise channels are written in raw physical units.
+        norm_applied = False
+        for name, arr in zip(names, arrays):
+            if channel_stats and name in channel_stats:
+                st = channel_stats[name]
+                if st.get('iqr', 0.0) > 1e-9:
+                    arr = (arr - st['median']) / st['iqr']
+                    norm_applied = True
+            final_names.append(name)
+            final_data.append(np.asarray(arr).reshape(-1, 1))
 
-        for s in [1, 2]:
-            if not imu_cols_dict[s]: continue
-            
-            s_data = {}
-            # Accelerations: keep raw signal directly (no gravity/linear split)
-            for axis in ['ax', 'ay', 'az']:
-                if axis in imu_cols_dict[s]:
-                    raw_acc = data[:, imu_cols_dict[s][axis]]
-                    raw_acc = np.nan_to_num(raw_acc, nan=0.0)
-                    if len(raw_acc) > 18:
-                        raw_acc = lfilter(b, a, raw_acc)
-                    s_data[f'{axis}{s}'] = raw_acc
-                    
-            # Euler angles: convert degrees → radians (one signal per orientation)
-            # Filter after unwrapping to prevent artifacts on angle crossovers
-            for angle in ['roll', 'pitch', 'yaw']:
-                if angle in imu_cols_dict[s]:
-                    raw_ang = data[:, imu_cols_dict[s][angle]]
-                    raw_ang = np.nan_to_num(raw_ang, nan=0.0)
-                    rad_ang = np.deg2rad(raw_ang)
-                    if len(rad_ang) > 18:
-                        unwrapped = np.unwrap(rad_ang)
-                        smoothed = lfilter(b, a, unwrapped)
-                        rad_ang = (smoothed + np.pi) % (2 * np.pi) - np.pi
-                    s_data[f'{angle}_rad{s}'] = rad_ang
-                    
-            processed_sensors[s] = s_data
-            
-        # Compile all newly generated channels
-        for s in [1, 2]:
-            if s in processed_sensors:
-                for k, v in processed_sensors[s].items():
-                    final_names.append(k)
-                    final_data.append(v.reshape(-1, 1))
-                    
-        # Add Difference Channels (Sensor 2 - Sensor 1) describing Elbow joint relative kinematics
-        if 1 in processed_sensors and 2 in processed_sensors:
-            for k1 in processed_sensors[1].keys():
-                base = k1[:-1] # strip the '1'
-                k2 = f"{base}2"
-                if k2 in processed_sensors[2]:
-                    diff = processed_sensors[2][k2] - processed_sensors[1][k1]
-                    diff_name = f"{base}_diff"
-                    final_names.append(diff_name)
-                    final_data.append(diff.reshape(-1, 1))
-                    
         if not final_data:
             return
-            
+
         final_matrix = np.hstack(final_data)
-        
+
         out_dataset_name = 'synced/imu_processed'
         if out_dataset_name in f:
             if overwrite:
                 del f[out_dataset_name]
             else:
                 raise ValueError(f"Dataset {out_dataset_name} already exists.")
-                
+
         out_dset = f.create_dataset(
             out_dataset_name, data=final_matrix, dtype='float64',
             compression="gzip", compression_opts=4, chunks=True
         )
-        
+
+        base_desc = "Postprocessed IMU: Raw Accel LPF(15Hz), Euler->Radians LPF(15Hz), RelDiffs (Imu2-Imu1)"
         out_dset.attrs['column_names'] = [n.encode('utf-8') for n in final_names]
-        out_dset.attrs['description'] = "Postprocessed IMU: Raw Accel LPF(15Hz), Euler->Radians LPF(15Hz), RelDiffs (Imu2-Imu1)"
+        out_dset.attrs['description'] = base_desc + ("; per-session robust (median/IQR) subject calibration" if norm_applied else "")
         out_dset.attrs['fs'] = fs_imu
         out_dset.attrs['fs_orig'] = fs_imu_orig
-        
-        print(f"Processed IMU data saved to {out_dataset_name} successfully.")
+        out_dset.attrs['normalization'] = "robust_median_iqr_session_level" if norm_applied else "none"
+        if norm_applied:
+            out_dset.attrs['imu_session_stats'] = json.dumps(
+                {n: channel_stats[n] for n in final_names if n in channel_stats}
+            )
+
+        print(f"Processed IMU data saved to {out_dataset_name} successfully"
+              f"{' (session-calibrated)' if norm_applied else ''}.")
+
+
+def get_session_imu_stats(session_dir: Path, fs_fallback: float = 500.0) -> dict:
+    """
+    Scans a session directory and returns session-wide robust statistics
+    (median + IQR) for each processed IMU channel. These define the per-subject
+    IMU calibration applied by ``process_imu_data``. Analogue of ``get_session_stats``
+    (which computes the EMG MVC peak).
+    """
+    h5_files = [p for p in session_dir.glob("*.h5") if not p.name.startswith("._")]
+    if not h5_files:
+        return {}
+
+    accum: dict[str, list] = {}
+    print(f"Calculating session-wide IMU stats for {session_dir.name}...")
+    for path in h5_files:
+        with h5py.File(path, 'r') as f:
+            if 'synced/data' not in f:
+                continue
+            dset = f['synced/data']
+            cols = [n.decode() if isinstance(n, bytes) else str(n) for n in dset.attrs.get('column_names', [])]
+            data = dset[:]
+
+            # Effective IMU fs (matches process_imu_data: synced-matrix rate from PC clock)
+            fs_imu = fs_fallback
+            if "t_pc_common" in cols:
+                idx = cols.index("t_pc_common")
+                data = data[np.argsort(data[:, idx])]
+                dt = np.median(np.diff(data[:, idx]))
+                if dt > 0:
+                    fs_imu = 1.0 / dt
+
+            names, arrays = _build_imu_processed_channels(data, cols, fs_imu)
+            for name, arr in zip(names, arrays):
+                accum.setdefault(name, []).append(np.asarray(arr, dtype=float))
+
+    session_stats = {}
+    for name, chunks in accum.items():
+        all_vals = np.concatenate(chunks)
+        q25, q50, q75 = np.nanpercentile(all_vals, [25.0, 50.0, 75.0])
+        session_stats[name] = {'median': float(q50), 'iqr': float(q75 - q25)}
+    return session_stats
         
 
 def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
@@ -472,48 +545,55 @@ def get_session_stats(session_dir: Path, fs: float = 2000.0) -> dict:
         
     return session_stats
 
-def process_session_data(session_dir: str | Path, fs: float = 2000.0, overwrite: bool = True):
+def process_session_data(session_dir: str | Path, fs: float = 2000.0, overwrite: bool = True, normalize_imu: bool = True):
     """
-    Processes all trials in a session using session-level Robust Scaling (Median/IQR).
+    Processes all trials in a session using session-level scaling:
+      - EMG: MVC peak normalization (session 99th-percentile envelope per muscle)
+      - IMU: per-session robust (median/IQR) subject calibration, when normalize_imu=True
     """
     session_dir = Path(session_dir)
     stats = get_session_stats(session_dir, fs=fs)
     print(f"Session {session_dir.name} stats (MVC peak):")
     for k, v in stats.items():
         print(f"  {k}: {v['peak']:.2e}")
-    
+
+    imu_stats = get_session_imu_stats(session_dir) if normalize_imu else None
+    if imu_stats:
+        print(f"Session {session_dir.name} IMU calibration: {len(imu_stats)} channels (median/IQR)")
+
     h5_files = [p for p in session_dir.glob("*.h5") if not p.name.startswith("._")]
     for path in h5_files:
         try:
             process_emg_data(path, fs_fallback=fs, overwrite=overwrite, channel_stats=stats)
-            process_imu_data(path, fs_fallback=500.0, overwrite=overwrite)
+            process_imu_data(path, fs_fallback=500.0, overwrite=overwrite, channel_stats=imu_stats)
         except Exception as e:
             print(f"Failed session process for {path.name}: {e}")
 
-def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwrite: bool = True, participants: list[str] = None):
+def process_all_in_database(database_dir: str | Path, fs: float = 2000.0, overwrite: bool = True, participants: list[str] = None, normalize_imu: bool = True):
     """
     Recursively finds session directories and processes them with session-level normalization.
     """
     base_dir = Path(database_dir)
     # Find all session_NN directories
     session_dirs = sorted(p for p in base_dir.rglob("session_*") if p.is_dir())
-    
+
     if participants:
         session_dirs = [p for p in session_dirs if p.parent.name in participants]
 
-    
+
     if not session_dirs:
         print(f"No session directories found in {database_dir}. Falling back to per-trial.")
+        print("[WARN] Per-trial fallback cannot compute session-level IMU calibration; IMU written raw.")
         h5_files = [p for p in base_dir.rglob("*.h5") if not p.name.startswith("._")]
         for file_path in h5_files:
             process_emg_data(file_path, fs_fallback=fs, overwrite=overwrite)
             process_imu_data(file_path, overwrite=overwrite)
         return
-        
+
     print(f"Found {len(session_dirs)} sessions to process.")
     for sdir in session_dirs:
         print(f"\n>>>> PROCESSING SESSION: {sdir.parent.name}/{sdir.name} <<<<")
-        process_session_data(sdir, fs=fs, overwrite=overwrite)
+        process_session_data(sdir, fs=fs, overwrite=overwrite, normalize_imu=normalize_imu)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process EMG/IMU channels with MVC Peak Normalization.")
@@ -521,16 +601,20 @@ if __name__ == "__main__":
     parser.add_argument("--fs", type=float, default=2000.0, help="Sampling frequency fallback (default: 2000.0)")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing datasets")
     parser.add_argument("--participants", type=str, nargs="+", help="List of participants to process")
-    
+    parser.add_argument("--no-imu-norm", dest="normalize_imu", action="store_false",
+                        help="Disable per-session robust IMU calibration (write IMU in raw units, legacy behaviour)")
+    parser.set_defaults(normalize_imu=True)
+
     args = parser.parse_args()
     target = Path(args.path)
-    
+
     if target.is_file():
+        print("[WARN] Single-file mode has no session context; IMU written raw (no calibration).")
         process_emg_data(target, fs_fallback=args.fs, overwrite=args.overwrite)
         process_imu_data(target, fs_fallback=500.0, overwrite=args.overwrite)
     elif target.name.startswith("session_") and target.is_dir():
-        process_session_data(target, fs=args.fs, overwrite=args.overwrite)
+        process_session_data(target, fs=args.fs, overwrite=args.overwrite, normalize_imu=args.normalize_imu)
     elif target.is_dir():
-        process_all_in_database(target, fs=args.fs, overwrite=args.overwrite, participants=args.participants)
+        process_all_in_database(target, fs=args.fs, overwrite=args.overwrite, participants=args.participants, normalize_imu=args.normalize_imu)
     else:
         print(f"Error: Path {args.path} not found.")
