@@ -1,0 +1,928 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+STAGE 1: Feature Selection Sweep (60 iterations)
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+=================================================================
+  SPATIO-TEMPORAL TRANSFORMER 3 UNIFIED SWEEP
+  Active Sweep Mode    : FEATURES
+=================================================================
+  DEV_MODE             : False
+  Configurations/Iters : 60
+  Epochs per config    : 200
+  Early-stop patience  : 20
+  Test participants    : 4
+  Results directory    : /home/bwingen/thesis/Thesis/model/model_results/sweep_st_transformer3_features_20260609_223220
+=================================================================
+
+Loading precomputed features (sequence mode)…
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Filter active: removed 84 features from disabled channels/feature-types.
+[Sweep] Dropped 2582 segments with excluded weight classes.
+Total segments: 15732
+
+Stratified Split (Mixed-Participant):
+  Training   (12585 segs)
+  Validation (3147 segs)
+
+=================================================================
+Iteration 1/60 [Elapsed: 0.0m]
+Active Feature Categories (14/33):
+  EMG_HjComp, EMG_HjMob, EMG_IEMG, EMG_MDF, EMG_MNF, EMG_Myopulse, EMG_Power, EMG_RMS, EMG_WAMP, IMU_DomFreq, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_SpecEnergy
+=================================================================
+  Active features: 120
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 1:
+    RMSE: 0.3568 | MAE: 0.1715 | R²: 0.9658
+    Parameters: 1,013,314 | Training Time: 1690.8s
+
+=================================================================
+Iteration 2/60 [Elapsed: 29.5m]
+Active Feature Categories (16/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_LogDet, EMG_PeakFreq, EMG_RMS, EMG_Skew, EMG_SpecEntropy, EMG_WAMP, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_Skew, IMU_Var
+=================================================================
+  Active features: 148
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 2:
+    RMSE: 0.3914 | MAE: 0.1921 | R²: 0.9588
+    Parameters: 1,016,002 | Training Time: 1629.9s
+
+=================================================================
+Iteration 3/60 [Elapsed: 58.1m]
+Active Feature Categories (17/33):
+  EMG_HjComp, EMG_IEMG, EMG_Kurt, EMG_MDF, EMG_MNF, EMG_Myopulse, EMG_PeakFreq, EMG_Skew, EMG_SpecEntropy, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_Mean, IMU_P2P, IMU_SMA, IMU_SVM_Mean, IMU_SpecEnergy
+=================================================================
+  Active features: 156
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 3:
+    RMSE: 0.3692 | MAE: 0.1724 | R²: 0.9634
+    Parameters: 1,016,770 | Training Time: 1606.0s
+
+=================================================================
+Iteration 4/60 [Elapsed: 86.4m]
+Active Feature Categories (16/33):
+  EMG_HjMob, EMG_Kurt, EMG_LogDet, EMG_MNF, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_SMA, IMU_SVM_Mean, IMU_SpecEnergy
+=================================================================
+  Active features: 140
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 4:
+    RMSE: 0.3572 | MAE: 0.1759 | R²: 0.9657
+    Parameters: 1,015,234 | Training Time: 1600.3s
+
+=================================================================
+Iteration 5/60 [Elapsed: 114.5m]
+Active Feature Categories (15/33):
+  EMG_HjMob, EMG_Kurt, EMG_LogDet, EMG_MDF, EMG_MNF, EMG_Skew, EMG_SpecEntropy, EMG_WL, IMU_Kurt, IMU_Max, IMU_Mean, IMU_SMA, IMU_Skew, IMU_SpecEnergy, IMU_Std
+=================================================================
+  Active features: 148
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 5:
+    RMSE: 0.3430 | MAE: 0.1533 | R²: 0.9684
+    Parameters: 1,016,002 | Training Time: 1577.7s
+
+=================================================================
+Iteration 6/60 [Elapsed: 142.2m]
+Active Feature Categories (18/33):
+  EMG_BW, EMG_Kurt, EMG_LogDet, EMG_MDF, EMG_Myopulse, EMG_Power, EMG_SSC, EMG_WAMP, EMG_WL, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_P2P, IMU_SMA, IMU_SVM_Mean, IMU_Std, IMU_Var
+=================================================================
+  Active features: 156
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 6:
+    RMSE: 0.3682 | MAE: 0.1784 | R²: 0.9636
+    Parameters: 1,016,770 | Training Time: 1576.1s
+
+=================================================================
+Iteration 7/60 [Elapsed: 170.0m]
+Active Feature Categories (19/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_LogDet, EMG_MAV, EMG_Myopulse, EMG_RMS, EMG_SSC, EMG_Skew, EMG_VAR, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_SVM_Mean, IMU_SpecEnergy, IMU_Std, IMU_Var
+=================================================================
+  Active features: 160
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 7:
+    RMSE: 0.3829 | MAE: 0.1759 | R²: 0.9606
+    Parameters: 1,017,154 | Training Time: 1597.7s
+
+=================================================================
+Iteration 8/60 [Elapsed: 198.2m]
+Active Feature Categories (19/33):
+  EMG_BW, EMG_HjComp, EMG_Kurt, EMG_MDF, EMG_Myopulse, EMG_PeakFreq, EMG_Power, EMG_Skew, EMG_VAR, EMG_WAMP, EMG_WL, IMU_Jerk, IMU_Max, IMU_Mean, IMU_P2P, IMU_SMA, IMU_Skew, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 184
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 8:
+    RMSE: 0.3598 | MAE: 0.1745 | R²: 0.9652
+    Parameters: 1,019,458 | Training Time: 1581.8s
+
+=================================================================
+Iteration 9/60 [Elapsed: 226.1m]
+Active Feature Categories (21/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_IEMG, EMG_MAV, EMG_MDF, EMG_MNF, EMG_Myopulse, EMG_PeakFreq, EMG_Power, EMG_RMS, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_VAR, IMU_DomFreq, IMU_MNF, IMU_Mean, IMU_SVM_Mean, IMU_Std, IMU_Var
+=================================================================
+  Active features: 168
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 9:
+    RMSE: 0.3564 | MAE: 0.1736 | R²: 0.9659
+    Parameters: 1,017,922 | Training Time: 1580.8s
+
+=================================================================
+Iteration 10/60 [Elapsed: 254.1m]
+Active Feature Categories (18/33):
+  EMG_HjComp, EMG_Kurt, EMG_LogDet, EMG_MAV, EMG_MDF, EMG_MNF, EMG_Myopulse, EMG_Power, EMG_VAR, EMG_WAMP, EMG_WL, IMU_MNF, IMU_Max, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_Skew, IMU_SpecEnergy
+=================================================================
+  Active features: 148
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 10:
+    RMSE: 0.3525 | MAE: 0.1725 | R²: 0.9666
+    Parameters: 1,016,002 | Training Time: 1564.0s
+
+=================================================================
+Iteration 11/60 [Elapsed: 281.7m]
+Active Feature Categories (14/33):
+  EMG_HjComp, EMG_MAV, EMG_MDF, EMG_SpecEntropy, EMG_VAR, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_Skew, IMU_Std
+=================================================================
+  Active features: 132
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 11:
+    RMSE: 0.3643 | MAE: 0.1724 | R²: 0.9643
+    Parameters: 1,014,466 | Training Time: 1571.7s
+
+=================================================================
+Iteration 12/60 [Elapsed: 309.3m]
+Active Feature Categories (17/33):
+  EMG_BW, EMG_HjComp, EMG_IEMG, EMG_Kurt, EMG_PeakFreq, EMG_SSC, EMG_SpecEntropy, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_Mean, IMU_P2P, IMU_SMA, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 168
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 12:
+    RMSE: 0.3534 | MAE: 0.1677 | R²: 0.9664
+    Parameters: 1,017,922 | Training Time: 1568.2s
+
+=================================================================
+Iteration 13/60 [Elapsed: 336.9m]
+Active Feature Categories (18/33):
+  EMG_BW, EMG_HjMob, EMG_IEMG, EMG_LogDet, EMG_MAV, EMG_MDF, EMG_Myopulse, EMG_RMS, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, EMG_WL, IMU_Kurt, IMU_MNF, IMU_Max, IMU_Mean, IMU_Skew, IMU_Std
+=================================================================
+  Active features: 156
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 13:
+    RMSE: 0.3487 | MAE: 0.1723 | R²: 0.9673
+    Parameters: 1,016,770 | Training Time: 1572.0s
+
+=================================================================
+Iteration 14/60 [Elapsed: 364.6m]
+Active Feature Categories (14/33):
+  EMG_HjMob, EMG_IEMG, EMG_MAV, EMG_MNF, EMG_Myopulse, EMG_RMS, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, EMG_WL, IMU_Jerk, IMU_Kurt, IMU_Max, IMU_Var
+=================================================================
+  Active features: 128
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 14:
+    RMSE: 0.3621 | MAE: 0.1805 | R²: 0.9648
+    Parameters: 1,014,082 | Training Time: 1579.9s
+
+=================================================================
+Iteration 15/60 [Elapsed: 392.3m]
+Active Feature Categories (20/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_LogDet, EMG_MDF, EMG_Myopulse, EMG_Power, EMG_RMS, EMG_SSC, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, EMG_WL, EMG_ZC, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_P2P, IMU_SMA, IMU_Skew
+=================================================================
+  Active features: 172
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 15:
+    RMSE: 0.3603 | MAE: 0.1679 | R²: 0.9651
+    Parameters: 1,018,306 | Training Time: 1570.4s
+
+=================================================================
+Iteration 16/60 [Elapsed: 420.1m]
+Active Feature Categories (20/33):
+  EMG_HjComp, EMG_IEMG, EMG_Kurt, EMG_LogDet, EMG_MAV, EMG_MNF, EMG_Myopulse, EMG_Power, EMG_RMS, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_WAMP, EMG_WL, IMU_Kurt, IMU_MNF, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_Skew
+=================================================================
+  Active features: 160
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 16:
+    RMSE: 0.3453 | MAE: 0.1464 | R²: 0.9680
+    Parameters: 1,017,154 | Training Time: 1580.0s
+
+=================================================================
+Iteration 17/60 [Elapsed: 448.1m]
+Active Feature Categories (23/33):
+  EMG_HjComp, EMG_HjMob, EMG_IEMG, EMG_Kurt, EMG_LogDet, EMG_MAV, EMG_MDF, EMG_MNF, EMG_RMS, EMG_SSC, EMG_SpecEntropy, EMG_VAR, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SpecEnergy, IMU_Std, IMU_Var
+=================================================================
+  Active features: 212
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 17:
+    RMSE: 0.3568 | MAE: 0.1741 | R²: 0.9658
+    Parameters: 1,022,146 | Training Time: 1572.2s
+
+=================================================================
+Iteration 18/60 [Elapsed: 476.0m]
+Active Feature Categories (11/33):
+  EMG_Kurt, EMG_MDF, EMG_Myopulse, EMG_PeakFreq, EMG_RMS, EMG_SSC, EMG_Skew, EMG_VAR, IMU_DomFreq, IMU_MNF, IMU_SpecEnergy
+=================================================================
+  Active features: 88
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 18:
+    RMSE: 0.4104 | MAE: 0.2124 | R²: 0.9547
+    Parameters: 1,010,242 | Training Time: 1578.7s
+
+=================================================================
+Iteration 19/60 [Elapsed: 503.5m]
+Active Feature Categories (11/33):
+  EMG_BW, EMG_HjMob, EMG_Skew, EMG_SpecEntropy, EMG_WAMP, EMG_WL, IMU_DomFreq, IMU_Jerk, IMU_Max, IMU_Mean, IMU_SpecEnergy
+=================================================================
+  Active features: 108
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 19:
+    RMSE: 0.3673 | MAE: 0.1704 | R²: 0.9637
+    Parameters: 1,012,162 | Training Time: 1568.9s
+
+=================================================================
+Iteration 20/60 [Elapsed: 530.8m]
+Active Feature Categories (15/33):
+  EMG_BW, EMG_IEMG, EMG_Kurt, EMG_LogDet, EMG_MAV, EMG_Myopulse, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Max, IMU_Mean, IMU_P2P, IMU_Std, IMU_Var
+=================================================================
+  Active features: 148
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 20:
+    RMSE: 0.3437 | MAE: 0.1710 | R²: 0.9682
+    Parameters: 1,016,002 | Training Time: 1560.5s
+
+=================================================================
+Iteration 21/60 [Elapsed: 558.1m]
+Active Feature Categories (14/33):
+  EMG_HjComp, EMG_HjMob, EMG_Power, EMG_SSC, EMG_SpecEntropy, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SVM_Mean, IMU_Var
+=================================================================
+  Active features: 116
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 21:
+    RMSE: 0.3415 | MAE: 0.1715 | R²: 0.9687
+    Parameters: 1,012,930 | Training Time: 1560.0s
+
+=================================================================
+Iteration 22/60 [Elapsed: 585.4m]
+Active Feature Categories (16/33):
+  EMG_HjMob, EMG_Kurt, EMG_MDF, EMG_RMS, EMG_Skew, EMG_VAR, EMG_WAMP, EMG_WL, IMU_Kurt, IMU_MNF, IMU_Max, IMU_P2P, IMU_SMA, IMU_SpecEnergy, IMU_Std, IMU_Var
+=================================================================
+  Active features: 148
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 22:
+    RMSE: 0.3581 | MAE: 0.1697 | R²: 0.9655
+    Parameters: 1,016,002 | Training Time: 1564.9s
+
+=================================================================
+Iteration 23/60 [Elapsed: 612.9m]
+Active Feature Categories (18/33):
+  EMG_HjComp, EMG_LogDet, EMG_MAV, EMG_MDF, EMG_Myopulse, EMG_Power, EMG_VAR, EMG_WAMP, EMG_ZC, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Mean, IMU_P2P, IMU_Skew, IMU_SpecEnergy, IMU_Std, IMU_Var
+=================================================================
+  Active features: 168
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 23:
+    RMSE: 0.3677 | MAE: 0.1762 | R²: 0.9637
+    Parameters: 1,017,922 | Training Time: 1566.2s
+
+=================================================================
+Iteration 24/60 [Elapsed: 640.6m]
+Active Feature Categories (17/33):
+  EMG_BW, EMG_Kurt, EMG_MAV, EMG_MDF, EMG_MNF, EMG_PeakFreq, EMG_RMS, EMG_SpecEntropy, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_P2P, IMU_SMA, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 164
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 24:
+    RMSE: 0.3634 | MAE: 0.1945 | R²: 0.9645
+    Parameters: 1,017,538 | Training Time: 1581.4s
+
+=================================================================
+Iteration 25/60 [Elapsed: 668.4m]
+Active Feature Categories (21/33):
+  EMG_BW, EMG_HjComp, EMG_IEMG, EMG_Kurt, EMG_LogDet, EMG_MAV, EMG_MDF, EMG_MNF, EMG_PeakFreq, EMG_Power, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_WL, EMG_ZC, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Max, IMU_SVM_Mean, IMU_Var
+=================================================================
+  Active features: 168
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 25:
+    RMSE: 0.3480 | MAE: 0.1664 | R²: 0.9675
+    Parameters: 1,017,922 | Training Time: 1610.5s
+
+=================================================================
+Iteration 26/60 [Elapsed: 697.0m]
+Active Feature Categories (12/33):
+  EMG_BW, EMG_IEMG, EMG_Power, EMG_SSC, EMG_Skew, EMG_VAR, EMG_WL, IMU_Kurt, IMU_MNF, IMU_Max, IMU_P2P, IMU_SVM_Mean
+=================================================================
+  Active features: 92
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 26:
+    RMSE: 0.3681 | MAE: 0.1689 | R²: 0.9636
+    Parameters: 1,010,626 | Training Time: 1586.2s
+
+=================================================================
+Iteration 27/60 [Elapsed: 724.6m]
+Active Feature Categories (13/33):
+  EMG_BW, EMG_HjMob, EMG_Kurt, EMG_MDF, EMG_PeakFreq, EMG_Power, EMG_Skew, EMG_WL, EMG_ZC, IMU_MNF, IMU_P2P, IMU_SVM_Mean, IMU_Var
+=================================================================
+  Active features: 96
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 27:
+    RMSE: 0.3775 | MAE: 0.1745 | R²: 0.9617
+    Parameters: 1,011,010 | Training Time: 1593.9s
+
+=================================================================
+Iteration 28/60 [Elapsed: 752.4m]
+Active Feature Categories (15/33):
+  EMG_BW, EMG_HjComp, EMG_IEMG, EMG_MAV, EMG_RMS, EMG_Skew, EMG_SpecEntropy, EMG_ZC, IMU_Jerk, IMU_MNF, IMU_P2P, IMU_SMA, IMU_Skew, IMU_Std, IMU_Var
+=================================================================
+  Active features: 136
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 28:
+    RMSE: 0.3444 | MAE: 0.1717 | R²: 0.9681
+    Parameters: 1,014,850 | Training Time: 1602.4s
+
+=================================================================
+Iteration 29/60 [Elapsed: 780.4m]
+Active Feature Categories (17/33):
+  EMG_IEMG, EMG_Kurt, EMG_MDF, EMG_MNF, EMG_Myopulse, EMG_SSC, EMG_SpecEntropy, EMG_WAMP, EMG_WL, EMG_ZC, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SMA, IMU_Skew, IMU_Var
+=================================================================
+  Active features: 152
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 29:
+    RMSE: 0.3398 | MAE: 0.1677 | R²: 0.9690
+    Parameters: 1,016,386 | Training Time: 1593.7s
+
+=================================================================
+Iteration 30/60 [Elapsed: 808.5m]
+Active Feature Categories (13/33):
+  EMG_HjMob, EMG_Kurt, EMG_Myopulse, EMG_Power, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_ZC, IMU_Kurt, IMU_Max, IMU_SMA, IMU_Skew, IMU_Var
+=================================================================
+  Active features: 124
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 30:
+    RMSE: 0.3784 | MAE: 0.1842 | R²: 0.9615
+    Parameters: 1,013,698 | Training Time: 1588.7s
+
+=================================================================
+Iteration 31/60 [Elapsed: 836.2m]
+Active Feature Categories (20/33):
+  EMG_BW, EMG_HjComp, EMG_IEMG, EMG_MAV, EMG_MNF, EMG_Power, EMG_RMS, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, IMU_Jerk, IMU_Kurt, IMU_Max, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 180
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 31:
+    RMSE: 0.3311 | MAE: 0.1604 | R²: 0.9705
+    Parameters: 1,019,074 | Training Time: 1599.6s
+
+=================================================================
+Iteration 32/60 [Elapsed: 864.4m]
+Active Feature Categories (19/33):
+  EMG_BW, EMG_HjComp, EMG_IEMG, EMG_Kurt, EMG_MAV, EMG_MNF, EMG_RMS, EMG_Skew, EMG_WAMP, EMG_WL, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_Skew, IMU_SpecEnergy, IMU_Std
+=================================================================
+  Active features: 176
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 32:
+    RMSE: 0.3446 | MAE: 0.1798 | R²: 0.9681
+    Parameters: 1,018,690 | Training Time: 1601.6s
+
+=================================================================
+Iteration 33/60 [Elapsed: 892.7m]
+Active Feature Categories (14/33):
+  EMG_BW, EMG_IEMG, EMG_Kurt, EMG_LogDet, EMG_MAV, EMG_Myopulse, EMG_WL, IMU_Jerk, IMU_MNF, IMU_Max, IMU_SMA, IMU_SVM_Mean, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 116
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 33:
+    RMSE: 0.3342 | MAE: 0.1403 | R²: 0.9700
+    Parameters: 1,012,930 | Training Time: 1600.2s
+
+=================================================================
+Iteration 34/60 [Elapsed: 920.7m]
+Active Feature Categories (18/33):
+  EMG_HjComp, EMG_HjMob, EMG_IEMG, EMG_Kurt, EMG_Myopulse, EMG_RMS, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_WL, EMG_ZC, IMU_Jerk, IMU_Max, IMU_Mean, IMU_P2P, IMU_SVM_Mean, IMU_Std, IMU_Var
+=================================================================
+  Active features: 160
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 34:
+    RMSE: 0.3470 | MAE: 0.1658 | R²: 0.9676
+    Parameters: 1,017,154 | Training Time: 1585.2s
+
+=================================================================
+Iteration 35/60 [Elapsed: 948.6m]
+Active Feature Categories (21/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_IEMG, EMG_MNF, EMG_RMS, EMG_Skew, EMG_WAMP, EMG_WL, IMU_DomFreq, IMU_Jerk, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SMA, IMU_SVM_Mean, IMU_Skew, IMU_SpecEnergy, IMU_Std, IMU_Var
+=================================================================
+  Active features: 192
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 35:
+    RMSE: 0.3663 | MAE: 0.1687 | R²: 0.9639
+    Parameters: 1,020,226 | Training Time: 1566.5s
+
+=================================================================
+Iteration 36/60 [Elapsed: 976.4m]
+Active Feature Categories (21/33):
+  EMG_BW, EMG_HjMob, EMG_IEMG, EMG_LogDet, EMG_MNF, EMG_PeakFreq, EMG_Power, EMG_RMS, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_MNF, IMU_Max, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_SpecEnergy, IMU_Std
+=================================================================
+  Active features: 180
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 36:
+    RMSE: 0.3417 | MAE: 0.1935 | R²: 0.9686
+    Parameters: 1,019,074 | Training Time: 1568.0s
+
+=================================================================
+Iteration 37/60 [Elapsed: 1004.2m]
+Active Feature Categories (16/33):
+  EMG_HjComp, EMG_IEMG, EMG_LogDet, EMG_MDF, EMG_MNF, EMG_Myopulse, EMG_PeakFreq, EMG_RMS, EMG_WAMP, EMG_WL, IMU_Jerk, IMU_Mean, IMU_P2P, IMU_Skew, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 152
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 37:
+    RMSE: 0.3549 | MAE: 0.1728 | R²: 0.9661
+    Parameters: 1,016,386 | Training Time: 1574.0s
+
+=================================================================
+Iteration 38/60 [Elapsed: 1031.8m]
+Active Feature Categories (16/33):
+  EMG_HjMob, EMG_Kurt, EMG_MDF, EMG_Myopulse, EMG_SSC, EMG_SpecEntropy, EMG_WAMP, EMG_ZC, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Max, IMU_SMA, IMU_SVM_Mean, IMU_Skew
+=================================================================
+  Active features: 136
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 38:
+    RMSE: 0.5658 | MAE: 0.2758 | R²: 0.9139
+    Parameters: 1,014,850 | Training Time: 1583.9s
+
+=================================================================
+Iteration 39/60 [Elapsed: 1059.7m]
+Active Feature Categories (12/33):
+  EMG_BW, EMG_LogDet, EMG_MDF, EMG_Skew, EMG_VAR, EMG_WAMP, EMG_WL, IMU_MNF, IMU_P2P, IMU_SMA, IMU_SVM_Mean, IMU_Std
+=================================================================
+  Active features: 92
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 39:
+    RMSE: 0.3646 | MAE: 0.1722 | R²: 0.9643
+    Parameters: 1,010,626 | Training Time: 1571.6s
+
+=================================================================
+Iteration 40/60 [Elapsed: 1087.0m]
+Active Feature Categories (18/33):
+  EMG_LogDet, EMG_MAV, EMG_MDF, EMG_Power, EMG_RMS, EMG_Skew, EMG_VAR, EMG_WAMP, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_Kurt, IMU_Max, IMU_Mean, IMU_P2P, IMU_SVM_Mean, IMU_Skew, IMU_SpecEnergy
+=================================================================
+  Active features: 164
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 40:
+    RMSE: 0.3426 | MAE: 0.1763 | R²: 0.9685
+    Parameters: 1,017,538 | Training Time: 1579.2s
+
+=================================================================
+Iteration 41/60 [Elapsed: 1114.8m]
+Active Feature Categories (16/33):
+  EMG_HjMob, EMG_Kurt, EMG_MDF, EMG_MNF, EMG_PeakFreq, EMG_Power, EMG_SSC, EMG_Skew, EMG_SpecEntropy, EMG_WAMP, IMU_Kurt, IMU_MNF, IMU_Max, IMU_SVM_Mean, IMU_SpecEnergy, IMU_Std
+=================================================================
+  Active features: 128
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 41:
+    RMSE: 0.3803 | MAE: 0.1918 | R²: 0.9611
+    Parameters: 1,014,082 | Training Time: 1576.0s
+
+=================================================================
+Iteration 42/60 [Elapsed: 1142.5m]
+Active Feature Categories (17/33):
+  EMG_BW, EMG_HjMob, EMG_IEMG, EMG_MAV, EMG_MDF, EMG_Myopulse, EMG_PeakFreq, EMG_Power, EMG_SSC, EMG_Skew, EMG_WAMP, EMG_ZC, IMU_Kurt, IMU_Max, IMU_P2P, IMU_Skew, IMU_Std
+=================================================================
+  Active features: 156
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 42:
+    RMSE: 0.3696 | MAE: 0.1761 | R²: 0.9633
+    Parameters: 1,016,770 | Training Time: 1569.9s
+
+=================================================================
+Iteration 43/60 [Elapsed: 1170.2m]
+Active Feature Categories (14/33):
+  EMG_BW, EMG_HjMob, EMG_MDF, EMG_Myopulse, EMG_RMS, EMG_SSC, EMG_WAMP, EMG_WL, IMU_DomFreq, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_SVM_Mean, IMU_Skew
+=================================================================
+  Active features: 112
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 43:
+    RMSE: 0.3899 | MAE: 0.1919 | R²: 0.9591
+    Parameters: 1,012,546 | Training Time: 1573.3s
+
+=================================================================
+Iteration 44/60 [Elapsed: 1197.7m]
+Active Feature Categories (19/33):
+  EMG_BW, EMG_HjMob, EMG_LogDet, EMG_MAV, EMG_MNF, EMG_Myopulse, EMG_PeakFreq, EMG_RMS, EMG_Skew, EMG_WL, IMU_DomFreq, IMU_Jerk, IMU_MNF, IMU_Mean, IMU_SMA, IMU_SVM_Mean, IMU_Skew, IMU_SpecEnergy, IMU_Var
+=================================================================
+  Active features: 164
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 44:
+    RMSE: 0.3427 | MAE: 0.1742 | R²: 0.9684
+    Parameters: 1,017,538 | Training Time: 1571.4s
+
+=================================================================
+Iteration 45/60 [Elapsed: 1225.5m]
+Active Feature Categories (21/33):
+  EMG_BW, EMG_HjComp, EMG_IEMG, EMG_Kurt, EMG_LogDet, EMG_MDF, EMG_Myopulse, EMG_Power, EMG_RMS, EMG_Skew, EMG_VAR, EMG_WAMP, EMG_WL, EMG_ZC, IMU_DomFreq, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SVM_Mean, IMU_SpecEnergy
+=================================================================
+  Active features: 172
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 45:
+    RMSE: 0.3554 | MAE: 0.1694 | R²: 0.9660
+    Parameters: 1,018,306 | Training Time: 1569.2s
+
+=================================================================
+Iteration 46/60 [Elapsed: 1253.3m]
+Active Feature Categories (15/33):
+  EMG_HjMob, EMG_Myopulse, EMG_PeakFreq, EMG_Power, EMG_Skew, EMG_SpecEntropy, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SMA, IMU_Std, IMU_Var
+=================================================================
+  Active features: 144
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 46:
+    RMSE: 0.3818 | MAE: 0.1884 | R²: 0.9608
+    Parameters: 1,015,618 | Training Time: 1570.4s
+
+=================================================================
+Iteration 47/60 [Elapsed: 1280.8m]
+Active Feature Categories (15/33):
+  EMG_HjComp, EMG_IEMG, EMG_PeakFreq, EMG_Power, EMG_SSC, EMG_Skew, EMG_ZC, IMU_Jerk, IMU_Kurt, IMU_Max, IMU_P2P, IMU_SVM_Mean, IMU_Skew, IMU_Std, IMU_Var
+=================================================================
+  Active features: 140
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 47:
+    RMSE: 0.3637 | MAE: 0.1870 | R²: 0.9644
+    Parameters: 1,015,234 | Training Time: 1566.7s
+
+=================================================================
+Iteration 48/60 [Elapsed: 1308.2m]
+Active Feature Categories (17/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_LogDet, EMG_MDF, EMG_MNF, EMG_Power, EMG_SSC, EMG_SpecEntropy, EMG_WAMP, EMG_ZC, IMU_Jerk, IMU_Kurt, IMU_P2P, IMU_SMA, IMU_SVM_Mean, IMU_Std
+=================================================================
+  Active features: 148
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 48:
+    RMSE: 0.3654 | MAE: 0.1751 | R²: 0.9641
+    Parameters: 1,016,002 | Training Time: 1564.0s
+
+=================================================================
+Iteration 49/60 [Elapsed: 1335.8m]
+Active Feature Categories (16/33):
+  EMG_BW, EMG_HjMob, EMG_LogDet, EMG_MAV, EMG_MDF, EMG_PeakFreq, EMG_Power, EMG_SpecEntropy, IMU_Jerk, IMU_MNF, IMU_Mean, IMU_P2P, IMU_SMA, IMU_SVM_Mean, IMU_Std, IMU_Var
+=================================================================
+  Active features: 136
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 49:
+    RMSE: 0.3382 | MAE: 0.1698 | R²: 0.9693
+    Parameters: 1,014,850 | Training Time: 1571.6s
+
+=================================================================
+Iteration 50/60 [Elapsed: 1363.4m]
+Active Feature Categories (21/33):
+  EMG_BW, EMG_HjComp, EMG_HjMob, EMG_LogDet, EMG_MAV, EMG_MNF, EMG_PeakFreq, EMG_SSC, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Max, IMU_Mean, IMU_P2P, IMU_SVM_Mean, IMU_SpecEnergy, IMU_Std, IMU_Var
+=================================================================
+  Active features: 184
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 50:
+    RMSE: 0.3655 | MAE: 0.1714 | R²: 0.9641
+    Parameters: 1,019,458 | Training Time: 1565.6s
+
+=================================================================
+Iteration 51/60 [Elapsed: 1391.2m]
+Active Feature Categories (16/33):
+  EMG_LogDet, EMG_MAV, EMG_PeakFreq, EMG_Power, EMG_RMS, EMG_Skew, EMG_SpecEntropy, EMG_WAMP, EMG_ZC, IMU_Jerk, IMU_Kurt, IMU_MNF, IMU_Max, IMU_Skew, IMU_Std, IMU_Var
+=================================================================
+  Active features: 144
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+  Results for Features Iteration 51:
+    RMSE: 0.3725 | MAE: 0.1671 | R²: 0.9627
+    Parameters: 1,015,618 | Training Time: 1571.6s
+
+=================================================================
+Iteration 52/60 [Elapsed: 1418.8m]
+Active Feature Categories (15/33):
+  EMG_BW, EMG_HjMob, EMG_IEMG, EMG_LogDet, EMG_MAV, EMG_MNF, EMG_SpecEntropy, EMG_VAR, EMG_WAMP, IMU_DomFreq, IMU_MNF, IMU_Mean, IMU_P2P, IMU_Skew, IMU_Var
+=================================================================
+  Active features: 132
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3147 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=62).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 250 samples each. Total: 25500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
