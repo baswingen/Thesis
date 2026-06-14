@@ -1,0 +1,5 @@
+Database found at /scratch/bwingen/thesis/database
+Using Python: /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+ERROR: No sweep arguments given. Example:
+  sbatch run_delftblue.sh --mode full --time_budget_hours 23
