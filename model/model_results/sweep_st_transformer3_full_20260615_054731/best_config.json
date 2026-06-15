@@ -1,0 +1,48 @@
+{
+  "feature_set": "ridge_positive_17",
+  "feature_categories": [
+    "EMG_BW",
+    "EMG_HjComp",
+    "EMG_IEMG",
+    "EMG_LogDet",
+    "EMG_MAV",
+    "EMG_MNF",
+    "EMG_Power",
+    "EMG_RMS",
+    "EMG_Skew",
+    "EMG_VAR",
+    "EMG_WL",
+    "IMU_Mean",
+    "IMU_P2P",
+    "IMU_SMA",
+    "IMU_SpecEnergy",
+    "IMU_Std",
+    "IMU_Var"
+  ],
+  "params": {
+    "weight_decay": 0.001,
+    "scheduler_pct_start": 0.4,
+    "num_layers_temporal": 4,
+    "num_layers_spatial": 3,
+    "nhead_temporal": 2,
+    "nhead_spatial": 4,
+    "learning_rate": 0.0002,
+    "dropout_rate": 0.2,
+    "dim_feedforward": 1024,
+    "d_model": 96,
+    "batch_size": 128,
+    "aug_stretch_range": [
+      0.9,
+      1.1
+    ],
+    "aug_p": 0.5,
+    "aug_noise_std": 0.05,
+    "aug_channel_dropout": 0.1
+  },
+  "fidelity_epochs": 200,
+  "metrics": {
+    "rmse": 0.3201332168081427,
+    "mae": 0.13451770546751096,
+    "r2": 0.9724547773578314
+  }
+}
