@@ -27,27 +27,22 @@ fi
 echo "Database found at $DB_ROOT"
 echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
-# Default pipeline execution (commented out to run sweeps instead):
-# srun $ENV_PYTHON -u -m model.run_model "$@"
 
-# Results are checkpointed to sweep_results_partial.csv after every fit;
-# if a job is killed, resume with --start_iter <last completed + 1>
-# (features/model_arch/generalization modes only).
+# ─────────────────────────────────────────────────────────────────────────
+# STAGED: full evaluation run of the FULL-SWEEP winner
+# (sweep_st_transformer3_full_20260615_054731).
+#   - MODEL_TYPE=spatio_temporal_transformer3, CV_STRATEGY=kfold (config_model.py)
+#   - 5-fold pooled cross-validation (CV_CONFIG)
+#   - all feature-importance methods ON (permutation channel/feature/individual + DeepSHAP)
+#   - modality ablation ON (RUN_MODALITY_ABLATION)
+#   - joint participant×weight balancing ON (AUGMENTATION_CONFIG)
+# RUN_GRID_SEARCH=False, so this runs the pipeline (not a sweep).
+# Any args are passed through to run_model (e.g. --run_ablation true/false).
 #
-# Default (bare `sbatch run_delftblue.sh`): the budgeted full pipeline
-# (feature set + HP/regularization/OneCycleLR via successive halving),
-# guaranteed to finish within budget.
-#
-# Override by passing args, e.g. legacy single-stage sweeps (a 60-iteration
-# stage takes ~27.5h > 24h limit, so these need a resume submission):
-#   sbatch run_delftblue.sh --mode features --n_iter 60 --start_iter 52
-#   sbatch run_delftblue.sh --mode generalization --n_iter 60
-SWEEP_ARGS=("$@")
-if [ ${#SWEEP_ARGS[@]} -eq 0 ]; then
-    SWEEP_ARGS=(--mode full --time_budget_hours 23)
-fi
-
+# To run a hyperparameter sweep instead, call the sweep script directly:
+#   srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py --mode full --time_budget_hours 23
 echo "================================================================="
-echo "SWEEP: ${SWEEP_ARGS[*]}"
+echo "RUN_MODEL pipeline (full-sweep winner, kfold CV + ablation + importance)"
+echo "Args: $*"
 echo "================================================================="
-srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py "${SWEEP_ARGS[@]}"
+srun $ENV_PYTHON -u -m model.run_model "$@"

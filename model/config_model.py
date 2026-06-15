@@ -28,7 +28,7 @@ DEV_EARLY_STOPPING_PATIENCE = 10
 COMPUTE_FEATURE_IMPORTANCE = True
 COMPUTE_PERMUTATION_CHANNEL = True
 COMPUTE_PERMUTATION_FEATURE = True
-COMPUTE_PERMUTATION_INDIVIDUAL = False
+COMPUTE_PERMUTATION_INDIVIDUAL = True   # full-sweep eval run: all importance methods ON
 COMPUTE_DEEPSHAP = True
 RUN_MODALITY_ABLATION = True
 
@@ -160,58 +160,64 @@ FEATURE_CONFIG = {
     # Optimized dynamically for cross-subject generalization (LOPO) vs. calibrated potential (K-Fold).
     # K-Fold: Enables a rich 20-feature high-fidelity set (matching dedicated single-subject runs).
     # LOPO: Pruned to 11 robust features to reduce cross-subject variance.
+    # K-Fold branch now matches the FULL-SWEEP winner 'ridge_positive_17'
+    # (sweep_st_transformer3_full_20260615_054731): 11 EMG categories ON.
+    # LOPO (else) branch is unchanged from the prior 11-feature robust set.
     'emg_features': {
         # Time-domain
-        'MAV':        True if CV_STRATEGY == 'kfold' else False,
-        'RMS':        True,    # Root Mean Square (+0.00740)
-        'WL':         True,    # Waveform Length (+0.00974)
-        'ZC':         True,    # Zero Crossings (+0.00438)
-        'SSC':        True,    # Slope Sign Changes (+0.00232)
-        'VAR':        True if CV_STRATEGY == 'kfold' else False,
-        'WAMP':       True,    # Willison Amplitude (+0.00179)
-        'IEMG':       True if CV_STRATEGY == 'kfold' else False,
-        'LogDet':     True,    # Log Detector (+0.01598) — excellent skin-impedance normalizer
-        'Skew':       True if CV_STRATEGY == 'kfold' else False,
-        'Kurt':       True if CV_STRATEGY == 'kfold' else False,
-        'HjMob':      True,    # Hjorth Mobility (+0.01274) — clean time-domain frequency proxy
-        'HjComp':     True if CV_STRATEGY == 'kfold' else False,
-        'Myopulse':   True,    # Myopulse Percentage Rate (+0.00283)
+        'MAV':        True if CV_STRATEGY == 'kfold' else False,   # ridge_positive_17
+        'RMS':        True,    # Root Mean Square (+0.00740) — ridge_positive_17 + LOPO
+        'WL':         True,    # Waveform Length (+0.00974) — ridge_positive_17 + LOPO
+        'ZC':         False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'SSC':        False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'VAR':        True if CV_STRATEGY == 'kfold' else False,   # ridge_positive_17
+        'WAMP':       False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'IEMG':       True if CV_STRATEGY == 'kfold' else False,   # ridge_positive_17
+        'LogDet':     True,    # Log Detector (+0.01598) — ridge_positive_17 + LOPO
+        'Skew':       True if CV_STRATEGY == 'kfold' else False,   # ridge_positive_17
+        'Kurt':       False,   # not in kfold winner nor LOPO set
+        'HjMob':      False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'HjComp':     True if CV_STRATEGY == 'kfold' else False,   # ridge_positive_17
+        'Myopulse':   False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
         # Frequency-domain
-        'MNF':        True,    # Mean Frequency (+0.00508)
-        'MDF':        True if CV_STRATEGY == 'kfold' else False,
-        'Power':      True,    # Total Spectral Power (+0.00551)
-        'SpecEntropy':True if CV_STRATEGY == 'kfold' else False,
-        'PeakFreq':   True if CV_STRATEGY == 'kfold' else False,
-        'BW':         True,    # Bandwidth (95%) (+0.00563)
+        'MNF':        True,    # Mean Frequency (+0.00508) — ridge_positive_17 + LOPO
+        'MDF':        False,   # not in kfold winner nor LOPO set
+        'Power':      True,    # Total Spectral Power (+0.00551) — ridge_positive_17 + LOPO
+        'SpecEntropy':False,   # not in kfold winner nor LOPO set
+        'PeakFreq':   False,   # not in kfold winner nor LOPO set
+        'BW':         True,    # Bandwidth (95%) (+0.00563) — ridge_positive_17 + LOPO
     },
 
     # ── IMU Features (set False to disable) ──────────────
     # K-Fold: Enables a rich 13-feature kinematic set (matching dedicated runs).
     # LOPO: Pruned to 3 robust features (Mean, Var, Std) to prevent overfitting on subject transients.
+    # K-Fold branch now matches the FULL-SWEEP winner 'ridge_positive_17':
+    # 6 IMU categories ON (Mean, Var, Std, SMA, P2P, SpecEnergy).
+    # LOPO (else) branch is unchanged from the prior rich kinematic set.
     'imu_features': {
         # Time-domain
-        'Mean':       True,    # Static Posture / Joint Angle (Ridge Rank 4)
-        'Var':        True,    # Kinetic Dispersion (Ridge Rank 3)
-        'Std':        True,    # Dynamic Intensity / Movement Energy (Ridge Rank 1)
-        'Max':        True,    # restored to match final_run (rich IMU set under LOPO)
+        'Mean':       True,    # Static Posture / Joint Angle — ridge_positive_17 + LOPO
+        'Var':        True,    # Kinetic Dispersion — ridge_positive_17 + LOPO
+        'Std':        True,    # Dynamic Intensity / Movement Energy — ridge_positive_17 + LOPO
+        'Max':        False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
         'Min':        False,
-        'RMS':        True if CV_STRATEGY == 'kfold' else False,
-        'SMA':        True,    # restored to match final_run
-        'P2P':        True,    # restored to match final_run
+        'RMS':        False,   # not in kfold winner nor LOPO set
+        'SMA':        True,    # ridge_positive_17 + LOPO
+        'P2P':        True,    # ridge_positive_17 + LOPO
         'IQR':        False,
-        'Skew':       True,    # restored to match final_run
-        'Kurt':       True,    # restored to match final_run
-        'Jerk':       True,    # restored to match final_run
+        'Skew':       False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'Kurt':       False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'Jerk':       False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
         'ZC':         False,
         'Energy':     False,
         # Frequency-domain
-        'DomFreq':    True,    # restored to match final_run
-        'SpecEnergy': True if CV_STRATEGY == 'kfold' else False,
+        'DomFreq':    False if CV_STRATEGY == 'kfold' else True,   # dropped from kfold winner
+        'SpecEnergy': True if CV_STRATEGY == 'kfold' else False,   # ridge_positive_17
         'MNF':        False,
         'MDF':        False,
         'SpecEntropy':False,
         # Cross-channel
-        'SVM_Mean':   True if CV_STRATEGY == 'kfold' else False,
+        'SVM_Mean':   False,   # not in kfold winner nor LOPO set
         'SVM_Std':    False,
     },
 }
@@ -241,8 +247,8 @@ AUGMENTATION_CONFIG = {
 
     # ── Temporal stretch ─────────────────────────────────────────────
     # Random scale factor applied to sequence length, then resampled back.
-    # Optimized to (0.75, 1.25) to cover more diverse stretch ranges
-    'stretch_factor_range': (0.75, 1.25),
+    # Full-sweep winner (20260615) selected the tighter (0.9, 1.1) range.
+    'stretch_factor_range': (0.9, 1.1),
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
@@ -277,7 +283,7 @@ AUGMENTATION_CONFIG = {
     # ── Joint Balancing (Participants + Weights) ─────────────────────
     # If BOTH toggles above are True, the augmenter balances every unique 
     # combination of (participant, weight class).
-    'target_samples_per_group': 250,  # e.g. 18 participants * 6 weights * 250 = 27,000 total samples
+    'target_samples_per_group': 100,  # per (participant, weight) cell; e.g. ~16 train participants * 6 weights * 100 ~= 9,600 samples/fold (lower than 250 to limit oversampling of sparse cells)
 }
 
 # Cross-Validation Configuration
@@ -569,30 +575,34 @@ ST_TRANSFORMER_AKSAN_CONFIG = {
 }
 
 # Modality-Grouped Spatio-Temporal Transformer (Transformer3) Configuration
-# Set to the optimal "Sweet Spot" Generalization baseline (Rank 2, Iteration 61)
-# Highly robust LOPO performance with a constrained 1.0M parameter footprint.
+# K-Fold branch = FULL-SWEEP winner (sweep_st_transformer3_full_20260615_054731):
+#   feature set 'ridge_positive_17', d_model=96, nhead_s=4, nhead_t=2, num_layers=4
+#   (sweep's spatial=3/temporal=4 collapse to max()=4 in this model), ff=1024,
+#   dropout=0.2, lr=2e-4, wd=1e-3, batch=128, OneCycleLR(max_lr=2e-4, pct_start=0.4).
+#   Single-split val: RMSE 0.3201 | MAE 0.1345 | R² 0.9725.
+# LOPO (else) branch is unchanged from the prior cross-subject baseline.
 SPATIO_TEMPORAL_TRANSFORMER3_CONFIG = {
     'd_model': 96,                # Swept optimal Sweet Spot for cross-subject generalization
-    'nhead_spatial': 8,           # 8 spatial heads for detailed muscle activation mapping
-    'num_layers': 4,              # Combined spatio-temporal layers (optimized to 4)
+    'nhead_spatial': 4 if CV_STRATEGY == 'kfold' else 8,   # full-sweep winner: 4 spatial heads
+    'num_layers': 4,             # Combined spatio-temporal layers (max of sweep spatial=3/temporal=4)
     'nhead_temporal': 2,          # 2 temporal heads for clean velocity/jerk tracking
-    'dim_feedforward': 512,       # Swept optimal FF dimension (optimized to 512)
-    'dropout_rate': 0.25,         # "Sweet spot" dropout rate to prevent overfitting choke
-    'learning_rate': 0.0003,      # Optimized stable learning rate
+    'dim_feedforward': 1024 if CV_STRATEGY == 'kfold' else 512,  # full-sweep winner: 1024
+    'dropout_rate': 0.2 if CV_STRATEGY == 'kfold' else 0.25,     # full-sweep winner: dropout is the dominant lever
+    'learning_rate': 0.0002 if CV_STRATEGY == 'kfold' else 0.0003,  # full-sweep winner: 2e-4
     'class_balanced_loss': False, # True = inverse-frequency per-sample loss weighting (prevents 0kg-dominated gain bias)
-    'weight_decay': 1e-5 if CV_STRATEGY == 'kfold' else 0.005,  # Light WD for K-Fold calibration, strong WD for LOPO
-    'batch_size': 128 if CV_STRATEGY == 'kfold' else 64,        # Larger batch size for K-Fold
+    'weight_decay': 0.001 if CV_STRATEGY == 'kfold' else 0.005,  # full-sweep winner: 1e-3 for K-Fold, strong WD for LOPO
+    'batch_size': 128 if CV_STRATEGY == 'kfold' else 64,        # full-sweep winner: 128 for K-Fold
     'epochs': 200,                # Full epochs budget
     'validation_split': 0.1,
-    # AUG-BALANCE RUN: patience=50 and OneCycleLR match the bal-loss run exactly so the
-    # ONLY difference between the two is balance_weights=True (aug) vs class_balanced_loss=True (loss).
-    'early_stopping_patience': 50 if CV_STRATEGY == 'kfold' else 5,
+    # K-Fold patience = epochs so the OneCycleLR schedule completes (matches the sweep,
+    # which disabled early stopping for OneCycleLR to run the full annealing tail).
+    'early_stopping_patience': 200 if CV_STRATEGY == 'kfold' else 5,
     'scheduler_patience': 7 if CV_STRATEGY == 'kfold' else 3,
     'scheduler_factor': 0.5 if CV_STRATEGY == 'kfold' else 0.8,
     'use_checkpointing': True,
     'use_amp': True,
     'scheduler': {
-        'type': 'OneCycleLR', 'max_lr': 0.0003, 'pct_start': 0.3,
+        'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4,
     } if CV_STRATEGY == 'kfold' else {
         'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-6
     },
