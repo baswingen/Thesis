@@ -139,18 +139,63 @@ def initialize_model(model_type: str):
         print(f"Unknown model type: {model_type}")
         return None
 
-def calculate_per_weight_metrics(y_true, y_pred):
-    """Calculate MAE and RMSE for each unique weight in y_true."""
+def _participant_balanced_metrics(y_true, y_pred, participants=None, with_r2=False):
+    """Aggregate MAE/RMSE (and optionally R2) over a subset of predictions.
+
+    If ``participants`` is given, each participant's metric is computed separately
+    and then averaged across participants, so every participant contributes equally
+    regardless of how many segments it has (participant-balanced). If ``participants``
+    is None, the metric is pooled over all predictions. Participants with no samples
+    in the subset are skipped; R2 is only included for participants with >1 sample
+    and non-zero target variance.
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    if participants is None or len(y_true) == 0:
+        mae = mean_absolute_error(y_true, y_pred) if len(y_true) else float('nan')
+        rmse = np.sqrt(mean_squared_error(y_true, y_pred)) if len(y_true) else float('nan')
+        if with_r2:
+            r2 = r2_score(y_true, y_pred) if (len(y_true) > 1 and np.var(y_true) > 0) else float('nan')
+            return mae, rmse, r2
+        return mae, rmse
+
+    participants = np.asarray(participants)
+    maes, rmses, r2s = [], [], []
+    for p in np.unique(participants):
+        pm = (participants == p)
+        if not np.any(pm):
+            continue
+        maes.append(mean_absolute_error(y_true[pm], y_pred[pm]))
+        rmses.append(np.sqrt(mean_squared_error(y_true[pm], y_pred[pm])))
+        if with_r2 and np.sum(pm) > 1 and np.var(y_true[pm]) > 0:
+            r2s.append(r2_score(y_true[pm], y_pred[pm]))
+    mae = float(np.mean(maes)) if maes else float('nan')
+    rmse = float(np.mean(rmses)) if rmses else float('nan')
+    if with_r2:
+        return mae, rmse, (float(np.mean(r2s)) if r2s else float('nan'))
+    return mae, rmse
+
+
+def calculate_per_weight_metrics(y_true, y_pred, participants=None):
+    """Calculate MAE and RMSE for each unique weight in y_true.
+
+    If ``participants`` is provided, MAE/RMSE are participant-balanced (each
+    participant's metric computed and then averaged across participants), while
+    ``Count`` remains the total (pooled) number of segments in that weight class.
+    """
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    parts = np.asarray(participants) if participants is not None else None
     unique_weights = np.sort(np.unique(y_true))
     per_weight_results = []
-    
+
     for w in unique_weights:
         mask = (y_true == w)
         if np.any(mask):
-            w_true = y_true[mask]
-            w_pred = y_pred[mask]
-            mae = mean_absolute_error(w_true, w_pred)
-            rmse = np.sqrt(mean_squared_error(w_true, w_pred))
+            mae, rmse = _participant_balanced_metrics(
+                y_true[mask], y_pred[mask],
+                parts[mask] if parts is not None else None,
+            )
             per_weight_results.append({
                 'Weight': f"{w:.2f} kg",
                 'Count': int(np.sum(mask)),
@@ -159,23 +204,27 @@ def calculate_per_weight_metrics(y_true, y_pred):
             })
     return per_weight_results
 
-def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths):
+def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths, participants=None):
     """Calculate MAE and RMSE grouped by sequence length (number of windows per lift).
-    
-    Bins lengths into groups of 1 window each up to a threshold, then merges
-    the long-tail into a single '>= N' bucket so the table stays readable.
+
+    If ``participants`` is provided, MAE/RMSE are participant-balanced per length bin
+    (each participant's metric averaged across participants); ``Count`` remains the
+    total (pooled) number of segments of that length.
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     seq_lengths = np.asarray(seq_lengths, dtype=int)
+    parts = np.asarray(participants) if participants is not None else None
 
     unique_lens = np.sort(np.unique(seq_lengths))
     results = []
 
     for L in unique_lens:
         mask = (seq_lengths == L)
-        mae  = mean_absolute_error(y_true[mask], y_pred[mask])
-        rmse = np.sqrt(mean_squared_error(y_true[mask], y_pred[mask]))
+        mae, rmse = _participant_balanced_metrics(
+            y_true[mask], y_pred[mask],
+            parts[mask] if parts is not None else None,
+        )
         results.append({
             'SeqLen':    L,
             'TimeAtPrediction': None,   # filled below
@@ -740,7 +789,11 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
         else:
             seq_lens = np.array([len(row) for row in target_X.iloc[:, 0]])
             
-        per_seqlen_stats = calculate_per_seqlen_metrics(target_y, target_preds, seq_lens)
+        # Under CV, `groups` is aligned with X (= target_X), hence with target_y/target_preds/seq_lens,
+        # so per-length metrics can be participant-balanced. For a single split this alignment does
+        # not hold, so fall back to pooled (participants=None).
+        seqlen_participants = groups if (use_cv and groups is not None) else None
+        per_seqlen_stats = calculate_per_seqlen_metrics(target_y, target_preds, seq_lens, participants=seqlen_participants)
         if per_seqlen_stats:
             step = FEATURE_CONFIG.get('window_step_sec', 0.1)
             max_win = max(FEATURE_CONFIG.get('emg_window_size_sec', 0.15), FEATURE_CONFIG.get('imu_window_size_sec', 0.3))

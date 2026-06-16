@@ -215,8 +215,15 @@ def _build_evaluation_section(
     participant_stats, per_seqlen_stats, per_duration_stats,
     y_true_pooled, y_pred_pooled,
     cv_val_participants,
+    participants_pooled=None,
 ) -> dict:
-    """Build the complete evaluation sub-dict."""
+    """Build the complete evaluation sub-dict.
+
+    When ``participants_pooled`` is provided (aligned with ``y_*_pooled``), the
+    per-weight, per-length, and zero-vs-loaded breakdowns are participant-balanced:
+    each participant's metric is computed and then averaged across participants,
+    while ``Count`` fields remain the total (pooled) segment counts.
+    """
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
     eval_dict: dict[str, Any] = {
@@ -269,7 +276,8 @@ def _build_evaluation_section(
     if y_true_pooled is not None and y_pred_pooled is not None:
         from model.run_model import calculate_per_weight_metrics
         pw = calculate_per_weight_metrics(
-            np.asarray(y_true_pooled), np.asarray(y_pred_pooled)
+            np.asarray(y_true_pooled), np.asarray(y_pred_pooled),
+            participants=participants_pooled,
         )
         eval_dict['per_weight'] = pw
     else:
@@ -284,22 +292,28 @@ def _build_evaluation_section(
 
     # ── 0 kg vs weighted comparison ───────────────────────────────────────
     if y_true_pooled is not None and y_pred_pooled is not None:
+        from model.run_model import _participant_balanced_metrics
         y_t = np.asarray(y_true_pooled)
         y_p = np.maximum(0.0, np.asarray(y_pred_pooled))
+        parts = np.asarray(participants_pooled) if participants_pooled is not None else None
         idx_0 = np.where(np.isclose(y_t, 0.0))[0]
         idx_w = np.where(~np.isclose(y_t, 0.0))[0]
         if len(idx_0) > 0 and len(idx_w) > 0:
+            mae0, rmse0 = _participant_balanced_metrics(
+                y_t[idx_0], y_p[idx_0], parts[idx_0] if parts is not None else None)
+            maew, rmsew, r2w = _participant_balanced_metrics(
+                y_t[idx_w], y_p[idx_w], parts[idx_w] if parts is not None else None, with_r2=True)
             eval_dict['zero_vs_weight'] = {
                 'zero_kg': {
                     'count': int(len(idx_0)),
-                    'MAE': float(mean_absolute_error(y_t[idx_0], y_p[idx_0])),
-                    'RMSE': float(np.sqrt(mean_squared_error(y_t[idx_0], y_p[idx_0]))),
+                    'MAE': float(mae0),
+                    'RMSE': float(rmse0),
                 },
                 'weighted': {
                     'count': int(len(idx_w)),
-                    'MAE': float(mean_absolute_error(y_t[idx_w], y_p[idx_w])),
-                    'RMSE': float(np.sqrt(mean_squared_error(y_t[idx_w], y_p[idx_w]))),
-                    'R2': float(r2_score(y_t[idx_w], y_p[idx_w])),
+                    'MAE': float(maew),
+                    'RMSE': float(rmsew),
+                    'R2': float(r2w),
                 },
             }
         else:
@@ -449,9 +463,14 @@ def save_run_data(
     if use_cv:
         y_true_pooled = np.asarray(y)
         y_pred_pooled = oof_predictions
+        # Under CV, `groups` is aligned with `y` (and thus the out-of-fold predictions),
+        # so breakdowns can be participant-balanced. For a single split the alignment
+        # with y_test does not hold, so participant-balancing is disabled there.
+        participants_pooled = np.asarray(groups) if groups is not None else None
     else:
         y_true_pooled = np.asarray(y_test) if y_test is not None else None
         y_pred_pooled = y_pred
+        participants_pooled = None
 
     data: dict[str, Any] = {}
 
@@ -492,6 +511,7 @@ def save_run_data(
         y_true_pooled=y_true_pooled,
         y_pred_pooled=y_pred_pooled,
         cv_val_participants=cv_val_participants,
+        participants_pooled=participants_pooled,
     )
 
     # ── Training histories ────────────────────────────────────────────────
@@ -502,6 +522,9 @@ def save_run_data(
         data['predictions'] = {
             'y_true': np.asarray(y_true_pooled).tolist(),
             'y_pred': np.asarray(y_pred_pooled).tolist(),
+            # Per-prediction participant labels (CV only, aligned with y_true/y_pred) so
+            # participant-balanced breakdowns are recomputable offline from saved runs.
+            'participant': (np.asarray(groups).tolist() if (use_cv and groups is not None) else None),
             'type': 'oof' if use_cv else 'test_split',
         }
     else:

@@ -608,11 +608,14 @@ class RegressionPlotter:
             if idx == 0:
                 median.set_label('Median')
             
-        # Stats annotation styled like a premium LaTeX card box (Rounded, with RMSE added)
-        eval_pooled = data.get("evaluation", {}).get("pooled", {})
-        r2 = eval_pooled.get("R2")
-        mae = eval_pooled.get("MAE")
-        rmse = eval_pooled.get("RMSE")
+        # Stats annotation styled like a premium LaTeX card box (Rounded, with RMSE added).
+        # Use participant-balanced (macro) metrics as the single reported figure; fall back to
+        # pooled only for single-split runs where no macro average exists.
+        _ev = data.get("evaluation", {})
+        eval_stats = _ev.get("macro_avg") or _ev.get("pooled", {})
+        r2 = eval_stats.get("R2")
+        mae = eval_stats.get("MAE")
+        rmse = eval_stats.get("RMSE")
         
         if r2 is None or mae is None or rmse is None:
             from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
