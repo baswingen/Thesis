@@ -29,20 +29,25 @@ echo "Using Python: $ENV_PYTHON"
 $ENV_PYTHON --version
 
 # ─────────────────────────────────────────────────────────────────────────
-# STAGED: full evaluation run of the FULL-SWEEP winner
-# (sweep_st_transformer3_full_20260615_054731).
-#   - MODEL_TYPE=spatio_temporal_transformer3, CV_STRATEGY=kfold (config_model.py)
-#   - 5-fold pooled cross-validation (CV_CONFIG)
-#   - all feature-importance methods ON (permutation channel/feature/individual + DeepSHAP)
-#   - modality ablation ON (RUN_MODALITY_ABLATION)
-#   - joint participant×weight balancing ON (AUGMENTATION_CONFIG)
-# RUN_GRID_SEARCH=False, so this runs the pipeline (not a sweep).
-# Any args are passed through to run_model (e.g. --run_ablation true/false).
+# STAGED: SENSOR-PRACTICALITY ABLATION GRID (par-spec ST-transformer3).
+# Splits the 20 baseline channels into 5 placement groups (IMU upper/forearm,
+# EMG forearm/upper/shoulder) and runs all 31 non-empty combinations.
+#   - MODEL_TYPE=spatio_temporal_transformer3, pooled k-fold (within-subject calibration)
+#   - limit_folds=3, skip_final_full_train=True  (24h budget; projected 14-16h)
+#   - feature importance OFF (reuse cross-val2 baseline DeepSHAP/permutation)
+# The driver mutates cfg in-memory only; config_model.py is untouched.
+# Pass-through args go to the driver, e.g.:
+#   --skip_baseline_combos       (skip all/emg_only/imu_only -> 28 combos)
+#   --combos IMUfo-EMGfo,emg_only (restrict to named combos)
 #
-# To run a hyperparameter sweep instead, call the sweep script directly:
-#   srun $ENV_PYTHON -u model/model_archs/model_hp_opti/sweep_spatio_temporal_transformer3.py --mode full --time_budget_hours 23
+# PHASE 2 (cross-subject transfer check, run AFTER analysing phase-1 results):
+#   srun $ENV_PYTHON -u -m model.run_sensor_practicality_ablation --lopo \
+#        --combos <top-3 combo names from analysis>
+#
+# To re-launch the previous baseline pipeline instead, restore the line below:
+#   srun $ENV_PYTHON -u -m model.run_model "$@"
 echo "================================================================="
-echo "RUN_MODEL pipeline (full-sweep winner, kfold CV + ablation + importance)"
+echo "SENSOR-PRACTICALITY ABLATION (par-spec kfold, 31 combos, importance OFF)"
 echo "Args: $*"
 echo "================================================================="
-srun $ENV_PYTHON -u -m model.run_model "$@"
+srun $ENV_PYTHON -u -m model.run_sensor_practicality_ablation "$@"

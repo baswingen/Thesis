@@ -3050,10 +3050,22 @@ class RunComparisonPlotter:
             ax.set_yticklabels([format_label(w) for w in actual_weights])
             ThesisStyle.style_ax(ax)
             
-        # Add legend to the top-left subplot
-        axes[0, 0].legend(loc='lower right', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.9)
+        # Add single global legend at the bottom of the grid
+        from matplotlib.lines import Line2D
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        legend_handles = []
+        for h, l in zip(handles, labels):
+            if l == "Median":
+                # Use a dark grey proxy handle for the Median to represent the median of all plots generally
+                legend_handles.append(Line2D([0], [0], color="#475569", linewidth=1.5))
+            else:
+                legend_handles.append(h)
+                
+        fig.legend(handles=legend_handles, labels=labels, loc='lower center', ncol=3,
+                   bbox_to_anchor=(0.5, 0.01),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         
-        plt.tight_layout(rect=[0.01, 0, 1, 1.0])
+        plt.tight_layout(rect=[0.01, 0.04, 1, 1.0])
         ThesisStyle.save_figure(fig, output_dir / "comp_regression_6grid")
         plt.close(fig)
 

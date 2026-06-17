@@ -47,6 +47,18 @@ from sklearn.metrics import (
 from sklearn.utils.class_weight import compute_sample_weight, compute_class_weight
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# CUSTOM MODALITY PLAN HOOK
+# External drivers (e.g. model/run_sensor_practicality_ablation.py) can set this
+# to a list of dicts to run the pipeline over arbitrary channel subsets instead of
+# the default ["all", "emg_only", "imu_only"] macro-ablation. Each entry is:
+#   {"name": <fs-safe str>, "emg": <override>, "imu": <override>}
+# where each override is one of:
+#   None  -> keep all channels of that modality enabled (original CHANNEL_CONFIG)
+#   False -> disable ALL channels of that modality
+#   {channel_name: bool, ...} -> explicit per-channel enable map (missing => disabled)
+CUSTOM_MODALITY_PLAN = None
+
 
 def initialize_model(model_type: str):
     """Factory function to initialize the correct model based on type."""
@@ -831,12 +843,24 @@ def main():
     
     # Determine whether to run full macro-ablation loop
     run_ablation = RUN_MODALITY_ABLATION if args.run_ablation is None else args.run_ablation
-    
-    if run_ablation:
-        modalities = ["all", "emg_only", "imu_only"]
-        print(f"\n[MACRO ABLATION LOOP] Enabled. Will run sequentially for: {modalities}")
+
+    # Build the modality plan: a list of (name, emg_override, imu_override) tuples.
+    # Override semantics match the CUSTOM_MODALITY_PLAN docstring (None/False/dict).
+    if CUSTOM_MODALITY_PLAN is not None:
+        modality_plan = [(e["name"], e.get("emg"), e.get("imu")) for e in CUSTOM_MODALITY_PLAN]
+        run_ablation = True  # always foldered per-config so subdirs/consolidation kick in
+        print(f"\n[CUSTOM MODALITY PLAN] Enabled. Will run sequentially for: "
+              f"{[p[0] for p in modality_plan]}")
+    elif run_ablation:
+        modality_plan = [("all", None, None), ("emg_only", None, False), ("imu_only", False, None)]
+        print(f"\n[MACRO ABLATION LOOP] Enabled. Will run sequentially for: "
+              f"{[p[0] for p in modality_plan]}")
     else:
-        modalities = [args.modality]
+        modality_plan = [(
+            args.modality,
+            False if args.modality == "imu_only" else None,
+            False if args.modality == "emg_only" else None,
+        )]
 
     # Define paths
     base_dir = Path(__file__).parent.parent
@@ -860,24 +884,31 @@ def main():
     # Keep a deep copy of the original CHANNEL_CONFIG to restore at each iteration
     orig_channel_config = copy.deepcopy(CHANNEL_CONFIG)
     
-    for active_modality in modalities:
+    for active_modality, emg_override, imu_override in modality_plan:
         print("\n" + "="*80)
         print(f"  RUNNING PIPELINE FOR MODALITY CONFIGURATION: {active_modality.upper()}")
         print("="*80 + "\n")
-        
+
         # Reset to original channels
         CHANNEL_CONFIG['emg_channels'] = copy.deepcopy(orig_channel_config['emg_channels'])
         CHANNEL_CONFIG['imu_channels'] = copy.deepcopy(orig_channel_config['imu_channels'])
-        
-        # Apply overrides
-        if active_modality == "emg_only":
-            print("\n[MACRO ABLATION] Overriding config: Disabling all IMU channels.")
-            for k in CHANNEL_CONFIG['imu_channels']:
-                CHANNEL_CONFIG['imu_channels'][k] = False
-        elif active_modality == "imu_only":
-            print("\n[MACRO ABLATION] Overriding config: Disabling all EMG channels.")
+
+        # Apply overrides. Semantics: None => keep originals, False => disable all,
+        # dict => explicit per-channel enable map (channels absent from the map are disabled).
+        if emg_override is False:
+            print("\n[ABLATION] Overriding config: Disabling all EMG channels.")
             for k in CHANNEL_CONFIG['emg_channels']:
                 CHANNEL_CONFIG['emg_channels'][k] = False
+        elif isinstance(emg_override, dict):
+            for k in CHANNEL_CONFIG['emg_channels']:
+                CHANNEL_CONFIG['emg_channels'][k] = bool(emg_override.get(k, False))
+        if imu_override is False:
+            print("\n[ABLATION] Overriding config: Disabling all IMU channels.")
+            for k in CHANNEL_CONFIG['imu_channels']:
+                CHANNEL_CONFIG['imu_channels'][k] = False
+        elif isinstance(imu_override, dict):
+            for k in CHANNEL_CONFIG['imu_channels']:
+                CHANNEL_CONFIG['imu_channels'][k] = bool(imu_override.get(k, False))
 
         if run_ablation:
             run_dir_active = run_dir / active_modality
@@ -1058,7 +1089,7 @@ def main():
     # Master consolidation of run data if ablation was run
     if run_ablation:
         master_data = {}
-        for mod in modalities:
+        for mod in [p[0] for p in modality_plan]:
             mod_json_path = run_dir / mod / "run_data.json"
             if mod_json_path.exists():
                 try:
