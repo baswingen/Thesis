@@ -377,13 +377,34 @@ def calculate_class_weights(y):
 
 
 def setup_run_dir(base_dir):
-    """Create a unique timestamped folder for this run's results."""
+    """Create a unique timestamped folder for this run's results.
+
+    The timestamp has second resolution, so concurrent runs launched in the same
+    second (e.g. SLURM array tasks) would otherwise collide on the same directory.
+    Disambiguate the folder name with the regime + SLURM array/job id (falling back
+    to PID), and create with exist_ok=False so any genuine collision fails loudly
+    instead of silently overwriting another run.
+    """
     results_dir = base_dir / "model" / "model_results"
     results_dir.mkdir(parents=True, exist_ok=True)
-    
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_dir = results_dir / f"run_{timestamp}"
-    run_dir.mkdir(exist_ok=True)
+
+    suffix_parts = []
+    regime = os.environ.get("THESIS_CV_STRATEGY")
+    if regime:
+        suffix_parts.append(regime)
+    array_task = os.environ.get("SLURM_ARRAY_TASK_ID")
+    if array_task is not None:
+        suffix_parts.append(f"t{array_task}")
+    elif os.environ.get("SLURM_JOB_ID"):
+        suffix_parts.append(os.environ["SLURM_JOB_ID"])
+    else:
+        suffix_parts.append(f"p{os.getpid()}")
+    suffix = "_".join(suffix_parts)
+
+    run_dir = results_dir / f"run_{timestamp}_{suffix}"
+    run_dir.mkdir(parents=True, exist_ok=False)
     return run_dir, timestamp
 
 

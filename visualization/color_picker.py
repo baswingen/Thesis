@@ -29,9 +29,9 @@ Guidelines & Principles
 # ──────────────────────────────────────────────────────────
 
 # ─── 1. Paul Tol Scientific Semantic Colors ───
-COLOR_EMG = "#95356F"       # Dark Purple (EMG)
-COLOR_IMU = "#007355"       # Forest Green (IMU)
-COLOR_FUSION = "#006781"    # Teal (EMG+IMU)
+COLOR_EMG = "#D81334" #"#95356F"       # Dark Purple (EMG)
+COLOR_IMU = "#137054" #"#007355"       # Forest Green (IMU)
+COLOR_FUSION = "#2C497F" #"#006781"    # Teal (EMG+IMU)
 
 # ─── 2. Consistent Statistical Metric Colors ───
 COLOR_MAE = "#004488"       # Paul Tol High-Contrast Blue (MAE)
@@ -51,6 +51,15 @@ COLOR_P_001 = "#CC3311"     # Paul Tol Vibrant Red (*** p < 0.001)
 COLOR_P_01 = "#AA4499"      # Paul Tol Muted Purple (** p < 0.01)
 COLOR_P_05 = "#4477AA"      # Paul Tol Bright Blue (* p < 0.05)
 COLOR_P_NS = "#BBBBBB"      # Paul Tol Light Grey (n.s. p >= 0.05)
+
+# ─── 5. Interpretability Explanation Methods ───
+COLOR_SHAPLEY = "#82BAC4"      # Slate Grey (Ablation-Shapley values)
+COLOR_DEEPSHAP = "#FFD4D1"     # Sky Blue (DeepSHAP attributions)
+COLOR_PERMUTATION = "#E37C78"  # Rust Orange (Permutation feature importance)
+
+# ─── 6. Modality Ablation Heatmap Grid Colors ───
+COLOR_HEATMAP_PRESENT = "#006078"  # Deep Navy (Active sensor blocks)
+COLOR_HEATMAP_ABSENT = "#FAEFED"   # Very Light Grey (Inactive sensor blocks)
 
 
 # ──────────────────────────────────────────────────────────
@@ -73,6 +82,35 @@ COLORS = {
         "hex": COLOR_FUSION,
         "role": "Sensor fusion configuration runs / Full model",
         "palette": "Vibrant Orange"
+    },
+    
+    # 1.5. Interpretability Explanation Methods
+    "Ablation (Shapley)": {
+        "hex": COLOR_SHAPLEY,
+        "role": "Game-theory based Ablation-Shapley value reduction bars",
+        "palette": "Slate Grey"
+    },
+    "DeepSHAP": {
+        "hex": COLOR_DEEPSHAP,
+        "role": "Gradient-based DeepSHAP feature attribution bars",
+        "palette": "Sky Blue"
+    },
+    "Permutation": {
+        "hex": COLOR_PERMUTATION,
+        "role": "Feature/channel shuffling permutation importance bars",
+        "palette": "Rust Orange"
+    },
+    
+    # 1.6. Modality Ablation Heatmap Grid Colors
+    "Heatmap Present": {
+        "hex": COLOR_HEATMAP_PRESENT,
+        "role": "Active sensor group blocks in the ablation combo heatmap",
+        "palette": "Deep Navy"
+    },
+    "Heatmap Absent": {
+        "hex": COLOR_HEATMAP_ABSENT,
+        "role": "Inactive sensor group blocks in the ablation combo heatmap",
+        "palette": "Very Light Grey"
     },
 
     # 2. Statistical Metric Colors

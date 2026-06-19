@@ -62,7 +62,7 @@ MODEL_RUNS = {
     },
     "ablation": {
         "run_dir": "model/model_results/run_modality_ablation",
-        "output_dir": "visualization/run_modality_comp"
+        "output_dir": "visualization/run_modality_ablation"
     }
 }
 
@@ -175,7 +175,9 @@ try:
         COLOR_EMG, COLOR_IMU, COLOR_FUSION,
         COLOR_MAE, COLOR_RMSE, COLOR_R2, COLOR_GAP, COLOR_COUNT,
         COLOR_UNITY, COLOR_MEDIAN, COLOR_TARGET, COLOR_OUTLIER,
-        COLOR_P_001, COLOR_P_01, COLOR_P_05, COLOR_P_NS
+        COLOR_P_001, COLOR_P_01, COLOR_P_05, COLOR_P_NS,
+        COLOR_SHAPLEY, COLOR_DEEPSHAP, COLOR_PERMUTATION,
+        COLOR_HEATMAP_PRESENT, COLOR_HEATMAP_ABSENT
     )
 except ImportError:
     # Fallback to local declarations if import fails
@@ -195,6 +197,11 @@ except ImportError:
     COLOR_P_01 = "#AA4499"
     COLOR_P_05 = "#4477AA"
     COLOR_P_NS = "#BBBBBB"
+    COLOR_SHAPLEY = "#2C3E50"
+    COLOR_DEEPSHAP = "#4499FF"
+    COLOR_PERMUTATION = "#D55E00"
+    COLOR_HEATMAP_PRESENT = "#003366"
+    COLOR_HEATMAP_ABSENT = "#F3F4F6"
 
 
 
@@ -261,6 +268,15 @@ class ThesisStyle:
     COLOR_P_01 = COLOR_P_01
     COLOR_P_05 = COLOR_P_05
     COLOR_P_NS = COLOR_P_NS
+
+    # ─── 5. Interpretability Explanation Methods ───
+    COLOR_SHAPLEY = COLOR_SHAPLEY
+    COLOR_DEEPSHAP = COLOR_DEEPSHAP
+    COLOR_PERMUTATION = COLOR_PERMUTATION
+
+    # ─── 6. Modality Ablation Heatmap Grid Colors ───
+    COLOR_HEATMAP_PRESENT = COLOR_HEATMAP_PRESENT
+    COLOR_HEATMAP_ABSENT = COLOR_HEATMAP_ABSENT
 
     # Color Palette from rho.cls (for backwards compatibility)
     RHO_BLUE = "#003366"        # Deep dark blue from rho.cls (rgb: 0.0, 0.2, 0.4)
@@ -3961,7 +3977,7 @@ class RunComparisonPlotter:
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
         ax2.invert_yaxis()
-        ax2.set_xlabel("Relative Importance\n(% of Total |SHAP|)", labelpad=4)
+        ax2.set_xlabel("Relative Importance", labelpad=4)
         ax2.set_title("DeepSHAP Channel Importance", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=10)
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax2.spines['top'].set_visible(False)
@@ -4019,7 +4035,7 @@ class RunComparisonPlotter:
         ax3.set_yticks(y_pos_perm)
         ax3.set_yticklabels(labels_perm, fontsize=plt.rcParams['font.size'] - 1.5)
         ax3.invert_yaxis()
-        ax3.set_xlabel("Relative Importance\n(% of Total MAE Increase)", labelpad=4)
+        ax3.set_xlabel("Relative Importance", labelpad=4)
         ax3.set_title("Permutation Channel Importance", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['font.size']), color='black', pad=10)
         ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax3.spines['top'].set_visible(False)
@@ -4239,7 +4255,7 @@ class RunComparisonPlotter:
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
         ax2.invert_yaxis()
-        ax2.set_xlabel("Relative Importance (% of Total |SHAP|)", labelpad=4)
+        ax2.set_xlabel("Relative Importance", labelpad=4)
         ThesisStyle.set_title(ax2, "DeepSHAP Feature-Type Importance")
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax2.spines['top'].set_visible(False)
@@ -4276,7 +4292,7 @@ class RunComparisonPlotter:
         ax3.set_yticks(y_pos_perm)
         ax3.set_yticklabels(labels_perm, fontsize=plt.rcParams['font.size'] - 1.5)
         ax3.invert_yaxis()
-        ax3.set_xlabel("Relative Importance (% of Total MAE Increase)", labelpad=4)
+        ax3.set_xlabel("Relative Importance", labelpad=4)
         ThesisStyle.set_title(ax3, "Permutation Feature-Type Importance")
         ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax3.spines['top'].set_visible(False)
@@ -4480,7 +4496,7 @@ class RunComparisonPlotter:
         ax2.set_yticks(y_pos)
         ax2.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
         ax2.invert_yaxis()
-        ax2.set_xlabel("Relative Importance (% of Total |SHAP|)", labelpad=4)
+        ax2.set_xlabel("Relative Importance", labelpad=4)
         ThesisStyle.set_title(ax2, "DeepSHAP Channel Importance")
         ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax2.spines['top'].set_visible(False)
@@ -4505,7 +4521,7 @@ class RunComparisonPlotter:
         ax3.set_yticks(y_pos)
         ax3.set_yticklabels(labels, fontsize=plt.rcParams['font.size'] - 1.5)
         ax3.invert_yaxis()
-        ax3.set_xlabel("Relative Importance (% of Total MAE Increase)", labelpad=4)
+        ax3.set_xlabel("Relative Importance", labelpad=4)
         ThesisStyle.set_title(ax3, "Permutation Channel Importance")
         ax3.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
         ax3.spines['top'].set_visible(False)
@@ -4797,9 +4813,11 @@ def get_class_participant_macro_metric_val(run_data, metric_name="RMSE"):
 
 @plot_registry.register("modality_ablation_study")
 class ModalityAblationStudyPlotter:
-    """Generates premium modality ablation study plots for a 31-combo grid:
-    1. Group importance comparison (Shapley vs DeepSHAP vs Permutation)
-    2. Presence/absence combination heatmap sorted by class-participant-macro RMSE.
+    """Generates premium modality ablation study plots for a 31-combo grid.
+    Combines:
+    1. Presence/absence combination heatmap sorted by metric performance
+    2. Per-group importance comparison (Shapley vs DeepSHAP vs Permutation)
+    into a single unified figure.
     """
     
     def plot(self, data, output_path, layout_width):
@@ -4813,22 +4831,143 @@ class ModalityAblationStudyPlotter:
         target_dir = output_path.parent
         target_dir.mkdir(parents=True, exist_ok=True)
         
-        # 1. Group Importance Comparison
-        self._plot_group_importance(data, target_dir, layout_width)
+        # 1. Combined plot (RMSE Variant)
+        self._plot_combined(data, target_dir, "RMSE", layout_width)
         
-        # 2. Presence/Absence Combination Heatmap (MAE Variant)
-        self._plot_combo_heatmap(data, target_dir, "MAE", layout_width)
-        
-        # 3. Presence/Absence Combination Heatmap (RMSE Variant)
-        self._plot_combo_heatmap(data, target_dir, "RMSE", layout_width)
+        # 2. Combined plot (MAE Variant)
+        self._plot_combined(data, target_dir, "MAE", layout_width)
         
         return True
 
-    def _plot_group_importance(self, data, target_dir, layout_width):
-        GROUP_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+    def _compute_shapley_importance(self, data, metric):
+        CANONICAL_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        
+        def all_combos():
+            combos = []
+            for r in range(1, len(CANONICAL_ORDER) + 1):
+                for combo in itertools.combinations(CANONICAL_ORDER, r):
+                    combos.append(frozenset(combo))
+            return combos
+
+        def combo_name(groups):
+            _CANONICAL = {
+                frozenset(CANONICAL_ORDER): "all",
+                frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
+                frozenset(["IMUup", "IMUfo"]): "imu_only",
+            }
+            key = frozenset(groups)
+            if key in _CANONICAL:
+                return _CANONICAL[key]
+            return "-".join(g for g in CANONICAL_ORDER if g in key)
+
+        combos = all_combos()
+        combo_metrics = {}
+        NAME_TO_GROUPS = {combo_name(c): frozenset(c) for c in combos}
+        for combo_name_str, run_data in data.items():
+            groups = NAME_TO_GROUPS.get(combo_name_str)
+            if not groups:
+                continue
+            val = get_class_participant_macro_metric_val(run_data, metric)
+            combo_metrics[groups] = val
+            
+        v_empty = 1.0
+        all_run = data.get("all")
+        if all_run and "predictions" in all_run and "y_true" in all_run["predictions"]:
+            y_true = np.asarray(all_run["predictions"]["y_true"], dtype=float)
+            v_empty = float(np.std(y_true))
+            
+        def c(S):
+            S = frozenset(S)
+            if len(S) == 0:
+                return v_empty
+            return combo_metrics.get(S, v_empty)
+            
+        n = len(CANONICAL_ORDER)
+        phi = {}
+        for g in CANONICAL_ORDER:
+            others = [x for x in CANONICAL_ORDER if x != g]
+            total = 0.0
+            for s in range(len(others) + 1):
+                w = math.factorial(s) * math.factorial(n - s - 1) / math.factorial(n)
+                for S in itertools.combinations(others, s):
+                    cs = c(S)
+                    csg = c(set(S) | {g})
+                    total += w * (cs - csg)
+            phi[g] = total
+
+        def normalize_dict(d):
+            s = sum(d.values())
+            return {k: (v / s if s else 0.0) for k, v in d.items()}
+
+        shap_norm = normalize_dict({k: max(v, 0.0) for k, v in phi.items()})
+        return shap_norm
+
+    def _plot_combined(self, data, target_dir, metric, layout_width):
+        import matplotlib.gridspec as gridspec
+        
+        # Apply style configuration
+        ThesisStyle.apply(layout_width)
+        
+        # Compute Shapley values for the specific metric (RMSE or MAE)
+        shap_norm = self._compute_shapley_importance(data, metric)
+        
+        # Sort groups by descending Shapley importance
+        CANONICAL_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        sorted_groups = sorted(CANONICAL_ORDER, key=lambda g: shap_norm.get(g, 0.0), reverse=True)
+        
+        # Determine figure size depending on layout_width
+        if layout_width == "column":
+            figsize = (3.46, 6.5)
+        else:
+            figsize = (7.0, 7.8)
+            
+        fig = plt.figure(figsize=figsize)
+        
+        # Use gridspec for layout:
+        # Row 0: combo heatmap (matrix & bar) -> height ratio 5.0
+        # Row 1: group importance bar chart -> height ratio 2.5
+        gs = gridspec.GridSpec(2, 1, height_ratios=[5.0, 2.5], hspace=0.32)
+        
+        # Row 0 subplots
+        if layout_width == "column":
+            width_ratios = [1.0, 1.6]
+        else:
+            width_ratios = [1.0, 2.2]
+            
+        gs_top = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs[0], width_ratios=width_ratios, wspace=0.12)
+        ax_mat = fig.add_subplot(gs_top[0, 0])
+        ax_bar = fig.add_subplot(gs_top[0, 1])
+        
+        # Row 1 subplot
+        ax_imp = fig.add_subplot(gs[1])
+        
+        # Plot Heatmap component with sorted groups
+        self._plot_combo_heatmap_ax(data, ax_mat, ax_bar, metric, sorted_groups, layout_width)
+        
+        # Plot Group Importance component with precomputed values
+        self._plot_group_importance_ax(data, ax_imp, sorted_groups, shap_norm, layout_width)
+        
+        # Entire figure suptitle
+        fig.suptitle("Sensor Group Ablation Study Heat Map",
+                     fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
+                     color="black", y=0.98)
+        
+        # Adjust layout spacing to avoid overlaps
+        plt.tight_layout()
+        
+        # Subplots adjust to accommodate suptitle at the top and legend at the bottom
+        bottom_margin = 0.11 if layout_width == "column" else 0.09
+        fig.subplots_adjust(top=0.94, bottom=bottom_margin)
+        
+        # Save figure
+        file_suffix = f"ablation_both_{metric.lower()}"
+        ThesisStyle.save_figure(fig, target_dir / file_suffix)
+        plt.close(fig)
+
+    def _plot_group_importance_ax(self, data, ax, sorted_groups, shap_norm, layout_width):
         GROUP_LABELS = {
-            "IMUup": "IMU-U",
-            "IMUfo": "IMU-F",
+            "IMUup": "IMU-1",
+            "IMUfo": "IMU-2",
             "EMGfo": "EMG-F",
             "EMGup": "EMG-U",
             "EMGsh": "EMG-S"
@@ -4891,123 +5030,62 @@ class ModalityAblationStudyPlotter:
             chan = fi.get(fi_key)
             if not chan:
                 return {}
-            out = {g: 0.0 for g in GROUP_ORDER}
+            out = {g: 0.0 for g in sorted_groups}
             for k, v in chan.items():
                 g = channel_to_group(k)
                 if g is not None:
                     out[g] += max(float(v), 0.0)
             return out
 
-        # Compute Shapley values
-        def all_combos():
-            combos = []
-            for r in range(1, len(GROUP_ORDER) + 1):
-                for combo in itertools.combinations(GROUP_ORDER, r):
-                    combos.append(frozenset(combo))
-            return combos
-
-        def combo_name(groups):
-            _CANONICAL = {
-                frozenset(GROUP_ORDER): "all",
-                frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
-                frozenset(["IMUup", "IMUfo"]): "imu_only",
-            }
-            key = frozenset(groups)
-            if key in _CANONICAL:
-                return _CANONICAL[key]
-            return "-".join(g for g in GROUP_ORDER if g in key)
-
-        # Collect metrics
-        combo_metrics = {}
-        NAME_TO_GROUPS = {combo_name(c): frozenset(c) for c in all_combos()}
-        for combo_name_str, run_data in data.items():
-            groups = NAME_TO_GROUPS.get(combo_name_str)
-            if not groups:
-                continue
-            val = get_class_participant_macro_metric_val(run_data, "RMSE")
-            combo_metrics[groups] = val
-            
-        v_empty = 1.0
-        all_run = data.get("all")
-        if all_run and "predictions" in all_run and "y_true" in all_run["predictions"]:
-            y_true = np.asarray(all_run["predictions"]["y_true"], dtype=float)
-            v_empty = float(np.std(y_true))
-            
-        def c(S):
-            S = frozenset(S)
-            if len(S) == 0:
-                return v_empty
-            return combo_metrics.get(S, v_empty)
-            
-        n = len(GROUP_ORDER)
-        phi = {}
-        for g in GROUP_ORDER:
-            others = [x for x in GROUP_ORDER if x != g]
-            total = 0.0
-            for s in range(len(others) + 1):
-                w = math.factorial(s) * math.factorial(n - s - 1) / math.factorial(n)
-                for S in itertools.combinations(others, s):
-                    cs = c(S)
-                    csg = c(set(S) | {g})
-                    total += w * (cs - csg)
-            phi[g] = total
-
+        shap_g = aggregate_attribution(baseline_data, "deepshap_channel")
+        perm_g = aggregate_attribution(baseline_data, "permutation_channel")
+        
         def normalize_dict(d):
             s = sum(d.values())
             return {k: (v / s if s else 0.0) for k, v in d.items()}
 
-        shap_norm = normalize_dict({k: max(v, 0.0) for k, v in phi.items()})
-        shap_g = aggregate_attribution(baseline_data, "deepshap_channel")
-        perm_g = aggregate_attribution(baseline_data, "permutation_channel")
-        
         ds_norm = normalize_dict(shap_g) if shap_g else {}
         perm_norm = normalize_dict(perm_g) if perm_g else {}
 
-        # Plotting
-        ThesisStyle.apply(layout_width)
-        fig, ax = plt.subplots(figsize=plt.rcParams['figure.figsize'])
-        
-        x = np.arange(len(GROUP_ORDER))
+        # Plotting onto the given ax
+        x = np.arange(len(sorted_groups))
         
         methods = []
-        if ds_norm: methods.append(("DeepSHAP", ds_norm, ThesisStyle.COLOR_EMG))
-        if perm_norm: methods.append(("Permutation", perm_norm, ThesisStyle.COLOR_IMU))
+        if ds_norm: methods.append(("DeepSHAP", ds_norm, ThesisStyle.COLOR_DEEPSHAP))
+        if perm_norm: methods.append(("Permutation", perm_norm, ThesisStyle.COLOR_PERMUTATION))
         
-        series_labels = ["Ablation (Shapley)"] + [m[0] for m in methods]
+        series_labels = ["Ablation"] + [m[0] for m in methods]
         series_dicts = [shap_norm] + [m[1] for m in methods]
-        series_colors = [ThesisStyle.COLOR_FUSION] + [m[2] for m in methods]
+        series_colors = [ThesisStyle.COLOR_SHAPLEY] + [m[2] for m in methods]
         
         num_series = len(series_labels)
         width = 0.8 / num_series
         
         for i in range(num_series):
             offset = (i - (num_series - 1) / 2) * width
-            vals = [series_dicts[i].get(g, 0.0) for g in GROUP_ORDER]
-            rects = ax.bar(x + offset, vals, width, label=series_labels[i],
-                           color=series_colors[i], alpha=0.85, edgecolor=series_colors[i], linewidth=0.5)
+            vals = [series_dicts[i].get(g, 0.0) for g in sorted_groups]
+            ax.bar(x + offset, vals, width, label=series_labels[i],
+                   color=series_colors[i], alpha=0.85, edgecolor=series_colors[i], linewidth=0.5)
                             
-        ax.set_ylabel("Normalized Importance (fraction)", labelpad=8)
-        ax.set_xlabel("Sensor Modality Group", labelpad=8)
+        ax.set_ylabel("Normalized Importance", labelpad=4)
         
-        title = "Per-Group Importance: Ablation Shapley vs. Attributions"
+        title = "Sensor Group Importance"
         ThesisStyle.set_title(ax, title)
         ax.title.set_color("black")
         
         ax.set_xticks(x)
-        ax.set_xticklabels([GROUP_LABELS[g] for g in GROUP_ORDER])
-        ax.set_ylim(0, max([max(s.values()) for s in series_dicts if s]) * 1.25)
+        ax.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups])
         
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=3, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
-        plt.tight_layout()
+        max_val = max([max(s.values()) for s in series_dicts if s]) if any(series_dicts) else 1.0
+        ax.set_ylim(0, max_val * 1.25)
         
-        ThesisStyle.save_figure(fig, target_dir / "ablation_group_importance")
-        plt.close(fig)
+        # Position legend closely at the bottom of this subplot
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
 
-    def _plot_combo_heatmap(self, data, target_dir, metric, layout_width):
-        GROUP_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+    def _plot_combo_heatmap_ax(self, data, ax_mat, ax_bar, metric, sorted_groups, layout_width):
         GROUP_LABELS = {
-            "IMUup": "IMU-U",
-            "IMUfo": "IMU-F",
+            "IMUup": "IMU-1",
+            "IMUfo": "IMU-2",
             "EMGfo": "EMG-F",
             "EMGup": "EMG-U",
             "EMGsh": "EMG-S"
@@ -5022,23 +5100,25 @@ class ModalityAblationStudyPlotter:
             "IMUfo": ["ax2", "ay2", "az2", "roll_rad2", "pitch_rad2", "yaw_rad2"],
         }
         
+        CANONICAL_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        
         def all_combos():
             combos = []
-            for r in range(1, len(GROUP_ORDER) + 1):
-                for combo in itertools.combinations(GROUP_ORDER, r):
+            for r in range(1, len(CANONICAL_ORDER) + 1):
+                for combo in itertools.combinations(CANONICAL_ORDER, r):
                     combos.append(frozenset(combo))
             return combos
 
         def combo_name(groups):
             _CANONICAL = {
-                frozenset(GROUP_ORDER): "all",
+                frozenset(CANONICAL_ORDER): "all",
                 frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
                 frozenset(["IMUup", "IMUfo"]): "imu_only",
             }
             key = frozenset(groups)
             if key in _CANONICAL:
                 return _CANONICAL[key]
-            return "-".join(g for g in GROUP_ORDER if g in key)
+            return "-".join(g for g in CANONICAL_ORDER if g in key)
 
         combos = all_combos()
         
@@ -5056,54 +5136,38 @@ class ModalityAblationStudyPlotter:
                 "MAE": mae,
                 "n_channels": sum(len(IMU_GROUPS.get(g, EMG_GROUPS.get(g, []))) for g in combo)
             }
-            for g in GROUP_ORDER:
+            for g in sorted_groups:
                 row[g] = int(g in combo)
             rows.append(row)
             
         import pandas as pd
         df = pd.DataFrame(rows)
-        # Sort by the specific metric variant
         df = df.sort_values(metric, ascending=True).reset_index(drop=True)
         
-        ThesisStyle.apply(layout_width)
-        nrows, ncols = df[GROUP_ORDER].values.shape
-        
-        # Decide figsize and width ratios based on layout width (support one-column 'column' layout)
-        if layout_width == "column":
-            figsize = (3.46, 5.0)
-            gridspec_kw = {"width_ratios": [1.0, 1.6]}
-        else:
-            figsize = (7.0, max(5.5, 0.22 * len(df)))
-            gridspec_kw = {"width_ratios": [1.0, 2.2]}
-            
-        fig, (ax_mat, ax_bar) = plt.subplots(1, 2, figsize=figsize, gridspec_kw=gridspec_kw)
+        nrows, ncols = df[sorted_groups].values.shape
         
         # Draw background grid squares (soft gray)
         for r in range(nrows):
             for c in range(ncols):
                 rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
-                                     facecolor="#F3F4F6", edgecolor="white",
-                                     linewidth=2.0, zorder=1)
+                                     facecolor=ThesisStyle.COLOR_HEATMAP_ABSENT, edgecolor="white",
+                                     linewidth=1.5, zorder=1)
                 ax_mat.add_patch(rect)
                 
-        # Draw present blocks (deep navy/RHO_BLUE) on top
+        # Draw present blocks on top
         for r in range(nrows):
             for c in range(ncols):
-                if df[GROUP_ORDER].values[r, c] == 1:
+                if df[sorted_groups].values[r, c] == 1:
                     rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
-                                         facecolor=ThesisStyle.RHO_BLUE, edgecolor="white",
-                                         linewidth=2.0, zorder=2)
+                                         facecolor=ThesisStyle.COLOR_HEATMAP_PRESENT, edgecolor="white",
+                                         linewidth=1.5, zorder=2)
                     ax_mat.add_patch(rect)
                     
         ax_mat.set_xlim(-0.5, ncols - 0.5)
-        # Row 0 (best) at the top, row 30 (worst) at the bottom
         ax_mat.set_ylim(nrows - 0.5, -0.5)
-        
-        # Setup clean y-axis without labels (redundant)
         ax_mat.set_yticks([])
-        
         ax_mat.set_xticks(np.arange(ncols))
-        ax_mat.set_xticklabels([GROUP_LABELS[g] for g in GROUP_ORDER], rotation=45, ha="right", fontsize=plt.rcParams['font.size'] - 1.5)
+        ax_mat.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups], rotation=45, ha="right", fontsize=8.0)
         
         # Remove spines
         for spine in ax_mat.spines.values():
@@ -5114,30 +5178,16 @@ class ModalityAblationStudyPlotter:
         y_pos = np.arange(nrows)
         height = 0.5
         
-        color = ThesisStyle.RHO_BLUE
+        color = ThesisStyle.COLOR_HEATMAP_PRESENT
         ax_bar.barh(y_pos, metric_vals, height=height, color=color, alpha=0.85, zorder=2)
         
-        # Align perfectly with matrix (no duplicate inversion!)
         ax_bar.set_ylim(nrows - 0.5, -0.5)
         ax_bar.set_yticks([])
-        
         ax_bar.grid(True, axis='x', linestyle='--', color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
-        ax_bar.set_xlabel(f"{metric} (kg)", labelpad=8)
+        ax_bar.set_xlabel(f"{metric} (kg)", labelpad=4)
         
-        # Remove top/right spines
         ax_bar.spines['top'].set_visible(False)
         ax_bar.spines['right'].set_visible(False)
-        
-        plt.tight_layout()
-        fig.subplots_adjust(top=0.91)
-        
-        # Single title for the entire figure in black (heatmap + bar chart)
-        fig.suptitle("Sensor Group Performance",
-                     fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
-                     color="black", y=0.96)
-        file_suffix = f"ablation_combo_heatmap_{metric.lower()}"
-        ThesisStyle.save_figure(fig, target_dir / file_suffix)
-        plt.close(fig)
 
 
 def run_comparison_pipeline(gen_run_dir, par_run_dir, output_dir_raw, width_style):
@@ -5244,6 +5294,11 @@ def run_viz_pipeline(run_dir_raw, output_dir_raw, active_plots, width_style):
         sub_runs = [k for k, v in data.items() if isinstance(v, dict) and "meta" in v]
         if sub_runs:
             is_multi_ablation = True
+
+    # If this is a multi-modality ablation study run, we ONLY run 'modality_ablation_study' plotter
+    # to prevent generating 180+ individual sub-run plots.
+    if is_multi_ablation:
+        active_plots = [p for p in active_plots if p == "modality_ablation_study"]
 
     # 4. Run plotters
     successful_count = 0
