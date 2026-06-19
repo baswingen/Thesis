@@ -948,3 +948,1486 @@ Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config:
 [SpatioTemporalTransformerRegressor3] Grouped features into 9 spatial channels.
 [Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
 [SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1995 | Test MAE: 0.3480 | Gap: 0.1486
+    Train RMSE: 0.3739 | Test RMSE: 0.6406 | Ratio: 1.71x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: EMGFO-EMGUP
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 249 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 55
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 5 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5}
+    Train MAE: 0.1204 | Test MAE: 0.2041 | Gap: 0.0836
+    Train RMSE: 0.2533 | Test RMSE: 0.4356 | Ratio: 1.72x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 5 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5}
+    Train MAE: 0.1147 | Test MAE: 0.1917 | Gap: 0.0770
+    Train RMSE: 0.2501 | Test RMSE: 0.4128 | Ratio: 1.65x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 5 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5}
+    Train MAE: 0.1190 | Test MAE: 0.1938 | Gap: 0.0748
+    Train RMSE: 0.2605 | Test RMSE: 0.4202 | Ratio: 1.61x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGup/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGup/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGup/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGup/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGup/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGup/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: EMGFO-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 238 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 66
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 6 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6}
+    Train MAE: 0.1592 | Test MAE: 0.2220 | Gap: 0.0628
+    Train RMSE: 0.3056 | Test RMSE: 0.4405 | Ratio: 1.44x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 6 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6}
+    Train MAE: 0.1391 | Test MAE: 0.2066 | Gap: 0.0674
+    Train RMSE: 0.2877 | Test RMSE: 0.4116 | Ratio: 1.43x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 6 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6}
+    Train MAE: 0.1625 | Test MAE: 0.2221 | Gap: 0.0596
+    Train RMSE: 0.3089 | Test RMSE: 0.4276 | Ratio: 1.38x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGfo-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: EMGUP-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 249 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 55
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 5 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5}
+    Train MAE: 0.1815 | Test MAE: 0.3481 | Gap: 0.1666
+    Train RMSE: 0.3611 | Test RMSE: 0.6562 | Ratio: 1.82x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 5 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5}
+    Train MAE: 0.1940 | Test MAE: 0.3404 | Gap: 0.1464
+    Train RMSE: 0.3770 | Test RMSE: 0.6419 | Ratio: 1.70x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 5 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5}
+    Train MAE: 0.2066 | Test MAE: 0.3548 | Gap: 0.1482
+    Train RMSE: 0.3932 | Test RMSE: 0.6738 | Ratio: 1.71x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGup-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGup-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGup-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGup-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGup-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/EMGup-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGFO
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 199 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 105
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 15 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1055 | Test MAE: 0.1853 | Gap: 0.0798
+    Train RMSE: 0.2406 | Test RMSE: 0.4362 | Ratio: 1.81x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 15 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1040 | Test MAE: 0.1719 | Gap: 0.0679
+    Train RMSE: 0.2384 | Test RMSE: 0.3884 | Ratio: 1.63x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 15 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1107 | Test MAE: 0.1680 | Gap: 0.0573
+    Train RMSE: 0.2626 | Test RMSE: 0.3758 | Ratio: 1.43x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGUP
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 210 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 94
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1486 | Test MAE: 0.2581 | Gap: 0.1095
+    Train RMSE: 0.3037 | Test RMSE: 0.5281 | Ratio: 1.74x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1316 | Test MAE: 0.2461 | Gap: 0.1144
+    Train RMSE: 0.2806 | Test RMSE: 0.5213 | Ratio: 1.86x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1462 | Test MAE: 0.2614 | Gap: 0.1152
+    Train RMSE: 0.3064 | Test RMSE: 0.5380 | Ratio: 1.76x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 199 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 105
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 15 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1514 | Test MAE: 0.2692 | Gap: 0.1178
+    Train RMSE: 0.3150 | Test RMSE: 0.5443 | Ratio: 1.73x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 15 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1450 | Test MAE: 0.2593 | Gap: 0.1142
+    Train RMSE: 0.3096 | Test RMSE: 0.5362 | Ratio: 1.73x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 15 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 3, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1620 | Test MAE: 0.2624 | Gap: 0.1005
+    Train RMSE: 0.3300 | Test RMSE: 0.5327 | Ratio: 1.61x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-EMGFO-EMGUP
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 213 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 91
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1138 | Test MAE: 0.1902 | Gap: 0.0764
+    Train RMSE: 0.2464 | Test RMSE: 0.4271 | Ratio: 1.73x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.0995 | Test MAE: 0.1682 | Gap: 0.0687
+    Train RMSE: 0.2284 | Test RMSE: 0.3745 | Ratio: 1.64x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1022 | Test MAE: 0.1684 | Gap: 0.0663
+    Train RMSE: 0.2384 | Test RMSE: 0.3874 | Ratio: 1.62x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-EMGFO-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 202 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 102
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 12 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1143 | Test MAE: 0.1815 | Gap: 0.0673
+    Train RMSE: 0.2400 | Test RMSE: 0.4002 | Ratio: 1.67x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 12 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1046 | Test MAE: 0.1635 | Gap: 0.0589
+    Train RMSE: 0.2328 | Test RMSE: 0.3597 | Ratio: 1.55x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 12 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1081 | Test MAE: 0.1743 | Gap: 0.0662
+    Train RMSE: 0.2432 | Test RMSE: 0.3933 | Ratio: 1.62x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-EMGUP-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 213 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 91
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1313 | Test MAE: 0.2544 | Gap: 0.1231
+    Train RMSE: 0.2760 | Test RMSE: 0.5181 | Ratio: 1.88x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1417 | Test MAE: 0.2363 | Gap: 0.0946
+    Train RMSE: 0.2898 | Test RMSE: 0.4803 | Ratio: 1.66x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1635 | Test MAE: 0.2545 | Gap: 0.0911
+    Train RMSE: 0.3077 | Test RMSE: 0.4875 | Ratio: 1.58x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGup-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGup-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGup-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGup-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGup-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGup-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUFO-EMGFO-EMGUP
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 213 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 91
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1058 | Test MAE: 0.1677 | Gap: 0.0619
+    Train RMSE: 0.2272 | Test RMSE: 0.3812 | Ratio: 1.68x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1067 | Test MAE: 0.1651 | Gap: 0.0584
+    Train RMSE: 0.2268 | Test RMSE: 0.3588 | Ratio: 1.58x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1050 | Test MAE: 0.1609 | Gap: 0.0559
+    Train RMSE: 0.2386 | Test RMSE: 0.3599 | Ratio: 1.51x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUFO-EMGFO-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 202 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 102
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 12 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1280 | Test MAE: 0.1890 | Gap: 0.0610
+    Train RMSE: 0.2592 | Test RMSE: 0.4055 | Ratio: 1.56x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 12 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1299 | Test MAE: 0.1816 | Gap: 0.0517
+    Train RMSE: 0.2708 | Test RMSE: 0.3836 | Ratio: 1.42x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 12 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1008 | Test MAE: 0.1616 | Gap: 0.0608
+    Train RMSE: 0.2269 | Test RMSE: 0.3749 | Ratio: 1.65x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUFO-EMGUP-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 213 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 91
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1685 | Test MAE: 0.2641 | Gap: 0.0955
+    Train RMSE: 0.3205 | Test RMSE: 0.5070 | Ratio: 1.58x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1575 | Test MAE: 0.2579 | Gap: 0.1005
+    Train RMSE: 0.3049 | Test RMSE: 0.5147 | Ratio: 1.69x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 11 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1500 | Test MAE: 0.2679 | Gap: 0.1179
+    Train RMSE: 0.3009 | Test RMSE: 0.5364 | Ratio: 1.78x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGup-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGup-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGup-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGup-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGup-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGup-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: EMG_ONLY
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 216 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 88
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 8 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8}
+    Train MAE: 0.1121 | Test MAE: 0.1928 | Gap: 0.0807
+    Train RMSE: 0.2469 | Test RMSE: 0.4336 | Ratio: 1.76x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 8 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8}
+    Train MAE: 0.1494 | Test MAE: 0.1919 | Gap: 0.0425
+    Train RMSE: 0.3030 | Test RMSE: 0.3836 | Ratio: 1.27x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 8 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8}
+    Train MAE: 0.1799 | Test MAE: 0.2086 | Gap: 0.0287
+    Train RMSE: 0.3548 | Test RMSE: 0.4126 | Ratio: 1.16x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/emg_only/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/emg_only/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/emg_only/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/emg_only/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/emg_only/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/emg_only/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGFO-EMGUP
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 177 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 127
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 17 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1092 | Test MAE: 0.1681 | Gap: 0.0589
+    Train RMSE: 0.2325 | Test RMSE: 0.3783 | Ratio: 1.63x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 17 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1147 | Test MAE: 0.1637 | Gap: 0.0490
+    Train RMSE: 0.2347 | Test RMSE: 0.3423 | Ratio: 1.46x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 17 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1199 | Test MAE: 0.1756 | Gap: 0.0557
+    Train RMSE: 0.2490 | Test RMSE: 0.3787 | Ratio: 1.52x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGup/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGup/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGup/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGup/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGup/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGup/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGFO-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 166 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 138
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 18 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1126 | Test MAE: 0.1733 | Gap: 0.0607
+    Train RMSE: 0.2470 | Test RMSE: 0.3935 | Ratio: 1.59x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 18 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1142 | Test MAE: 0.1738 | Gap: 0.0597
+    Train RMSE: 0.2624 | Test RMSE: 0.3879 | Ratio: 1.48x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 18 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 6, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1208 | Test MAE: 0.1749 | Gap: 0.0541
+    Train RMSE: 0.2511 | Test RMSE: 0.3816 | Ratio: 1.52x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGfo-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGUP-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 177 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 127
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 17 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1464 | Test MAE: 0.2401 | Gap: 0.0936
+    Train RMSE: 0.2944 | Test RMSE: 0.4888 | Ratio: 1.66x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 17 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1406 | Test MAE: 0.2359 | Gap: 0.0953
+    Train RMSE: 0.2859 | Test RMSE: 0.4883 | Ratio: 1.71x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 17 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 5, 'IMU_Accel': 6, 'IMU_Orient': 6}
+    Train MAE: 0.1319 | Test MAE: 0.2321 | Gap: 0.1002
+    Train RMSE: 0.2808 | Test RMSE: 0.4834 | Ratio: 1.72x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-IMUfo-EMGup-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-EMGFO-EMGUP-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 180 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 124
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1017 | Test MAE: 0.1834 | Gap: 0.0817
+    Train RMSE: 0.2312 | Test RMSE: 0.4123 | Ratio: 1.78x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1342 | Test MAE: 0.1839 | Gap: 0.0497
+    Train RMSE: 0.2541 | Test RMSE: 0.3656 | Ratio: 1.44x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1001 | Test MAE: 0.1638 | Gap: 0.0637
+    Train RMSE: 0.2299 | Test RMSE: 0.3672 | Ratio: 1.60x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUup-EMGfo-EMGup-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUFO-EMGFO-EMGUP-EMGSH
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 180 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 124
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1079 | Test MAE: 0.1672 | Gap: 0.0593
+    Train RMSE: 0.2308 | Test RMSE: 0.3715 | Ratio: 1.61x
+--- Fold 2/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1091 | Test MAE: 0.1642 | Gap: 0.0551
+    Train RMSE: 0.2341 | Test RMSE: 0.3543 | Ratio: 1.51x
+--- Fold 3/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 3, 'IMU_Orient': 3}
+    Train MAE: 0.1054 | Test MAE: 0.1640 | Gap: 0.0587
+    Train RMSE: 0.2246 | Test RMSE: 0.3660 | Ratio: 1.63x
+
+[INFO] limit_folds=3 reached. Stopping cross-validation early after 3 folds.
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+[INFO] Truncating dataset arrays to 9440 evaluated samples from 3 folds.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup-EMGsh/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup-EMGsh/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup-EMGsh/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup-EMGsh/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup-EMGsh/performance_report.txt
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260618_002212/IMUfo-EMGfo-EMGup-EMGsh/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 144 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 160
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation (Limited to first 3 folds)...
+--- Fold 1/5 ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 4, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 1024, 'dropout_rate': 0.2, 'learning_rate': 0.0002, 'class_balanced_loss': False, 'weight_decay': 0.001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 200, 'scheduler_patience': 7, 'scheduler_factor': 0.5, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'OneCycleLR', 'max_lr': 0.0002, 'pct_start': 0.4}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=56).
+[SpatioTemporalTransformerRegressor3] Grouped features into 20 spatial channels.
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 8, 'IMU_Accel': 6, 'IMU_Orient': 6}
