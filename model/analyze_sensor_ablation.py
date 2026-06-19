@@ -61,18 +61,74 @@ def _get(d, *path, default=None):
     return d
 
 
+def _safe_pw_float(val):
+    if val is None:
+        return None
+    try:
+        f = float(val)
+        if np.isnan(f) or np.isinf(f):
+            return None
+        return f
+    except ValueError:
+        return None
+
+
 def load_combo(run_dir: Path, name: str):
     """Load one combo's metrics from <run_dir>/<name>/run_data.json. Returns dict or None."""
     jp = run_dir / name / "run_data.json"
     if not jp.exists():
         return None
     d = json.load(open(jp))
-    ev = d.get("evaluation", {})
+    ev = d.get("evaluation", {}) or {}
     macro = ev.get("macro_avg", {}) or {}
     zw = ev.get("zero_vs_weight", {}) or {}
     weighted = zw.get("weighted", {}) or {}
     zero = zw.get("zero_kg", {}) or {}
     groups = NAME_TO_GROUPS.get(name, set())
+
+    # Calculate class-macro MAE, RMSE, and R2 from raw predictions if available
+    predictions = d.get("predictions")
+    class_macro_mae = None
+    class_macro_rmse = None
+    class_macro_r2 = None
+    if predictions and isinstance(predictions, dict) and predictions.get("y_true") and predictions.get("y_pred"):
+        y_t = np.array(predictions["y_true"], dtype=float).flatten()
+        y_p = np.array(predictions["y_pred"], dtype=float).flatten()
+        unique_weights = np.unique(y_t)
+        if len(unique_weights) > 0:
+            maes = []
+            rmses = []
+            mses = []
+            for w in unique_weights:
+                mask = np.abs(y_t - w) < 0.05
+                if np.any(mask):
+                    diff = y_p[mask] - y_t[mask]
+                    maes.append(np.mean(np.abs(diff)))
+                    mse = np.mean(diff ** 2)
+                    mses.append(mse)
+                    rmses.append(np.sqrt(mse))
+            if maes:
+                class_macro_mae = sum(maes) / len(maes)
+            if rmses:
+                class_macro_rmse = sum(rmses) / len(rmses)
+            if len(unique_weights) > 1 and mses:
+                mean_w = np.mean(unique_weights)
+                ss_tot = np.mean((unique_weights - mean_w) ** 2)
+                ss_res = np.mean(mses)
+                class_macro_r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    else:
+        # Fallback to per_weight array if predictions are missing
+        pw = ev.get("per_weight") or []
+        if pw:
+            maes = [_safe_pw_float(row.get("MAE")) for row in pw]
+            rmses = [_safe_pw_float(row.get("RMSE")) for row in pw]
+            maes = [m for m in maes if m is not None]
+            rmses = [r for r in rmses if r is not None]
+            if maes:
+                class_macro_mae = sum(maes) / len(maes)
+            if rmses:
+                class_macro_rmse = sum(rmses) / len(rmses)
+
     row = {
         "combo": name,
         "groups": "+".join(g for g in GROUP_ORDER if g in groups),
@@ -84,6 +140,7 @@ def load_combo(run_dir: Path, name: str):
         "MAE": macro.get("MAE"), "MAE_std": macro.get("MAE_std"),
         "RMSE": macro.get("RMSE"), "R2": macro.get("R2"),
         "w_MAE": weighted.get("MAE"), "w_RMSE": weighted.get("RMSE"), "w_R2": weighted.get("R2"),
+        "class_macro_MAE": class_macro_mae, "class_macro_RMSE": class_macro_rmse, "class_macro_R2": class_macro_r2,
         "zero_MAE": zero.get("MAE"),
         "n_folds": ev.get("n_folds"),
         "_y_true": _get(d, "predictions", "y_true"),
@@ -113,20 +170,35 @@ def load_grid(grid_dir: Path, baseline_dir: Path):
 # ──────────────────────────────────────────────────────────────────────────
 # Shapley value over the 5 groups (ablation-based importance)
 # ──────────────────────────────────────────────────────────────────────────
-def naive_weighted_mae(y_true):
-    """Empty-set baseline: mean-predictor MAE on the loaded (>0 kg) samples."""
+def get_empty_baseline(y_true, metric):
+    """Empty-set baseline metric (mean predictor) on the appropriate samples."""
     y = np.asarray([v for v in y_true if v is not None], dtype=float)
-    yw = y[y > 1e-6]
-    if yw.size == 0:
+    if y.size == 0:
         return None
-    return float(np.mean(np.abs(yw - yw.mean())))
+    if metric.startswith("w_"):
+        yw = y[y > 1e-6]
+        if yw.size == 0:
+            return None
+        if "MAE" in metric:
+            return float(np.mean(np.abs(yw - yw.mean())))
+        elif "RMSE" in metric:
+            return float(np.std(yw))
+        elif "R2" in metric:
+            return 0.0
+    else:
+        if "MAE" in metric:
+            return float(np.mean(np.abs(y - y.mean())))
+        elif "RMSE" in metric:
+            return float(np.std(y))
+        elif "R2" in metric:
+            return 0.0
+    return None
 
 
 def shapley_groups(df, metric_col, v_empty):
     """
-    Shapley value of error-REDUCTION per group, using cost c(S)=metric_col[S],
-    c(empty)=v_empty. phi_g > 0 => group g reduces error on average.
-    sum(phi) == c(empty) - c(full).
+    Shapley value of error-REDUCTION (or R2 increase) per group, using cost
+    c(S)=metric_col[S], c(empty)=v_empty. phi_g > 0 => group g improves performance.
     """
     cost = {frozenset(NAME_TO_GROUPS[r.combo]): r.__getattribute__(metric_col)
             for r in df.itertuples() if getattr(r, metric_col) is not None}
@@ -139,6 +211,7 @@ def shapley_groups(df, metric_col, v_empty):
 
     n = len(GROUP_ORDER)
     phi = {}
+    is_r2 = "R2" in metric_col
     for g in GROUP_ORDER:
         others = [x for x in GROUP_ORDER if x != g]
         total = 0.0
@@ -150,7 +223,10 @@ def shapley_groups(df, metric_col, v_empty):
                 if cs is None or csg is None:
                     ok = False
                     continue
-                total += w * (cs - csg)   # error reduction from adding g
+                if is_r2:
+                    total += w * (csg - cs)   # R2 increase from adding g
+                else:
+                    total += w * (cs - csg)   # error reduction from adding g
         phi[g] = total if ok else float("nan")
     return phi
 
@@ -233,33 +309,65 @@ def plot_group_importance(shap_ablation, methods, out_path):
     plt.close(fig)
 
 
-def plot_frontier(df, xcol, xlabel, out_path, full_mae):
-    sub = df.dropna(subset=["w_MAE", xcol]).copy()
-    keep = pareto_mask(sub[xcol].values, sub["w_MAE"].values)
+def plot_frontier(df, metric_col, xcol, xlabel, out_path, full_val):
+    sub = df.dropna(subset=[metric_col, xcol]).copy()
+    is_r2 = "R2" in metric_col
+    y_values = sub[metric_col].values
+    y_for_pareto = -y_values if is_r2 else y_values
+    keep = pareto_mask(sub[xcol].values, y_for_pareto)
+    
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.scatter(sub[xcol], sub["w_MAE"], c=np.where(keep, "#d62728", "#9aa0a6"),
+    ax.scatter(sub[xcol], sub[metric_col], c=np.where(keep, "#d62728", "#9aa0a6"),
                s=np.where(keep, 70, 35), zorder=3)
     pf = sub[keep].sort_values(xcol)
-    ax.plot(pf[xcol], pf["w_MAE"], "--", color="#d62728", lw=1, zorder=2)
+    ax.plot(pf[xcol], pf[metric_col], "--", color="#d62728", lw=1, zorder=2)
     for _, r in pf.iterrows():
-        ax.annotate(r["combo"], (r[xcol], r["w_MAE"]), fontsize=7,
+        ax.annotate(r["combo"], (r[xcol], r[metric_col]), fontsize=7,
                     xytext=(4, 4), textcoords="offset points")
-    if full_mae is not None:
-        ax.axhline(full_mae, color="#1f77b4", lw=1, ls=":")
-        ax.axhline(full_mae * 1.05, color="#2ca02c", lw=0.8, ls=":")
-        ax.axhline(full_mae * 1.10, color="#ff7f0e", lw=0.8, ls=":")
-        ax.text(sub[xcol].max(), full_mae, " full set", color="#1f77b4", va="bottom", fontsize=8)
-        ax.text(sub[xcol].max(), full_mae * 1.10, " +10%", color="#ff7f0e", va="bottom", fontsize=8)
+    if full_val is not None:
+        val_5 = full_val * 0.95 if is_r2 else full_val * 1.05
+        val_10 = full_val * 0.90 if is_r2 else full_val * 1.10
+        ax.axhline(full_val, color="#1f77b4", lw=1, ls=":")
+        ax.axhline(val_5, color="#2ca02c", lw=0.8, ls=":")
+        ax.axhline(val_10, color="#ff7f0e", lw=0.8, ls=":")
+        ax.text(sub[xcol].max(), full_val, " full set", color="#1f77b4", va="bottom", fontsize=8)
+        ax.text(sub[xcol].max(), val_10, " -10%" if is_r2 else " +10%", color="#ff7f0e", va="bottom", fontsize=8)
+        
     ax.set_xlabel(xlabel)
-    ax.set_ylabel("Weighted-sample MAE (kg)")
-    ax.set_title(f"Practicality frontier (red = Pareto-optimal): MAE vs {xlabel}")
+    
+    # Format label nicely
+    if metric_col == "w_MAE":
+        ylabel = "Weighted-sample MAE (kg)"
+    elif metric_col == "MAE":
+        ylabel = "Macro MAE (kg)"
+    elif metric_col == "w_RMSE":
+        ylabel = "Weighted-sample RMSE (kg)"
+    elif metric_col == "RMSE":
+        ylabel = "Macro RMSE (kg)"
+    elif metric_col == "w_R2":
+        ylabel = "Weighted R²"
+    elif metric_col == "R2":
+        ylabel = "Macro R²"
+    elif metric_col == "class_macro_MAE":
+        ylabel = "Class-macro MAE (kg)"
+    elif metric_col == "class_macro_RMSE":
+        ylabel = "Class-macro RMSE (kg)"
+    elif metric_col == "class_macro_R2":
+        ylabel = "Class-macro R²"
+    else:
+        ylabel = metric_col
+        
+    ax.set_ylabel(ylabel)
+    ax.set_title(f"Practicality frontier (red = Pareto-optimal): {metric_col} vs {xlabel}")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
 
 
-def plot_heatmap(df, out_path):
-    sub = df.dropna(subset=["w_MAE"]).sort_values("w_MAE").reset_index(drop=True)
+def plot_heatmap(df, metric_col, out_path):
+    is_r2 = "R2" in metric_col
+    ascending = not is_r2
+    sub = df.dropna(subset=[metric_col]).sort_values(metric_col, ascending=ascending).reset_index(drop=True)
     mat = sub[GROUP_ORDER].values.astype(float)
     fig, (ax, axb) = plt.subplots(1, 2, figsize=(11, max(6, 0.28 * len(sub))),
                                   gridspec_kw={"width_ratios": [3, 1]})
@@ -269,12 +377,34 @@ def plot_heatmap(df, out_path):
     ax.set_yticks(range(len(sub)))
     ax.set_yticklabels(sub["combo"], fontsize=7)
     ax.set_title("Sensor groups present (sorted best→worst)")
-    axb.barh(range(len(sub)), sub["w_MAE"], color="#d62728")
+    axb.barh(range(len(sub)), sub[metric_col], color="#d62728")
     axb.set_ylim(ax.get_ylim())
     axb.set_yticks([])
     axb.invert_yaxis()
     ax.invert_yaxis()
-    axb.set_xlabel("Weighted MAE (kg)")
+    
+    if metric_col == "w_MAE":
+        xlabel = "Weighted MAE (kg)"
+    elif metric_col == "MAE":
+        xlabel = "Macro MAE (kg)"
+    elif metric_col == "w_RMSE":
+        xlabel = "Weighted RMSE (kg)"
+    elif metric_col == "RMSE":
+        xlabel = "Macro RMSE (kg)"
+    elif metric_col == "w_R2":
+        xlabel = "Weighted R²"
+    elif metric_col == "R2":
+        xlabel = "Macro R²"
+    elif metric_col == "class_macro_MAE":
+        xlabel = "Class-macro MAE (kg)"
+    elif metric_col == "class_macro_RMSE":
+        xlabel = "Class-macro RMSE (kg)"
+    elif metric_col == "class_macro_R2":
+        xlabel = "Class-macro R²"
+    else:
+        xlabel = metric_col
+        
+    axb.set_xlabel(xlabel)
     axb.set_title("Performance")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
@@ -288,6 +418,9 @@ def main():
     ap.add_argument("--baseline_dir", default=DEFAULT_BASELINE,
                     help="cross-val2 dir for SHAP/perm + canonical fallback.")
     ap.add_argument("--out_dir", default=None, help="Output dir (default: <grid_dir>/analysis).")
+    ap.add_argument("--metric", default="class_macro_RMSE",
+                    choices=["MAE", "RMSE", "R2", "w_MAE", "w_RMSE", "w_R2", "class_macro_MAE", "class_macro_RMSE", "class_macro_R2"],
+                    help="Primary metric to use for ranking and Shapley values (default: class_macro_RMSE).")
     args = ap.parse_args()
 
     grid_dir = Path(args.grid_dir)
@@ -299,19 +432,24 @@ def main():
     if df.empty:
         raise SystemExit(f"No combo run_data.json found under {grid_dir}")
 
-    df = df.sort_values("w_MAE", na_position="last").reset_index(drop=True)
+    metric = args.metric
+    is_r2 = "R2" in metric
+    ascending = not is_r2
+    df = df.sort_values(metric, ascending=ascending, na_position="last").reset_index(drop=True)
+    
     full_row = df[df["combo"] == "all"]
-    full_mae = float(full_row["w_MAE"].iloc[0]) if not full_row.empty else None
+    full_val = float(full_row[metric].iloc[0]) if not full_row.empty else None
 
     # CSV
     csv_cols = ["combo", "groups", "n_groups", "n_channels", "cost", "has_emg", "has_imu",
-                "MAE", "MAE_std", "RMSE", "R2", "w_MAE", "w_RMSE", "w_R2", "zero_MAE", "n_folds"]
+                "MAE", "MAE_std", "RMSE", "R2", "w_MAE", "w_RMSE", "w_R2",
+                "class_macro_MAE", "class_macro_RMSE", "class_macro_R2", "zero_MAE", "n_folds"]
     df[csv_cols].to_csv(out_dir / "ablation_results.csv", index=False)
 
-    # Shapley (ablation importance) on weighted MAE
+    # Shapley (ablation importance) on selected metric
     y_true = next((r["_y_true"] for _, r in df.iterrows() if r["_y_true"]), None)
-    v_empty = naive_weighted_mae(y_true) if y_true else None
-    phi = shapley_groups(df, "w_MAE", v_empty) if v_empty is not None else {}
+    v_empty = get_empty_baseline(y_true, metric) if y_true else None
+    phi = shapley_groups(df, metric, v_empty) if v_empty is not None else {}
     phi_norm = normalize({k: max(v, 0.0) for k, v in phi.items()}) if phi else {}
 
     # Attribution aggregation
@@ -338,40 +476,67 @@ def main():
     # Plots
     if phi_norm and methods:
         plot_group_importance(phi_norm, methods, out_dir / "group_importance_comparison.png")
-    plot_frontier(df, "n_channels", "number of channels", out_dir / "practicality_frontier.png", full_mae)
-    plot_frontier(df, "cost", "setup-cost proxy (EMG=3, IMU=1 per group)",
-                  out_dir / "practicality_cost_frontier.png", full_mae)
-    plot_heatmap(df, out_dir / "combo_heatmap.png")
+    plot_frontier(df, metric, "n_channels", "number of channels", out_dir / "practicality_frontier.png", full_val)
+    plot_frontier(df, metric, "cost", "setup-cost proxy (EMG=3, IMU=1 per group)",
+                  out_dir / "practicality_cost_frontier.png", full_val)
+    plot_heatmap(df, metric, out_dir / "combo_heatmap.png")
 
     # Minimal sets within 5% / 10% of full
     rec = {}
-    if full_mae is not None:
+    if full_val is not None:
         for tol in (0.05, 0.10):
-            cand = df[df["w_MAE"] <= full_mae * (1 + tol)].dropna(subset=["w_MAE"])
+            if is_r2:
+                cand = df[df[metric] >= full_val * (1 - tol)].dropna(subset=[metric])
+            else:
+                cand = df[df[metric] <= full_val * (1 + tol)].dropna(subset=[metric])
+                
             if not cand.empty:
-                best = cand.sort_values(["n_channels", "w_MAE"]).iloc[0]
-                rec[tol] = (best["combo"], int(best["n_channels"]), float(best["w_MAE"]))
+                best = cand.sort_values(["n_channels", metric], ascending=[True, not is_r2]).iloc[0]
+                rec[tol] = (best["combo"], int(best["n_channels"]), float(best[metric]))
 
     # Text summary
     lines = []
-    lines.append("=" * 78)
+    lines.append("=" * 125)
     lines.append("SENSOR-PRACTICALITY ABLATION — ANALYSIS SUMMARY")
-    lines.append("=" * 78)
+    lines.append("=" * 125)
     if missing:
         lines.append(f"[WARN] missing combos (skipped): {missing}")
     if fellback:
         lines.append(f"[NOTE] pulled from baseline_dir (different fold count): {fellback}")
     lines.append("")
-    lines.append("RANKING by weighted-sample MAE (best → worst):")
+    lines.append(f"RANKING (sorted by {metric}, best → worst):")
+    lines.append(f"  {'Combination':32s} {'Ch':2s} {'Cost':4s} {'c_mRMSE':7s} {'c_mMAE':6s} {'c_mR2':6s} {'w_MAE':6s} {'w_RMSE':6s} {'w_R2':6s} {'MAE':6s} {'RMSE':6s} {'R2':6s}")
+    lines.append(f"  {'-'*32} {'--':2s} {'----':4s} {'-------':7s} {'------':6s} {'------':6s} {'------':6s} {'------':6s} {'------':6s} {'------':6s} {'------':6s} {'------':6s}")
     for _, r in df.iterrows():
-        mae = r["w_MAE"]
-        lines.append(f"  {r['combo']:32s} ch={int(r['n_channels']):2d} "
-                     f"wMAE={mae:.4f}" if mae == mae else f"  {r['combo']:32s} (no metric)")
+        v_cm_rmse = r.get("class_macro_RMSE")
+        v_cm_mae = r.get("class_macro_MAE")
+        v_cm_r2 = r.get("class_macro_R2")
+        v_w_mae = r.get("w_MAE")
+        v_w_rmse = r.get("w_RMSE")
+        v_w_r2 = r.get("w_R2")
+        v_mae = r.get("MAE")
+        v_rmse = r.get("RMSE")
+        v_r2 = r.get("R2")
+        
+        s_cm_rmse = f"{v_cm_rmse:.4f}" if v_cm_rmse == v_cm_rmse and v_cm_rmse is not None else "N/A"
+        s_cm_mae = f"{v_cm_mae:.4f}" if v_cm_mae == v_cm_mae and v_cm_mae is not None else "N/A"
+        s_cm_r2 = f"{v_cm_r2:.4f}" if v_cm_r2 == v_cm_r2 and v_cm_r2 is not None else "N/A"
+        s_w_mae = f"{v_w_mae:.4f}" if v_w_mae == v_w_mae and v_w_mae is not None else "N/A"
+        s_w_rmse = f"{v_w_rmse:.4f}" if v_w_rmse == v_w_rmse and v_w_rmse is not None else "N/A"
+        s_w_r2 = f"{v_w_r2:.4f}" if v_w_r2 == v_w_r2 and v_w_r2 is not None else "N/A"
+        s_mae = f"{v_mae:.4f}" if v_mae == v_mae and v_mae is not None else "N/A"
+        s_rmse = f"{v_rmse:.4f}" if v_rmse == v_rmse and v_rmse is not None else "N/A"
+        s_r2 = f"{v_r2:.4f}" if v_r2 == v_r2 and v_r2 is not None else "N/A"
+        
+        lines.append(f"  {r['combo']:32s} {int(r['n_channels']):2d} {int(r['cost']):4d} "
+                     f"{s_cm_rmse:7s} {s_cm_mae:6s} {s_cm_r2:6s} {s_w_mae:6s} {s_w_rmse:6s} {s_w_r2:6s} "
+                     f"{s_mae:6s} {s_rmse:6s} {s_r2:6s}")
     lines.append("")
-    if full_mae is not None:
-        lines.append(f"Full-set weighted MAE = {full_mae:.4f} kg")
+    if full_val is not None:
+        lines.append(f"Full-set {metric} = {full_val:.4f}")
     if phi:
-        lines.append("\nGROUP IMPORTANCE — Shapley value of weighted-MAE reduction (kg, higher=more useful):")
+        lines.append(f"\nGROUP IMPORTANCE — Shapley value of {metric} reduction (higher=more useful):" if not is_r2 else
+                     f"\nGROUP IMPORTANCE — Shapley value of {metric} increase (higher=more useful):")
         for g in sorted(phi, key=lambda k: -(phi[k] if phi[k] == phi[k] else -9)):
             lines.append(f"  {GROUP_LABELS[g]:16s} φ = {phi[g]:+.4f}")
     if spear:
@@ -383,8 +548,8 @@ def main():
                 lines.append(f"  Ablation-Shapley vs {lab:12s}: ρ={val[0]:+.3f} (p={val[1]:.3f})")
     if rec:
         lines.append("\nMINIMAL PRACTICAL SETS:")
-        for tol, (name, nch, mae) in rec.items():
-            lines.append(f"  within {int(tol*100)}% of full: {name} ({nch} ch, wMAE={mae:.4f})")
+        for tol, (name, nch, val) in rec.items():
+            lines.append(f"  within {int(tol*100)}% of full: {name} ({nch} ch, {metric}={val:.4f})")
     lines.append("\nReminder: this grid is pooled k-fold (within-subject CALIBRATION). It is an "
                  "upper bound on each sensor's usable info. Run Phase-2 LOPO on the top sets to "
                  "test cross-subject transfer before drawing deployment conclusions.")

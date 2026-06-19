@@ -220,8 +220,8 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths, participants=None)
     """Calculate MAE and RMSE grouped by sequence length (number of windows per lift).
 
     If ``participants`` is provided, MAE/RMSE are participant-balanced per length bin
-    (each participant's metric averaged across participants); ``Count`` remains the
-    total (pooled) number of segments of that length.
+    using the doubly-balanced class-participant macro average. Otherwise, they are
+    calculated as class macro averages across all weight classes.
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
@@ -230,48 +230,66 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths, participants=None)
 
     unique_lens = np.sort(np.unique(seq_lengths))
     results = []
+    
+    # Unique classes present in the overall dataset
+    overall_classes = np.unique(y_true)
 
     for L in unique_lens:
         mask = (seq_lengths == L)
-        mae, rmse = _participant_balanced_metrics(
-            y_true[mask], y_pred[mask],
-            parts[mask] if parts is not None else None,
-        )
+        sub_y_true = y_true[mask]
+        sub_y_pred = y_pred[mask]
+        sub_parts = parts[mask] if parts is not None else None
+
+        # Ensure each class has at least 5 samples in this bin for statistical significance
+        is_significant = True
+        min_class_samples = 5
+        for c in overall_classes:
+            if np.sum(sub_y_true == c) < min_class_samples:
+                is_significant = False
+                break
+        if not is_significant:
+            continue
+
+        if sub_parts is not None and len(np.unique(sub_parts)) > 0:
+            from model.macro_metrics import class_participant_macro
+            cm = class_participant_macro(sub_y_true, sub_y_pred, sub_parts)
+            mae = cm["MAE"]
+            rmse = cm["RMSE"]
+        else:
+            from model.macro_metrics import class_macro
+            cm = class_macro(sub_y_true, sub_y_pred)
+            mae = cm["MAE"]
+            rmse = cm["RMSE"]
+
         results.append({
             'SeqLen':    L,
             'TimeAtPrediction': None,   # filled below
             'Count':     int(np.sum(mask)),
-            'MAE':       f"{mae:.4f}",
-            'RMSE':      f"{rmse:.4f}",
+            'MAE':       f"{mae:.4f}" if not np.isnan(mae) else "nan",
+            'RMSE':      f"{rmse:.4f}" if not np.isnan(rmse) else "nan",
         })
     return results
 
 
 def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
-                                   n_bins: int = None):
+                                   n_bins: int = None, participants=None):
     """Calculate MAE and RMSE for the CNN-LSTM binned by raw segment duration.
 
     Because CNN-LSTM receives the full raw segment (no sliding windows), the
     natural equivalent of 'number of windows seen' is the elapsed time into the
     lift at the moment of prediction, i.e. the segment duration in seconds.
 
-    Parameters
-    ----------
-    durations_sec : array-like
-        Duration of each test segment in seconds.
-    n_bins : int or None
-        Number of equal-width duration bins. If None, it will be smartly 
-        calculated based on the number of available segments and their lengths.
-
-    Returns
-    -------
-    list[dict]
-        Same format as ``calculate_per_seqlen_metrics`` so
-        ``plot_seqlen_performance`` can be reused directly.
+    If ``participants`` is provided, MAE/RMSE are participant-balanced per duration bin
+    using the doubly-balanced class-participant macro average. Otherwise, they are
+    calculated as class macro averages across all weight classes.
     """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     durations_sec = np.asarray(durations_sec, dtype=float)
+    parts = np.asarray(participants) if participants is not None else None
+    
+    # Unique classes present in the overall dataset
+    overall_classes = np.unique(y_true)
 
     if n_bins is None:
         # SMART BINNING strategy
@@ -301,16 +319,39 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
         if count == 0:
             continue
 
-        mae  = mean_absolute_error(y_true[mask], y_pred[mask])
-        rmse = np.sqrt(mean_squared_error(y_true[mask], y_pred[mask]))
+        sub_y_true = y_true[mask]
+        sub_y_pred = y_pred[mask]
+        sub_parts = parts[mask] if parts is not None else None
+
+        # Ensure each class has at least 5 samples in this bin for statistical significance
+        is_significant = True
+        min_class_samples = 5
+        for c in overall_classes:
+            if np.sum(sub_y_true == c) < min_class_samples:
+                is_significant = False
+                break
+        if not is_significant:
+            continue
+
+        if sub_parts is not None and len(np.unique(sub_parts)) > 0:
+            from model.macro_metrics import class_participant_macro
+            cm = class_participant_macro(sub_y_true, sub_y_pred, sub_parts)
+            mae = cm["MAE"]
+            rmse = cm["RMSE"]
+        else:
+            from model.macro_metrics import class_macro
+            cm = class_macro(sub_y_true, sub_y_pred)
+            mae = cm["MAE"]
+            rmse = cm["RMSE"]
+
         mid  = (lo + hi) / 2  # representative time for this bin
 
         results.append({
             'SeqLen':          i + 1,           # bin index (used as x-tick label prefix)
             'TimeAtPrediction': f"{mid:.3f}s",  # elapsed time — the real x-axis value
             'Count':           count,
-            'MAE':             f"{mae:.4f}",
-            'RMSE':            f"{rmse:.4f}",
+            'MAE':             f"{mae:.4f}" if not np.isnan(mae) else "nan",
+            'RMSE':            f"{rmse:.4f}" if not np.isnan(rmse) else "nan",
         })
     return results
 
@@ -660,27 +701,6 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         avg_permutation_importance = None
 
     # Aggregate participant stats if there are duplicates (e.g. under 'kfold' strategy)
-    if participant_stats:
-        from collections import defaultdict
-        p_groups = defaultdict(list)
-        for stat in participant_stats:
-            p_groups[stat['Participant']].append(stat)
-            
-        aggregated_stats = []
-        for p, stats_list in p_groups.items():
-            total_samples = sum(s['Samples'] for s in stats_list)
-            avg_mae = sum(s['MAE'] * s['Samples'] for s in stats_list) / max(total_samples, 1)
-            avg_mse = sum((s['RMSE'] ** 2) * s['Samples'] for s in stats_list) / max(total_samples, 1)
-            avg_rmse = np.sqrt(avg_mse)
-            
-            aggregated_stats.append({
-                'Participant': p,
-                'MAE': avg_mae,
-                'RMSE': avg_rmse,
-                'Samples': total_samples
-            })
-        participant_stats = sorted(aggregated_stats, key=lambda x: x['Participant'])
-
     # Set n_folds to the actual number of folds run if limited
     if limit_folds is not None and fold < n_folds:
         n_folds = fold
@@ -691,6 +711,31 @@ def execute_cross_validation(X, y, groups, df, model_type, cv_strategy, n_folds)
         oof_predictions = oof_predictions[sorted_eval_idx]
     else:
         sorted_eval_idx = None
+
+    # Recalculate participant_stats using out-of-fold predictions to ensure they are true class-macro metrics!
+    if groups is not None:
+        target_y = y.iloc[sorted_eval_idx].values if sorted_eval_idx is not None else y.values
+        target_groups = groups[sorted_eval_idx] if sorted_eval_idx is not None else groups
+        
+        from model.macro_metrics import class_macro
+        
+        aggregated_stats = []
+        for p in np.unique(target_groups):
+            p_mask = (target_groups == p)
+            if np.any(p_mask):
+                p_y_true = target_y[p_mask]
+                p_y_pred = oof_predictions[p_mask]
+                
+                cm = class_macro(p_y_true, p_y_pred)
+                
+                aggregated_stats.append({
+                    'Participant': p,
+                    'MAE': cm["MAE"],
+                    'RMSE': cm["RMSE"],
+                    'R2': cm["R2"],
+                    'Samples': int(np.sum(p_mask))
+                })
+        participant_stats = sorted(aggregated_stats, key=lambda x: x['Participant'])
 
     return model, cv_metrics, oof_predictions, participant_stats, n_folds, avg_permutation_importance, cv_histories, cv_val_participants, sorted_eval_idx
     # NOTE: cv_metrics is the raw list of per-fold metric dicts, needed by run_data_exporter
@@ -820,7 +865,8 @@ def save_extended_plots(model, run_dir, model_type, use_cv, df, X, X_test, y, y_
         target_preds = oof_predictions if use_cv else y_pred
         durations = df.loc[X.index if use_cv else X_test.index, 'segment_duration_sec'].values
         
-        per_duration_stats = calculate_per_duration_metrics(target_y, target_preds, durations)
+        dur_participants = groups if (use_cv and groups is not None) else None
+        per_duration_stats = calculate_per_duration_metrics(target_y, target_preds, durations, participants=dur_participants)
         if per_duration_stats:
             plotting_utils.plot_seqlen_performance(per_duration_stats, run_dir / "seqlen_performance_plot.png", 
                                                     model_name=model_type.upper().replace("_", "-"), min_count=max(2, int(len(target_y)*0.005)))
@@ -1014,6 +1060,21 @@ def main():
                            is_raw_segment, avg_metrics, std_metrics, metrics, participant_stats, 
                            per_seqlen, per_dur, oof_predictions, y_pred, perm_imp,
                            ablation_modality=active_modality, groups=groups)
+                           
+        # Print balanced macro metrics summary to console as primary metrics
+        try:
+            from model.macro_metrics import compute_all_macro_metrics, format_macro_report
+            y_true_p = y if CV_CONFIG.get('use_cross_val', True) else y_test
+            y_pred_p = oof_predictions if CV_CONFIG.get('use_cross_val', True) else y_pred
+            macro_dict = compute_all_macro_metrics(y_true_p, y_pred_p, groups if CV_CONFIG.get('use_cross_val', True) else None)
+            
+            print("\n" + "=" * 60)
+            print("  BALANCED PERFORMANCE SUMMARY")
+            print("=" * 60)
+            print(format_macro_report(macro_dict))
+            print("=" * 60 + "\n")
+        except Exception as e:
+            print(f"[WARN] Failed to print balanced macro metrics summary: {e}")
                            
         # 6b. Save machine-readable run data (JSON)
         from model.run_data_exporter import save_run_data

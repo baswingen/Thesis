@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=run_model
+#SBATCH --job-name=final_runs
 #SBATCH --partition=gpu-a100
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
@@ -7,8 +7,28 @@
 #SBATCH --gpus-per-task=1
 #SBATCH --mem-per-cpu=6G
 #SBATCH --account=education-me-msc-me
-#SBATCH --output=logs/run_%j.out
-#SBATCH --error=logs/run_%j.err
+#SBATCH --array=0-1
+#SBATCH --output=logs/run_%A_%a.out
+#SBATCH --error=logs/run_%A_%a.err
+
+# ─────────────────────────────────────────────────────────────────────────
+# FINAL MODELS — two distinct, simultaneous jobs (SLURM array, one GPU each).
+#   array task 0 -> THESIS_CV_STRATEGY=participant  (LOPO / cross-subject)
+#                   reproduces `final_run`     (WarmupCosine, 17-fold LOPO)
+#   array task 1 -> THESIS_CV_STRATEGY=kfold        (par-spec / within-subject)
+#                   reproduces `cross-val2`    (OneCycleLR, pooled 5-fold)
+#
+# Each regime pulls its OWN hyperparameters, LR scheduler, validation strategy
+# and feature set from config_model.py via the CV_STRATEGY switch (the env var
+# selects it at import — see model/config_model.py). Both regimes already run
+# joint participant×weight (participant-class) balancing of the TRAINING set via
+# augmentation (AUGMENTATION_CONFIG.balance_participants + balance_weights), and
+# report participant-class-balanced macro metrics (model/macro_metrics.py).
+#
+# The ONLY intended deltas vs the previous saved runs are: (1) the new balanced
+# macro metrics, (2) confirmed participant-class training balance. Configs are
+# otherwise identical (verified against the saved run_data.json).
+# ─────────────────────────────────────────────────────────────────────────
 
 cd /home/bwingen/thesis/Thesis
 
@@ -24,30 +44,27 @@ if [ ! -d "$DB_ROOT" ]; then
     exit 1
 fi
 
-echo "Database found at $DB_ROOT"
-echo "Using Python: $ENV_PYTHON"
+# Map the array task index to a regime.
+case "$SLURM_ARRAY_TASK_ID" in
+    0) export THESIS_CV_STRATEGY="participant"; REGIME="LOPO / cross-subject (final_run)" ;;
+    1) export THESIS_CV_STRATEGY="kfold";       REGIME="par-spec / within-subject (cross-val2)" ;;
+    *) echo "ERROR: unexpected SLURM_ARRAY_TASK_ID=$SLURM_ARRAY_TASK_ID (expected 0 or 1)"; exit 1 ;;
+esac
+
+echo "================================================================="
+echo "FINAL RUN — array task $SLURM_ARRAY_TASK_ID"
+echo "  Regime              : $REGIME"
+echo "  THESIS_CV_STRATEGY  : $THESIS_CV_STRATEGY"
+echo "  Database            : $DB_ROOT"
+echo "  Python              : $ENV_PYTHON"
 $ENV_PYTHON --version
+echo "  Extra args          : $*"
+echo "================================================================="
+
+srun $ENV_PYTHON -u -m model.run_model "$@"
 
 # ─────────────────────────────────────────────────────────────────────────
-# STAGED: SENSOR-PRACTICALITY ABLATION GRID (par-spec ST-transformer3).
-# Splits the 20 baseline channels into 5 placement groups (IMU upper/forearm,
-# EMG forearm/upper/shoulder) and runs all 31 non-empty combinations.
-#   - MODEL_TYPE=spatio_temporal_transformer3, pooled k-fold (within-subject calibration)
-#   - limit_folds=3, skip_final_full_train=True  (24h budget; projected 14-16h)
-#   - feature importance OFF (reuse cross-val2 baseline DeepSHAP/permutation)
-# The driver mutates cfg in-memory only; config_model.py is untouched.
-# Pass-through args go to the driver, e.g.:
-#   --skip_baseline_combos       (skip all/emg_only/imu_only -> 28 combos)
-#   --combos IMUfo-EMGfo,emg_only (restrict to named combos)
-#
-# PHASE 2 (cross-subject transfer check, run AFTER analysing phase-1 results):
-#   srun $ENV_PYTHON -u -m model.run_sensor_practicality_ablation --lopo \
-#        --combos <top-3 combo names from analysis>
-#
-# To re-launch the previous baseline pipeline instead, restore the line below:
-#   srun $ENV_PYTHON -u -m model.run_model "$@"
-echo "================================================================="
-echo "SENSOR-PRACTICALITY ABLATION (par-spec kfold, 31 combos, importance OFF)"
-echo "Args: $*"
-echo "================================================================="
-srun $ENV_PYTHON -u -m model.run_sensor_practicality_ablation "$@"
+# To re-launch the sensor-practicality ablation instead, comment out the
+# srun line above and the --array directive, then use:
+#   srun $ENV_PYTHON -u -m model.run_sensor_practicality_ablation "$@"
+# ─────────────────────────────────────────────────────────────────────────

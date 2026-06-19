@@ -13,6 +13,8 @@ import json
 import argparse
 import sys
 import os
+import itertools
+import math
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -57,6 +59,10 @@ MODEL_RUNS = {
         # Previous standard: ST-transformer-par-spec-P01 (st1, kept as historical baseline).
         "run_dir": "model/model_results/ST-transformer-par-spec-cross-val",
         "output_dir": "visualization/run_plots_par_spec"
+    },
+    "ablation": {
+        "run_dir": "model/model_results/run_modality_ablation",
+        "output_dir": "visualization/run_modality_comp"
     }
 }
 
@@ -612,7 +618,8 @@ class RegressionPlotter:
         # Use participant-balanced (macro) metrics as the single reported figure; fall back to
         # pooled only for single-split runs where no macro average exists.
         _ev = data.get("evaluation", {})
-        eval_stats = _ev.get("macro_avg") or _ev.get("pooled", {})
+        cpm = _ev.get("macro_metrics", {}).get("class_participant_macro", {}) or _ev.get("class_participant_macro", {})
+        eval_stats = cpm if cpm.get("MAE") is not None else (_ev.get("macro_avg") or _ev.get("pooled", {}))
         r2 = eval_stats.get("R2")
         mae = eval_stats.get("MAE")
         rmse = eval_stats.get("RMSE")
@@ -744,7 +751,7 @@ class SeqLenPlotter:
             print("  [Warning] No sequence length or duration stats found. Skipping seqlen plot.")
             return False
             
-        min_count = 10
+        min_count = 50
         filtered = [row for row in per_seqlen_stats if int(row['Count']) >= min_count]
         if not filtered:
             print(f"  [Warning] All bins dropped due to min_count={min_count}. Skipping seqlen plot.")
@@ -855,8 +862,15 @@ class ParticipantPlotter:
         rects2 = ax.bar(x + width/2, rmses, width, label='RMSE', color=ThesisStyle.COLOR_RMSE, alpha=0.85)
         
         # Horizontal lines mapping the mean error metrics
-        mean_mae = np.mean(maes)
-        mean_rmse = np.mean(rmses)
+        _ev = data.get("evaluation", {})
+        cpm = _ev.get("macro_metrics", {}).get("class_participant_macro", {}) or _ev.get("class_participant_macro", {})
+        if not cpm or cpm.get("MAE") is None:
+            cpm = _ev.get("class_macro_avg", {}) or _ev.get("class_macro", {})
+            if not cpm:
+                cpm = _ev.get("macro_metrics", {}).get("class_macro", {})
+                
+        mean_mae = cpm.get("MAE") if (cpm and cpm.get("MAE") is not None) else np.mean(maes)
+        mean_rmse = cpm.get("RMSE") if (cpm and cpm.get("RMSE") is not None) else np.mean(rmses)
         
         ax.axhline(mean_mae, color=ThesisStyle.COLOR_MAE, linestyle='--', linewidth=1.1, alpha=0.7)
         ax.axhline(mean_rmse, color=ThesisStyle.COLOR_RMSE, linestyle='--', linewidth=1.1, alpha=0.7)
@@ -885,7 +899,7 @@ class ParticipantPlotter:
         ax.set_xticklabels(participants, rotation=45, ha='right')
         
         max_val = max(np.max(maes), np.max(rmses))
-        ax.set_ylim(0, max_val * 1.25) # Extra buffer for horizontal annotations
+        ax.set_ylim(0, max_val * 1.25 + 0.5) # Extra buffer for horizontal annotations
         
         ax.legend(loc='upper left', frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
@@ -1124,25 +1138,44 @@ class AblationPlotter:
             if key not in data or not isinstance(data[key], dict):
                 continue
             run_data = data[key]
-            pooled = run_data.get("evaluation", {}).get("pooled", {})
-            if not pooled:
-                continue
-                
+            eval_dict = run_data.get("evaluation", {})
+            cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+            if not cpm or cpm.get("MAE") is None:
+                cpm = eval_dict.get("class_macro_avg", {}) or eval_dict.get("class_macro", {})
+                if not cpm:
+                    cpm = eval_dict.get("macro_metrics", {}).get("class_macro", {})
+            
+            macro = eval_dict.get("macro_avg", {})
+            pooled = eval_dict.get("pooled", {})
+            
+            mae_val = cpm.get("MAE") if (cpm and cpm.get("MAE") is not None) else (macro.get("MAE") or pooled.get("MAE", 0.0))
+            rmse_val = cpm.get("RMSE") if (cpm and cpm.get("RMSE") is not None) else (macro.get("RMSE") or pooled.get("RMSE", 0.0))
+            
             modalities.append(name_map.get(key, key.replace("_", " ").title()))
-            maes.append(pooled.get("MAE", 0.0))
-            rmses.append(pooled.get("RMSE", 0.0))
+            maes.append(mae_val)
+            rmses.append(rmse_val)
             
         # Fallback to other runs if standard ones are not present
         if not modalities:
             for key, run_data in data.items():
                 if not isinstance(run_data, dict) or "evaluation" not in run_data:
                     continue
-                pooled = run_data["evaluation"].get("pooled", {})
-                if not pooled:
-                    continue
+                eval_dict = run_data["evaluation"]
+                cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+                if not cpm or cpm.get("MAE") is None:
+                    cpm = eval_dict.get("class_macro_avg", {}) or eval_dict.get("class_macro", {})
+                    if not cpm:
+                        cpm = eval_dict.get("macro_metrics", {}).get("class_macro", {})
+                
+                macro = eval_dict.get("macro_avg", {})
+                pooled = eval_dict.get("pooled", {})
+                
+                mae_val = cpm.get("MAE") if (cpm and cpm.get("MAE") is not None) else (macro.get("MAE") or pooled.get("MAE", 0.0))
+                rmse_val = cpm.get("RMSE") if (cpm and cpm.get("RMSE") is not None) else (macro.get("RMSE") or pooled.get("RMSE", 0.0))
+                
                 modalities.append(name_map.get(key, key.replace("_", " ").title()))
-                maes.append(pooled.get("MAE", 0.0))
-                rmses.append(pooled.get("RMSE", 0.0))
+                maes.append(mae_val)
+                rmses.append(rmse_val)
                 
         if not modalities:
             print("  [Warning] No modality data found with pooled metrics. Skipping.")
@@ -1245,24 +1278,27 @@ class ModalityComparisonPlotter:
         gaps = []
         for k in keys:
             eval_dict = data[k].get("evaluation", {})
-            # Use macro_avg (cross-participant generalization metrics) if available, else fallback to pooled
-            if "macro_avg" in eval_dict and eval_dict["macro_avg"] is not None:
-                maes.append(eval_dict["macro_avg"].get("MAE", 0.0))
-                rmses.append(eval_dict["macro_avg"].get("RMSE", 0.0))
-                r2s.append(eval_dict["macro_avg"].get("R2", 0.0))
-                gaps.append(float(eval_dict["macro_avg"].get("Generalization Gap (MAE)", 0.0)))
-            else:
-                maes.append(eval_dict.get("pooled", {}).get("MAE", 0.0))
-                rmses.append(eval_dict.get("pooled", {}).get("RMSE", 0.0))
-                r2s.append(eval_dict.get("pooled", {}).get("R2", 0.0))
+            cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+            macro = eval_dict.get("macro_avg", {})
+            mae_val = cpm.get("MAE") if cpm.get("MAE") is not None else macro.get("MAE")
+            rmse_val = cpm.get("RMSE") if cpm.get("RMSE") is not None else macro.get("RMSE")
+            r2_val = cpm.get("R2") if cpm.get("R2") is not None else macro.get("R2")
+            
+            if mae_val is not None:
+                maes.append(mae_val)
+                rmses.append(rmse_val if rmse_val is not None else 0.0)
+                r2s.append(r2_val if r2_val is not None else 0.0)
                 
-                per_fold = eval_dict.get("per_fold", [])
-                if isinstance(per_fold, list) and per_fold:
-                    fold_gaps = [row.get("Generalization Gap (MAE)", None) for row in per_fold if isinstance(row, dict)]
-                    fold_gaps = [g for g in fold_gaps if g is not None]
-                else:
-                    fold_gaps = []
-                gaps.append(float(np.mean(fold_gaps)) if fold_gaps else 0.0)
+                gap_val = macro.get("Generalization Gap (MAE)")
+                if gap_val is None:
+                    per_fold = eval_dict.get("per_fold", [])
+                    if isinstance(per_fold, list) and per_fold:
+                        fold_gaps = [row.get("Generalization Gap (MAE)", None) for row in per_fold if isinstance(row, dict)]
+                        fold_gaps = [g for g in fold_gaps if g is not None]
+                    else:
+                        fold_gaps = []
+                    gap_val = float(np.mean(fold_gaps)) if fold_gaps else 0.0
+                gaps.append(float(gap_val))
         
         fig, ax1 = plt.subplots()
         x = np.arange(len(modalities))
@@ -1356,7 +1392,7 @@ class ModalityComparisonPlotter:
         per_seqlen_all = run_data_all.get("evaluation", {}).get("per_seqlen")
         if not per_seqlen_all:
             per_seqlen_all = run_data_all.get("evaluation", {}).get("per_duration", [])
-        filtered_all = [row for row in per_seqlen_all if int(row.get('Count', 0)) >= 10]
+        filtered_all = [row for row in per_seqlen_all if int(row.get('Count', 0)) >= 50]
         
         times_all = []
         counts_all = []
@@ -1393,7 +1429,7 @@ class ModalityComparisonPlotter:
             per_seqlen = run_data.get("evaluation", {}).get("per_seqlen")
             if not per_seqlen:
                 per_seqlen = run_data.get("evaluation", {}).get("per_duration", [])
-            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 10]
+            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 50]
             
             times = []
             maes = []
@@ -1454,7 +1490,7 @@ class ModalityComparisonPlotter:
             per_seqlen = run_data.get("evaluation", {}).get("per_seqlen")
             if not per_seqlen:
                 per_seqlen = run_data.get("evaluation", {}).get("per_duration", [])
-            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 10]
+            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 50]
             
             times = []
             rmses = []
@@ -1521,14 +1557,14 @@ class ModalityComparisonPlotter:
         rects1 = ax1.bar(x - width, all_vals_mae, width, label='EMG + IMU', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
         rects2 = ax1.bar(x, emg_vals_mae, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
         
-        # Clip IMU only values at 1.0
-        imu_plot_vals_mae = [min(v, 1.0) for v in imu_vals_mae]
+        # Clip IMU only values at 1.5
+        imu_plot_vals_mae = [min(v, 1.5) for v in imu_vals_mae]
         rects3 = ax1.bar(x + width, imu_plot_vals_mae, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
         
         # Annotate clipped IMU bars
         for idx, val in enumerate(imu_vals_mae):
-            if val > 1.0:
-                ax1.text(x[idx] + width, 1.01, f"{val:.2f}", ha='center', va='bottom',
+            if val > 1.5:
+                ax1.text(x[idx] + width, 1.51, f"{val:.2f}", ha='center', va='bottom',
                          color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
                          fontsize=plt.rcParams['font.size'] - 2.5)
                  
@@ -1536,20 +1572,18 @@ class ModalityComparisonPlotter:
         eval_emg = data["emg_only"].get("evaluation", {})
         eval_imu = data["imu_only"].get("evaluation", {})
         
-        if "macro_avg" in eval_all and eval_all["macro_avg"] is not None:
-            mean_all_mae = eval_all["macro_avg"].get("MAE", 0.0)
-        else:
-            mean_all_mae = eval_all.get("pooled", {}).get("MAE", 0.0)
+        def get_cpm_mae(eval_dict):
+            cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+            if cpm.get("MAE") is not None:
+                return cpm["MAE"]
+            macro = eval_dict.get("macro_avg", {})
+            if macro.get("MAE") is not None:
+                return macro["MAE"]
+            return eval_dict.get("pooled", {}).get("MAE", 0.0)
             
-        if "macro_avg" in eval_emg and eval_emg["macro_avg"] is not None:
-            mean_emg_mae = eval_emg["macro_avg"].get("MAE", 0.0)
-        else:
-            mean_emg_mae = eval_emg.get("pooled", {}).get("MAE", 0.0)
-            
-        if "macro_avg" in eval_imu and eval_imu["macro_avg"] is not None:
-            mean_imu_mae = eval_imu["macro_avg"].get("MAE", 0.0)
-        else:
-            mean_imu_mae = eval_imu.get("pooled", {}).get("MAE", 0.0)
+        mean_all_mae = get_cpm_mae(eval_all)
+        mean_emg_mae = get_cpm_mae(eval_emg)
+        mean_imu_mae = get_cpm_mae(eval_imu)
         
         ax1.axhline(mean_all_mae, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7)
         ax1.axhline(mean_emg_mae, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7)
@@ -1580,7 +1614,7 @@ class ModalityComparisonPlotter:
         ax1.set_xticks(x)
         ax1.set_xticklabels(sorted_participants_mae, rotation=45, ha='right')
         
-        ax1.set_ylim(0, 1.0)
+        ax1.set_ylim(0, 1.5)
         
         ax1.legend(loc='upper left', ncol=1, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
@@ -1602,31 +1636,29 @@ class ModalityComparisonPlotter:
         rects1 = ax2.bar(x - width, all_vals_rmse, width, label='EMG + IMU', color=ThesisStyle.COLOR_FUSION, alpha=0.85, edgecolor=ThesisStyle.COLOR_FUSION, linewidth=0.5)
         rects2 = ax2.bar(x, emg_vals_rmse, width, label='EMG-only', color=ThesisStyle.COLOR_EMG, alpha=0.85, edgecolor=ThesisStyle.COLOR_EMG, linewidth=0.5)
         
-        # Clip IMU only values at 2.0
-        imu_plot_vals_rmse = [min(v, 2.0) for v in imu_vals_rmse]
+        # Clip IMU only values at 2.5
+        imu_plot_vals_rmse = [min(v, 2.5) for v in imu_vals_rmse]
         rects3 = ax2.bar(x + width, imu_plot_vals_rmse, width, label='IMU-only', color=ThesisStyle.COLOR_IMU, alpha=0.85, edgecolor=ThesisStyle.COLOR_IMU, linewidth=0.5)
         
         # Annotate clipped IMU bars
         for idx, val in enumerate(imu_vals_rmse):
-            if val > 2.0:
-                ax2.text(x[idx] + width, 2.01, f"{val:.2f}", ha='center', va='bottom',
+            if val > 2.5:
+                ax2.text(x[idx] + width, 2.51, f"{val:.2f}", ha='center', va='bottom',
                          color=ThesisStyle.COLOR_IMU, fontweight='bold', clip_on=False,
                          fontsize=plt.rcParams['font.size'] - 2.5)
                  
-        if "macro_avg" in eval_all and eval_all["macro_avg"] is not None:
-            mean_all_rmse = eval_all["macro_avg"].get("RMSE", 0.0)
-        else:
-            mean_all_rmse = eval_all.get("pooled", {}).get("RMSE", 0.0)
+        def get_cpm_rmse(eval_dict):
+            cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+            if cpm.get("RMSE") is not None:
+                return cpm["RMSE"]
+            macro = eval_dict.get("macro_avg", {})
+            if macro.get("RMSE") is not None:
+                return macro["RMSE"]
+            return eval_dict.get("pooled", {}).get("RMSE", 0.0)
             
-        if "macro_avg" in eval_emg and eval_emg["macro_avg"] is not None:
-            mean_emg_rmse = eval_emg["macro_avg"].get("RMSE", 0.0)
-        else:
-            mean_emg_rmse = eval_emg.get("pooled", {}).get("RMSE", 0.0)
-            
-        if "macro_avg" in eval_imu and eval_imu["macro_avg"] is not None:
-            mean_imu_rmse = eval_imu["macro_avg"].get("RMSE", 0.0)
-        else:
-            mean_imu_rmse = eval_imu.get("pooled", {}).get("RMSE", 0.0)
+        mean_all_rmse = get_cpm_rmse(eval_all)
+        mean_emg_rmse = get_cpm_rmse(eval_emg)
+        mean_imu_rmse = get_cpm_rmse(eval_imu)
         
         ax2.axhline(mean_all_rmse, color=ThesisStyle.COLOR_FUSION, linestyle='--', linewidth=1.0, alpha=0.7)
         ax2.axhline(mean_emg_rmse, color=ThesisStyle.COLOR_EMG, linestyle='--', linewidth=1.0, alpha=0.7)
@@ -1657,7 +1689,7 @@ class ModalityComparisonPlotter:
         ax2.set_xticks(x)
         ax2.set_xticklabels(sorted_participants_rmse, rotation=45, ha='right')
         
-        ax2.set_ylim(0, 2.0)
+        ax2.set_ylim(0, 2.5)
         
         ax2.legend(loc='upper left', ncol=1, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
         plt.tight_layout()
@@ -2831,46 +2863,84 @@ class RunComparisonPlotter:
         raise FileNotFoundError(f"Cannot find run_data.json in {run_dir_raw}")
 
     def _get_gen_metrics(self, data):
-        """Extract macro_avg metrics (mean ± std) from a LOPO run."""
-        macro = data.get("evaluation", {}).get("macro_avg", {})
+        """Extract participant-class-macro metrics (mean ± std) from a LOPO run."""
+        eval_dict = data.get("evaluation", {})
+        cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+        macro = eval_dict.get("macro_avg", {})
+        
+        mae = cpm.get("MAE") if cpm.get("MAE") is not None else macro.get("MAE", 0.0)
+        rmse = cpm.get("RMSE") if cpm.get("RMSE") is not None else macro.get("RMSE", 0.0)
+        r2 = cpm.get("R2") if cpm.get("R2") is not None else macro.get("R2", 0.0)
+        
         return {
-            "MAE":  (macro.get("MAE", 0.0),  macro.get("MAE_std", 0.0)),
-            "RMSE": (macro.get("RMSE", 0.0), macro.get("RMSE_std", 0.0)),
-            "R2":   (macro.get("R2", 0.0),   macro.get("R2_std", 0.0)),
+            "MAE":  (mae,  macro.get("MAE_std", 0.0)),
+            "RMSE": (rmse, macro.get("RMSE_std", 0.0)),
+            "R2":   (r2,   macro.get("R2_std", 0.0)),
             "Gap":  (macro.get("Generalization Gap (MAE)", 0.0),
                      macro.get("Generalization Gap (MAE)_std", 0.0)),
         }
 
     def _get_par_metrics(self, data):
-        """Extract pooled metrics from a single-split run."""
-        pooled = data.get("evaluation", {}).get("pooled", {})
+        """Extract participant-class-macro or class-macro metrics from a single-subject or single-split run."""
+        eval_dict = data.get("evaluation", {})
+        cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+        if not cpm or cpm.get("MAE") is None:
+            cpm = eval_dict.get("class_macro_avg", {}) or eval_dict.get("class_macro", {})
+            if not cpm:
+                cpm = eval_dict.get("macro_metrics", {}).get("class_macro", {})
+                
+        mae = cpm.get("MAE")
+        rmse = cpm.get("RMSE")
+        r2 = cpm.get("R2")
+        
+        if mae is None:
+            macro = eval_dict.get("macro_avg", {})
+            mae = macro.get("MAE") or eval_dict.get("pooled", {}).get("MAE", 0.0)
+        if rmse is None:
+            macro = eval_dict.get("macro_avg", {})
+            rmse = macro.get("RMSE") or eval_dict.get("pooled", {}).get("RMSE", 0.0)
+        if r2 is None:
+            macro = eval_dict.get("macro_avg", {})
+            r2 = macro.get("R2") or eval_dict.get("pooled", {}).get("R2", 0.0)
+            
         return {
-            "MAE":  pooled.get("MAE", 0.0),
-            "RMSE": pooled.get("RMSE", 0.0),
-            "R2":   pooled.get("R2", 0.0),
+            "MAE": mae,
+            "RMSE": rmse,
+            "R2": r2,
         }
 
     # ------------------------------------------------------------------
     # Plot 1a: 6-Grid Regression Plot Comparison
     # ------------------------------------------------------------------
     def _get_regression_metrics(self, data, is_specialized=False):
-        """Extract MAE, RMSE, and R2 for regression plotting using participant macro-averages."""
+        """Extract MAE, RMSE, and R2 for regression plotting using participant-class-macro averages."""
         eval_dict = data.get("evaluation", {})
-        per_part = eval_dict.get("per_participant", [])
-        
-        # Calculate participant-level MAE and RMSE if per_participant is available
-        if per_part:
-            mae = float(np.mean([float(p["MAE"]) for p in per_part]))
-            rmse = float(np.mean([float(p["RMSE"]) for p in per_part]))
-        else:
-            macro = eval_dict.get("macro_avg", {})
-            mae = macro.get("MAE") or eval_dict.get("pooled", {}).get("MAE")
-            rmse = macro.get("RMSE") or eval_dict.get("pooled", {}).get("RMSE")
-            
-        # For R2, use the macro_avg R2 if available, otherwise fallback to pooled
+        cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
         macro = eval_dict.get("macro_avg", {})
-        r2 = macro.get("R2") or macro.get("R2_score") or eval_dict.get("pooled", {}).get("R2")
         
+        mae = cpm.get("MAE")
+        rmse = cpm.get("RMSE")
+        r2 = cpm.get("R2")
+        
+        # Fallbacks
+        if mae is None or rmse is None or r2 is None:
+            per_part = eval_dict.get("per_participant", [])
+            if per_part:
+                if mae is None:
+                    mae = float(np.mean([float(p["MAE"]) for p in per_part]))
+                if rmse is None:
+                    rmse = float(np.mean([float(p["RMSE"]) for p in per_part]))
+                if r2 is None:
+                    r2_vals = [p.get("R2") for p in per_part if p.get("R2") is not None and not np.isnan(p.get("R2"))]
+                    r2 = float(np.mean(r2_vals)) if r2_vals else None
+            
+        if mae is None:
+            mae = macro.get("MAE") or eval_dict.get("pooled", {}).get("MAE")
+        if rmse is None:
+            rmse = macro.get("RMSE") or eval_dict.get("pooled", {}).get("RMSE")
+        if r2 is None:
+            r2 = macro.get("R2") or macro.get("R2_score") or eval_dict.get("pooled", {}).get("R2")
+            
         # Fallback calculations if anything is still None
         if mae is None or rmse is None or r2 is None:
             predictions = data.get("predictions", {})
@@ -3222,6 +3292,9 @@ class RunComparisonPlotter:
         def get_mean_metric(run_data):
             if not run_data: return 0.0
             eval_dict = run_data.get("evaluation", {})
+            cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+            if cpm.get(metric) is not None:
+                return cpm[metric]
             if "macro_avg" in eval_dict and eval_dict["macro_avg"] is not None:
                 return eval_dict["macro_avg"].get(metric, 0.0)
             return eval_dict.get("pooled", {}).get(metric, 0.0)
@@ -3234,7 +3307,7 @@ class RunComparisonPlotter:
         gen_mean_emg = float(np.mean(gen_vals_emg))
         gen_mean_imu = float(np.mean(gen_vals_imu))
 
-        clip_val = 1.5 if metric == "RMSE" else 1.0
+        clip_val = 2.0 if metric == "RMSE" else 1.5
 
         # Plot Left (Specialized)
         ax_r1_l = axes[0, 0]
@@ -3254,7 +3327,7 @@ class RunComparisonPlotter:
         def get_seqlen_data(run_data):
             if not run_data: return [], [], []
             per_seqlen = run_data.get("evaluation", {}).get("per_seqlen") or run_data.get("evaluation", {}).get("per_duration", [])
-            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 10]
+            filtered = [row for row in per_seqlen if int(row.get('Count', 0)) >= 50]
             times = []
             vals = []
             counts = []
@@ -3591,8 +3664,8 @@ class RunComparisonPlotter:
         ax.bar(x, gen_maes_sorted, color=self.COLOR_GEN, alpha=0.85,
                edgecolor=self.COLOR_GEN, linewidth=0.5, label=self.LABEL_GEN)
 
-        gen_macro = gen_data.get("evaluation", {}).get("macro_avg", {})
-        gen_mean = gen_macro.get("MAE", float(np.mean(gen_maes_sorted)))
+        cpm = gen_data.get("evaluation", {}).get("macro_metrics", {}).get("class_participant_macro", {}) or gen_data.get("evaluation", {}).get("class_participant_macro", {})
+        gen_mean = cpm.get("MAE") if cpm.get("MAE") is not None else gen_data.get("evaluation", {}).get("macro_avg", {}).get("MAE", float(np.mean(gen_maes_sorted)))
         ax.axhline(gen_mean, color=self.COLOR_GEN, linestyle='--', linewidth=1.0,
                    alpha=0.8, label=f"Mean Gen. (μ={gen_mean:.3f})")
 
@@ -3604,7 +3677,7 @@ class RunComparisonPlotter:
         ax.set_xlabel("Unseen Participant (LOPO fold)", labelpad=8)
         ax.set_xticks(x)
         ax.set_xticklabels(participants_sorted, rotation=45, ha='right')
-        ax.set_ylim(0, max(gen_maes_sorted) * 1.30)
+        ax.set_ylim(0, max(gen_maes_sorted) * 1.30 + 0.5)
         ax.grid(True, axis='y', linestyle='--', alpha=0.5)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -3638,8 +3711,8 @@ class RunComparisonPlotter:
         ax.bar(x, gen_rmses_sorted, color=self.COLOR_GEN, alpha=0.85,
                edgecolor=self.COLOR_GEN, linewidth=0.5, label=self.LABEL_GEN)
 
-        gen_macro = gen_data.get("evaluation", {}).get("macro_avg", {})
-        gen_mean = gen_macro.get("RMSE", float(np.mean(gen_rmses_sorted)))
+        cpm = gen_data.get("evaluation", {}).get("macro_metrics", {}).get("class_participant_macro", {}) or gen_data.get("evaluation", {}).get("class_participant_macro", {})
+        gen_mean = cpm.get("RMSE") if cpm.get("RMSE") is not None else gen_data.get("evaluation", {}).get("macro_avg", {}).get("RMSE", float(np.mean(gen_rmses_sorted)))
         ax.axhline(gen_mean, color=self.COLOR_GEN, linestyle='--', linewidth=1.0,
                    alpha=0.8, label=f"Mean Gen. (μ={gen_mean:.3f})")
 
@@ -3651,7 +3724,7 @@ class RunComparisonPlotter:
         ax.set_xlabel("Unseen Participant (LOPO fold)", labelpad=8)
         ax.set_xticks(x)
         ax.set_xticklabels(participants_sorted, rotation=45, ha='right')
-        ax.set_ylim(0, max(gen_rmses_sorted) * 1.30)
+        ax.set_ylim(0, max(gen_rmses_sorted) * 1.30 + 0.5)
         ax.grid(True, axis='y', linestyle='--', alpha=0.5)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -4675,6 +4748,398 @@ class RunComparisonPlotter:
 
 
 
+def get_class_participant_macro_metric_val(run_data, metric_name="RMSE"):
+    """Calculate class-participant-macro metric value from predictions if not present in run_data."""
+    eval_dict = run_data.get("evaluation", {}) or {}
+    cpm = eval_dict.get("macro_metrics", {}).get("class_participant_macro", {}) or eval_dict.get("class_participant_macro", {})
+    if cpm and cpm.get(metric_name) is not None:
+        return float(cpm[metric_name])
+        
+    preds = run_data.get("predictions", {})
+    if preds and "y_true" in preds and "y_pred" in preds:
+        y_true = np.array(preds["y_true"])
+        y_pred = np.maximum(0.0, np.array(preds["y_pred"]))
+        parts = np.array(preds.get("participant", []))
+        
+        if len(parts) == len(y_true) and len(parts) > 0:
+            part_metrics = []
+            for p in np.unique(parts):
+                m_p = parts == p
+                w_metrics = []
+                for w in np.unique(y_true):
+                    m_w = (y_true == w) & m_p
+                    if m_w.any():
+                        if metric_name == "MAE":
+                            w_metrics.append(np.mean(np.abs(y_true[m_w] - y_pred[m_w])))
+                        else: # RMSE
+                            w_metrics.append(np.sqrt(np.mean((y_true[m_w] - y_pred[m_w])**2)))
+                if w_metrics:
+                    part_metrics.append(np.mean(w_metrics))
+            if part_metrics:
+                return float(np.mean(part_metrics))
+        else:
+            class_metrics = []
+            for w in np.unique(y_true):
+                m_w = y_true == w
+                if m_w.any():
+                    if metric_name == "MAE":
+                        class_metrics.append(np.mean(np.abs(y_true[m_w] - y_pred[m_w])))
+                    else: # RMSE
+                        class_metrics.append(np.sqrt(np.mean((y_true[m_w] - y_pred[m_w])**2)))
+            if class_metrics:
+                return float(np.mean(class_metrics))
+                
+    macro = eval_dict.get("macro_avg", {}) or {}
+    pooled = eval_dict.get("pooled", {}) or {}
+    val = macro.get(metric_name) or pooled.get(metric_name)
+    return float(val) if val is not None else 0.0
+
+
+@plot_registry.register("modality_ablation_study")
+class ModalityAblationStudyPlotter:
+    """Generates premium modality ablation study plots for a 31-combo grid:
+    1. Group importance comparison (Shapley vs DeepSHAP vs Permutation)
+    2. Presence/absence combination heatmap sorted by class-participant-macro RMSE.
+    """
+    
+    def plot(self, data, output_path, layout_width):
+        # Verify that this is the modality ablation study (requires combinations like EMGfo, IMUfo, etc.)
+        required_combos = ["EMGfo", "EMGup", "EMGsh", "IMUfo", "IMUup", "all"]
+        is_ablation_study = all(k in data for k in required_combos)
+        if not is_ablation_study:
+            print("  [Warning] Modality ablation study plotter requires a 32-combo ablation grid dataset. Skipping.")
+            return False
+            
+        target_dir = output_path.parent
+        target_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 1. Group Importance Comparison
+        self._plot_group_importance(data, target_dir, layout_width)
+        
+        # 2. Presence/Absence Combination Heatmap (MAE Variant)
+        self._plot_combo_heatmap(data, target_dir, "MAE", layout_width)
+        
+        # 3. Presence/Absence Combination Heatmap (RMSE Variant)
+        self._plot_combo_heatmap(data, target_dir, "RMSE", layout_width)
+        
+        return True
+
+    def _plot_group_importance(self, data, target_dir, layout_width):
+        GROUP_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        GROUP_LABELS = {
+            "IMUup": "IMU-U",
+            "IMUfo": "IMU-F",
+            "EMGfo": "EMG-F",
+            "EMGup": "EMG-U",
+            "EMGsh": "EMG-S"
+        }
+        
+        # Locate baseline directory from MODEL_RUNS
+        baseline_cfg = MODEL_RUNS.get("specialized", {})
+        baseline_dir = baseline_cfg.get("run_dir", "model/model_results/ST-transformer-par-spec-cross-val")
+        
+        baseline_path = Path(baseline_dir)
+        if not baseline_path.is_absolute():
+            script_dir = Path(__file__).resolve().parent
+            project_root = script_dir.parent
+            for base in [Path.cwd(), project_root, script_dir]:
+                candidate = base / baseline_dir
+                if (candidate / "run_data.json").exists() or (candidate / "all" / "run_data.json").exists():
+                    baseline_path = candidate
+                    break
+                    
+        # Load baseline run data
+        baseline_data = None
+        for json_cand in [baseline_path / "run_data.json", baseline_path / "all" / "run_data.json"]:
+            if json_cand.exists():
+                try:
+                    with open(json_cand) as f:
+                        baseline_data = json.load(f)
+                    break
+                except Exception as e:
+                    print(f"Error loading baseline {json_cand}: {e}")
+                    
+        def channel_to_group(key):
+            EMG_GROUPS = {
+                "EMGfo": ["Brachioradialis", "Flexor Carpi Ulnaris (FCU)", "Extensor Carpi Radialis (ECR)"],
+                "EMGup": ["Biceps Brachii", "Triceps Brachii"],
+                "EMGsh": ["Anterior Deltoid", "Lateral Deltoid", "Posterior Deltoid"],
+            }
+            IMU_GROUPS = {
+                "IMUup": ["ax1", "ay1", "az1", "roll_rad1", "pitch_rad1", "yaw_rad1"],
+                "IMUfo": ["ax2", "ay2", "az2", "roll_rad2", "pitch_rad2", "yaw_rad2"],
+            }
+            name = key.replace("_EMG", "").replace("_IMU", "")
+            name = name.split(" (")[0]
+            if "Flexor Carpi Ulnaris" in name: name = "Flexor Carpi Ulnaris (FCU)"
+            if "Extensor Carpi Radialis" in name: name = "Extensor Carpi Radialis (ECR)"
+            
+            for g, chans in EMG_GROUPS.items():
+                if name in chans:
+                    return g
+            for g, chans in IMU_GROUPS.items():
+                if name in chans:
+                    return g
+            return None
+
+        def aggregate_attribution(run_data, fi_key):
+            if not run_data:
+                return {}
+            fi = run_data.get("feature_importance", {}) or {}
+            if not fi and "all" in run_data:
+                fi = run_data["all"].get("feature_importance", {}) or {}
+            chan = fi.get(fi_key)
+            if not chan:
+                return {}
+            out = {g: 0.0 for g in GROUP_ORDER}
+            for k, v in chan.items():
+                g = channel_to_group(k)
+                if g is not None:
+                    out[g] += max(float(v), 0.0)
+            return out
+
+        # Compute Shapley values
+        def all_combos():
+            combos = []
+            for r in range(1, len(GROUP_ORDER) + 1):
+                for combo in itertools.combinations(GROUP_ORDER, r):
+                    combos.append(frozenset(combo))
+            return combos
+
+        def combo_name(groups):
+            _CANONICAL = {
+                frozenset(GROUP_ORDER): "all",
+                frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
+                frozenset(["IMUup", "IMUfo"]): "imu_only",
+            }
+            key = frozenset(groups)
+            if key in _CANONICAL:
+                return _CANONICAL[key]
+            return "-".join(g for g in GROUP_ORDER if g in key)
+
+        # Collect metrics
+        combo_metrics = {}
+        NAME_TO_GROUPS = {combo_name(c): frozenset(c) for c in all_combos()}
+        for combo_name_str, run_data in data.items():
+            groups = NAME_TO_GROUPS.get(combo_name_str)
+            if not groups:
+                continue
+            val = get_class_participant_macro_metric_val(run_data, "RMSE")
+            combo_metrics[groups] = val
+            
+        v_empty = 1.0
+        all_run = data.get("all")
+        if all_run and "predictions" in all_run and "y_true" in all_run["predictions"]:
+            y_true = np.asarray(all_run["predictions"]["y_true"], dtype=float)
+            v_empty = float(np.std(y_true))
+            
+        def c(S):
+            S = frozenset(S)
+            if len(S) == 0:
+                return v_empty
+            return combo_metrics.get(S, v_empty)
+            
+        n = len(GROUP_ORDER)
+        phi = {}
+        for g in GROUP_ORDER:
+            others = [x for x in GROUP_ORDER if x != g]
+            total = 0.0
+            for s in range(len(others) + 1):
+                w = math.factorial(s) * math.factorial(n - s - 1) / math.factorial(n)
+                for S in itertools.combinations(others, s):
+                    cs = c(S)
+                    csg = c(set(S) | {g})
+                    total += w * (cs - csg)
+            phi[g] = total
+
+        def normalize_dict(d):
+            s = sum(d.values())
+            return {k: (v / s if s else 0.0) for k, v in d.items()}
+
+        shap_norm = normalize_dict({k: max(v, 0.0) for k, v in phi.items()})
+        shap_g = aggregate_attribution(baseline_data, "deepshap_channel")
+        perm_g = aggregate_attribution(baseline_data, "permutation_channel")
+        
+        ds_norm = normalize_dict(shap_g) if shap_g else {}
+        perm_norm = normalize_dict(perm_g) if perm_g else {}
+
+        # Plotting
+        ThesisStyle.apply(layout_width)
+        fig, ax = plt.subplots(figsize=plt.rcParams['figure.figsize'])
+        
+        x = np.arange(len(GROUP_ORDER))
+        
+        methods = []
+        if ds_norm: methods.append(("DeepSHAP", ds_norm, ThesisStyle.COLOR_EMG))
+        if perm_norm: methods.append(("Permutation", perm_norm, ThesisStyle.COLOR_IMU))
+        
+        series_labels = ["Ablation (Shapley)"] + [m[0] for m in methods]
+        series_dicts = [shap_norm] + [m[1] for m in methods]
+        series_colors = [ThesisStyle.COLOR_FUSION] + [m[2] for m in methods]
+        
+        num_series = len(series_labels)
+        width = 0.8 / num_series
+        
+        for i in range(num_series):
+            offset = (i - (num_series - 1) / 2) * width
+            vals = [series_dicts[i].get(g, 0.0) for g in GROUP_ORDER]
+            rects = ax.bar(x + offset, vals, width, label=series_labels[i],
+                           color=series_colors[i], alpha=0.85, edgecolor=series_colors[i], linewidth=0.5)
+                            
+        ax.set_ylabel("Normalized Importance (fraction)", labelpad=8)
+        ax.set_xlabel("Sensor Modality Group", labelpad=8)
+        
+        title = "Per-Group Importance: Ablation Shapley vs. Attributions"
+        ThesisStyle.set_title(ax, title)
+        ax.title.set_color("black")
+        
+        ax.set_xticks(x)
+        ax.set_xticklabels([GROUP_LABELS[g] for g in GROUP_ORDER])
+        ax.set_ylim(0, max([max(s.values()) for s in series_dicts if s]) * 1.25)
+        
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.2), ncol=3, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        plt.tight_layout()
+        
+        ThesisStyle.save_figure(fig, target_dir / "ablation_group_importance")
+        plt.close(fig)
+
+    def _plot_combo_heatmap(self, data, target_dir, metric, layout_width):
+        GROUP_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        GROUP_LABELS = {
+            "IMUup": "IMU-U",
+            "IMUfo": "IMU-F",
+            "EMGfo": "EMG-F",
+            "EMGup": "EMG-U",
+            "EMGsh": "EMG-S"
+        }
+        EMG_GROUPS = {
+            "EMGfo": ["Brachioradialis", "Flexor Carpi Ulnaris (FCU)", "Extensor Carpi Radialis (ECR)"],
+            "EMGup": ["Biceps Brachii", "Triceps Brachii"],
+            "EMGsh": ["Anterior Deltoid", "Lateral Deltoid", "Posterior Deltoid"],
+        }
+        IMU_GROUPS = {
+            "IMUup": ["ax1", "ay1", "az1", "roll_rad1", "pitch_rad1", "yaw_rad1"],
+            "IMUfo": ["ax2", "ay2", "az2", "roll_rad2", "pitch_rad2", "yaw_rad2"],
+        }
+        
+        def all_combos():
+            combos = []
+            for r in range(1, len(GROUP_ORDER) + 1):
+                for combo in itertools.combinations(GROUP_ORDER, r):
+                    combos.append(frozenset(combo))
+            return combos
+
+        def combo_name(groups):
+            _CANONICAL = {
+                frozenset(GROUP_ORDER): "all",
+                frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
+                frozenset(["IMUup", "IMUfo"]): "imu_only",
+            }
+            key = frozenset(groups)
+            if key in _CANONICAL:
+                return _CANONICAL[key]
+            return "-".join(g for g in GROUP_ORDER if g in key)
+
+        combos = all_combos()
+        
+        rows = []
+        for combo in combos:
+            name = combo_name(combo)
+            run_data = data.get(name)
+            if not run_data:
+                continue
+            rmse = get_class_participant_macro_metric_val(run_data, "RMSE")
+            mae = get_class_participant_macro_metric_val(run_data, "MAE")
+            row = {
+                "combo": name,
+                "RMSE": rmse,
+                "MAE": mae,
+                "n_channels": sum(len(IMU_GROUPS.get(g, EMG_GROUPS.get(g, []))) for g in combo)
+            }
+            for g in GROUP_ORDER:
+                row[g] = int(g in combo)
+            rows.append(row)
+            
+        import pandas as pd
+        df = pd.DataFrame(rows)
+        # Sort by the specific metric variant
+        df = df.sort_values(metric, ascending=True).reset_index(drop=True)
+        
+        ThesisStyle.apply(layout_width)
+        nrows, ncols = df[GROUP_ORDER].values.shape
+        
+        # Decide figsize and width ratios based on layout width (support one-column 'column' layout)
+        if layout_width == "column":
+            figsize = (3.46, 5.0)
+            gridspec_kw = {"width_ratios": [1.0, 1.6]}
+        else:
+            figsize = (7.0, max(5.5, 0.22 * len(df)))
+            gridspec_kw = {"width_ratios": [1.0, 2.2]}
+            
+        fig, (ax_mat, ax_bar) = plt.subplots(1, 2, figsize=figsize, gridspec_kw=gridspec_kw)
+        
+        # Draw background grid squares (soft gray)
+        for r in range(nrows):
+            for c in range(ncols):
+                rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
+                                     facecolor="#F3F4F6", edgecolor="white",
+                                     linewidth=2.0, zorder=1)
+                ax_mat.add_patch(rect)
+                
+        # Draw present blocks (deep navy/RHO_BLUE) on top
+        for r in range(nrows):
+            for c in range(ncols):
+                if df[GROUP_ORDER].values[r, c] == 1:
+                    rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
+                                         facecolor=ThesisStyle.RHO_BLUE, edgecolor="white",
+                                         linewidth=2.0, zorder=2)
+                    ax_mat.add_patch(rect)
+                    
+        ax_mat.set_xlim(-0.5, ncols - 0.5)
+        # Row 0 (best) at the top, row 30 (worst) at the bottom
+        ax_mat.set_ylim(nrows - 0.5, -0.5)
+        
+        # Setup clean y-axis without labels (redundant)
+        ax_mat.set_yticks([])
+        
+        ax_mat.set_xticks(np.arange(ncols))
+        ax_mat.set_xticklabels([GROUP_LABELS[g] for g in GROUP_ORDER], rotation=45, ha="right", fontsize=plt.rcParams['font.size'] - 1.5)
+        
+        # Remove spines
+        for spine in ax_mat.spines.values():
+            spine.set_visible(False)
+            
+        # Draw horizontal bar chart on right side
+        metric_vals = df[metric].values
+        y_pos = np.arange(nrows)
+        height = 0.5
+        
+        color = ThesisStyle.RHO_BLUE
+        ax_bar.barh(y_pos, metric_vals, height=height, color=color, alpha=0.85, zorder=2)
+        
+        # Align perfectly with matrix (no duplicate inversion!)
+        ax_bar.set_ylim(nrows - 0.5, -0.5)
+        ax_bar.set_yticks([])
+        
+        ax_bar.grid(True, axis='x', linestyle='--', color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
+        ax_bar.set_xlabel(f"{metric} (kg)", labelpad=8)
+        
+        # Remove top/right spines
+        ax_bar.spines['top'].set_visible(False)
+        ax_bar.spines['right'].set_visible(False)
+        
+        plt.tight_layout()
+        fig.subplots_adjust(top=0.91)
+        
+        # Single title for the entire figure in black (heatmap + bar chart)
+        fig.suptitle("Sensor Group Performance",
+                     fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
+                     color="black", y=0.96)
+        file_suffix = f"ablation_combo_heatmap_{metric.lower()}"
+        ThesisStyle.save_figure(fig, target_dir / file_suffix)
+        plt.close(fig)
+
+
 def run_comparison_pipeline(gen_run_dir, par_run_dir, output_dir_raw, width_style):
     """Runs the cross-run comparison pipeline for generalized vs participant-specific models."""
     script_dir = Path(__file__).resolve().parent
@@ -4727,19 +5192,34 @@ def run_viz_pipeline(run_dir_raw, output_dir_raw, active_plots, width_style):
         run_dir_path = run_dir_path.resolve()
         
     json_path = run_dir_path / "run_data.json"
+    data = None
     
     if not json_path.exists():
-        print(f"Error: run_data.json not found at: {json_path}")
-        print("Please check the configuration or command line arguments.")
-        return False
-        
-    print(f"Loading run data from: {json_path}")
-    with open(json_path, 'r') as f:
-        try:
-            data = json.load(f)
-        except Exception as e:
-            print(f"Error reading JSON: {e}")
+        # Check if there are subdirectories with run_data.json
+        sub_runs_data = {}
+        if run_dir_path.exists():
+            for p in run_dir_path.iterdir():
+                if p.is_dir() and (p / "run_data.json").exists():
+                    try:
+                        with open(p / "run_data.json", 'r') as f:
+                            sub_runs_data[p.name] = json.load(f)
+                    except Exception as e:
+                        print(f"Error loading {p / 'run_data.json'}: {e}")
+        if sub_runs_data:
+            data = sub_runs_data
+            print(f"Dynamically loaded {len(data)} sub-runs from subdirectories in {run_dir_path}")
+        else:
+            print(f"Error: run_data.json not found at: {json_path} and no subdirectories containing run_data.json found.")
+            print("Please check the configuration or command line arguments.")
             return False
+    else:
+        print(f"Loading run data from: {json_path}")
+        with open(json_path, 'r') as f:
+            try:
+                data = json.load(f)
+            except Exception as e:
+                print(f"Error reading JSON: {e}")
+                return False
             
     # 2. Setup output folder
     output_dir_path = Path(output_dir_raw)
@@ -4784,6 +5264,7 @@ def run_viz_pipeline(run_dir_raw, output_dir_raw, active_plots, width_style):
         "ablation": "performance",
         "tradeoff": "performance",
         "modality_comparison": "modality comparison",
+        "modality_ablation_study": "",
         
         "distribution": "dataset",
         
@@ -4813,7 +5294,7 @@ def run_viz_pipeline(run_dir_raw, output_dir_raw, active_plots, width_style):
         target_subfolder = output_dir_path / category
         target_subfolder.mkdir(parents=True, exist_ok=True)
             
-        if name in ["ablation", "tradeoff", "modality_comparison"]:
+        if name in ["ablation", "tradeoff", "modality_comparison", "modality_ablation_study"]:
             # These plotters run once on the root multi-run dictionary
             print(f"Running '{name}' plotter (on root multi-run data)...")
             out_file = target_subfolder / f"{prefix}{name}_plot"

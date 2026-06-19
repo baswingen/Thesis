@@ -12,7 +12,12 @@ GLOBAL_BALANCE_WEIGHTS = False
 # RUN_MODEL PIPELINE TOGGLES
 # ──────────────────────────────────────────────────────────
 MODEL_TYPE = "spatio_temporal_transformer3"  # Options: "svr", "rf", "gb", "mlp", "gru", "lstm", "cnn_lstm", "cnn_gru", "cnn_bilstm_attention", "tcn", "transformer", "spatio_temporal_transformer", "spatio_temporal_transformer2", "spatio_temporal_transformer3", "spatio_temporal_transformer4", "spatio_temporal_transformer5", "st_transformer_aksan", "cnn_st_transformer"
-CV_STRATEGY = "kfold"  # Options: "kfold" (calibration run), "participant" (cross-subject LOPO)  [par-spec-P01 st3 ablation]
+# Regime switch. Runtime-selectable via env var so the two final jobs (LOPO vs
+# par-spec) can run simultaneously from the same source of truth — each process
+# reads its own value at import. Default "kfold" preserves local/interactive use.
+#   THESIS_CV_STRATEGY=participant  -> LOPO / cross-subject   (reproduces final_run)
+#   THESIS_CV_STRATEGY=kfold        -> pooled within-subject  (reproduces cross-val2)
+CV_STRATEGY = os.environ.get("THESIS_CV_STRATEGY", "kfold")  # Options: "kfold", "participant"
 RUN_GRID_SEARCH = False
 GRID_SEARCH_MODE = "model_arch"  # Options: "model_arch", "generalization", "features" (for spatio_temporal_transformer3)
 USE_PRECOMPUTED_FEATURES = True
@@ -56,7 +61,7 @@ DATABASE_CONFIG = {
 ###########################################################
 # Controls which participants are included in the training/evaluation.
 PARTICIPANT_CONFIG = {
-    # POOLED KFOLD CONTROL: all 17 participants (P13 excluded, matches final_run)
+    # All 17 participants (P13 excluded) — identical for both regimes (LOPO + par-spec)
     'include': ['P01','P02','P03','P04','P05','P06','P07','P08','P09',
                 'P10','P11','P12','P14','P15','P16','P17','P18'],
 }
@@ -247,8 +252,9 @@ AUGMENTATION_CONFIG = {
 
     # ── Temporal stretch ─────────────────────────────────────────────
     # Random scale factor applied to sequence length, then resampled back.
-    # Full-sweep winner (20260615) selected the tighter (0.9, 1.1) range.
-    'stretch_factor_range': (0.9, 1.1),
+    # K-Fold (par-spec) full-sweep winner (20260615) selected the tighter (0.9, 1.1)
+    # range; LOPO (final_run) used the wider (0.75, 1.25).
+    'stretch_factor_range': (0.9, 1.1) if CV_STRATEGY == 'kfold' else (0.75, 1.25),
 
     # ── Channel dropout ───────────────────────────────────────────────
     # Probability that an entire channel (feature) is zeroed for the full window.
@@ -283,20 +289,20 @@ AUGMENTATION_CONFIG = {
     # ── Joint Balancing (Participants + Weights) ─────────────────────
     # If BOTH toggles above are True, the augmenter balances every unique 
     # combination of (participant, weight class).
-    'target_samples_per_group': 100,  # per (participant, weight) cell; e.g. ~16 train participants * 6 weights * 100 ~= 9,600 samples/fold (lower than 250 to limit oversampling of sparse cells)
+    # per (participant, weight) cell. K-Fold uses 100 (limits oversampling of sparse cells,
+    # ~16 train participants * 6 weights * 100 ~= 9,600/fold); LOPO (final_run) used 250.
+    'target_samples_per_group': 100 if CV_STRATEGY == 'kfold' else 250,
 }
 
 # Cross-Validation Configuration
 CV_CONFIG = {
     'use_cross_val': True,
     'train_test_split': 0.2,    # Only used if use_cross_val is False
-    'n_folds': 5,               # CONTROL: pooled 5-fold (overrides participant-mode 17)
-    'strategy': 'kfold',        # CONTROL: pooled StratifiedKFold splitter — DECOUPLED from module
-                                # CV_STRATEGY (kept 'participant' so features/hyperparams/aug stay
-                                # matched to final_run). Only the DATA SPLIT changes vs final_run.
+    'n_folds': 5 if CV_STRATEGY == 'kfold' else 17,  # kfold: pooled 5-fold (cross-val2); participant: LOPO over 17 (final_run)
+    'strategy': CV_STRATEGY,    # coupled to the regime switch: 'kfold' (par-spec) or 'participant' (LOPO)
     'strict_val_split': True,   # Toggles strict cross-participant early stopping
     'strict_val_participants': 1, # matches final_run (hold out 1 participant for early-stopping validation)
-    'limit_folds': None         # POOLED KFOLD CONTROL: run all 5 folds
+    'limit_folds': None         # None = run all n_folds (both final runs use the full set)
 }
 
 # SVM Configuration

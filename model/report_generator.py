@@ -153,14 +153,14 @@ class ReportGenerator:
         lines.append("")
         self.sections.append("\n".join(lines))
 
-    def _add_evaluation_metrics(self, use_cv, avg_metrics, std_metrics, metrics, n_folds, 
+    def _add_evaluation_metrics(self, use_cv, avg_metrics, std_metrics, metrics, n_folds,
                                 y_true_pooled, y_pred_pooled):
         from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
         
         lines = ["--- EVALUATION METRICS ---"]
         
         if use_cv:
-            lines.append("METHOD: MACRO-AVERAGE (Primary)")
+            lines.append("METHOD: PARTICIPANT-MACRO-AVERAGE")
             lines.append(f"Description: Unweighted mean across {n_folds} participants. Weights every person equally.")
             lines.append("(Reflects expected generalization performance to a NEW participant)")
             for k, v in avg_metrics.items():
@@ -289,10 +289,12 @@ class ReportGenerator:
             self.sections.append("\n".join(lines))
             
         lines = ["--- PER-PARTICIPANT METRICS ---"]
-        lines.append(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10}")
-        lines.append("-" * 50)
+        lines.append(f"{'Participant':<12} | {'Samples':<8} | {'MAE':<10} | {'RMSE':<10} | {'R2':<10}")
+        lines.append("-" * 63)
         for p in participant_stats:
-            lines.append(f"{p['Participant']:<12} | {p['Samples']:<8} | {p['MAE']:<10.4f} | {p['RMSE']:<10.4f}")
+            r2_val = p.get('R2', float('nan'))
+            r2_str = f"{r2_val:<10.4f}" if not np.isnan(r2_val) else f"{'nan':<10}"
+            lines.append(f"{p['Participant']:<12} | {p['Samples']:<8} | {p['MAE']:<10.4f} | {p['RMSE']:<10.4f} | {r2_str}")
         lines.append("")
         self.sections.append("\n".join(lines))
 
