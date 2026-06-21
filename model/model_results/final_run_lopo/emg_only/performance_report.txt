@@ -1,0 +1,276 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260619_123309
+=======================================================
+
+--- DATASET INFO ---
+Participants included: ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P18_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P01_session_01_segments.h5']
+Total samples: 15732
+Evaluation Mode: Leave-One-Participant-Out CV (17 Participants)
+Final Model Training samples: 14897
+
+--- DATASET COMPOSITION (Pre-Augmentation) ---
+Weight Distribution:
+Weight       | Count    | Percentage
+-----------------------------------
+0.00         | 9175     | 58.3      %
+0.98         | 1313     | 8.3       %
+1.97         | 1315     | 8.4       %
+2.95         | 1316     | 8.4       %
+4.15         | 1301     | 8.3       %
+5.93         | 1312     | 8.3       %
+
+Participant Distribution:
+Participant  | Count    | Percentage
+-----------------------------------
+P01          | 3778     | 24.0      %
+P02          | 1219     | 7.7       %
+P03          | 820      | 5.2       %
+P04          | 835      | 5.3       %
+P05          | 387      | 2.5       %
+P06          | 826      | 5.3       %
+P07          | 833      | 5.3       %
+P08          | 834      | 5.3       %
+P09          | 847      | 5.4       %
+P10          | 414      | 2.6       %
+P11          | 850      | 5.4       %
+P12          | 851      | 5.4       %
+P14          | 413      | 2.6       %
+P15          | 746      | 4.7       %
+P16          | 832      | 5.3       %
+P17          | 842      | 5.4       %
+P18          | 405      | 2.6       %
+
+Balancing Strategy (from config):
+  Mode: Joint (Participant + Weight)
+  Target: 250 samples per (participant, weight) group
+  Expected Training Samples (if all groups filled): 25,500
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: EMG_ONLY
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+Enabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Enabled IMU Channels (0): 
+Disabled IMU Channels (18): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- HYPERPARAMETERS ---
+Model: SPATIO_TEMPORAL_TRANSFORMER3
+Architecture:
+  d_model: 96
+  nhead_spatial: 8
+  nhead_temporal: 2
+  num_layers: 4
+  num_layers_spatial: 4
+  num_layers_temporal: 4
+  dim_feedforward: 512
+  num_layers: 4
+  use_checkpointing: True
+  use_amp: True
+Training:
+  Learning Rate: 0.0003
+  Weight Decay: 0.005
+  Batch Size: 64
+  Epochs: 200
+  Dropout: 0.25
+  Loss Function: mse
+  Validation Split: 0.1
+  Early Stopping Patience: 5
+  Scheduler Patience: 3
+  Scheduler Factor: 0.8
+
+--- PIPELINE CONFIGURATION ---
+DEV_MODE: False
+Global Loss Function: mse
+Random State: 245
+Excluded Weight Classes: 0.75kg (→ 0.9kg), 2.25kg (→ 2.24kg)
+Augmentation: enabled
+  probability: 0.5
+  methods: ['noise', 'stretch', 'channel_dropout']
+  noise_std: 0.05
+  stretch_factor_range: (0.75, 1.25)
+  channel_dropout_p: 0.1
+  magnitude_scale_range: (0.5, 2.0)
+
+--- EVALUATION METRICS ---
+METHOD: PARTICIPANT-MACRO-AVERAGE
+Description: Unweighted mean across 17 participants. Weights every person equally.
+(Reflects expected generalization performance to a NEW participant)
+  MAE: 0.3205 (±0.0896)
+  MSE: 0.4005 (±0.2084)
+  RMSE: 0.6128 (±0.1582)
+  R2: 0.8921 (±0.0571)
+  Correlation: 0.9625 (±0.0152)
+  Train MAE: 0.2246 (±0.0595)
+  Train RMSE: 0.4207 (±0.0880)
+  Generalization Gap (MAE): 0.0958 (±0.1067)
+  Overfit Ratio (RMSE): 1.5325 (±0.5317)
+
+METHOD: POOLED-AVERAGE (Secondary)
+Description: Weighted by samples. Matches Regression Plot box-plot metrics.
+(Reflects overall accuracy across all recorded data points)
+  MAE: 0.3056
+  RMSE: 0.6049
+  R2: 0.9016
+  Correlation: 0.9514
+
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.5539   | 0.7132   | 0.8295  
+participant macro            | 0.3104   | 0.5856   | 0.8994  
+class macro                  | 0.5621   | 0.7704   | 0.8249  
+pooled (unbalanced)          | 0.3056   | 0.6049   | 0.9016  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 9175     | 0.0493     | 0.2237    
+0.98 kg      | 1313     | 0.4112     | 0.5470    
+1.97 kg      | 1315     | 0.6384     | 0.8179    
+2.95 kg      | 1316     | 0.7696     | 0.9817    
+4.15 kg      | 1301     | 0.8816     | 1.0759    
+5.93 kg      | 1312     | 0.6222     | 0.9764    
+
+--- 0KG VS WEIGHTED LIFT COMPARISON ---
+Category             | Count    | MAE        | RMSE       | R2      
+------------------------------------------------------------------
+0.00 kg (Free Move)  | 9175     | 0.0493     | 0.2237     | N/A     
+>0.00 kg (Weights)   | 6557     | 0.6643     | 0.8988     | 0.7283  
+------------------------------------------------------------------
+Performance Degradation on Weighted Lifts:
+  MAE:  +0.6149 (+1246.3%)
+  RMSE: +0.6751 (+301.7%)
+
+--- DETAILED GENERALIZATION PERFORMANCE ---
+Mean MAE across participants: 0.5973 ± 0.1747
+Min / Max MAE:                0.3240 / 1.0231
+Mean RMSE across participants:0.7451 ± 0.1907
+Min / Max RMSE:               0.4149 / 1.1366
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE       | R2        
+---------------------------------------------------------------
+P01          | 3778     | 0.6121     | 0.7816     | 0.8035    
+P02          | 1219     | 0.4831     | 0.6566     | 0.8656    
+P03          | 820      | 0.7136     | 0.8633     | 0.7301    
+P04          | 835      | 0.5319     | 0.7280     | 0.8188    
+P05          | 387      | 0.5311     | 0.6645     | 0.8586    
+P06          | 826      | 0.6178     | 0.7361     | 0.8287    
+P07          | 833      | 0.4619     | 0.5956     | 0.8825    
+P08          | 834      | 0.8372     | 1.0529     | 0.6623    
+P09          | 847      | 0.4678     | 0.6421     | 0.8735    
+P10          | 414      | 0.3353     | 0.4287     | 0.9341    
+P11          | 850      | 0.5265     | 0.7644     | 0.8159    
+P12          | 851      | 0.3755     | 0.4923     | 0.9228    
+P14          | 413      | 0.4059     | 0.5244     | 0.9123    
+P15          | 746      | 0.4223     | 0.5519     | 0.9051    
+P16          | 832      | 0.6380     | 0.8210     | 0.7821    
+P17          | 842      | 0.4585     | 0.6182     | 0.8852    
+P18          | 405      | 0.9975     | 1.2029     | 0.6202    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+SeqLen       | TimeAtPrediction | Count    | MAE        | RMSE      
+---------------------------------------------------------------
+4            | 0.600s           | 206      | 0.4959     | 0.5184    
+5            | 0.700s           | 477      | 0.5298     | 0.5856    
+6            | 0.800s           | 719      | 0.4782     | 0.5442    
+7            | 0.900s           | 1191     | 0.6019     | 0.7037    
+8            | 1.000s           | 1357     | 0.5445     | 0.6530    
+9            | 1.100s           | 1629     | 0.5422     | 0.6647    
+10           | 1.200s           | 1871     | 0.5496     | 0.6639    
+11           | 1.300s           | 1711     | 0.5391     | 0.6473    
+12           | 1.400s           | 1498     | 0.5330     | 0.6353    
+13           | 1.500s           | 1162     | 0.5032     | 0.5927    
+14           | 1.600s           | 864      | 0.5796     | 0.6616    
+15           | 1.700s           | 709      | 0.4762     | 0.5567    
+16           | 1.800s           | 519      | 0.4668     | 0.5345    
+17           | 1.900s           | 381      | 0.4669     | 0.5256    
+18           | 2.000s           | 301      | 0.4843     | 0.5314    
+19           | 2.100s           | 218      | 0.4138     | 0.4566    
+20           | 2.200s           | 181      | 0.4680     | 0.5069    
+21           | 2.300s           | 129      | 0.3842     | 0.4087    
+22           | 2.400s           | 115      | 0.3530     | 0.3805    
+23           | 2.500s           | 89       | 0.4817     | 0.4966    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)
+Total Parameters: 709,954
+Trainable Parameters: 709,954
+
+Average timings:
+train_time: 108.337727s (±42.641956s)
+inference_time_total: 0.275333s (±0.242567s)
+inference_time_per_sample: 0.000294s (±0.000042s)
+
+--- ON-DEVICE PERFORMANCE & REAL-TIME APPLICABILITY ---
+Actual Trainable Parameters: 709,954
+Theoretical FP32 Model Size: 2.71 MB
+Theoretical FP16 Model Size: 1.35 MB
+Theoretical INT8 Quantized Size: 0.68 MB
+Estimated Edge CPU Latency (Raspberry Pi / Mobile): 1.0 - 2.0 ms
+Real-Time Step Constraint: 100 ms (sliding window step)
+Real-Time CPU Safety Margin (Duty Cycle): 98.0% - 99.0% CPU Idle
+Dynamic Convergence Time: <1.1 seconds (Estimation MAE drops below 0.16 kg)
+
+--- STATISTICAL SIGNIFICANCE (ANOVA & Post-Hoc) ---
+1. Prediction Separability (Can the model distinguish weights?)
+   - One-Way ANOVA: F = 31443.4, p < 0.0001 (Significant)
+   - Interpretation: The model predicts significantly different values for different actual weights.
+   - Largest Pairwise Differences (Tukey HSD):
+       0.0kg vs 5.93kg: p < 0.001 (Diff: 5.49kg)
+       0.98kg vs 5.93kg: p < 0.001 (Diff: 4.53kg)
+       0.0kg vs 4.15kg: p < 0.001 (Diff: 4.36kg)
+       1.97kg vs 5.93kg: p < 0.001 (Diff: 3.63kg)
+       0.98kg vs 4.15kg: p < 0.001 (Diff: 3.39kg)
+
+2. Error Consistency (Is the model equally accurate for all weights?)
+   - One-Way ANOVA: F = 1890.1, p < 0.0001 (Significant)
+   - Interpretation: The model's error is NOT consistent across all weight classes.
+   - Significant Pairwise Error Differences (Tukey HSD):
+       4.15kg vs 0.0kg: p < 0.001 (4.15kg has 0.83kg higher error)
+       2.95kg vs 0.0kg: p < 0.001 (2.95kg has 0.72kg higher error)
+       1.97kg vs 0.0kg: p < 0.001 (1.97kg has 0.59kg higher error)
+       5.93kg vs 0.0kg: p < 0.001 (5.93kg has 0.57kg higher error)
+       4.15kg vs 0.98kg: p < 0.001 (4.15kg has 0.47kg higher error)
+
+--- PERMUTATION CHANNEL IMPORTANCE ---
+(Drop in MSE when feature is shuffled. Higher is more important)
+Brachioradialis_EMG: 0.544698
+Extensor Carpi Radialis (ECR)_EMG: 0.374583
+Biceps Brachii_EMG: 0.063953
+Flexor Carpi Ulnaris (FCU)_EMG: 0.052519
+Lateral Deltoid_EMG: 0.037801
+Triceps Brachii_EMG: 0.021433
+Anterior Deltoid_EMG: 0.013894
+Posterior Deltoid_EMG: 0.001228
+
+--- PERMUTATION FEATURE TYPE IMPORTANCE ---
+(Drop in MSE when feature extraction metric is shuffled across all channels)
+EMG_LogDet: 0.311916
+EMG_WL: 0.096545
+EMG_RMS: 0.053090
+EMG_SSC: 0.016859
+EMG_ZC: 0.011926
+EMG_BW: 0.007647
+EMG_MNF: 0.004758
+EMG_Myopulse: 0.002051
+EMG_WAMP: -0.003207
+EMG_Power: -0.003509
+EMG_HjMob: -0.009715
+
+--- DEEPSHAP CHANNEL IMPORTANCE ---
+(Mean absolute SHAP value per grouped channel)
+Brachioradialis_EMG: 0.456872
+Extensor Carpi Radialis (ECR)_EMG: 0.362869
+Lateral Deltoid_EMG: 0.284457
+Biceps Brachii_EMG: 0.225299
+Flexor Carpi Ulnaris (FCU)_EMG: 0.212192
+Triceps Brachii_EMG: 0.191987
+Anterior Deltoid_EMG: 0.169328
+Posterior Deltoid_EMG: 0.153992

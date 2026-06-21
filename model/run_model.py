@@ -229,45 +229,55 @@ def calculate_per_seqlen_metrics(y_true, y_pred, seq_lengths, participants=None)
     parts = np.asarray(participants) if participants is not None else None
 
     unique_lens = np.sort(np.unique(seq_lengths))
-    results = []
     
     # Unique classes present in the overall dataset
     overall_classes = np.unique(y_true)
 
+    # First pass: determine which sequence lengths are significant
+    sig_lens = []
     for L in unique_lens:
         mask = (seq_lengths == L)
         sub_y_true = y_true[mask]
-        sub_y_pred = y_pred[mask]
-        sub_parts = parts[mask] if parts is not None else None
-
-        # Ensure each class has at least 5 samples in this bin for statistical significance
+        
         is_significant = True
         min_class_samples = 5
         for c in overall_classes:
             if np.sum(sub_y_true == c) < min_class_samples:
                 is_significant = False
                 break
-        if not is_significant:
-            continue
+        if is_significant:
+            sig_lens.append(L)
 
-        if sub_parts is not None and len(np.unique(sub_parts)) > 0:
-            from model.macro_metrics import class_participant_macro
-            cm = class_participant_macro(sub_y_true, sub_y_pred, sub_parts)
-            mae = cm["MAE"]
-            rmse = cm["RMSE"]
-        else:
-            from model.macro_metrics import class_macro
-            cm = class_macro(sub_y_true, sub_y_pred)
-            mae = cm["MAE"]
-            rmse = cm["RMSE"]
+    results = []
+    if len(sig_lens) > 0:
+        min_L = min(sig_lens)
+        max_L = max(sig_lens)
+        target_lens = [L for L in unique_lens if min_L <= L <= max_L]
+        
+        for L in target_lens:
+            mask = (seq_lengths == L)
+            sub_y_true = y_true[mask]
+            sub_y_pred = y_pred[mask]
+            sub_parts = parts[mask] if parts is not None else None
 
-        results.append({
-            'SeqLen':    L,
-            'TimeAtPrediction': None,   # filled below
-            'Count':     int(np.sum(mask)),
-            'MAE':       f"{mae:.4f}" if not np.isnan(mae) else "nan",
-            'RMSE':      f"{rmse:.4f}" if not np.isnan(rmse) else "nan",
-        })
+            if sub_parts is not None and len(np.unique(sub_parts)) > 0:
+                from model.macro_metrics import class_participant_macro
+                cm = class_participant_macro(sub_y_true, sub_y_pred, sub_parts)
+                mae = cm["MAE"]
+                rmse = cm["RMSE"]
+            else:
+                from model.macro_metrics import class_macro
+                cm = class_macro(sub_y_true, sub_y_pred)
+                mae = cm["MAE"]
+                rmse = cm["RMSE"]
+
+            results.append({
+                'SeqLen':    L,
+                'TimeAtPrediction': None,   # filled below
+                'Count':     int(np.sum(mask)),
+                'MAE':       f"{mae:.4f}" if not np.isnan(mae) else "nan",
+                'RMSE':      f"{rmse:.4f}" if not np.isnan(rmse) else "nan",
+            })
     return results
 
 
@@ -306,53 +316,70 @@ def calculate_per_duration_metrics(y_true, y_pred, durations_sec,
     # Build equal-width bins spanning the full duration range
     bin_edges = np.linspace(durations_sec.min(), durations_sec.max(), n_bins + 1)
 
-    results = []
+    # First pass: determine which bin indices are significant
+    sig_bins = []
     for i in range(len(bin_edges) - 1):
         lo, hi = bin_edges[i], bin_edges[i + 1]
-        # Include the right edge in the last bin
         if i < len(bin_edges) - 2:
             mask = (durations_sec >= lo) & (durations_sec < hi)
         else:
             mask = (durations_sec >= lo) & (durations_sec <= hi)
-
+        
         count = int(np.sum(mask))
         if count == 0:
             continue
-
+            
         sub_y_true = y_true[mask]
-        sub_y_pred = y_pred[mask]
-        sub_parts = parts[mask] if parts is not None else None
-
-        # Ensure each class has at least 5 samples in this bin for statistical significance
+        
         is_significant = True
         min_class_samples = 5
         for c in overall_classes:
             if np.sum(sub_y_true == c) < min_class_samples:
                 is_significant = False
                 break
-        if not is_significant:
-            continue
+        if is_significant:
+            sig_bins.append(i)
 
-        if sub_parts is not None and len(np.unique(sub_parts)) > 0:
-            from model.macro_metrics import class_participant_macro
-            cm = class_participant_macro(sub_y_true, sub_y_pred, sub_parts)
-            mae = cm["MAE"]
-            rmse = cm["RMSE"]
-        else:
-            from model.macro_metrics import class_macro
-            cm = class_macro(sub_y_true, sub_y_pred)
-            mae = cm["MAE"]
-            rmse = cm["RMSE"]
-
-        mid  = (lo + hi) / 2  # representative time for this bin
-
-        results.append({
-            'SeqLen':          i + 1,           # bin index (used as x-tick label prefix)
-            'TimeAtPrediction': f"{mid:.3f}s",  # elapsed time — the real x-axis value
-            'Count':           count,
-            'MAE':             f"{mae:.4f}" if not np.isnan(mae) else "nan",
-            'RMSE':            f"{rmse:.4f}" if not np.isnan(rmse) else "nan",
-        })
+    results = []
+    if sig_bins:
+        min_bin = min(sig_bins)
+        max_bin = max(sig_bins)
+        
+        for i in range(min_bin, max_bin + 1):
+            lo, hi = bin_edges[i], bin_edges[i + 1]
+            if i < len(bin_edges) - 2:
+                mask = (durations_sec >= lo) & (durations_sec < hi)
+            else:
+                mask = (durations_sec >= lo) & (durations_sec <= hi)
+            
+            count = int(np.sum(mask))
+            if count == 0:
+                continue
+                
+            sub_y_true = y_true[mask]
+            sub_y_pred = y_pred[mask]
+            sub_parts = parts[mask] if parts is not None else None
+            
+            if sub_parts is not None and len(np.unique(sub_parts)) > 0:
+                from model.macro_metrics import class_participant_macro
+                cm = class_participant_macro(sub_y_true, sub_y_pred, sub_parts)
+                mae = cm["MAE"]
+                rmse = cm["RMSE"]
+            else:
+                from model.macro_metrics import class_macro
+                cm = class_macro(sub_y_true, sub_y_pred)
+                mae = cm["MAE"]
+                rmse = cm["RMSE"]
+                
+            mid  = (lo + hi) / 2  # representative time for this bin
+            
+            results.append({
+                'SeqLen':          i + 1,           # bin index (used as x-tick label prefix)
+                'TimeAtPrediction': f"{mid:.3f}s",  # elapsed time — the real x-axis value
+                'Count':           count,
+                'MAE':             f"{mae:.4f}" if not np.isnan(mae) else "nan",
+                'RMSE':            f"{rmse:.4f}" if not np.isnan(rmse) else "nan",
+            })
     return results
 
 
@@ -1181,6 +1208,24 @@ def main():
                     print(f"[WARN] Failed to load {mod_json_path} for master compile: {e}")
         
         if master_data:
+            # Cross-modality RM-ANOVA (SF vs EMG vs IMU) on per-participant
+            # class-macro metrics. Only meaningful when several modalities ran.
+            try:
+                from model.modality_anova import (
+                    comparison_from_master_data,
+                    format_modality_comparison_report,
+                )
+                comparison = comparison_from_master_data(master_data)
+                if comparison is not None:
+                    master_data["modality_comparison"] = comparison
+                    report = format_modality_comparison_report(comparison)
+                    with open(run_dir / "modality_comparison_report.txt", "w") as f:
+                        f.write(report + "\n")
+                    print(f"\n[Master Serializer] Cross-modality RM-ANOVA written to "
+                          f"{run_dir / 'modality_comparison_report.txt'}")
+            except Exception as e:
+                print(f"[WARN] Cross-modality RM-ANOVA failed: {e}")
+
             master_json_path = run_dir / "run_data.json"
             with open(master_json_path, "w") as f:
                 json.dump(master_data, f, indent=2)

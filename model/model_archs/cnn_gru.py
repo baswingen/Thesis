@@ -179,6 +179,7 @@ class CNNGRURegressor:
                  early_stopping_patience: int = CNN_GRU_CONFIG.get('early_stopping_patience', 30),
                  scheduler_patience: int = CNN_GRU_CONFIG.get('scheduler_patience', 10),
                  scheduler_factor: float = CNN_GRU_CONFIG.get('scheduler_factor', 0.5),
+                 scheduler: dict = None,   # absorbs per-regime scheduler injected via **CNN_GRU_CONFIG; build reads it from config
                  loss_type: str = GLOBAL_LOSS_FUNCTION,
                  balance_weights: bool = CNN_GRU_CONFIG.get('balance_weights', GLOBAL_BALANCE_WEIGHTS),
                  balance_participants: bool = CNN_GRU_CONFIG.get('balance_participants', False),
@@ -444,13 +445,10 @@ class CNNGRURegressor:
                                   collate_fn=raw_pad_collate_fn,
                                   generator=_g if sampler is None else None)
 
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, 
-            mode='min', 
-            factor=self.scheduler_factor,
-            patience=self.scheduler_patience,
-            min_lr=1e-6
-        )
+        from model.model_archs.lr_scheduler import build_scheduler
+        scheduler, self._sched_is_onecycle = build_scheduler(
+            optimizer, CNN_GRU_CONFIG.get('scheduler'), self.learning_rate,
+            self.epochs, self.scheduler_patience, self.scheduler_factor)
 
         dataset_val = RawSegmentDataset(
             val_tensors, y_tensor_val,
@@ -512,8 +510,11 @@ class CNNGRURegressor:
                 self.loss_history["train"].append(avg_train_loss)
                 self.loss_history["val"].append(avg_val_loss)
                 
-                scheduler.step(avg_val_loss)
-                
+                if self._sched_is_onecycle:
+                    scheduler.step()
+                else:
+                    scheduler.step(avg_val_loss)
+
                 if avg_val_loss < best_val_loss:
                     best_val_loss = avg_val_loss
                     patience_counter = 0
@@ -521,7 +522,7 @@ class CNNGRURegressor:
                 else:
                     patience_counter += 1
 
-                if patience_counter >= self.early_stopping_patience:
+                if (not self._sched_is_onecycle) and patience_counter >= self.early_stopping_patience:
                     print(f"\nEarly stopping at epoch {epoch+1}. "
                           f"Best Val Loss: {best_val_loss:.4f}")
                     break

@@ -29,7 +29,7 @@ Guidelines & Principles
 # ──────────────────────────────────────────────────────────
 
 # ─── 1. Paul Tol Scientific Semantic Colors ───
-COLOR_EMG = "#D81334" #"#95356F"       # Dark Purple (EMG)
+COLOR_EMG = "#E4572E" #"#95356F"       # Dark Purple (EMG)
 COLOR_IMU = "#137054" #"#007355"       # Forest Green (IMU)
 COLOR_FUSION = "#2C497F" #"#006781"    # Teal (EMG+IMU)
 
@@ -53,13 +53,13 @@ COLOR_P_05 = "#4477AA"      # Paul Tol Bright Blue (* p < 0.05)
 COLOR_P_NS = "#BBBBBB"      # Paul Tol Light Grey (n.s. p >= 0.05)
 
 # ─── 5. Interpretability Explanation Methods ───
-COLOR_SHAPLEY = "#82BAC4"      # Slate Grey (Ablation-Shapley values)
-COLOR_DEEPSHAP = "#FFD4D1"     # Sky Blue (DeepSHAP attributions)
-COLOR_PERMUTATION = "#E37C78"  # Rust Orange (Permutation feature importance)
+COLOR_SHAPLEY = "#5EC064"      # Slate Grey (Ablation-Shapley values)
+COLOR_DEEPSHAP = "#903258"     # Sky Blue (DeepSHAP attributions)
+COLOR_PERMUTATION = "#83CDE2"  # Rust Orange (Permutation feature importance)
 
 # ─── 6. Modality Ablation Heatmap Grid Colors ───
-COLOR_HEATMAP_PRESENT = "#006078"  # Deep Navy (Active sensor blocks)
-COLOR_HEATMAP_ABSENT = "#FAEFED"   # Very Light Grey (Inactive sensor blocks)
+COLOR_HEATMAP_PRESENT = "#003366"  # Deep Navy (Active sensor blocks)
+COLOR_HEATMAP_ABSENT = "#EDF2EF"   # Very Light Grey (Inactive sensor blocks)
 
 
 # ──────────────────────────────────────────────────────────

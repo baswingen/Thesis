@@ -107,3 +107,52 @@ class WarmupScheduler:
                     )
             if self.target_scheduler is not None:
                 self.target_scheduler.load_state_dict(state_dict['target_scheduler_state'])
+
+
+def build_scheduler(optimizer, scheduler_config, learning_rate, epochs,
+                    scheduler_patience, scheduler_factor):
+    """Build an LR scheduler from a config dict, stepped once per epoch.
+
+    Returns ``(scheduler, is_onecycle)``.
+      - OneCycleLR : annealed over ``epochs`` steps (one step() per epoch, no arg);
+        early stopping must be disabled by the caller so the schedule completes.
+        Same annealing shape as the st3 OneCycle recipe, sampled per epoch.
+      - WarmupCosine/WarmupPlateau and ReduceLROnPlateau : stepped per epoch with
+        the validation loss (``is_onecycle=False``).
+
+    Lets the baseline trainers (lstm/gru/transformer/cnn_lstm/cnn_gru) share the
+    same per-regime scheduler choice as st3 (OneCycleLR for k-fold, ReduceLROnPlateau
+    for LOPO) without per-batch stepping surgery. Default (config None) preserves the
+    legacy ReduceLROnPlateau behaviour.
+    """
+    cfg = scheduler_config or {'type': 'ReduceLROnPlateau'}
+    stype = cfg.get('type', 'ReduceLROnPlateau')
+
+    if stype == 'OneCycleLR':
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=cfg.get('max_lr', learning_rate),
+            total_steps=max(1, int(epochs)),
+            pct_start=cfg.get('pct_start', 0.1),
+            anneal_strategy='cos',
+        )
+        return scheduler, True
+
+    if stype in ('WarmupCosine', 'WarmupReduceLROnPlateau', 'WarmupPlateau'):
+        target_type = 'cosine' if 'Cosine' in stype else 'plateau'
+        scheduler = WarmupScheduler(
+            optimizer,
+            warmup_epochs=cfg.get('warmup_epochs', 5),
+            initial_lr=learning_rate,
+            total_epochs=epochs,
+            target_scheduler_type=target_type,
+            min_lr=cfg.get('min_lr', 1e-6),
+            patience=scheduler_patience,
+            factor=scheduler_factor,
+        )
+        return scheduler, False
+
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min', patience=scheduler_patience, factor=scheduler_factor
+    )
+    return scheduler, False

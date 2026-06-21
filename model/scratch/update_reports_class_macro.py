@@ -236,6 +236,9 @@ def update_run_data_json(filepath):
 def main():
     target_dirs = [
         "model/model_results/final_run",
+        "model/model_results/final_run_lopo",
+        "model/model_results/final_run_lopo_2",
+        "model/model_results/final_run_par_spec",
         "model/model_results/ST-transformer-par-spec-cross-val",
         "model/model_results/ST-transformer-par-spec-cross-val2"
     ]

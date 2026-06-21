@@ -138,6 +138,7 @@ class TimeSeriesTransformerRegressor:
                  early_stopping_patience: int = TRANSFORMER_CONFIG.get('early_stopping_patience', 10),
                  scheduler_patience: int = TRANSFORMER_CONFIG.get('scheduler_patience', 5),
                  scheduler_factor: float = TRANSFORMER_CONFIG.get('scheduler_factor', 0.5),
+                 scheduler: dict = None,   # absorbs per-regime scheduler injected via **TRANSFORMER_CONFIG; build reads it from config
                  emg_window_size_sec: float = FEATURE_CONFIG['emg_window_size_sec'],
                  imu_window_size_sec: float = FEATURE_CONFIG['imu_window_size_sec'],
                  window_step_sec: float = FEATURE_CONFIG['window_step_sec'],
@@ -235,8 +236,12 @@ class TimeSeriesTransformerRegressor:
         y_np_train = y_train.values.astype(np.float32)
         
         # 4b. Data augmentation (training only, on scaled z-score arrays)
+        # Pass participant ids so the augmenter does joint (participant, weight) balancing
+        # (target_samples_per_group), matching st3 and the CNN baselines — not weight-only.
         augmenter = SequenceAugmenter(config=AUGMENTATION_CONFIG)
-        scaled_seqs_train, y_np_train = augmenter.augment_dataset(scaled_seqs_train, y_np_train)
+        participant_ids_train = X_train['subject'].values if 'subject' in X_train.columns else None
+        scaled_seqs_train, y_np_train = augmenter.augment_dataset(
+            scaled_seqs_train, y_np_train, participant_ids=participant_ids_train)
         if AUGMENTATION_CONFIG.get('enabled', True):
             n_aug = len(scaled_seqs_train) - len(flat_data_train)
             print(f"[{self.__class__.__name__}] Augmentation: {len(flat_data_train)} → {len(scaled_seqs_train)} sequences (+{n_aug} synthetic)")
@@ -269,7 +274,10 @@ class TimeSeriesTransformerRegressor:
         ).to(self.device)
         
         optimizer = optim.AdamW(self.model.parameters(), lr=self.learning_rate, weight_decay=self.weight_decay)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=self.scheduler_patience, factor=self.scheduler_factor)
+        from model.model_archs.lr_scheduler import build_scheduler
+        scheduler, self._sched_is_onecycle = build_scheduler(
+            optimizer, TRANSFORMER_CONFIG.get('scheduler'), self.learning_rate,
+            self.epochs, self.scheduler_patience, self.scheduler_factor)
         
         if self.loss_type == 'mae':
             criterion = nn.L1Loss()
@@ -328,8 +336,12 @@ class TimeSeriesTransformerRegressor:
                 avg_val_loss = val_loss / len(dataset_val)
                 pbar.set_postfix({"Loss": f"{avg_train_loss:.4f}", "Val Loss": f"{avg_val_loss:.4f}"})
                 
-                # Step the scheduler
-                scheduler.step(avg_val_loss)
+                # Step the scheduler (per epoch). OneCycle takes no arg and runs the
+                # full epoch budget; ReduceLROnPlateau steps on the validation loss.
+                if self._sched_is_onecycle:
+                    scheduler.step()
+                else:
+                    scheduler.step(avg_val_loss)
                 
                 # TRACK LOSS
                 self.loss_history["train"].append(avg_train_loss)
@@ -343,7 +355,7 @@ class TimeSeriesTransformerRegressor:
                 else:
                     patience_counter += 1
                     
-                if patience_counter >= self.early_stopping_patience:
+                if (not self._sched_is_onecycle) and patience_counter >= self.early_stopping_patience:
                     print(f"\nEarly stopping triggered at epoch {epoch+1}. Best Val Loss: {best_val_loss:.4f}")
                     break
                     

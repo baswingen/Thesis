@@ -1,0 +1,22 @@
+=======================================================
+CROSS-MODALITY COMPARISON (RM-ANOVA)
+=======================================================
+Per-participant class-macro metrics; within-subjects factor = modality.
+Post-hoc: Bonferroni-corrected paired t-tests.
+
+--- MAE ---
+  Means: SF=0.3277  EMG=0.3860  IMU=0.7043
+  RM-ANOVA: F(2,32)=147.55  p=7.04e-17   (N=17)
+  SF--EMG: p_adj=9.48e-06
+  SF--IMU: p_adj=2.45e-09
+  EMG--IMU: p_adj=8.34e-09
+  Pairwise relations: SF < EMG < IMU
+
+--- RMSE ---
+  Means: SF=0.4635  EMG=0.5357  IMU=0.9682
+  RM-ANOVA: F(2,32)=147.62  p=6.99e-17   (N=17)
+  SF--EMG: p_adj=1.17e-05
+  SF--IMU: p_adj=2.32e-09
+  EMG--IMU: p_adj=9.10e-09
+  Pairwise relations: SF < EMG < IMU
+

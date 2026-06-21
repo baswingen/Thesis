@@ -48,7 +48,7 @@ for font_path in custom_fonts:
 # and their corresponding plot target directories.
 MODEL_RUNS = {
     "generalized": {
-        "run_dir": "model/model_results/final_run",
+        "run_dir": "model/model_results/final_run_lopo_2",
         "output_dir": "visualization/run_plots_gen"
     },
     "specialized": {
@@ -57,7 +57,7 @@ MODEL_RUNS = {
         # plots in run_plots_par_spec (no separate _ablation folder needed). The gen-vs-par comparison
         # collapses this root to its 'all' sub-run via _load(). Source: run_20260605_113834.
         # Previous standard: ST-transformer-par-spec-P01 (st1, kept as historical baseline).
-        "run_dir": "model/model_results/ST-transformer-par-spec-cross-val",
+        "run_dir": "model/model_results/final_run_par_spec",
         "output_dir": "visualization/run_plots_par_spec"
     },
     "ablation": {
@@ -3226,6 +3226,9 @@ class RunComparisonPlotter:
         elif clip_val == 1.5:
             ticks = [0.0, 0.5, 1.0, 1.5]
             tick_labels = ["0.0", "0.5", "1.0", "1.5"]
+        elif clip_val == 1.25:
+            ticks = [0.0, 0.25, 0.5, 0.75, 1.0, 1.25]
+            tick_labels = ["0.0", "0.25", "0.5", "0.75", "1.0", "1.25"]
         elif clip_val == 1.0:
             ticks = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
             tick_labels = ["0.0", "0.2", "0.4", "0.6", "0.8", "1.0"]
@@ -3323,7 +3326,7 @@ class RunComparisonPlotter:
         gen_mean_emg = float(np.mean(gen_vals_emg))
         gen_mean_imu = float(np.mean(gen_vals_imu))
 
-        clip_val = 2.0 if metric == "RMSE" else 1.5
+        clip_val = 1.25
 
         # Plot Left (Specialized)
         ax_r1_l = axes[0, 0]
@@ -4074,6 +4077,189 @@ class RunComparisonPlotter:
         ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_modality")
         plt.close(fig)
 
+    def _plot_deepshap_modality_2(self, all_data, output_dir, layout_width):
+        # This specific plot variant is designed to fit exactly one column in the LaTeX template
+        # (width of 3.46 inches), so we force the single-column layout style.
+        ThesisStyle.apply("column")
+
+        # Retrieve the generalized (EMG + IMU) and participant-specialized data
+        gen_data = all_data.get("EMG + IMU (Gen)")
+        par_data = all_data.get("Par-Specific")
+
+        if not gen_data or not par_data:
+            print("  [Warning] Missing required runs for combined DeepSHAP modality comparison 2. Skipping.")
+            return
+
+        gen_chan = gen_data.get("feature_importance", {}).get("deepshap_channel", {})
+        par_chan = par_data.get("feature_importance", {}).get("deepshap_channel", {})
+        
+        gen_perm = gen_data.get("feature_importance", {}).get("permutation_channel", {})
+        par_perm = par_data.get("feature_importance", {}).get("permutation_channel", {})
+
+        if not gen_chan or not par_chan or not gen_perm or not par_perm:
+            print("  [Warning] Missing deepshap_channel or permutation_channel in run data. Skipping.")
+            return
+
+        # Explicitly define sizes for single-column layout (3.46 in wide, 4.5 in high)
+        figsize = (3.46, 4.5)
+        marker_size = 12
+        ncol = 2
+        bottom_margin = 0.13
+
+        ytick_labelsize = plt.rcParams['ytick.labelsize']
+        title_fontsize = plt.rcParams['axes.titlesize']
+        label_fontsize = plt.rcParams['axes.labelsize']
+        legend_fontsize = plt.rcParams['legend.fontsize']
+
+        # Setup 2-subplot horizontal layout (sharing y-axis):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=figsize, sharey=True)
+
+        # --------------------------------------------------
+        # Compute relative values for DeepSHAP (Left Panel)
+        # --------------------------------------------------
+        gen_chan_total = sum(gen_chan.values()) or 1.0
+        par_chan_total = sum(par_chan.values()) or 1.0
+        gen_rel = {k: v / gen_chan_total * 100 for k, v in gen_chan.items()}
+        par_rel = {k: v / par_chan_total * 100 for k, v in par_chan.items()}
+        
+        # Compute relative values for Permutation (Right Panel)
+        gen_perm_total = sum(gen_perm.values()) or 1.0
+        par_perm_total = sum(par_perm.values()) or 1.0
+        gen_perm_rel = {k: v / gen_perm_total * 100 for k, v in gen_perm.items()}
+        par_perm_rel = {k: v / par_perm_total * 100 for k, v in par_perm.items()}
+
+        # Sort channels by their average relative importance across both plots and models
+        all_channels_set = set(gen_rel.keys()) | set(par_rel.keys()) | set(gen_perm_rel.keys()) | set(par_perm_rel.keys())
+        mean_scores = {}
+        for ch in all_channels_set:
+            mean_scores[ch] = (
+                gen_rel.get(ch, 0.0) + 
+                par_rel.get(ch, 0.0) + 
+                gen_perm_rel.get(ch, 0.0) + 
+                par_perm_rel.get(ch, 0.0)
+            ) / 4.0
+        sorted_channels = [x[0] for x in sorted(mean_scores.items(), key=lambda x: x[1], reverse=True)]
+        
+        # Build labels, values, and colors for Left Panel (DeepSHAP)
+        labels = []
+        vals_gen = []
+        vals_par = []
+        colors = []
+        for ch in sorted_channels:
+            clean_lbl = clean_channel_label(ch)
+            labels.append(clean_lbl)
+            vals_gen.append(gen_rel.get(ch, 0.0))
+            vals_par.append(par_rel.get(ch, 0.0))
+            if "_EMG" in ch or any(m in ch for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                colors.append(ThesisStyle.COLOR_EMG)
+            else:
+                colors.append(ThesisStyle.COLOR_IMU)
+                
+        y_pos = np.arange(len(labels))
+        offset = 0.12
+        
+        # Plot Participant-Specialized (dashed lines + hollow circles)
+        ax1.hlines(y_pos - offset, 0, vals_par, colors=colors, linestyles='--', linewidth=1.0, alpha=0.85)
+        ax1.scatter(vals_par, y_pos - offset, facecolors='white', edgecolors=colors, marker='o', zorder=3, s=marker_size, linewidths=1.0, alpha=0.85)
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax1.hlines(y_pos + offset, 0, vals_gen, colors=colors, linestyles='-', linewidth=1.0, alpha=0.85)
+        ax1.scatter(vals_gen, y_pos + offset, color=colors, marker='o', zorder=3, s=marker_size, alpha=0.85)
+        
+        # Configure Left Panel
+        ax1.set_yticks(y_pos)
+        ax1.set_yticklabels(labels, fontsize=ytick_labelsize, rotation=30, ha='right')
+        ax1.invert_yaxis()
+        ax1.set_title("DeepSHAP", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=title_fontsize), color='black', pad=8)
+        ax1.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax1.spines['top'].set_visible(False)
+        ax1.spines['right'].set_visible(False)
+        ax1.tick_params(axis='x', labelsize=ytick_labelsize)
+        ThesisStyle.style_ax(ax1)
+        
+        max_val = max(max(vals_gen), max(vals_par)) if vals_gen else 1.0
+        ax1.set_xlim(0, max_val * 1.1)
+
+        # --------------------------------------------------
+        # Plot Permutation (Right Panel)
+        # --------------------------------------------------
+        vals_gen_perm = []
+        vals_par_perm = []
+        colors_perm = []
+        for ch in sorted_channels:
+            vals_gen_perm.append(gen_perm_rel.get(ch, 0.0))
+            vals_par_perm.append(par_perm_rel.get(ch, 0.0))
+            if "_EMG" in ch or any(m in ch for m in ["Deltoid", "Brachii", "Brachioradialis", "Ulnaris", "Radialis"]):
+                colors_perm.append(ThesisStyle.COLOR_EMG)
+            else:
+                colors_perm.append(ThesisStyle.COLOR_IMU)
+                
+        # Plot Participant-Specialized (dashed lines + hollow circles)
+        ax2.hlines(y_pos - offset, 0, vals_par_perm, colors=colors_perm, linestyles='--', linewidth=1.0, alpha=0.85)
+        ax2.scatter(vals_par_perm, y_pos - offset, facecolors='white', edgecolors=colors_perm, marker='o', s=marker_size, linewidths=1.0, alpha=0.85, zorder=3)
+        
+        # Plot Generalized (solid lines + solid circles)
+        ax2.hlines(y_pos + offset, 0, vals_gen_perm, colors=colors_perm, linestyles='-', linewidth=1.0, alpha=0.85)
+        ax2.scatter(vals_gen_perm, y_pos + offset, color=colors_perm, marker='o', s=marker_size, alpha=0.85, zorder=3)
+        
+        # Configure Right Panel
+        ax2.set_title("Permutation", fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=title_fontsize), color='black', pad=8)
+        ax2.grid(True, which='both', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+        ax2.spines['top'].set_visible(False)
+        ax2.spines['right'].set_visible(False)
+        ax2.tick_params(axis='x', labelsize=ytick_labelsize)
+        ax2.yaxis.set_tick_params(labelleft=False) # explicitly hide shared y-axis labels on the right plot
+        ThesisStyle.style_ax(ax2)
+        
+        ax2.axvline(0, color='#333333', linestyle='-', linewidth=0.8, alpha=0.5)
+        
+        min_val_perm = min(min(vals_gen_perm), min(vals_par_perm)) if vals_gen_perm else 0.0
+        max_val_perm = max(max(vals_gen_perm), max(vals_par_perm)) if vals_gen_perm else 1.0
+        if min_val_perm < 0:
+            range_val = max_val_perm - min_val_perm
+            x_min = min_val_perm - range_val * 0.05
+            x_max = max_val_perm + range_val * 0.05
+        else:
+            x_min = 0.0
+            x_max = max_val_perm * 1.1
+        ax2.set_xlim(x_min, x_max)
+
+        # Add global legend at the bottom
+        from matplotlib.lines import Line2D
+        from matplotlib.patches import Patch
+        global_legend_handles = [
+            Line2D([0], [0], color='#555555', linestyle='--', marker='o', markerfacecolor='white', markeredgecolor='#555555', markeredgewidth=1.0, markersize=5, label='Participant-Specialized Model'),
+            Line2D([0], [0], color='#555555', linestyle='-', marker='o', markerfacecolor='#555555', markersize=5, label='Generalized Model'),
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label='EMG'),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label='IMU')
+        ]
+        # Adjust margins to fit all labels and the legend perfectly (left margin reduced since labels are diagonalized)
+        plt.tight_layout(rect=[0.02, bottom_margin, 0.98, 0.98])
+
+        # Force a canvas draw to calculate the final layout coordinates of subplots
+        fig.canvas.draw()
+
+        # Get subplot boundaries to find the exact center of the plotting area (excluding y-axis labels on the left)
+        bbox1 = ax1.get_position()
+        bbox2 = ax2.get_position()
+        x_center = (bbox1.x0 + bbox2.x1) / 2.0
+
+        # Add global legend at the bottom centered under the plotting area
+        fig.legend(handles=global_legend_handles, loc='upper center', ncol=ncol,
+                   bbox_to_anchor=(x_center, 0.12),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95,
+                   fontsize=legend_fontsize)
+
+        # Add a single centered shared x-axis label centered under the plotting area
+        fig.text(x_center, 0.135, "Normalized Importance", ha='center', va='center', fontsize=label_fontsize)
+
+        # Save figure
+        ThesisStyle.save_figure(fig, output_dir / "comp_deepshap_modality_2")
+        plt.close(fig)
+
+        # Restore original style configuration to prevent affecting other plots in the loop
+        ThesisStyle.apply(layout_width)
+
     def _plot_deepshap_feature(self, all_data, output_dir, layout_width):
         ThesisStyle.apply(layout_width)
 
@@ -4712,6 +4898,10 @@ class RunComparisonPlotter:
         self._plot_deepshap_modality(all_runs, output_dir, layout_width)
         count += 1
 
+        print("  Plotting comp_deepshap_modality_2...")
+        self._plot_deepshap_modality_2(all_runs, output_dir, layout_width)
+        count += 1
+
         print("  Plotting comp_deepshap_feature...")
         self._plot_deepshap_feature(all_runs, output_dir, layout_width)
         count += 1
@@ -5061,11 +5251,26 @@ class ModalityAblationStudyPlotter:
         num_series = len(series_labels)
         width = 0.8 / num_series
         
+        def darken_hex_color(hex_str, amount=0.25):
+            hex_str = hex_str.lstrip('#')
+            try:
+                r, g, b = int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)
+                r = max(0, int(r * (1.0 - amount)))
+                g = max(0, int(g * (1.0 - amount)))
+                b = max(0, int(b * (1.0 - amount)))
+                return f"#{r:02x}{g:02x}{b:02x}"
+            except Exception:
+                return "#000000"
+                
+        hatches = ["//", "\\\\", "xx"]
         for i in range(num_series):
             offset = (i - (num_series - 1) / 2) * width
             vals = [series_dicts[i].get(g, 0.0) for g in sorted_groups]
+            c_fill = series_colors[i]
+            c_edge = darken_hex_color(c_fill, amount=0.25)
+            hatch_pattern = hatches[i % len(hatches)]
             ax.bar(x + offset, vals, width, label=series_labels[i],
-                   color=series_colors[i], alpha=0.85, edgecolor=series_colors[i], linewidth=0.5)
+                   color=c_fill, alpha=0.85, edgecolor=c_edge, hatch=hatch_pattern, linewidth=0.8)
                             
         ax.set_ylabel("Normalized Importance", labelpad=4)
         
