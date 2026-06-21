@@ -2990,11 +2990,11 @@ class RunComparisonPlotter:
         # Map runs to their grid slots
         grid_runs = [
             # Row 0: Sensor-Fused (EMG + IMU)
-            [(par_all, "Participant-Specialized", True, ThesisStyle.COLOR_FUSION, "#EBF7FA", "#004D60"),
-             (gen_all, "Generalized (LOPO)", False, ThesisStyle.COLOR_FUSION, "#EBF7FA", "#004D60")],
+            [(par_all, "Participant-Specialized", True, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F"),
+             (gen_all, "Generalized (LOPO)", False, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F")],
             # Row 1: EMG-only
-            [(par_emg, "Participant-Specialized", True, ThesisStyle.COLOR_EMG, "#FAF0F5", "#551133"),
-             (gen_emg, "Generalized (LOPO)", False, ThesisStyle.COLOR_EMG, "#FAF0F5", "#551133")],
+            [(par_emg, "Participant-Specialized", True, ThesisStyle.COLOR_EMG, "#FFF3ED", "#773300"),
+             (gen_emg, "Generalized (LOPO)", False, ThesisStyle.COLOR_EMG, "#FFF3ED", "#773300")],
             # Row 2: IMU-only
             [(par_imu, "Participant-Specialized", True, ThesisStyle.COLOR_IMU, "#F0F7F4", "#115522"),
              (gen_imu, "Generalized (LOPO)", False, ThesisStyle.COLOR_IMU, "#F0F7F4", "#115522")]
@@ -3154,6 +3154,345 @@ class RunComparisonPlotter:
         plt.tight_layout(rect=[0.01, 0.04, 1, 1.0])
         ThesisStyle.save_figure(fig, output_dir / "comp_regression_6grid")
         plt.close(fig)
+
+    def _plot_regression_arch_6grid(self, st3_lopo, st3_kfold, lstm_lopo, lstm_kfold, gru_lopo, gru_kfold, trans_lopo, trans_kfold, cnngru_lopo, cnngru_kfold, cnnlstm_lopo, cnnlstm_kfold, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        # Grid dimensions: 6 rows x 2 columns (Specialized vs Generalized)
+        if layout_width == "column":
+            figsize = (3.5, 4.5)
+        elif layout_width == "double":
+            figsize = (7.0, 8.0)
+        else: # "default"
+            figsize = (8.0, 9.0)
+            
+        fig, axes = plt.subplots(nrows=6, ncols=2, figsize=figsize, sharex=True, sharey=True)
+        
+        # Map runs to their grid slots
+        grid_runs = [
+            # Row 0: ST-Transformer
+            [(st3_kfold, "Participant-Specific", True, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F"),
+             (st3_lopo, "Generalized (LOPO)", False, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F")],
+            # Row 1: LSTM
+            [(lstm_kfold, "Participant-Specific", True, "#33BBEE", "#EFF9FD", "#006688"),
+             (lstm_lopo, "Generalized (LOPO)", False, "#33BBEE", "#EFF9FD", "#006688")],
+            # Row 2: GRU
+            [(gru_kfold, "Participant-Specific", True, "#EE3377", "#FDF0F5", "#880033"),
+             (gru_lopo, "Generalized (LOPO)", False, "#EE3377", "#FDF0F5", "#880033")],
+            # Row 3: Naive-Transformer
+            [(trans_kfold, "Participant-Specific", True, "#DDCC77", "#FDFBF0", "#665511"),
+             (trans_lopo, "Generalized (LOPO)", False, "#DDCC77", "#FDFBF0", "#665511")],
+            # Row 4: CNN-GRU
+            [(cnngru_kfold, "Participant-Specific", True, "#117733", "#EDF7EE", "#083B19"),
+             (cnngru_lopo, "Generalized (LOPO)", False, "#117733", "#EDF7EE", "#083B19")],
+            # Row 5: CNN-LSTM
+            [(cnnlstm_kfold, "Participant-Specific", True, "#882255", "#F6EEF2", "#440022"),
+             (cnnlstm_lopo, "Generalized (LOPO)", False, "#882255", "#F6EEF2", "#440022")]
+        ]
+        
+        row_labels = ["ST-Transformer", "LSTM", "GRU", "Naive-Transformer", "CNN-GRU", "CNN-LSTM"]
+        
+        # Determine shared actual weights from all available predictions
+        all_y_true = []
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_true" in run["predictions"]:
+                    all_y_true.extend(run["predictions"]["y_true"])
+        if len(all_y_true) > 0:
+            actual_weights = np.sort(np.unique(all_y_true))
+        else:
+            actual_weights = np.array([0.0, 0.98, 1.97, 2.95, 4.15, 5.93])
+            
+        # Determine dynamic y_pred max for axes limits
+        max_val = 6.5
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_pred" in run["predictions"]:
+                    max_val = max(max_val, np.max(run["predictions"]["y_pred"]))
+        max_val = min(7.5, max_val + 0.25)
+        min_val = -0.2
+        
+        for row_idx, cols in enumerate(grid_runs):
+            for col_idx, (run, label, is_spec, primary_color, fill_color, accent_color) in enumerate(cols):
+                ax = axes[row_idx, col_idx]
+                
+                # Plot perfect prediction diagonal
+                ax.plot([min_val, max_val], [min_val, max_val], 
+                        color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.0, alpha=0.7, 
+                        label='Perfect Prediction' if (row_idx == 0 and col_idx == 0) else '', zorder=1)
+                
+                if not run or "predictions" not in run:
+                    ax.text(0.5, 0.5, "Data Not Available", ha='center', va='center', transform=ax.transAxes,
+                            fontproperties=fm.FontProperties(family='serif', style='italic'))
+                    continue
+                
+                preds = run["predictions"]
+                y_true = np.array(preds["y_true"])
+                y_pred = np.maximum(0.0, np.array(preds["y_pred"]))
+                
+                pred_groups = [y_pred[y_true == w] for w in actual_weights]
+                
+                # Downsample and plot outliers
+                first_outlier = True
+                for w_idx, w in enumerate(actual_weights):
+                    g_preds = pred_groups[w_idx]
+                    if len(g_preds) > 0:
+                        q1 = np.percentile(g_preds, 25)
+                        q3 = np.percentile(g_preds, 75)
+                        iqr = q3 - q1
+                        outliers = g_preds[(g_preds < q1 - 1.5 * iqr) | (g_preds > q3 + 1.5 * iqr)]
+                        
+                        if len(outliers) > 0:
+                            if len(outliers) > 50:
+                                np.random.seed(42)
+                                outliers = np.random.choice(outliers, size=50, replace=False)
+                                
+                            label_out = "Outliers" if (first_outlier and row_idx == 0 and col_idx == 0) else ""
+                            ax.scatter(np.full_like(outliers, w), outliers, 
+                                       alpha=0.3, s=8, color=ThesisStyle.COLOR_OUTLIER, edgecolors='none', 
+                                       zorder=2, label=label_out)
+                            if label_out:
+                                first_outlier = False
+                                
+                # Create styled boxplots
+                bp = ax.boxplot(pred_groups, positions=actual_weights, widths=0.28, 
+                                patch_artist=True, showfliers=False, showcaps=False,
+                                whiskerprops={'color': '#475569', 'linewidth': 0.8},
+                                boxprops={'edgecolor': primary_color, 'linewidth': 1.0},
+                                zorder=3)
+                
+                for box in bp['boxes']:
+                    box.set_facecolor(fill_color)
+                    box.set_alpha(0.8)
+                    
+                for idx, median in enumerate(bp['medians']):
+                    median.set_color(accent_color)
+                    median.set_linewidth(1.2)
+                    if idx == 0 and row_idx == 0 and col_idx == 0:
+                        median.set_label('Median')
+                        
+                # Extract metrics
+                metrics = self._get_regression_metrics(run, is_specialized=is_spec)
+                mae = metrics["MAE"]
+                rmse = metrics["RMSE"]
+                r2 = metrics["R2"]
+                
+                stats_text = f"$\\text{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
+                
+                ax.text(0.04, 0.96, stats_text, 
+                        transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
+                        bbox=dict(facecolor='white', alpha=0.92, 
+                                  edgecolor=primary_color, boxstyle='round,pad=0.4', linewidth=0.8))
+                
+                # Column titles at the top row (row_idx == 0)
+                if row_idx == 0:
+                    ax.set_title(
+                        label,
+                        fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                        color='black',
+                        pad=10
+                    )
+                
+                # Row titles and Y-axis label on the leftmost plots (col_idx == 0)
+                if col_idx == 0:
+                    ax.set_ylabel("Predicted\nWeight (kg)", labelpad=4)
+                    ax.annotate(row_labels[row_idx], xy=(-0.26, 0.5), xycoords='axes fraction',
+                                rotation=90, ha='center', va='center',
+                                fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.labelsize']),
+                                color='black')
+                else:
+                    ax.set_ylabel("", labelpad=0)
+                    
+                # X-axis label on the bottom row (row_idx == 5)
+                if row_idx == 5:
+                    ax.set_xlabel("Actual Weight (kg)", labelpad=8)
+                else:
+                    ax.set_xlabel("", labelpad=0)
+                    
+        # Apply unified ticks and limits
+        for ax in axes.flatten():
+            ax.set_xlim(min_val, max_val)
+            ax.set_ylim(min_val, max_val)
+            ax.set_xticks(actual_weights)
+            ax.set_yticks(actual_weights)
+            
+            def format_label(x):
+                return f"{x:.2f}".rstrip('0').rstrip('.')
+                
+            ax.set_xticklabels([format_label(w) for w in actual_weights])
+    def _plot_significance_matrix(self,
+                                  st3_lopo, st3_kfold,
+                                  lstm_lopo, lstm_kfold,
+                                  gru_lopo, gru_kfold,
+                                  trans_lopo, trans_kfold,
+                                  cnngru_lopo, cnngru_kfold,
+                                  cnnlstm_lopo, cnnlstm_kfold,
+                                  output_dir, layout_width):
+        """Generates a 1x2 grid of 3x5 significance matrices (y-axis: metrics, x-axis: baselines) comparing ST-Transformer to baselines."""
+        import scipy.stats as stats
+        from matplotlib.patches import Patch
+        
+        # Sizing and style application
+        ThesisStyle.apply(layout_width)
+        
+        if layout_width == "column":
+            figsize = (3.5, 2.8)
+        elif layout_width == "double":
+            figsize = (7.5, 3.5)
+        else:
+            figsize = (8.0, 4.0)
+            
+        fig, axes = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+        
+        lopo_baselines = [
+            ("CNN-GRU", cnngru_lopo),
+            ("CNN-LSTM", cnnlstm_lopo),
+            ("LSTM", lstm_lopo),
+            ("GRU", gru_lopo),
+            ("Naive-Transformer", trans_lopo)
+        ]
+        
+        kfold_baselines = [
+            ("CNN-GRU", cnngru_kfold),
+            ("CNN-LSTM", cnnlstm_kfold),
+            ("LSTM", lstm_kfold),
+            ("GRU", gru_kfold),
+            ("Naive-Transformer", trans_kfold)
+        ]
+        
+        # Panel 0: Participant-Specific (K-Fold CV)
+        self._plot_significance_matrix_panel(axes[0], st3_kfold, kfold_baselines, "Participant-Specific (K-Fold CV)")
+        
+        # Panel 1: Participant-Independent (LOPO CV)
+        self._plot_significance_matrix_panel(axes[1], st3_lopo, lopo_baselines, "Participant-Independent (LOPO CV)")
+        
+        # Add legend
+        legend_elements = [
+            Patch(facecolor='#D4EDDA', edgecolor='#155724', label='ST-Transformer is significantly better (lower error / higher $R^2$)'),
+            Patch(facecolor='#F8D7DA', edgecolor='#721C24', label='ST-Transformer is significantly worse (higher error / lower $R^2$)'),
+            Patch(facecolor='#F8F9FA', edgecolor='#6C757D', label='No statistically significant difference (n.s.)'),
+        ]
+        fig.legend(handles=legend_elements, loc='lower center', ncol=3, bbox_to_anchor=(0.5, 0.015), frameon=True, fontsize=8.0)
+        
+        plt.subplots_adjust(left=0.18, right=0.96, top=0.88, bottom=0.22, wspace=0.35)
+        
+        ThesisStyle.save_figure(fig, output_dir / "comp_significance_matrix")
+        plt.close(fig)
+
+    def _plot_significance_matrix_panel(self, ax, st_run, baselines, title):
+        import scipy.stats as stats
+        
+        metrics = [("MAE", False), ("RMSE", False), ("R2", True)]
+        metric_names_display = ["MAE", "RMSE", "$R^2$"]
+        
+        # Draw cells
+        ax.set_xlim(-0.5, len(baselines) - 0.5)
+        ax.set_ylim(-0.5, len(metrics) - 0.5)
+        
+        n_comparisons = len(baselines)
+        
+        for i in range(len(metrics)):
+            metric, higher_is_better = metrics[i]
+            y_pos = len(metrics) - 1 - i
+            
+            # Load participant metrics for ST-Transformer
+            st_errs = {}
+            if st_run:
+                pp = st_run.get("evaluation", {}).get("per_participant", [])
+                for item in pp:
+                    part = item.get("Participant")
+                    val = item.get(metric)
+                    if part is not None and val is not None:
+                        st_errs[part] = float(val)
+                        
+            # Load participant metrics for all baseline models
+            errs_dict = {}
+            for name, run_data in baselines:
+                if not run_data:
+                    errs_dict[name] = {}
+                    continue
+                pp = run_data.get("evaluation", {}).get("per_participant", [])
+                for item in pp:
+                    part = item.get("Participant")
+                    val = item.get(metric)
+                    if part is not None and val is not None:
+                        if name not in errs_dict:
+                            errs_dict[name] = {}
+                        errs_dict[name][part] = float(val)
+                        
+            # Find shared participants
+            shared_participants = set(st_errs.keys())
+            for name, _ in baselines:
+                errs = errs_dict.get(name, {})
+                if errs:
+                    shared_participants = shared_participants.intersection(errs.keys())
+                    
+            if not shared_participants or not st_errs:
+                for j in range(len(baselines)):
+                    rect = plt.Rectangle((j - 0.5, y_pos - 0.5), 1.0, 1.0, facecolor="#F8F9FA", edgecolor="#CBD5E1", linewidth=0.5)
+                    ax.add_patch(rect)
+                    ax.text(j, y_pos, "N/A", ha='center', va='center', color='#94A3B8', fontsize=8)
+                continue
+                
+            shared_participants = sorted(list(shared_participants))
+            errors_st = np.array([st_errs[p] for p in shared_participants])
+            
+            for j in range(len(baselines)):
+                name_j, _ = baselines[j]
+                x_pos = j
+                
+                errors_j = np.array([errs_dict[name_j][p] for p in shared_participants])
+                
+                # Run test
+                t_stat, p_val = stats.ttest_rel(errors_st, errors_j)
+                p_adj = min(1.0, p_val * n_comparisons)
+                mean_diff = np.mean(errors_st) - np.mean(errors_j)
+                
+                # Color coding and symbols
+                if p_adj < 0.05:
+                    if p_adj < 0.001:
+                        symbol = "***"
+                    elif p_adj < 0.01:
+                        symbol = "**"
+                    else:
+                        symbol = "*"
+                        
+                    is_better = (mean_diff > 0) if higher_is_better else (mean_diff < 0)
+                    if is_better:
+                        cell_color = "#D4EDDA"
+                        text_color = "#155724"
+                    else:
+                        cell_color = "#F8D7DA"
+                        text_color = "#721C24"
+                else:
+                    symbol = "n.s."
+                    cell_color = "#F8F9FA"
+                    text_color = "#475569"
+                    
+                rect = plt.Rectangle((x_pos - 0.5, y_pos - 0.5), 1.0, 1.0, facecolor=cell_color, edgecolor="#CBD5E1", linewidth=0.5)
+                ax.add_patch(rect)
+                
+                diff_str = f"{mean_diff:+.3f}"
+                
+                if p_adj < 0.05:
+                    ax.text(x_pos, y_pos + 0.12, diff_str, ha='center', va='center', color=text_color, fontweight='bold', fontsize=8)
+                    ax.text(x_pos, y_pos - 0.15, symbol, ha='center', va='center', color=text_color, fontweight='bold', fontsize=10)
+                else:
+                    ax.text(x_pos, y_pos + 0.12, diff_str, ha='center', va='center', color=text_color, fontsize=8)
+                    ax.text(x_pos, y_pos - 0.15, symbol, ha='center', va='center', color=text_color, fontsize=8)
+                    
+        ax.set_xticks(range(len(baselines)))
+        ax.set_xticklabels([name for name, _ in baselines], rotation=45, ha='right', fontsize=8)
+        ax.set_yticks(range(len(metrics)))
+        ax.set_yticklabels(reversed(metric_names_display), fontsize=8)
+        ax.set_title(title, fontweight='bold', fontsize=9.5, pad=10)
+        
+        # Remove grid lines and spines since it's a matrix study
+        ax.grid(False)
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.tick_params(axis='both', which='both', length=0)
+
 
     def _plot_participant_bars_subplot(self, ax, participants, vals_all, vals_emg, vals_imu, mean_all, mean_emg, mean_imu, clip_val=1.0):
         x = np.arange(len(participants))
@@ -4877,6 +5216,60 @@ class RunComparisonPlotter:
         self._plot_regression_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width)
         count += 1
 
+        print("  Plotting comp_regression_arch_6grid...")
+        try:
+            lstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t0")
+            lstm_kfold = self._load("model/model_results/arch_comp/run_20260621_115216_kfold_t5")
+            gru_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t1")
+            gru_kfold = self._load("model/model_results/arch_comp/run_20260621_115711_kfold_t6")
+            trans_lopo = self._load("model/model_results/arch_comp/run_20260621_113022_participant_t4")
+            trans_kfold = self._load("model/model_results/arch_comp/run_20260621_123754_kfold_t9")
+            cnngru_lopo = self._load("model/model_results/arch_comp/run_20260621_113022_participant_t3")
+            cnngru_kfold = self._load("model/model_results/arch_comp/run_20260621_123754_kfold_t8")
+            cnnlstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t2")
+            cnnlstm_kfold = self._load("model/model_results/arch_comp/run_20260621_121031_kfold_t7")
+            
+            self._plot_regression_arch_6grid(
+                gen_all, par_all,  # ST-Transformer LOPO / K-Fold
+                lstm_lopo, lstm_kfold,
+                gru_lopo, gru_kfold,
+                trans_lopo, trans_kfold,
+                cnngru_lopo, cnngru_kfold,
+                cnnlstm_lopo, cnnlstm_kfold,
+                output_dir, layout_width
+            )
+            count += 1
+        except Exception as e:
+            print(f"  [ERROR] Failed to plot comp_regression_arch_6grid: {e}")
+
+        print("  Plotting comp_significance_matrix...")
+        try:
+            lstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t0")
+            lstm_kfold = self._load("model/model_results/arch_comp/run_20260621_115216_kfold_t5")
+            gru_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t1")
+            gru_kfold = self._load("model/model_results/arch_comp/run_20260621_115711_kfold_t6")
+            trans_lopo = self._load("model/model_results/arch_comp/run_20260621_113022_participant_t4")
+            trans_kfold = self._load("model/model_results/arch_comp/run_20260621_123754_kfold_t9")
+            cnngru_lopo = self._load("model/model_results/arch_comp/run_20260621_113022_participant_t3")
+            cnngru_kfold = self._load("model/model_results/arch_comp/run_20260621_123754_kfold_t8")
+            cnnlstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t2")
+            cnnlstm_kfold = self._load("model/model_results/arch_comp/run_20260621_121031_kfold_t7")
+            
+            self._plot_significance_matrix(
+                gen_all, par_all,  # ST-Transformer LOPO / K-Fold
+                lstm_lopo, lstm_kfold,
+                gru_lopo, gru_kfold,
+                trans_lopo, trans_kfold,
+                cnngru_lopo, cnngru_kfold,
+                cnnlstm_lopo, cnnlstm_kfold,
+                output_dir, layout_width
+            )
+            count += 1
+        except Exception as e:
+            print(f"  [ERROR] Failed to plot comp_significance_matrix: {e}")
+            import traceback
+            traceback.print_exc()
+
         print("  Plotting comp_generalization_mae_6grid...")
         self._plot_generalization_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width, metric="MAE")
         count += 1
@@ -5137,17 +5530,12 @@ class ModalityAblationStudyPlotter:
         # Plot Group Importance component with precomputed values
         self._plot_group_importance_ax(data, ax_imp, sorted_groups, shap_norm, layout_width)
         
-        # Entire figure suptitle
-        fig.suptitle("Sensor Group Ablation Study Heat Map",
-                     fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
-                     color="black", y=0.98)
-        
         # Adjust layout spacing to avoid overlaps
         plt.tight_layout()
         
-        # Subplots adjust to accommodate suptitle at the top and legend at the bottom
+        # Subplots adjust
         bottom_margin = 0.11 if layout_width == "column" else 0.09
-        fig.subplots_adjust(top=0.94, bottom=bottom_margin)
+        fig.subplots_adjust(top=0.93, bottom=bottom_margin)
         
         # Save figure
         file_suffix = f"ablation_both_{metric.lower()}"
@@ -5262,21 +5650,26 @@ class ModalityAblationStudyPlotter:
             except Exception:
                 return "#000000"
                 
-        hatches = ["//", "\\\\", "xx"]
         for i in range(num_series):
             offset = (i - (num_series - 1) / 2) * width
             vals = [series_dicts[i].get(g, 0.0) for g in sorted_groups]
             c_fill = series_colors[i]
             c_edge = darken_hex_color(c_fill, amount=0.25)
-            hatch_pattern = hatches[i % len(hatches)]
             ax.bar(x + offset, vals, width, label=series_labels[i],
-                   color=c_fill, alpha=0.85, edgecolor=c_edge, hatch=hatch_pattern, linewidth=0.8)
+                   color=c_fill, alpha=0.85, edgecolor=c_edge, linewidth=0.8, zorder=3)
                             
         ax.set_ylabel("Normalized Importance", labelpad=4)
         
         title = "Sensor Group Importance"
         ThesisStyle.set_title(ax, title)
-        ax.title.set_color("black")
+        
+        # Hide top and right spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        
+        # Enable background grid lines
+        ax.grid(True, axis='y', linestyle='--', linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
+        ax.set_axisbelow(True)
         
         ax.set_xticks(x)
         ax.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups])
@@ -5351,11 +5744,11 @@ class ModalityAblationStudyPlotter:
         
         nrows, ncols = df[sorted_groups].values.shape
         
-        # Draw background grid squares (soft gray)
+        # Draw background grid squares (clean neutral gray)
         for r in range(nrows):
             for c in range(ncols):
                 rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
-                                     facecolor=ThesisStyle.COLOR_HEATMAP_ABSENT, edgecolor="white",
+                                     facecolor="#F1F5F9", edgecolor="white",
                                      linewidth=1.5, zorder=1)
                 ax_mat.add_patch(rect)
                 
@@ -5374,6 +5767,8 @@ class ModalityAblationStudyPlotter:
         ax_mat.set_xticks(np.arange(ncols))
         ax_mat.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups], rotation=45, ha="right", fontsize=8.0)
         
+        ThesisStyle.set_title(ax_mat, "Sensor Combination")
+
         # Remove spines
         for spine in ax_mat.spines.values():
             spine.set_visible(False)
@@ -5383,7 +5778,7 @@ class ModalityAblationStudyPlotter:
         y_pos = np.arange(nrows)
         height = 0.5
         
-        color = ThesisStyle.COLOR_HEATMAP_PRESENT
+        color = ThesisStyle.COLOR_MAE if metric == "MAE" else ThesisStyle.COLOR_RMSE
         ax_bar.barh(y_pos, metric_vals, height=height, color=color, alpha=0.85, zorder=2)
         
         ax_bar.set_ylim(nrows - 0.5, -0.5)
@@ -5391,6 +5786,8 @@ class ModalityAblationStudyPlotter:
         ax_bar.grid(True, axis='x', linestyle='--', color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
         ax_bar.set_xlabel(f"{metric} (kg)", labelpad=4)
         
+        ThesisStyle.set_title(ax_bar, f"Ablation Error ({metric})")
+
         ax_bar.spines['top'].set_visible(False)
         ax_bar.spines['right'].set_visible(False)
 

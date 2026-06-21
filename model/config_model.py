@@ -4,7 +4,9 @@ from pathlib import Path
 # Detect if we are on the DelftBlue server
 ON_DELFTBLUE = os.getenv("SLURM_JOB_ID") is not None
 
-GLOBAL_RANDOM_STATE = 245
+# Master seed. Env-selectable so multi-seed runs vary weight init, data shuffling
+# and k-fold partitions per job (default 245 preserves single-run behaviour).
+GLOBAL_RANDOM_STATE = int(os.environ.get("THESIS_SEED", "245"))
 GLOBAL_LOSS_FUNCTION = 'mse'  # Options: 'mse', 'mae', or 'huber'
 GLOBAL_BALANCE_WEIGHTS = False
 

@@ -54,3 +54,27 @@ The RM-ANOVA results support two primary conclusions:
     \item \textbf{Generalizability Limitations of Kinematics:}
     The \texttt{IMU-only} configuration performs significantly worse than both \texttt{ALL} and \texttt{EMG-only} across both evaluation strategies ($p_{\text{adj}} < 0.01$). Crucially, in the LOPO setting, the IMU-only performance degrades severely (MAE = 0.9087 kg), indicating that kinematic signatures are highly subject-specific and fail to generalize to unseen users. EMG signals, reflecting direct physiological muscle activation, remain robust and generalize significantly better across individuals.
 \end{enumerate}
+
+\section{Model Architecture Significance Analysis}
+To evaluate whether the performance differences between different model architectures are statistically meaningful, we perform a One-Way Repeated Measures ANOVA on the participant-level errors ($N=17$) under the Leave-One-Participant-Out (LOPO) CV validation strategy. The architectures compared include the Spatio-Temporal Transformer (ST-Transformer), LSTM, GRU, Naive-Transformer, CNN-GRU, and CNN-LSTM.
+
+The RM-ANOVA results reveal highly significant differences between the architectures for both MAE ($F(5,80) = 10.59, p < 0.001$) and RMSE ($F(5,80) = 8.56, p < 0.001$). Table~\ref{tab:model_comparison_lopo} presents the mean metrics along with the post-hoc pairwise comparisons using Bonferroni-corrected paired $t$-tests.
+
+\begin{table}[h]
+    \centering
+    \small
+    \caption{Model Architecture Performance and Statistical Significance (LOPO CV, EMG + IMU Modality). Within each column, mean values sharing a common superscript letter are not statistically significantly different at the Bonferroni-corrected level of $\alpha = 0.05$.}
+    \label{tab:model_comparison_lopo}
+    \begin{tabularx}{\columnwidth}{l >{\centering\arraybackslash}X >{\centering\arraybackslash}X >{\centering\arraybackslash}X}
+        \toprule
+        Model Architecture & MAE (kg) & RMSE (kg) & $\text{R}^2$ \\
+        \midrule
+        LSTM & $0.489^{\text{a}}$ & $0.669^{\text{a,b}}$ & $0.846$ \\
+        GRU & $0.489^{\text{a}}$ & $0.636^{\text{a}}$ & $0.857$ \\
+        ST-Transformer & $0.536^{\text{a,b}}$ & $0.680^{\text{a,b,c}}$ & $0.853$ \\
+        Naive-Transformer & $0.622^{\text{b,c}}$ & $0.803^{\text{c}}$ & $0.782$ \\
+        CNN-GRU & $0.756^{\text{b,c}}$ & $0.866^{\text{b,c}}$ & $0.706$ \\
+        CNN-LSTM & $0.812^{\text{c}}$ & $0.932^{\text{c}}$ & $0.667$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}

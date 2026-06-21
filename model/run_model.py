@@ -421,6 +421,9 @@ def setup_run_dir(base_dir):
     regime = os.environ.get("THESIS_CV_STRATEGY")
     if regime:
         suffix_parts.append(regime)
+    run_tag = os.environ.get("THESIS_RUN_TAG")   # e.g. "lstm_s245" — makes batch dirs self-describing
+    if run_tag:
+        suffix_parts.append(run_tag)
     array_task = os.environ.get("SLURM_ARRAY_TASK_ID")
     if array_task is not None:
         suffix_parts.append(f"t{array_task}")

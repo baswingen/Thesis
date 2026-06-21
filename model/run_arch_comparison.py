@@ -39,8 +39,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import model.config_model as cfg
 
-# The 5 baseline architectures this comparison covers.
-VALID_MODELS = ["lstm", "gru", "cnn_lstm", "cnn_gru", "transformer"]
+# The baseline architectures this comparison covers, plus st3 itself so it can be
+# run under the IDENTICAL protocol (for multi-seed significance vs the baselines).
+VALID_MODELS = ["lstm", "gru", "cnn_lstm", "cnn_gru", "transformer",
+                "spatio_temporal_transformer3"]
 
 
 def parse_args():
@@ -71,6 +73,7 @@ def main():
         "lstm": cfg.LSTM_CONFIG, "gru": cfg.GRU_CONFIG,
         "cnn_lstm": cfg.CNN_LSTM_CONFIG, "cnn_gru": cfg.CNN_GRU_CONFIG,
         "transformer": cfg.TRANSFORMER_CONFIG,
+        "spatio_temporal_transformer3": cfg.SPATIO_TEMPORAL_TRANSFORMER3_CONFIG,
     }
     model_cfg = _CONFIG_BY_MODEL[args.model_type]
     model_cfg["epochs"] = 200
