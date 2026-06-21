@@ -1,0 +1,322 @@
+=================================================================
+ARCH COMPARISON — array task 3
+  Architecture        : cnn_gru
+  Regime              : participant
+  Database            : /scratch/bwingen/thesis/database
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+  Extra args          : 
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+ARCHITECTURE COMPARISON — baseline vs st3
+  model_type          : cnn_gru
+  CV strategy (regime): participant  [LOPO / cross-subject]
+  modalities          : all
+  scheduler           : ReduceLROnPlateau  epochs=200  es_patience=5
+  feature importance  : OFF
+==============================================================================
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 21 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Loaded 18314 raw segments (20 channels each)
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Raw Segment Data Summary:
+  - Total Segments: 15732
+  - Channels (EMG + IMU): 20
+  - Avg Segment Length: 2601 samples
+  - Min / Max Segment Length: 1001 / 6996 samples
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 17-Fold Cross-Participant Validation...
+--- Fold 1/17 (Left out Participants: P01) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P08
+[CNNGRURegressor] Using explicitly provided validation set (834 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 11120 → 22500 segments (+11380 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 6. Best Val Loss: 0.5759
+    Train MAE: 0.4780 | Test MAE: 0.5189 | Gap: 0.0409
+    Train RMSE: 0.6324 | Test RMSE: 0.6602 | Ratio: 1.04x
+--- Fold 2/17 (Left out Participants: P02) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P07
+[CNNGRURegressor] Using explicitly provided validation set (833 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 13680 → 22500 segments (+8820 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 6. Best Val Loss: 1.3453
+    Train MAE: 0.4577 | Test MAE: 0.3931 | Gap: -0.0645
+    Train RMSE: 0.6635 | Test RMSE: 0.5905 | Ratio: 0.89x
+--- Fold 3/17 (Left out Participants: P12) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P03
+[CNNGRURegressor] Using explicitly provided validation set (820 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14061 → 22500 segments (+8439 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 9. Best Val Loss: 0.3026
+    Train MAE: 0.4638 | Test MAE: 0.4242 | Gap: -0.0396
+    Train RMSE: 0.7549 | Test RMSE: 0.7150 | Ratio: 0.95x
+--- Fold 4/17 (Left out Participants: P11) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[CNNGRURegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14035 → 22500 segments (+8465 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 9. Best Val Loss: 0.1812
+    Train MAE: 0.4059 | Test MAE: 0.5346 | Gap: 0.1287
+    Train RMSE: 0.6407 | Test RMSE: 0.7121 | Ratio: 1.11x
+--- Fold 5/17 (Left out Participants: P09) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P18
+[CNNGRURegressor] Using explicitly provided validation set (405 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14480 → 22500 segments (+8020 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 6. Best Val Loss: 0.4451
+    Train MAE: 0.5333 | Test MAE: 0.2907 | Gap: -0.2426
+    Train RMSE: 0.8675 | Test RMSE: 0.4928 | Ratio: 0.57x
+--- Fold 6/17 (Left out Participants: P17) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[CNNGRURegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14040 → 22500 segments (+8460 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 7. Best Val Loss: 0.9462
+    Train MAE: 0.5806 | Test MAE: 0.7063 | Gap: 0.1257
+    Train RMSE: 0.7206 | Test RMSE: 0.8958 | Ratio: 1.24x
+--- Fold 7/17 (Left out Participants: P04) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P01
+[CNNGRURegressor] Using explicitly provided validation set (3778 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 11119 → 22500 segments (+11381 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 9. Best Val Loss: 0.3903
+    Train MAE: 0.3125 | Test MAE: 0.2731 | Gap: -0.0394
+    Train RMSE: 0.5405 | Test RMSE: 0.5029 | Ratio: 0.93x
+--- Fold 8/17 (Left out Participants: P08) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[CNNGRURegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14484 → 22500 segments (+8016 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 7. Best Val Loss: 0.8427
+    Train MAE: 0.3955 | Test MAE: 0.5190 | Gap: 0.1236
+    Train RMSE: 0.6676 | Test RMSE: 0.8984 | Ratio: 1.35x
+--- Fold 9/17 (Left out Participants: P07) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[CNNGRURegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14073 → 22500 segments (+8427 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 7. Best Val Loss: 1.0802
+    Train MAE: 0.5074 | Test MAE: 0.7657 | Gap: 0.2583
+    Train RMSE: 0.7044 | Test RMSE: 1.2334 | Ratio: 1.75x
+--- Fold 10/17 (Left out Participants: P16) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[CNNGRURegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14154 → 22500 segments (+8346 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 11. Best Val Loss: 0.1669
+    Train MAE: 0.4559 | Test MAE: 0.2209 | Gap: -0.2350
+    Train RMSE: 0.7419 | Test RMSE: 0.4468 | Ratio: 0.60x
+--- Fold 11/17 (Left out Participants: P06) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P17
+[CNNGRURegressor] Using explicitly provided validation set (842 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14064 → 22500 segments (+8436 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 6. Best Val Loss: 0.9551
+    Train MAE: 0.4939 | Test MAE: 0.6620 | Gap: 0.1681
+    Train RMSE: 0.8197 | Test RMSE: 1.0941 | Ratio: 1.33x
+--- Fold 12/17 (Left out Participants: P03) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[CNNGRURegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14166 → 22500 segments (+8334 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 7. Best Val Loss: 0.2280
+    Train MAE: 0.5017 | Test MAE: 0.3986 | Gap: -0.1031
+    Train RMSE: 0.7986 | Test RMSE: 0.5772 | Ratio: 0.72x
+--- Fold 13/17 (Left out Participants: P15) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P18
+[CNNGRURegressor] Using explicitly provided validation set (405 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14581 → 22500 segments (+7919 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 6. Best Val Loss: 0.4167
+    Train MAE: 0.3445 | Test MAE: 0.2389 | Gap: -0.1056
+    Train RMSE: 0.6002 | Test RMSE: 0.4403 | Ratio: 0.73x
+--- Fold 14/17 (Left out Participants: P10) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P16
+[CNNGRURegressor] Using explicitly provided validation set (832 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14486 → 22500 segments (+8014 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 17. Best Val Loss: 0.1859
+    Train MAE: 0.4742 | Test MAE: 0.5517 | Gap: 0.0774
+    Train RMSE: 0.7924 | Test RMSE: 1.0427 | Ratio: 1.32x
+--- Fold 15/17 (Left out Participants: P14) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P16
+[CNNGRURegressor] Using explicitly provided validation set (832 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14487 → 22500 segments (+8013 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 14. Best Val Loss: 0.2920
+    Train MAE: 0.5096 | Test MAE: 0.6705 | Gap: 0.1610
+    Train RMSE: 0.8945 | Test RMSE: 1.1856 | Ratio: 1.33x
+--- Fold 16/17 (Left out Participants: P18) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P12
+[CNNGRURegressor] Using explicitly provided validation set (851 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14476 → 22500 segments (+8024 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 9. Best Val Loss: 0.3090
+    Train MAE: 0.4618 | Test MAE: 0.3321 | Gap: -0.1297
+    Train RMSE: 0.6914 | Test RMSE: 0.6022 | Ratio: 0.87x
+--- Fold 17/17 (Left out Participants: P05) ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[CNNGRURegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[CNNGRURegressor] Augmentation: 14599 → 22500 segments (+7901 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 7. Best Val Loss: 0.3509
+    Train MAE: 0.4816 | Test MAE: 0.4572 | Gap: -0.0244
+    Train RMSE: 0.7640 | Test RMSE: 0.6715 | Ratio: 0.88x
+
+Training final model on full dataset for saving...
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[CNNGRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants from final dataset for early stopping: P04
+[CNNGRURegressor] Using explicitly provided validation set (835 samples).
+[Augmenter] Balanced 96 participant-weight combinations to 250 samples each. Total: 24000
+[CNNGRURegressor] Augmentation: 14897 → 24000 segments (+9103 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+
+Early stopping at epoch 6. Best Val Loss: 0.5533
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 15732 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 15732 samples in 0.033s...
+[t-SNE] Computed neighbors for 15732 samples in 2.250s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 15732
+[t-SNE] Computed conditional probabilities for sample 2000 / 15732
+[t-SNE] Computed conditional probabilities for sample 3000 / 15732
+[t-SNE] Computed conditional probabilities for sample 4000 / 15732
+[t-SNE] Computed conditional probabilities for sample 5000 / 15732
+[t-SNE] Computed conditional probabilities for sample 6000 / 15732
+[t-SNE] Computed conditional probabilities for sample 7000 / 15732
+[t-SNE] Computed conditional probabilities for sample 8000 / 15732
+[t-SNE] Computed conditional probabilities for sample 9000 / 15732
+[t-SNE] Computed conditional probabilities for sample 10000 / 15732
+[t-SNE] Computed conditional probabilities for sample 11000 / 15732
+[t-SNE] Computed conditional probabilities for sample 12000 / 15732
+[t-SNE] Computed conditional probabilities for sample 13000 / 15732
+[t-SNE] Computed conditional probabilities for sample 14000 / 15732
+[t-SNE] Computed conditional probabilities for sample 15000 / 15732
+[t-SNE] Computed conditional probabilities for sample 15732 / 15732
+[t-SNE] Mean sigma: 0.070625
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 83.900612
+[t-SNE] KL divergence after 1000 iterations: 1.815333
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.7558   | 0.8659   | 0.7056  
+participant macro            | 0.4681   | 0.7507   | 0.8315  
+class macro                  | 0.7054   | 0.8830   | 0.7494  
+pooled (unbalanced)          | 0.4734   | 0.7520   | 0.8479  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_113022_participant_t3/run_data.json
