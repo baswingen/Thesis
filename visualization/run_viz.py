@@ -61,8 +61,15 @@ MODEL_RUNS = {
         "output_dir": "visualization/run_plots_par_spec"
     },
     "ablation": {
-        "run_dir": "model/model_results/run_modality_ablation",
+        "run_dir": "model/model_results/run_modality_ablation_spec",
         "output_dir": "visualization/run_modality_ablation"
+    },
+    "ablation_gen": {
+        # Generalized (LOPO) twin of the par-spec ablation above — assembled from the
+        # run_delftblue.sh array via collect_modality_ablation_gen.sh. Enhances the
+        # ablation_both_*_v2 figures with the cross-participant regime.
+        "run_dir": "model/model_results/run_modality_ablation_gen",
+        "output_dir": "visualization/run_modality_ablation_gen"
     }
 }
 
@@ -3159,12 +3166,13 @@ class RunComparisonPlotter:
         ThesisStyle.apply(layout_width)
         
         # Grid dimensions: 6 rows x 2 columns (Specialized vs Generalized)
+        # We size this to fill an entire page of rho.cls (leaving room for caption)
         if layout_width == "column":
             figsize = (3.5, 4.5)
         elif layout_width == "double":
-            figsize = (7.0, 8.0)
+            figsize = (7.0, 9.0)
         else: # "default"
-            figsize = (8.0, 9.0)
+            figsize = (8.0, 10.0)
             
         fig, axes = plt.subplots(nrows=6, ncols=2, figsize=figsize, sharex=True, sharey=True)
         
@@ -3320,6 +3328,27 @@ class RunComparisonPlotter:
                 return f"{x:.2f}".rstrip('0').rstrip('.')
                 
             ax.set_xticklabels([format_label(w) for w in actual_weights])
+            ax.set_yticklabels([format_label(w) for w in actual_weights])
+            ThesisStyle.style_ax(ax)
+            
+        # Add single global legend at the bottom of the grid
+        from matplotlib.lines import Line2D
+        handles, labels = axes[0, 0].get_legend_handles_labels()
+        legend_handles = []
+        for h, l in zip(handles, labels):
+            if l == "Median":
+                # Use a dark grey proxy handle for the Median to represent the median of all plots generally
+                legend_handles.append(Line2D([0], [0], color="#475569", linewidth=1.5))
+            else:
+                legend_handles.append(h)
+                
+        fig.legend(handles=legend_handles, labels=labels, loc='lower center', ncol=3,
+                   bbox_to_anchor=(0.5, 0.01),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        plt.tight_layout(rect=[0.01, 0.04, 1, 1.0])
+        ThesisStyle.save_figure(fig, output_dir / "comp_regression_arch_6grid")
+        plt.close(fig)
     def _plot_significance_matrix(self,
                                   st3_lopo, st3_kfold,
                                   lstm_lopo, lstm_kfold,
@@ -5414,11 +5443,17 @@ class ModalityAblationStudyPlotter:
         target_dir = output_path.parent
         target_dir.mkdir(parents=True, exist_ok=True)
         
-        # 1. Combined plot (RMSE Variant)
-        self._plot_combined(data, target_dir, "RMSE", layout_width)
+        # 1. Combined plot (RMSE Variant) - Version 1
+        self._plot_combined(data, target_dir, "RMSE", layout_width, version=1)
         
-        # 2. Combined plot (MAE Variant)
-        self._plot_combined(data, target_dir, "MAE", layout_width)
+        # 2. Combined plot (MAE Variant) - Version 1
+        self._plot_combined(data, target_dir, "MAE", layout_width, version=1)
+        
+        # 3. Combined plot (RMSE Variant) - Version 2 (with Attention)
+        self._plot_combined(data, target_dir, "RMSE", layout_width, version=2)
+        
+        # 4. Combined plot (MAE Variant) - Version 2 (with Attention)
+        self._plot_combined(data, target_dir, "MAE", layout_width, version=2)
         
         return True
 
@@ -5485,7 +5520,7 @@ class ModalityAblationStudyPlotter:
         shap_norm = normalize_dict({k: max(v, 0.0) for k, v in phi.items()})
         return shap_norm
 
-    def _plot_combined(self, data, target_dir, metric, layout_width):
+    def _plot_combined(self, data, target_dir, metric, layout_width, version=1):
         import matplotlib.gridspec as gridspec
         
         # Apply style configuration
@@ -5500,16 +5535,16 @@ class ModalityAblationStudyPlotter:
         
         # Determine figure size depending on layout_width
         if layout_width == "column":
-            figsize = (3.46, 6.5)
+            figsize = (3.46, 6.0)
         else:
-            figsize = (7.0, 7.8)
+            figsize = (7.0, 7.0)
             
         fig = plt.figure(figsize=figsize)
         
         # Use gridspec for layout:
         # Row 0: combo heatmap (matrix & bar) -> height ratio 5.0
         # Row 1: group importance bar chart -> height ratio 2.5
-        gs = gridspec.GridSpec(2, 1, height_ratios=[5.0, 2.5], hspace=0.32)
+        gs = gridspec.GridSpec(2, 1, height_ratios=[5.0, 2.5], hspace=0.35)
         
         # Row 0 subplots
         if layout_width == "column":
@@ -5528,21 +5563,28 @@ class ModalityAblationStudyPlotter:
         self._plot_combo_heatmap_ax(data, ax_mat, ax_bar, metric, sorted_groups, layout_width)
         
         # Plot Group Importance component with precomputed values
-        self._plot_group_importance_ax(data, ax_imp, sorted_groups, shap_norm, layout_width)
+        self._plot_group_importance_ax(data, ax_imp, sorted_groups, shap_norm, layout_width, version)
+        
+        # Entire figure suptitle in black
+        fig.suptitle("Sensor Group Ablation Heat Map",
+                     fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
+                     color="black", y=0.98)
         
         # Adjust layout spacing to avoid overlaps
-        plt.tight_layout()
+        if layout_width == "column":
+            fig.subplots_adjust(left=0.14, right=0.95, bottom=0.20, top=0.91, hspace=0.48)
+        else:
+            fig.subplots_adjust(left=0.10, right=0.98, bottom=0.15, top=0.92, hspace=0.38)
         
-        # Subplots adjust
-        bottom_margin = 0.11 if layout_width == "column" else 0.09
-        fig.subplots_adjust(top=0.93, bottom=bottom_margin)
-        
+        # No squeezing of ax_imp - let it be as wide as the heatmap and rmse/mae plot combined
+            
         # Save figure
-        file_suffix = f"ablation_both_{metric.lower()}"
+        suffix = "_v2" if version == 2 else ""
+        file_suffix = f"ablation_both_{metric.lower()}{suffix}"
         ThesisStyle.save_figure(fig, target_dir / file_suffix)
         plt.close(fig)
 
-    def _plot_group_importance_ax(self, data, ax, sorted_groups, shap_norm, layout_width):
+    def _plot_group_importance_ax(self, data, ax, sorted_groups, shap_norm, layout_width, version=1):
         GROUP_LABELS = {
             "IMUup": "IMU-1",
             "IMUfo": "IMU-2",
@@ -5632,10 +5674,39 @@ class ModalityAblationStudyPlotter:
         if ds_norm: methods.append(("DeepSHAP", ds_norm, ThesisStyle.COLOR_DEEPSHAP))
         if perm_norm: methods.append(("Permutation", perm_norm, ThesisStyle.COLOR_PERMUTATION))
         
+        # Load attention pooling if version == 2
+        attn_norm = {}
+        if version == 2:
+            attn_dir = Path(__file__).resolve().parent / "run_plots_attention"
+            attn_path = attn_dir / "attention_data_kfold.npz"
+            if attn_path.exists():
+                try:
+                    attn_data = np.load(attn_path, allow_pickle=True)
+                    attn_chans = attn_data["channels"]
+                    attn_pooling = attn_data["pooling"]
+                    attn_dict = dict(zip([str(c) for c in attn_chans], attn_pooling))
+                    
+                    attn_g = {g: 0.0 for g in sorted_groups}
+                    for k, v in attn_dict.items():
+                        g = channel_to_group(k)
+                        if g is not None:
+                            attn_g[g] += max(float(v), 0.0)
+                    attn_norm = normalize_dict(attn_g)
+                except Exception as e:
+                    print(f"Error loading or processing attention data from {attn_path}: {e}")
+            else:
+                print(f"[Warning] Version 2 requested but missing attention data at {attn_path}")
+        
         series_labels = ["Ablation"] + [m[0] for m in methods]
         series_dicts = [shap_norm] + [m[1] for m in methods]
         series_colors = [ThesisStyle.COLOR_SHAPLEY] + [m[2] for m in methods]
         
+        if version == 2 and attn_norm:
+            COLOR_ATTENTION = "#774499" # Paul Tol Muted Purple
+            series_labels.append("Attention")
+            series_dicts.append(attn_norm)
+            series_colors.append(COLOR_ATTENTION)
+            
         num_series = len(series_labels)
         width = 0.8 / num_series
         
@@ -5650,18 +5721,21 @@ class ModalityAblationStudyPlotter:
             except Exception:
                 return "#000000"
                 
+        hatches = ["//", "\\\\", "xx", ".."]
         for i in range(num_series):
             offset = (i - (num_series - 1) / 2) * width
             vals = [series_dicts[i].get(g, 0.0) for g in sorted_groups]
             c_fill = series_colors[i]
             c_edge = darken_hex_color(c_fill, amount=0.25)
+            hatch_pattern = hatches[i % len(hatches)]
             ax.bar(x + offset, vals, width, label=series_labels[i],
-                   color=c_fill, alpha=0.85, edgecolor=c_edge, linewidth=0.8, zorder=3)
+                   color=c_fill, alpha=0.85, edgecolor=c_edge, hatch=hatch_pattern, linewidth=0.8, zorder=3)
                             
         ax.set_ylabel("Normalized Importance", labelpad=4)
         
         title = "Sensor Group Importance"
         ThesisStyle.set_title(ax, title)
+        ax.title.set_color("black")
         
         # Hide top and right spines
         ax.spines['top'].set_visible(False)
@@ -5677,8 +5751,11 @@ class ModalityAblationStudyPlotter:
         max_val = max([max(s.values()) for s in series_dicts if s]) if any(series_dicts) else 1.0
         ax.set_ylim(0, max_val * 1.25)
         
-        # Position legend closely at the bottom of this subplot
-        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
+        # Position legend: place centered below ax_imp
+        if layout_width == "column":
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=2, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
+        else:
+            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=num_series, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
 
     def _plot_combo_heatmap_ax(self, data, ax_mat, ax_bar, metric, sorted_groups, layout_width):
         GROUP_LABELS = {
@@ -5767,7 +5844,6 @@ class ModalityAblationStudyPlotter:
         ax_mat.set_xticks(np.arange(ncols))
         ax_mat.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups], rotation=45, ha="right", fontsize=8.0)
         
-        ThesisStyle.set_title(ax_mat, "Sensor Combination")
 
         # Remove spines
         for spine in ax_mat.spines.values():
@@ -5778,7 +5854,7 @@ class ModalityAblationStudyPlotter:
         y_pos = np.arange(nrows)
         height = 0.5
         
-        color = ThesisStyle.COLOR_MAE if metric == "MAE" else ThesisStyle.COLOR_RMSE
+        color = ThesisStyle.COLOR_HEATMAP_PRESENT
         ax_bar.barh(y_pos, metric_vals, height=height, color=color, alpha=0.85, zorder=2)
         
         ax_bar.set_ylim(nrows - 0.5, -0.5)
@@ -5786,7 +5862,7 @@ class ModalityAblationStudyPlotter:
         ax_bar.grid(True, axis='x', linestyle='--', color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
         ax_bar.set_xlabel(f"{metric} (kg)", labelpad=4)
         
-        ThesisStyle.set_title(ax_bar, f"Ablation Error ({metric})")
+        # Remove spines or other decorators if needed
 
         ax_bar.spines['top'].set_visible(False)
         ax_bar.spines['right'].set_visible(False)

@@ -736,7 +736,9 @@ class SpatioTemporalTransformerRegressor3:
         
     @classmethod
     def load(cls, filepath: str | Path):
-        state = torch.load(filepath, weights_only=False)
+        # map_location='cpu' so a GPU-trained checkpoint loads on any machine;
+        # the model is moved to the regressor's available device just below.
+        state = torch.load(filepath, map_location='cpu', weights_only=False)
         config = copy.deepcopy(state['config'])
         
         # Load spatial/temporal parameters gracefully if loading an old model
