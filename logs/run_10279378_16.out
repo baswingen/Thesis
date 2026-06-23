@@ -1,0 +1,313 @@
+=================================================================
+GENERALIZED SENSOR-PRACTICALITY ABLATION (LOPO) — array task 16
+  Combo               : IMUup-IMUfo-EMGup  (17/31)
+  Regime              : participant  [LOPO / cross-subject]
+  Run tag             : ablgen_IMUup-IMUfo-EMGup
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+SENSOR-PRACTICALITY ABLATION — par-spec ST-transformer3
+  mode (CV strategy)   : participant  [LOPO / cross-subject]
+  limit_folds          : None
+  skip_final_full_train: True
+  feature importance   : OFF (reuse cross-val2 baseline SHAP/perm)
+  DEV_MODE             : False
+  # combinations       : 1
+  combinations         : ['IMUup-IMUfo-EMGup']
+==============================================================================
+
+[CUSTOM MODALITY PLAN] Enabled. Will run sequentially for: ['IMUup-IMUfo-EMGup']
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: IMUUP-IMUFO-EMGUP
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 162 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 142
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 17-Fold Cross-Participant Validation...
+--- Fold 1/17 (Left out Participants: P01) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P08
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (834 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=55).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 6. Best Val Loss: 0.8064
+    Train MAE: 0.4050 | Test MAE: 0.4311 | Gap: 0.0261
+    Train RMSE: 0.7255 | Test RMSE: 0.7307 | Ratio: 1.01x
+--- Fold 2/17 (Left out Participants: P02) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P07
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (833 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=68).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 7. Best Val Loss: 1.1293
+    Train MAE: 0.3715 | Test MAE: 0.3455 | Gap: -0.0260
+    Train RMSE: 0.6430 | Test RMSE: 0.6302 | Ratio: 0.98x
+--- Fold 3/17 (Left out Participants: P12) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P03
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (820 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.5935
+    Train MAE: 0.3053 | Test MAE: 0.3453 | Gap: 0.0400
+    Train RMSE: 0.6026 | Test RMSE: 0.6888 | Ratio: 1.14x
+--- Fold 4/17 (Left out Participants: P11) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (847 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.4384
+    Train MAE: 0.2988 | Test MAE: 0.4470 | Gap: 0.1483
+    Train RMSE: 0.5702 | Test RMSE: 0.8070 | Ratio: 1.42x
+--- Fold 5/17 (Left out Participants: P09) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P18
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (405 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.4353
+    Train MAE: 0.3202 | Test MAE: 0.2866 | Gap: -0.0336
+    Train RMSE: 0.5997 | Test RMSE: 0.5906 | Ratio: 0.98x
+--- Fold 6/17 (Left out Participants: P17) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (850 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 18. Best Val Loss: 0.4137
+    Train MAE: 0.2053 | Test MAE: 0.3273 | Gap: 0.1220
+    Train RMSE: 0.3962 | Test RMSE: 0.6477 | Ratio: 1.63x
+--- Fold 7/17 (Left out Participants: P04) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P01
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (3778 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=55).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 15. Best Val Loss: 0.3104
+    Train MAE: 0.2303 | Test MAE: 0.5398 | Gap: 0.3095
+    Train RMSE: 0.4397 | Test RMSE: 0.9362 | Ratio: 2.13x
+--- Fold 8/17 (Left out Participants: P08) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (414 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.9946
+    Train MAE: 0.3436 | Test MAE: 0.6697 | Gap: 0.3261
+    Train RMSE: 0.6087 | Test RMSE: 0.9470 | Ratio: 1.56x
+--- Fold 9/17 (Left out Participants: P07) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (826 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.5801
+    Train MAE: 0.3197 | Test MAE: 0.5605 | Gap: 0.2409
+    Train RMSE: 0.5926 | Test RMSE: 1.0588 | Ratio: 1.79x
+--- Fold 10/17 (Left out Participants: P16) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (746 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.2235
+    Train MAE: 0.3099 | Test MAE: 0.3860 | Gap: 0.0761
+    Train RMSE: 0.5383 | Test RMSE: 0.6872 | Ratio: 1.28x
+--- Fold 11/17 (Left out Participants: P06) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P17
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (842 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.3975
+    Train MAE: 0.3634 | Test MAE: 0.4224 | Gap: 0.0591
+    Train RMSE: 0.6553 | Test RMSE: 0.6992 | Ratio: 1.07x
+--- Fold 12/17 (Left out Participants: P03) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (746 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=70).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.2574
+    Train MAE: 0.3040 | Test MAE: 0.5582 | Gap: 0.2542
+    Train RMSE: 0.5392 | Test RMSE: 0.8846 | Ratio: 1.64x
+--- Fold 13/17 (Left out Participants: P15) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P18
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (405 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.3752
+    Train MAE: 0.2315 | Test MAE: 0.2722 | Gap: 0.0408
+    Train RMSE: 0.4448 | Test RMSE: 0.5281 | Ratio: 1.19x
+--- Fold 14/17 (Left out Participants: P10) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P16
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (832 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 24 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.3510
+    Train MAE: 0.2437 | Test MAE: 0.6888 | Gap: 0.4451
+    Train RMSE: 0.4861 | Test RMSE: 1.3025 | Ratio: 2.68x
+--- Fold 15/17 (Left out Participants: P14) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P16
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (832 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.4187
+    Train MAE: 0.3604 | Test MAE: 0.6042 | Gap: 0.2438
+    Train RMSE: 0.5573 | Test RMSE: 1.0595 | Ratio: 1.90x
+--- Fold 16/17 (Left out Participants: P18) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P12
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (851 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 23 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.5324
+    Train MAE: 0.2824 | Test MAE: 0.2620 | Gap: -0.0204
+    Train RMSE: 0.5492 | Test RMSE: 0.5642 | Ratio: 1.03x
+--- Fold 17/17 (Left out Participants: P05) ---
+Initializing Modality-Grouped Spatio-Temporal Transformer Regressor with config: {'d_model': 96, 'nhead_spatial': 8, 'num_layers': 4, 'nhead_temporal': 2, 'dim_feedforward': 512, 'dropout_rate': 0.25, 'learning_rate': 0.0003, 'class_balanced_loss': False, 'weight_decay': 0.005, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'use_checkpointing': True, 'use_amp': True, 'scheduler': {'type': 'WarmupCosine', 'warmup_epochs': 5, 'min_lr': 1e-06}, 'random_state': 245}
+[SpatioTemporalTransformerRegressor3] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[SpatioTemporalTransformerRegressor3] Using explicitly provided validation set (746 samples).
+[SpatioTemporalTransformerRegressor3] Capping sequence length at 22 based on sample distribution (min_count=72).
+[SpatioTemporalTransformerRegressor3] Grouped features into 14 spatial channels.
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[SpatioTemporalTransformerNetwork3] Modality groups: {'EMG': 2, 'IMU_Accel': 6, 'IMU_Orient': 6}
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.3074
+    Train MAE: 0.3007 | Test MAE: 0.3608 | Gap: 0.0601
+    Train RMSE: 0.5875 | Test RMSE: 0.6187 | Ratio: 1.05x
+
+[INFO] Skipping final full-dataset training (skip_final_full_train/DEV_MODE); reusing the last evaluated fold model for SHAP/saving.
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/IMUup-IMUfo-EMGup/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/IMUup-IMUfo-EMGup/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/IMUup-IMUfo-EMGup/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/IMUup-IMUfo-EMGup/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/IMUup-IMUfo-EMGup/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.7692   | 0.9483   | 0.6855  
+participant macro            | 0.4416   | 0.7871   | 0.8220  
+class macro                  | 0.7579   | 0.9985   | 0.7103  
+pooled (unbalanced)          | 0.4341   | 0.7816   | 0.8357  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/IMUup-IMUfo-EMGup/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...
+
+[Master Serializer] Consolidated modality ablation data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_191927_participant_ablgen_IMUup-IMUfo-EMGup_t16/run_data.json

@@ -1,0 +1,159 @@
+=================================================================
+MULTI-SEED ARCH COMPARISON — array task 32
+  Architecture        : cnn_lstm
+  Regime              : kfold
+  Seed                : 245
+  Run tag             : cnn_lstm_s245
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+ARCHITECTURE COMPARISON — baseline vs st3
+  model_type          : cnn_lstm
+  CV strategy (regime): kfold  [pooled k-fold / par-spec]
+  modalities          : all
+  scheduler           : OneCycleLR  epochs=200  es_patience=200
+  feature importance  : OFF
+==============================================================================
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 21 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Loaded 18314 raw segments (20 channels each)
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Raw Segment Data Summary:
+  - Total Segments: 15732
+  - Channels (EMG + IMU): 20
+  - Avg Segment Length: 2601 samples
+  - Min / Max Segment Length: 1001 / 6996 samples
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation...
+--- Fold 1/5 ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNLSTMRegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNLSTMRegressor] Augmentation: 10697 → 10200 segments (+-497 synthetic)
+[CNNLSTMRegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.4715 | Test MAE: 0.4835 | Gap: 0.0119
+    Train RMSE: 0.8604 | Test RMSE: 0.8902 | Ratio: 1.03x
+--- Fold 2/5 ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNLSTMRegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNLSTMRegressor] Augmentation: 10697 → 10200 segments (+-497 synthetic)
+[CNNLSTMRegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.4673 | Test MAE: 0.4734 | Gap: 0.0061
+    Train RMSE: 0.8639 | Test RMSE: 0.8816 | Ratio: 1.02x
+--- Fold 3/5 ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNLSTMRegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNLSTMRegressor] Augmentation: 10698 → 10200 segments (+-498 synthetic)
+[CNNLSTMRegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.4209 | Test MAE: 0.4349 | Gap: 0.0140
+    Train RMSE: 0.7870 | Test RMSE: 0.8244 | Ratio: 1.05x
+--- Fold 4/5 ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNLSTMRegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNLSTMRegressor] Augmentation: 10698 → 10200 segments (+-498 synthetic)
+[CNNLSTMRegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.3666 | Test MAE: 0.3968 | Gap: 0.0302
+    Train RMSE: 0.6824 | Test RMSE: 0.7519 | Ratio: 1.10x
+--- Fold 5/5 ---
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNLSTMRegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNLSTMRegressor] Augmentation: 10698 → 10200 segments (+-498 synthetic)
+[CNNLSTMRegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.3842 | Test MAE: 0.4031 | Gap: 0.0189
+    Train RMSE: 0.7316 | Test RMSE: 0.7905 | Ratio: 1.08x
+
+Training final model on full dataset for saving...
+Initializing CNN-LSTM Regressor with config: {'cnn_filters': [64, 128, 256, 256], 'cnn_kernel_sizes': [64, 5, 3, 3], 'pool_size': 4, 'lstm_hidden_size': 256, 'lstm_num_layers': 3, 'dropout_rate': 0.45, 'learning_rate': 0.001, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 10, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 245, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNLSTMRegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNLSTMRegressor] Augmentation: 13372 → 10200 segments (+-3172 synthetic)
+[CNNLSTMRegressor] Anthropometric conditioning enabled (6 features)
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 15732 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 15732 samples in 0.015s...
+[t-SNE] Computed neighbors for 15732 samples in 2.236s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 15732
+[t-SNE] Computed conditional probabilities for sample 2000 / 15732
+[t-SNE] Computed conditional probabilities for sample 3000 / 15732
+[t-SNE] Computed conditional probabilities for sample 4000 / 15732
+[t-SNE] Computed conditional probabilities for sample 5000 / 15732
+[t-SNE] Computed conditional probabilities for sample 6000 / 15732
+[t-SNE] Computed conditional probabilities for sample 7000 / 15732
+[t-SNE] Computed conditional probabilities for sample 8000 / 15732
+[t-SNE] Computed conditional probabilities for sample 9000 / 15732
+[t-SNE] Computed conditional probabilities for sample 10000 / 15732
+[t-SNE] Computed conditional probabilities for sample 11000 / 15732
+[t-SNE] Computed conditional probabilities for sample 12000 / 15732
+[t-SNE] Computed conditional probabilities for sample 13000 / 15732
+[t-SNE] Computed conditional probabilities for sample 14000 / 15732
+[t-SNE] Computed conditional probabilities for sample 15000 / 15732
+[t-SNE] Computed conditional probabilities for sample 15732 / 15732
+[t-SNE] Mean sigma: 0.248084
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 86.194221
+[t-SNE] KL divergence after 1000 iterations: 2.056960
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.8660   | 0.9875   | 0.6374  
+participant macro            | 0.4422   | 0.8365   | 0.8088  
+class macro                  | 0.8602   | 0.9913   | 0.6495  
+pooled (unbalanced)          | 0.4383   | 0.8294   | 0.8150  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_223818_kfold_cnn_lstm_s245_t32/run_data.json
+
+--------------------------------------------------
+LAUNCHING AUTOMATED DEEPSHAP ANALYSIS
+--------------------------------------------------
+Skipping DeepSHAP analysis (COMPUTE_FEATURE_IMPORTANCE or COMPUTE_DEEPSHAP is False)...

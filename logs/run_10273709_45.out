@@ -1,0 +1,154 @@
+=================================================================
+MULTI-SEED ARCH COMPARISON — array task 45
+  Architecture        : cnn_gru
+  Regime              : kfold
+  Seed                : 2
+  Run tag             : cnn_gru_s2
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+ARCHITECTURE COMPARISON — baseline vs st3
+  model_type          : cnn_gru
+  CV strategy (regime): kfold  [pooled k-fold / par-spec]
+  modalities          : all
+  scheduler           : OneCycleLR  epochs=200  es_patience=200
+  feature importance  : OFF
+==============================================================================
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 21 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Loaded 18314 raw segments (20 channels each)
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Raw Segment Data Summary:
+  - Total Segments: 15732
+  - Channels (EMG + IMU): 20
+  - Avg Segment Length: 2601 samples
+  - Min / Max Segment Length: 1001 / 6996 samples
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 5-Fold Stratified Cross-Validation...
+--- Fold 1/5 ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 20, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 2, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNGRURegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNGRURegressor] Augmentation: 10697 → 10200 segments (+-497 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.4133 | Test MAE: 0.4480 | Gap: 0.0348
+    Train RMSE: 0.7425 | Test RMSE: 0.7993 | Ratio: 1.08x
+--- Fold 2/5 ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 20, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 2, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNGRURegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNGRURegressor] Augmentation: 10697 → 10200 segments (+-497 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.3741 | Test MAE: 0.3873 | Gap: 0.0132
+    Train RMSE: 0.6619 | Test RMSE: 0.6825 | Ratio: 1.03x
+--- Fold 3/5 ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 20, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 2, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNGRURegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNGRURegressor] Augmentation: 10698 → 10200 segments (+-498 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.3791 | Test MAE: 0.3950 | Gap: 0.0159
+    Train RMSE: 0.7093 | Test RMSE: 0.7614 | Ratio: 1.07x
+--- Fold 4/5 ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 20, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 2, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNGRURegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNGRURegressor] Augmentation: 10698 → 10200 segments (+-498 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.4296 | Test MAE: 0.4426 | Gap: 0.0130
+    Train RMSE: 0.8035 | Test RMSE: 0.8234 | Ratio: 1.02x
+--- Fold 5/5 ---
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 20, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 2, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNGRURegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNGRURegressor] Augmentation: 10698 → 10200 segments (+-498 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+    Train MAE: 0.4226 | Test MAE: 0.4305 | Gap: 0.0079
+    Train RMSE: 0.7716 | Test RMSE: 0.7975 | Ratio: 1.03x
+
+Training final model on full dataset for saving...
+Initializing CNN-GRU Regressor with config: {'cnn_filters': [32, 64, 128], 'cnn_kernel_sizes': [32, 5, 3], 'pool_size': 4, 'gru_hidden_size': 256, 'gru_num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.002, 'weight_decay': 0.0005, 'batch_size': 128, 'epochs': 200, 'target_transform': 'none', 'balance_weights': False, 'balance_participants': False, 'validation_split': 0.15, 'early_stopping_patience': 200, 'scheduler_patience': 20, 'scheduler_factor': 0.5, 'use_anthropometrics': True, 'random_state': 2, 'scheduler': {'type': 'OneCycleLR', 'pct_start': 0.4}}
+[CNNGRURegressor] Using device: cuda
+[Augmenter] Balanced 102 participant-weight combinations to 100 samples each. Total: 10200
+[CNNGRURegressor] Augmentation: 13372 → 10200 segments (+-3172 synthetic)
+[CNNGRURegressor] Anthropometric conditioning enabled (6 features)
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/loss_plot.png
+
+Generating t-SNE plot of CNN feature space...
+[t-SNE] Fitting on 15732 samples (perplexity=30)…
+[t-SNE] Computing 91 nearest neighbors...
+[t-SNE] Indexed 15732 samples in 0.001s...
+[t-SNE] Computed neighbors for 15732 samples in 1.832s...
+[t-SNE] Computed conditional probabilities for sample 1000 / 15732
+[t-SNE] Computed conditional probabilities for sample 2000 / 15732
+[t-SNE] Computed conditional probabilities for sample 3000 / 15732
+[t-SNE] Computed conditional probabilities for sample 4000 / 15732
+[t-SNE] Computed conditional probabilities for sample 5000 / 15732
+[t-SNE] Computed conditional probabilities for sample 6000 / 15732
+[t-SNE] Computed conditional probabilities for sample 7000 / 15732
+[t-SNE] Computed conditional probabilities for sample 8000 / 15732
+[t-SNE] Computed conditional probabilities for sample 9000 / 15732
+[t-SNE] Computed conditional probabilities for sample 10000 / 15732
+[t-SNE] Computed conditional probabilities for sample 11000 / 15732
+[t-SNE] Computed conditional probabilities for sample 12000 / 15732
+[t-SNE] Computed conditional probabilities for sample 13000 / 15732
+[t-SNE] Computed conditional probabilities for sample 14000 / 15732
+[t-SNE] Computed conditional probabilities for sample 15000 / 15732
+[t-SNE] Computed conditional probabilities for sample 15732 / 15732
+[t-SNE] Mean sigma: 0.099699
+[t-SNE] KL divergence after 250 iterations with early exaggeration: 92.289070
+[t-SNE] KL divergence after 1000 iterations: 2.415788
+t-SNE feature plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/tsne_cnn_features.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.7840   | 0.8917   | 0.6907  
+participant macro            | 0.4243   | 0.7810   | 0.8340  
+class macro                  | 0.7762   | 0.8891   | 0.7003  
+pooled (unbalanced)          | 0.4207   | 0.7744   | 0.8387  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260622_061238_kfold_cnn_gru_s2_t45/run_data.json

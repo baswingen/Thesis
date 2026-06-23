@@ -1,0 +1,277 @@
+=================================================================
+MULTI-SEED ARCH COMPARISON — array task 16
+  Architecture        : transformer
+  Regime              : participant
+  Seed                : 2
+  Run tag             : transformer_s2
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+ARCHITECTURE COMPARISON — baseline vs st3
+  model_type          : transformer
+  CV strategy (regime): participant  [LOPO / cross-subject]
+  modalities          : all
+  scheduler           : ReduceLROnPlateau  epochs=200  es_patience=5
+  feature importance  : OFF
+==============================================================================
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 96 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 208
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 17-Fold Cross-Participant Validation...
+--- Fold 1/17 (Left out Participants: P01) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 11107 → 22500 sequences (+11393 synthetic)
+
+Early stopping triggered at epoch 6. Best Val Loss: 0.5476
+    Train MAE: 0.2568 | Test MAE: 0.2675 | Gap: 0.0107
+    Train RMSE: 0.4993 | Test RMSE: 0.4919 | Ratio: 0.99x
+--- Fold 2/17 (Left out Participants: P02) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 13767 → 22500 sequences (+8733 synthetic)
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.3050
+    Train MAE: 0.3384 | Test MAE: 0.3154 | Gap: -0.0230
+    Train RMSE: 0.4932 | Test RMSE: 0.4593 | Ratio: 0.93x
+--- Fold 3/17 (Left out Participants: P12) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14055 → 22500 sequences (+8445 synthetic)
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.2238
+    Train MAE: 0.2565 | Test MAE: 0.3331 | Gap: 0.0766
+    Train RMSE: 0.5187 | Test RMSE: 0.6461 | Ratio: 1.25x
+--- Fold 4/17 (Left out Participants: P11) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14136 → 22500 sequences (+8364 synthetic)
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.2325
+    Train MAE: 0.2128 | Test MAE: 0.2603 | Gap: 0.0475
+    Train RMSE: 0.4280 | Test RMSE: 0.4638 | Ratio: 1.08x
+--- Fold 5/17 (Left out Participants: P09) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14471 → 22500 sequences (+8029 synthetic)
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.4126
+    Train MAE: 0.2298 | Test MAE: 0.2838 | Gap: 0.0540
+    Train RMSE: 0.4435 | Test RMSE: 0.5427 | Ratio: 1.22x
+--- Fold 6/17 (Left out Participants: P17) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P07
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (833 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14057 → 22500 sequences (+8443 synthetic)
+
+Early stopping triggered at epoch 7. Best Val Loss: 0.5618
+    Train MAE: 0.4086 | Test MAE: 0.3507 | Gap: -0.0579
+    Train RMSE: 0.6107 | Test RMSE: 0.5005 | Ratio: 0.82x
+--- Fold 7/17 (Left out Participants: P04) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14050 → 22500 sequences (+8450 synthetic)
+
+Early stopping triggered at epoch 14. Best Val Loss: 0.4636
+    Train MAE: 0.2394 | Test MAE: 0.2594 | Gap: 0.0201
+    Train RMSE: 0.4898 | Test RMSE: 0.5452 | Ratio: 1.11x
+--- Fold 8/17 (Left out Participants: P08) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14072 → 22500 sequences (+8428 synthetic)
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.3023
+    Train MAE: 0.2586 | Test MAE: 0.3466 | Gap: 0.0880
+    Train RMSE: 0.5228 | Test RMSE: 0.6146 | Ratio: 1.18x
+--- Fold 9/17 (Left out Participants: P07) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14485 → 22500 sequences (+8015 synthetic)
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.4177
+    Train MAE: 0.2245 | Test MAE: 0.4776 | Gap: 0.2531
+    Train RMSE: 0.4394 | Test RMSE: 0.9034 | Ratio: 2.06x
+--- Fold 10/17 (Left out Participants: P16) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14074 → 22500 sequences (+8426 synthetic)
+
+Early stopping triggered at epoch 7. Best Val Loss: 0.3482
+    Train MAE: 0.3815 | Test MAE: 0.5799 | Gap: 0.1984
+    Train RMSE: 0.5369 | Test RMSE: 0.8009 | Ratio: 1.49x
+--- Fold 11/17 (Left out Participants: P06) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14492 → 22500 sequences (+8008 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.3677
+    Train MAE: 0.3417 | Test MAE: 0.3414 | Gap: -0.0003
+    Train RMSE: 0.5628 | Test RMSE: 0.5304 | Ratio: 0.94x
+--- Fold 12/17 (Left out Participants: P03) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P12
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (851 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14061 → 22500 sequences (+8439 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.3943
+    Train MAE: 0.2649 | Test MAE: 0.3465 | Gap: 0.0816
+    Train RMSE: 0.5157 | Test RMSE: 0.6923 | Ratio: 1.34x
+--- Fold 13/17 (Left out Participants: P15) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (387 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14599 → 22500 sequences (+7901 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.4267
+    Train MAE: 0.2611 | Test MAE: 0.2523 | Gap: -0.0088
+    Train RMSE: 0.5145 | Test RMSE: 0.5446 | Ratio: 1.06x
+--- Fold 14/17 (Left out Participants: P10) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P14
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (413 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14905 → 22500 sequences (+7595 synthetic)
+
+Early stopping triggered at epoch 7. Best Val Loss: 0.4600
+    Train MAE: 0.3551 | Test MAE: 0.3193 | Gap: -0.0358
+    Train RMSE: 0.6233 | Test RMSE: 0.6227 | Ratio: 1.00x
+--- Fold 15/17 (Left out Participants: P14) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14469 → 22500 sequences (+8031 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.2227
+    Train MAE: 0.2329 | Test MAE: 0.3692 | Gap: 0.1363
+    Train RMSE: 0.4725 | Test RMSE: 0.7950 | Ratio: 1.68x
+--- Fold 16/17 (Left out Participants: P18) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P16
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (832 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14495 → 22500 sequences (+8005 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.5901
+    Train MAE: 0.2319 | Test MAE: 0.4077 | Gap: 0.1759
+    Train RMSE: 0.4923 | Test RMSE: 0.8831 | Ratio: 1.79x
+--- Fold 17/17 (Left out Participants: P05) ---
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[TimeSeriesTransformerRegressor] Augmentation: 14495 → 22500 sequences (+8005 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.2438
+    Train MAE: 0.2237 | Test MAE: 0.3353 | Gap: 0.1116
+    Train RMSE: 0.4731 | Test RMSE: 0.6886 | Ratio: 1.46x
+
+Training final model on full dataset for saving...
+Initializing Transformer Regressor with config: {'d_model': 64, 'nhead': 4, 'num_layers': 3, 'dim_feedforward': 128, 'dropout_rate': 0.4, 'learning_rate': 0.005, 'weight_decay': 0.0001, 'batch_size': 128, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 2, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[TimeSeriesTransformerRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants from final dataset for early stopping: P14
+[TimeSeriesTransformerRegressor] Using explicitly provided validation set (413 samples).
+[Augmenter] Balanced 96 participant-weight combinations to 250 samples each. Total: 24000
+[TimeSeriesTransformerRegressor] Augmentation: 15319 → 24000 sequences (+8681 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.4885
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.5867   | 0.7519   | 0.8081  
+participant macro            | 0.3439   | 0.6309   | 0.8878  
+class macro                  | 0.5521   | 0.7554   | 0.8338  
+pooled (unbalanced)          | 0.3277   | 0.6027   | 0.9023  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_183638_participant_transformer_s2_t16/run_data.json

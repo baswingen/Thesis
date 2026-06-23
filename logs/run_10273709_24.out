@@ -1,0 +1,277 @@
+=================================================================
+MULTI-SEED ARCH COMPARISON — array task 24
+  Architecture        : lstm
+  Regime              : participant
+  Seed                : 4
+  Run tag             : lstm_s4
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+ARCHITECTURE COMPARISON — baseline vs st3
+  model_type          : lstm
+  CV strategy (regime): participant  [LOPO / cross-subject]
+  modalities          : all
+  scheduler           : ReduceLROnPlateau  epochs=200  es_patience=5
+  feature importance  : OFF
+==============================================================================
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 96 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 208
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 17-Fold Cross-Participant Validation...
+--- Fold 1/17 (Left out Participants: P01) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P07
+[LSTMRegressor] Using explicitly provided validation set (833 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 11121 → 22500 sequences (+11379 synthetic)
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.6055
+    Train MAE: 0.0423 | Test MAE: 0.1961 | Gap: 0.1538
+    Train RMSE: 0.1441 | Test RMSE: 0.4525 | Ratio: 3.14x
+--- Fold 2/17 (Left out Participants: P02) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[LSTMRegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 13767 → 22500 sequences (+8733 synthetic)
+
+Early stopping triggered at epoch 6. Best Val Loss: 0.1974
+    Train MAE: 0.2229 | Test MAE: 0.1882 | Gap: -0.0347
+    Train RMSE: 0.3455 | Test RMSE: 0.3291 | Ratio: 0.95x
+--- Fold 3/17 (Left out Participants: P12) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[LSTMRegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14034 → 22500 sequences (+8466 synthetic)
+
+Early stopping triggered at epoch 6. Best Val Loss: 0.2221
+    Train MAE: 0.1633 | Test MAE: 0.2364 | Gap: 0.0731
+    Train RMSE: 0.3226 | Test RMSE: 0.4742 | Ratio: 1.47x
+--- Fold 4/17 (Left out Participants: P11) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P07
+[LSTMRegressor] Using explicitly provided validation set (833 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14049 → 22500 sequences (+8451 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.5282
+    Train MAE: 0.0316 | Test MAE: 0.1599 | Gap: 0.1283
+    Train RMSE: 0.1437 | Test RMSE: 0.4102 | Ratio: 2.85x
+--- Fold 5/17 (Left out Participants: P09) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P08
+[LSTMRegressor] Using explicitly provided validation set (834 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14051 → 22500 sequences (+8449 synthetic)
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.3349
+    Train MAE: 0.0342 | Test MAE: 0.2377 | Gap: 0.2035
+    Train RMSE: 0.1199 | Test RMSE: 0.5246 | Ratio: 4.38x
+--- Fold 6/17 (Left out Participants: P17) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[LSTMRegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14064 → 22500 sequences (+8436 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.2967
+    Train MAE: 0.0328 | Test MAE: 0.2942 | Gap: 0.2614
+    Train RMSE: 0.1332 | Test RMSE: 0.6546 | Ratio: 4.92x
+--- Fold 7/17 (Left out Participants: P04) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[LSTMRegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14483 → 22500 sequences (+8017 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.3258
+    Train MAE: 0.0907 | Test MAE: 0.1947 | Gap: 0.1040
+    Train RMSE: 0.2144 | Test RMSE: 0.4012 | Ratio: 1.87x
+--- Fold 8/17 (Left out Participants: P08) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[LSTMRegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14072 → 22500 sequences (+8428 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.3288
+    Train MAE: 0.0887 | Test MAE: 0.5680 | Gap: 0.4793
+    Train RMSE: 0.2188 | Test RMSE: 0.7323 | Ratio: 3.35x
+--- Fold 9/17 (Left out Participants: P07) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[LSTMRegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14485 → 22500 sequences (+8015 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.4133
+    Train MAE: 0.0684 | Test MAE: 0.3878 | Gap: 0.3194
+    Train RMSE: 0.1835 | Test RMSE: 0.7829 | Ratio: 4.27x
+--- Fold 10/17 (Left out Participants: P16) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[LSTMRegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14050 → 22500 sequences (+8450 synthetic)
+
+Early stopping triggered at epoch 12. Best Val Loss: 0.1459
+    Train MAE: 0.0324 | Test MAE: 0.2851 | Gap: 0.2528
+    Train RMSE: 0.1026 | Test RMSE: 0.6133 | Ratio: 5.98x
+--- Fold 11/17 (Left out Participants: P06) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[LSTMRegressor] Using explicitly provided validation set (387 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14519 → 22500 sequences (+7981 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.1992
+    Train MAE: 0.0492 | Test MAE: 0.3564 | Gap: 0.3073
+    Train RMSE: 0.1641 | Test RMSE: 0.7034 | Ratio: 4.29x
+--- Fold 12/17 (Left out Participants: P03) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P14
+[LSTMRegressor] Using explicitly provided validation set (413 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14499 → 22500 sequences (+8001 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.5042
+    Train MAE: 0.0408 | Test MAE: 0.2643 | Gap: 0.2236
+    Train RMSE: 0.1333 | Test RMSE: 0.4938 | Ratio: 3.71x
+--- Fold 13/17 (Left out Participants: P15) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[LSTMRegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14136 → 22500 sequences (+8364 synthetic)
+
+Early stopping triggered at epoch 7. Best Val Loss: 0.1421
+    Train MAE: 0.1060 | Test MAE: 0.1800 | Gap: 0.0740
+    Train RMSE: 0.2325 | Test RMSE: 0.4147 | Ratio: 1.78x
+--- Fold 14/17 (Left out Participants: P10) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P17
+[LSTMRegressor] Using explicitly provided validation set (842 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14476 → 22500 sequences (+8024 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.4857
+    Train MAE: 0.0791 | Test MAE: 0.3060 | Gap: 0.2269
+    Train RMSE: 0.1592 | Test RMSE: 0.6253 | Ratio: 3.93x
+--- Fold 15/17 (Left out Participants: P14) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[LSTMRegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14905 → 22500 sequences (+7595 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.4506
+    Train MAE: 0.0988 | Test MAE: 0.4057 | Gap: 0.3069
+    Train RMSE: 0.2215 | Test RMSE: 0.8597 | Ratio: 3.88x
+--- Fold 16/17 (Left out Participants: P18) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P17
+[LSTMRegressor] Using explicitly provided validation set (842 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14485 → 22500 sequences (+8015 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.4915
+    Train MAE: 0.0566 | Test MAE: 0.3050 | Gap: 0.2484
+    Train RMSE: 0.1391 | Test RMSE: 0.6797 | Ratio: 4.89x
+--- Fold 17/17 (Left out Participants: P05) ---
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P18
+[LSTMRegressor] Using explicitly provided validation set (405 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[LSTMRegressor] Augmentation: 14940 → 22500 sequences (+7560 synthetic)
+
+Early stopping triggered at epoch 6. Best Val Loss: 0.3601
+    Train MAE: 0.1865 | Test MAE: 0.3301 | Gap: 0.1436
+    Train RMSE: 0.3365 | Test RMSE: 0.5697 | Ratio: 1.69x
+
+Training final model on full dataset for saving...
+Initializing LSTM Regressor with config: {'hidden_size': 512, 'num_layers': 3, 'dropout_rate': 0.2, 'learning_rate': 0.0005, 'weight_decay': 0.001, 'batch_size': 64, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 4, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[LSTMRegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants from final dataset for early stopping: P11
+[LSTMRegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 96 participant-weight combinations to 250 samples each. Total: 24000
+[LSTMRegressor] Augmentation: 14882 → 24000 sequences (+9118 synthetic)
+
+Early stopping triggered at epoch 11. Best Val Loss: 0.1572
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.4904   | 0.6710   | 0.8400  
+participant macro            | 0.2880   | 0.5718   | 0.9064  
+class macro                  | 0.4454   | 0.6862   | 0.8645  
+pooled (unbalanced)          | 0.2634   | 0.5498   | 0.9187  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_201603_participant_lstm_s4_t24/run_data.json

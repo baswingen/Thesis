@@ -1,0 +1,223 @@
+=======================================================
+MODEL PERFORMANCE REPORT
+Run Timestamp: 20260622_141831
+=======================================================
+
+--- DATASET INFO ---
+Participants included: ['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+Database segments used: ['participant_P02_session_01_segments.h5', 'participant_P13_session_01_segments.h5', 'participant_P11_session_01_segments.h5', 'participant_P07_session_01_segments.h5', 'participant_P01_session_03_segments.h5', 'participant_P09_session_01_segments.h5', 'participant_P15_session_01_segments.h5', 'participant_P08_session_01_segments.h5', 'participant_P17_session_01_segments.h5', 'participant_P06_session_01_segments.h5', 'participant_P16_session_01_segments.h5', 'participant_P10_session_01_segments.h5', 'participant_P12_session_01_segments.h5', 'participant_P14_session_01_segments.h5', 'participant_P01_session_02_segments.h5', 'participant_P03_session_01_segments.h5', 'participant_P05_session_01_segments.h5', 'participant_P18_session_01_segments.h5', 'participant_P04_session_01_segments.h5', 'participant_P01_session_01_segments.h5']
+Total samples: 15732
+Evaluation Mode: Leave-One-Participant-Out CV (17 Participants)
+Final Model Training samples: 14599
+
+--- DATASET COMPOSITION (Pre-Augmentation) ---
+Weight Distribution:
+Weight       | Count    | Percentage
+-----------------------------------
+0.00         | 9175     | 58.3      %
+0.98         | 1313     | 8.3       %
+1.97         | 1315     | 8.4       %
+2.95         | 1316     | 8.4       %
+4.15         | 1301     | 8.3       %
+5.93         | 1312     | 8.3       %
+
+Participant Distribution:
+Participant  | Count    | Percentage
+-----------------------------------
+P01          | 3778     | 24.0      %
+P02          | 1219     | 7.7       %
+P03          | 820      | 5.2       %
+P04          | 835      | 5.3       %
+P05          | 387      | 2.5       %
+P06          | 826      | 5.3       %
+P07          | 833      | 5.3       %
+P08          | 834      | 5.3       %
+P09          | 847      | 5.4       %
+P10          | 414      | 2.6       %
+P11          | 850      | 5.4       %
+P12          | 851      | 5.4       %
+P14          | 413      | 2.6       %
+P15          | 746      | 4.7       %
+P16          | 832      | 5.3       %
+P17          | 842      | 5.4       %
+P18          | 405      | 2.6       %
+
+Balancing Strategy (from config):
+  Mode: Joint (Participant + Weight)
+  Target: 250 samples per (participant, weight) group
+  Expected Training Samples (if all groups filled): 25,500
+
+--- FEATURE CONFIGURATION ---
+Ablation Modality: IMUFO
+EMG Window: 0.15s, IMU Window: 0.2s, Step: 0.1s
+Enabled EMG Channels (0): 
+Enabled IMU Channels (6): ax2, ay2, az2, roll_rad2, pitch_rad2, yaw_rad2
+Disabled EMG Channels (8): Anterior Deltoid, Lateral Deltoid, Posterior Deltoid, Triceps Brachii, Biceps Brachii, Brachioradialis, Flexor Carpi Ulnaris (FCU), Extensor Carpi Radialis (ECR)
+Disabled IMU Channels (12): ax1, ay1, az1, roll_rad1, pitch_rad1, yaw_rad1, ax_diff, ay_diff, az_diff, roll_rad_diff, pitch_rad_diff, yaw_rad_diff
+
+--- HYPERPARAMETERS ---
+Model: SPATIO_TEMPORAL_TRANSFORMER3
+Architecture:
+  d_model: 96
+  nhead_spatial: 8
+  nhead_temporal: 2
+  num_layers: 4
+  num_layers_spatial: 4
+  num_layers_temporal: 4
+  dim_feedforward: 512
+  num_layers: 4
+  use_checkpointing: True
+  use_amp: True
+Training:
+  Learning Rate: 0.0003
+  Weight Decay: 0.005
+  Batch Size: 64
+  Epochs: 200
+  Dropout: 0.25
+  Loss Function: mse
+  Validation Split: 0.1
+  Early Stopping Patience: 5
+  Scheduler Patience: 3
+  Scheduler Factor: 0.8
+
+--- PIPELINE CONFIGURATION ---
+DEV_MODE: False
+Global Loss Function: mse
+Random State: 245
+Excluded Weight Classes: 0.75kg (→ 0.9kg), 2.25kg (→ 2.24kg)
+Augmentation: enabled
+  probability: 0.5
+  methods: ['noise', 'stretch', 'channel_dropout']
+  noise_std: 0.05
+  stretch_factor_range: (0.75, 1.25)
+  channel_dropout_p: 0.1
+  magnitude_scale_range: (0.5, 2.0)
+
+--- EVALUATION METRICS ---
+METHOD: PARTICIPANT-MACRO-AVERAGE
+Description: Unweighted mean across 17 participants. Weights every person equally.
+(Reflects expected generalization performance to a NEW participant)
+  MAE: 0.6815 (±0.2064)
+  MSE: 1.4290 (±0.5986)
+  RMSE: 1.1731 (±0.2299)
+  R2: 0.6158 (±0.1611)
+  Correlation: 0.8136 (±0.0752)
+  Train MAE: 0.4590 (±0.1155)
+  Train RMSE: 0.8221 (±0.1463)
+  Generalization Gap (MAE): 0.2226 (±0.2143)
+  Overfit Ratio (RMSE): 1.4627 (±0.3395)
+
+METHOD: POOLED-AVERAGE (Secondary)
+Description: Weighted by samples. Matches Regression Plot box-plot metrics.
+(Reflects overall accuracy across all recorded data points)
+  MAE: 0.6643
+  RMSE: 1.1733
+  R2: 0.6297
+  Correlation: 0.7982
+
+--- PER-WEIGHT METRICS ---
+Weight       | Count    | MAE        | RMSE      
+--------------------------------------------------
+0.00 kg      | 9175     | 0.3136     | 0.8082    
+0.98 kg      | 1313     | 0.8136     | 1.1007    
+1.97 kg      | 1315     | 0.7931     | 1.0893    
+2.95 kg      | 1316     | 1.0047     | 1.2471    
+4.15 kg      | 1301     | 1.3828     | 1.6862    
+5.93 kg      | 1312     | 1.7841     | 2.2711    
+
+--- 0KG VS WEIGHTED LIFT COMPARISON ---
+Category             | Count    | MAE        | RMSE       | R2      
+------------------------------------------------------------------
+0.00 kg (Free Move)  | 9175     | 0.3136     | 0.8082     | N/A     
+>0.00 kg (Weights)   | 6557     | 1.1550     | 1.5456     | 0.1965  
+------------------------------------------------------------------
+Performance Degradation on Weighted Lifts:
+  MAE:  +0.8414 (+268.3%)
+  RMSE: +0.7374 (+91.2%)
+
+--- DETAILED GENERALIZATION PERFORMANCE ---
+Mean MAE across participants: 1.0285 ± 0.1835
+Min / Max MAE:                0.8047 / 1.4988
+Mean RMSE across participants:1.3230 ± 0.1910
+Min / Max RMSE:               1.0416 / 1.7548
+
+--- PER-PARTICIPANT METRICS ---
+Participant  | Samples  | MAE        | RMSE       | R2        
+---------------------------------------------------------------
+P01          | 3778     | 0.9654     | 1.2565     | 0.5071    
+P02          | 1219     | 0.8047     | 1.0416     | 0.6624    
+P03          | 820      | 1.1511     | 1.5143     | 0.2549    
+P04          | 835      | 0.8940     | 1.2322     | 0.5938    
+P05          | 387      | 1.0430     | 1.2451     | 0.4854    
+P06          | 826      | 1.0722     | 1.4182     | 0.4780    
+P07          | 833      | 1.4988     | 1.7548     | -0.0723   
+P08          | 834      | 1.3599     | 1.7149     | 0.2300    
+P09          | 847      | 0.8674     | 1.2189     | 0.5784    
+P10          | 414      | 1.2015     | 1.3848     | 0.2428    
+P11          | 850      | 0.9155     | 1.1434     | 0.5743    
+P12          | 851      | 1.0179     | 1.2776     | 0.5358    
+P14          | 413      | 0.8426     | 1.1275     | 0.6397    
+P15          | 746      | 0.8933     | 1.2696     | 0.5809    
+P16          | 832      | 1.0973     | 1.4516     | 0.2868    
+P17          | 842      | 0.9852     | 1.2876     | 0.4535    
+P18          | 405      | 0.8742     | 1.1531     | 0.5876    
+
+--- PER-SEQUENCE-LENGTH METRICS ---
+4            | 0.500s           | 206      | 1.1711     | 1.2549    
+5            | 0.600s           | 477      | 1.2195     | 1.3625    
+6            | 0.700s           | 719      | 1.0826     | 1.2548    
+7            | 0.800s           | 1191     | 1.1471     | 1.3465    
+8            | 0.900s           | 1357     | 0.9970     | 1.2238    
+9            | 1.000s           | 1629     | 1.0812     | 1.3114    
+10           | 1.100s           | 1871     | 0.9593     | 1.1823    
+11           | 1.200s           | 1711     | 1.1257     | 1.3469    
+12           | 1.300s           | 1498     | 0.9519     | 1.1523    
+13           | 1.400s           | 1162     | 1.1375     | 1.3437    
+14           | 1.500s           | 864      | 0.9644     | 1.1152    
+15           | 1.600s           | 709      | 0.9085     | 1.0534    
+16           | 1.700s           | 519      | 1.0589     | 1.1909    
+17           | 1.800s           | 381      | 0.9336     | 1.0556    
+18           | 1.900s           | 301      | 0.8504     | 0.9631    
+19           | 2.000s           | 218      | 1.0685     | 1.1574    
+20           | 2.100s           | 181      | 0.8617     | 0.9320    
+
+--- COMPUTE & TIMING METRICS ---
+Device: CUDA (NVIDIA A100 80GB PCIe) on x86_64 (x86_64)
+Total Parameters: 855,874
+Trainable Parameters: 855,874
+
+Average timings:
+train_time: 172.441208s (±54.557249s)
+inference_time_total: 0.254398s (±0.233602s)
+inference_time_per_sample: 0.000273s (±0.000041s)
+
+--- ON-DEVICE PERFORMANCE & REAL-TIME APPLICABILITY ---
+Actual Trainable Parameters: 855,874
+Theoretical FP32 Model Size: 3.26 MB
+Theoretical FP16 Model Size: 1.63 MB
+Theoretical INT8 Quantized Size: 0.82 MB
+Estimated Edge CPU Latency (Raspberry Pi / Mobile): 2.0 - 5.0 ms
+Real-Time Step Constraint: 100 ms (sliding window step)
+Real-Time CPU Safety Margin (Duty Cycle): 95.0% - 98.0% CPU Idle
+Dynamic Convergence Time: <1.1 seconds (Estimation MAE drops below 0.16 kg)
+
+--- STATISTICAL SIGNIFICANCE (ANOVA & Post-Hoc) ---
+1. Prediction Separability (Can the model distinguish weights?)
+   - One-Way ANOVA: F = 6214.4, p < 0.0001 (Significant)
+   - Interpretation: The model predicts significantly different values for different actual weights.
+   - Largest Pairwise Differences (Tukey HSD):
+       0.0kg vs 5.93kg: p < 0.001 (Diff: 3.88kg)
+       0.0kg vs 4.15kg: p < 0.001 (Diff: 3.08kg)
+       0.0kg vs 2.95kg: p < 0.001 (Diff: 2.51kg)
+       0.98kg vs 5.93kg: p < 0.001 (Diff: 2.51kg)
+       0.0kg vs 1.97kg: p < 0.001 (Diff: 1.99kg)
+
+2. Error Consistency (Is the model equally accurate for all weights?)
+   - One-Way ANOVA: F = 1037.0, p < 0.0001 (Significant)
+   - Interpretation: The model's error is NOT consistent across all weight classes.
+   - Significant Pairwise Error Differences (Tukey HSD):
+       5.93kg vs 0.0kg: p < 0.001 (5.93kg has 1.47kg higher error)
+       4.15kg vs 0.0kg: p < 0.001 (4.15kg has 1.07kg higher error)
+       5.93kg vs 1.97kg: p < 0.001 (5.93kg has 0.99kg higher error)
+       5.93kg vs 0.98kg: p < 0.001 (5.93kg has 0.97kg higher error)
+       5.93kg vs 2.95kg: p < 0.001 (5.93kg has 0.78kg higher error)

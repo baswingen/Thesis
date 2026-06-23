@@ -1,0 +1,277 @@
+=================================================================
+MULTI-SEED ARCH COMPARISON — array task 7
+  Architecture        : gru
+  Regime              : participant
+  Seed                : 1
+  Run tag             : gru_s1
+  Python              : /scratch/bwingen/thesis_env/bin/python
+Python 3.10.20
+=================================================================
+[DataLoader] Weight filter active (applied at training time) — excluding calibrated weights: [0.9, 2.24]
+[DataLoader] Loaded blacklist: 545 segments will be skipped.
+==============================================================================
+ARCHITECTURE COMPARISON — baseline vs st3
+  model_type          : gru
+  CV strategy (regime): participant  [LOPO / cross-subject]
+  modalities          : all
+  scheduler           : ReduceLROnPlateau  epochs=200  es_patience=5
+  feature importance  : OFF
+==============================================================================
+Results will be saved to: /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7
+
+================================================================================
+  RUNNING PIPELINE FOR MODALITY CONFIGURATION: ALL
+================================================================================
+
+[DataLoader] Filtered 20 files down to 19 based on PARTICIPANT_CONFIG['include']=['P01', 'P02', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09', 'P10', 'P11', 'P12', 'P14', 'P15', 'P16', 'P17', 'P18']
+[DataLoader] Skipped 5 blacklisted segments in participant_P02_session_01_segments.h5
+[DataLoader] Skipped 5 blacklisted segments in participant_P11_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P07_session_01_segments.h5
+[DataLoader] Skipped 3 blacklisted segments in participant_P01_session_03_segments.h5
+[DataLoader] Skipped 15 blacklisted segments in participant_P09_session_01_segments.h5
+[DataLoader] Skipped 125 blacklisted segments in participant_P15_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P08_session_01_segments.h5
+[DataLoader] Skipped 19 blacklisted segments in participant_P17_session_01_segments.h5
+[DataLoader] Skipped 35 blacklisted segments in participant_P06_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P16_session_01_segments.h5
+[DataLoader] Skipped 16 blacklisted segments in participant_P10_session_01_segments.h5
+[DataLoader] Skipped 4 blacklisted segments in participant_P12_session_01_segments.h5
+[DataLoader] Skipped 20 blacklisted segments in participant_P14_session_01_segments.h5
+[DataLoader] Skipped 10 blacklisted segments in participant_P01_session_02_segments.h5
+[DataLoader] Skipped 42 blacklisted segments in participant_P03_session_01_segments.h5
+[DataLoader] Skipped 50 blacklisted segments in participant_P05_session_01_segments.h5
+[DataLoader] Skipped 28 blacklisted segments in participant_P18_session_01_segments.h5
+[DataLoader] Skipped 25 blacklisted segments in participant_P04_session_01_segments.h5
+[DataLoader] Skipped 9 blacklisted segments in participant_P01_session_01_segments.h5
+[DataLoader] Filter active: removed 96 features from disabled channels/feature-types.
+[DataLoader] Dropped 2582 segments with excluded weight classes.
+Sequence Data Summary:
+  - Total Lifts (Sequences): 15732
+  - Average Windows per Lift: 11.5
+  - Features per Window: 208
+Label vector (y) shape: (15732,) (Target: weight)
+
+Starting 17-Fold Cross-Participant Validation...
+--- Fold 1/17 (Left out Participants: P01) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[GRURegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 11208 → 22500 sequences (+11292 synthetic)
+
+Early stopping triggered at epoch 10. Best Val Loss: 0.2482
+    Train MAE: 0.0763 | Test MAE: 0.2209 | Gap: 0.1446
+    Train RMSE: 0.1433 | Test RMSE: 0.5528 | Ratio: 3.86x
+--- Fold 2/17 (Left out Participants: P02) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[GRURegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 13666 → 22500 sequences (+8834 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.2087
+    Train MAE: 0.1044 | Test MAE: 0.1515 | Gap: 0.0471
+    Train RMSE: 0.2055 | Test RMSE: 0.3580 | Ratio: 1.74x
+--- Fold 3/17 (Left out Participants: P12) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[GRURegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14135 → 22500 sequences (+8365 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.2746
+    Train MAE: 0.1167 | Test MAE: 0.2288 | Gap: 0.1121
+    Train RMSE: 0.2243 | Test RMSE: 0.4900 | Ratio: 2.18x
+--- Fold 4/17 (Left out Participants: P11) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[GRURegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14056 → 22500 sequences (+8444 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.2832
+    Train MAE: 0.1256 | Test MAE: 0.2310 | Gap: 0.1054
+    Train RMSE: 0.2357 | Test RMSE: 0.3793 | Ratio: 1.61x
+--- Fold 5/17 (Left out Participants: P09) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P15
+[GRURegressor] Using explicitly provided validation set (746 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14139 → 22500 sequences (+8361 synthetic)
+
+Early stopping triggered at epoch 7. Best Val Loss: 0.1983
+    Train MAE: 0.1440 | Test MAE: 0.2409 | Gap: 0.0969
+    Train RMSE: 0.2670 | Test RMSE: 0.4592 | Ratio: 1.72x
+--- Fold 6/17 (Left out Participants: P17) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[GRURegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14043 → 22500 sequences (+8457 synthetic)
+
+Early stopping triggered at epoch 13. Best Val Loss: 0.1615
+    Train MAE: 0.0460 | Test MAE: 0.3299 | Gap: 0.2839
+    Train RMSE: 0.1076 | Test RMSE: 0.6620 | Ratio: 6.15x
+--- Fold 7/17 (Left out Participants: P04) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P08
+[GRURegressor] Using explicitly provided validation set (834 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14063 → 22500 sequences (+8437 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.3455
+    Train MAE: 0.0749 | Test MAE: 0.1945 | Gap: 0.1196
+    Train RMSE: 0.1636 | Test RMSE: 0.3847 | Ratio: 2.35x
+--- Fold 8/17 (Left out Participants: P08) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[GRURegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14051 → 22500 sequences (+8449 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.2082
+    Train MAE: 0.0954 | Test MAE: 0.5222 | Gap: 0.4268
+    Train RMSE: 0.1793 | Test RMSE: 0.6691 | Ratio: 3.73x
+--- Fold 9/17 (Left out Participants: P07) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P06
+[GRURegressor] Using explicitly provided validation set (826 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14073 → 22500 sequences (+8427 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.2972
+    Train MAE: 0.1005 | Test MAE: 0.3207 | Gap: 0.2201
+    Train RMSE: 0.2060 | Test RMSE: 0.6228 | Ratio: 3.02x
+--- Fold 10/17 (Left out Participants: P16) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P09
+[GRURegressor] Using explicitly provided validation set (847 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14053 → 22500 sequences (+8447 synthetic)
+
+Early stopping triggered at epoch 16. Best Val Loss: 0.2743
+    Train MAE: 0.0338 | Test MAE: 0.3168 | Gap: 0.2830
+    Train RMSE: 0.1106 | Test RMSE: 0.6233 | Ratio: 5.63x
+--- Fold 11/17 (Left out Participants: P06) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P07
+[GRURegressor] Using explicitly provided validation set (833 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14073 → 22500 sequences (+8427 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.4575
+    Train MAE: 0.0995 | Test MAE: 0.2977 | Gap: 0.1982
+    Train RMSE: 0.1952 | Test RMSE: 0.5716 | Ratio: 2.93x
+--- Fold 12/17 (Left out Participants: P03) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P10
+[GRURegressor] Using explicitly provided validation set (414 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14498 → 22500 sequences (+8002 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.2360
+    Train MAE: 0.1113 | Test MAE: 0.2831 | Gap: 0.1718
+    Train RMSE: 0.2279 | Test RMSE: 0.5411 | Ratio: 2.37x
+--- Fold 13/17 (Left out Participants: P15) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[GRURegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14136 → 22500 sequences (+8364 synthetic)
+
+Early stopping triggered at epoch 16. Best Val Loss: 0.1225
+    Train MAE: 0.0386 | Test MAE: 0.2017 | Gap: 0.1631
+    Train RMSE: 0.0920 | Test RMSE: 0.5097 | Ratio: 5.54x
+--- Fold 14/17 (Left out Participants: P10) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P05
+[GRURegressor] Using explicitly provided validation set (387 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14931 → 22500 sequences (+7569 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.2133
+    Train MAE: 0.0892 | Test MAE: 0.3078 | Gap: 0.2187
+    Train RMSE: 0.1759 | Test RMSE: 0.6306 | Ratio: 3.59x
+--- Fold 15/17 (Left out Participants: P14) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P12
+[GRURegressor] Using explicitly provided validation set (851 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14468 → 22500 sequences (+8032 synthetic)
+
+Early stopping triggered at epoch 9. Best Val Loss: 0.1026
+    Train MAE: 0.0968 | Test MAE: 0.4451 | Gap: 0.3483
+    Train RMSE: 0.2056 | Test RMSE: 0.8985 | Ratio: 4.37x
+--- Fold 16/17 (Left out Participants: P18) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P11
+[GRURegressor] Using explicitly provided validation set (850 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14477 → 22500 sequences (+8023 synthetic)
+
+Early stopping triggered at epoch 8. Best Val Loss: 0.1373
+    Train MAE: 0.1347 | Test MAE: 0.3131 | Gap: 0.1783
+    Train RMSE: 0.2255 | Test RMSE: 0.6697 | Ratio: 2.97x
+--- Fold 17/17 (Left out Participants: P05) ---
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants for early stopping: P17
+[GRURegressor] Using explicitly provided validation set (842 samples).
+[Augmenter] Balanced 90 participant-weight combinations to 250 samples each. Total: 22500
+[GRURegressor] Augmentation: 14503 → 22500 sequences (+7997 synthetic)
+
+Early stopping triggered at epoch 6. Best Val Loss: 0.3145
+    Train MAE: 0.2550 | Test MAE: 0.4863 | Gap: 0.2313
+    Train RMSE: 0.4061 | Test RMSE: 0.6705 | Ratio: 1.65x
+
+Training final model on full dataset for saving...
+Initializing GRU Regressor with config: {'hidden_size': 512, 'num_layers': 2, 'dropout_rate': 0.5, 'learning_rate': 0.0005, 'weight_decay': 0.0001, 'batch_size': 32, 'epochs': 200, 'validation_split': 0.1, 'early_stopping_patience': 5, 'scheduler_patience': 3, 'scheduler_factor': 0.8, 'random_state': 1, 'scheduler': {'type': 'ReduceLROnPlateau'}}
+[GRURegressor] Using device: cuda
+    [Strict Validation] Holding out 1 participants from final dataset for early stopping: P04
+[GRURegressor] Using explicitly provided validation set (835 samples).
+[Augmenter] Balanced 96 participant-weight combinations to 250 samples each. Total: 24000
+[GRURegressor] Augmentation: 14897 → 24000 sequences (+9103 synthetic)
+
+Early stopping triggered at epoch 17. Best Val Loss: 0.1188
+Regression plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7/regression_plot.png
+Loss plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7/loss_plot.png
+Participant performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7/participant_performance.png
+Sequence-length performance plot saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7/seqlen_performance_plot.png
+
+Performance report saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7/performance_report.txt
+
+============================================================
+  BALANCED PERFORMANCE SUMMARY
+============================================================
+--- MACRO-AVERAGED METRICS (BALANCED) ---
+Primary metric: class_participant_macro (equal weight per participant AND per weight class)
+
+View                         | MAE      | RMSE     | R2      
+-------------------------------------------------------------
+class+participant macro *    | 0.5114   | 0.6706   | 0.8437  
+participant macro            | 0.2995   | 0.5702   | 0.9081  
+class macro                  | 0.4553   | 0.6845   | 0.8685  
+pooled (unbalanced)          | 0.2718   | 0.5573   | 0.9165  
+
+* PRIMARY. R2 under class balancing uses class-balanced sample weights
+  (per-class R2 is undefined; a single class has zero target variance).
+============================================================
+
+
+[run_data_exporter] Run data saved to /home/bwingen/thesis/Thesis/model/model_results/run_20260621_163153_participant_gru_s1_t7/run_data.json
