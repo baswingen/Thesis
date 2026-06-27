@@ -784,6 +784,38 @@
           }
         ]
       }
+    },
+    "macro_metrics": {
+      "primary": "class_participant_macro",
+      "description": "Balanced regression metrics. class_participant_macro (primary) weights every (participant, weight) cell equally, removing both the 0 kg majority bias and per-participant sample-count bias. R2 under class balancing uses class-balanced sample weights; participant_macro R2 averages within-participant R2.",
+      "pooled": {
+        "MAE": 0.3257844314670064,
+        "RMSE": 0.6377392082805007,
+        "R2": 0.890657289932102
+      },
+      "class_macro": {
+        "MAE": 0.5686200005299337,
+        "RMSE": 0.8072678956556434,
+        "R2": 0.8131145188171617,
+        "n_classes": 6
+      },
+      "participant_macro": {
+        "MAE": 0.3327027613965056,
+        "RMSE": 0.6470785081759637,
+        "R2": 0.8833531295343763,
+        "n_participants": 17
+      },
+      "class_participant_macro": {
+        "MAE": 0.5856613699580744,
+        "RMSE": 0.8038706889477979,
+        "R2": 0.798687353613921,
+        "n_participants": 17
+      }
+    },
+    "class_macro_avg": {
+      "MAE": 0.5686200005299337,
+      "RMSE": 0.8072678956556434,
+      "R2": 0.8131145188171617
     }
   },
   "training_histories": [

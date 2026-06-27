@@ -86,36 +86,54 @@ def load_combo(run_dir: Path, name: str):
     zero = zw.get("zero_kg", {}) or {}
     groups = NAME_TO_GROUPS.get(name, set())
 
-    # Calculate class-macro MAE, RMSE, and R2 from raw predictions if available
+    # Calculate participant-class-macro MAE, RMSE, and R2 from raw predictions.
+    # Definition (study-wide standard, matches get_class_participant_macro_metric_val in
+    # visualization/run_viz.py): for each participant compute the per-weight-class error,
+    # average over classes (equal weight per load), then average over participants (equal
+    # weight per person). Predictions are clipped at 0 (load cannot be negative).
     predictions = d.get("predictions")
     class_macro_mae = None
     class_macro_rmse = None
     class_macro_r2 = None
     if predictions and isinstance(predictions, dict) and predictions.get("y_true") and predictions.get("y_pred"):
         y_t = np.array(predictions["y_true"], dtype=float).flatten()
-        y_p = np.array(predictions["y_pred"], dtype=float).flatten()
+        y_p = np.maximum(0.0, np.array(predictions["y_pred"], dtype=float).flatten())
+        parts = np.array(predictions.get("participant", [])).flatten()
         unique_weights = np.unique(y_t)
+        # Participants to iterate over (single dummy group if labels are missing → reduces
+        # gracefully to plain class-macro).
+        if len(parts) == len(y_t) and len(parts) > 0:
+            unique_parts = np.unique(parts)
+        else:
+            parts = np.zeros_like(y_t)
+            unique_parts = np.array([0])
         if len(unique_weights) > 0:
-            maes = []
-            rmses = []
-            mses = []
-            for w in unique_weights:
-                mask = np.abs(y_t - w) < 0.05
-                if np.any(mask):
-                    diff = y_p[mask] - y_t[mask]
-                    maes.append(np.mean(np.abs(diff)))
-                    mse = np.mean(diff ** 2)
-                    mses.append(mse)
-                    rmses.append(np.sqrt(mse))
-            if maes:
-                class_macro_mae = sum(maes) / len(maes)
-            if rmses:
-                class_macro_rmse = sum(rmses) / len(rmses)
-            if len(unique_weights) > 1 and mses:
-                mean_w = np.mean(unique_weights)
-                ss_tot = np.mean((unique_weights - mean_w) ** 2)
-                ss_res = np.mean(mses)
-                class_macro_r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+            p_maes, p_rmses, p_r2s = [], [], []
+            for pid in unique_parts:
+                p_mask = parts == pid
+                maes, rmses, mses = [], [], []
+                for w in unique_weights:
+                    mask = p_mask & (np.abs(y_t - w) < 0.05)
+                    if np.any(mask):
+                        diff = y_p[mask] - y_t[mask]
+                        maes.append(np.mean(np.abs(diff)))
+                        mse = np.mean(diff ** 2)
+                        mses.append(mse)
+                        rmses.append(np.sqrt(mse))
+                if maes:
+                    p_maes.append(sum(maes) / len(maes))
+                    p_rmses.append(sum(rmses) / len(rmses))
+                    if len(unique_weights) > 1:
+                        mean_w = np.mean(unique_weights)
+                        ss_tot = np.mean((unique_weights - mean_w) ** 2)
+                        ss_res = np.mean(mses)
+                        p_r2s.append(1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0)
+            if p_maes:
+                class_macro_mae = sum(p_maes) / len(p_maes)
+            if p_rmses:
+                class_macro_rmse = sum(p_rmses) / len(p_rmses)
+            if p_r2s:
+                class_macro_r2 = sum(p_r2s) / len(p_r2s)
     else:
         # Fallback to per_weight array if predictions are missing
         pw = ev.get("per_weight") or []

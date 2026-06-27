@@ -91,65 +91,79 @@ def main():
                 lbl = lbl.replace(k, v)
         return lbl
 
-    labels = [clean_channel_label_abbrev(c) for c in order]
-    colors = [ThesisStyle.COLOR_EMG if is_emg(c) else ThesisStyle.COLOR_IMU for c in order]
+    def plot_variant(abbrev=True):
+        suffix = "" if abbrev else "_full"
+        labels = [clean_channel_label_abbrev(c) if abbrev else clean_channel_label(c) for c in order]
+        colors = [ThesisStyle.COLOR_EMG if is_emg(c) else ThesisStyle.COLOR_IMU for c in order]
 
-    # --- figure (ThesisStyle single-column/column layout) ---
-    ThesisStyle.apply("column")
-    marker_size, offset = 12, 0.12
-    yts = plt.rcParams["ytick.labelsize"]
-    tfs = plt.rcParams["axes.titlesize"]
-    lfs = plt.rcParams["axes.labelsize"]
-    legfs = plt.rcParams["legend.fontsize"]
+        # --- figure (ThesisStyle single-column/column layout) ---
+        ThesisStyle.apply("column")
+        marker_size, offset = 12, 0.12
+        yts = plt.rcParams["ytick.labelsize"]
+        tfs = plt.rcParams["axes.titlesize"]
+        lfs = plt.rcParams["axes.labelsize"]
+        legfs = plt.rcParams["legend.fontsize"]
 
-    # We squeeze the three subplots by setting figsize to (3.46, 4.5)
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(3.46, 4.5), sharey=True)
-    y = np.arange(len(order))
+        # We squeeze the three subplots by setting figsize to (3.46, 4.5)
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(3.46, 4.5), sharey=True)
+        y = np.arange(len(order))
 
-    def panel(ax, par, gen, title, show_axvline=False):
-        vp = [par.get(c, 0.0) for c in order]
-        vg = [gen.get(c, 0.0) for c in order]
-        ax.hlines(y - offset, 0, vp, colors=colors, linestyles="--", linewidth=1.0, alpha=0.85)
-        ax.scatter(vp, y - offset, facecolors="white", edgecolors=colors, marker="o", zorder=3, s=marker_size, linewidths=1.0, alpha=0.85)
-        ax.hlines(y + offset, 0, vg, colors=colors, linestyles="-", linewidth=1.0, alpha=0.85)
-        ax.scatter(vg, y + offset, color=colors, marker="o", zorder=3, s=marker_size, alpha=0.85)
-        ax.set_title(title, fontproperties=fm.FontProperties(family="Fira Sans", weight="bold", size=tfs), color="black", pad=8)
-        ax.grid(True, which="both", linestyle="--", linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-        ax.tick_params(axis="x", labelsize=yts)
-        if show_axvline:
-            ax.axvline(0, color="#333333", linestyle="-", linewidth=0.8, alpha=0.5)
-        ThesisStyle.style_ax(ax)
-        ax.set_xlim(0, (max(max(vg), max(vp)) or 1.0) * 1.1)
+        def panel(ax, par, gen, title, show_axvline=False):
+            vp = [par.get(c, 0.0) for c in order]
+            vg = [gen.get(c, 0.0) for c in order]
+            ax.hlines(y - offset, 0, vp, colors=colors, linestyles="--", linewidth=1.0, alpha=0.85)
+            ax.scatter(vp, y - offset, facecolors="white", edgecolors=colors, marker="o", zorder=3, s=marker_size, linewidths=1.0, alpha=0.85)
+            ax.hlines(y + offset, 0, vg, colors=colors, linestyles="-", linewidth=1.0, alpha=0.85)
+            ax.scatter(vg, y + offset, color=colors, marker="o", zorder=3, s=marker_size, alpha=0.85)
+            ax.set_title(title, fontproperties=fm.FontProperties(family="Fira Sans", weight="bold", size=tfs), color="black", pad=8)
+            ax.grid(True, which="both", linestyle="--", linewidth=0.5, color=ThesisStyle.GRID_GRAY, alpha=0.5)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.tick_params(axis="x", labelsize=yts)
+            if show_axvline:
+                ax.axvline(0, color="#333333", linestyle="-", linewidth=0.8, alpha=0.5)
+            ThesisStyle.style_ax(ax)
+            v_min = min(min(vg), min(vp)) if vg else 0.0
+            v_max = max(max(vg), max(vp)) if vg else 1.0
+            if v_min < 0:
+                r_val = v_max - v_min
+                ax.set_xlim(v_min - r_val * 0.05, v_max + r_val * 0.05)
+            else:
+                ax.set_xlim(0, v_max * 1.1)
 
-    panel(ax1, par_shap, gen_shap, "DeepSHAP")
-    ax1.set_yticks(y)
-    # Using horizontal (rotation=0) short labels aligned to the right
-    ax1.set_yticklabels(labels, fontsize=yts, rotation=0, ha="right")
-    ax1.invert_yaxis()
-    panel(ax2, par_attn, gen_attn, "Attention")
-    ax2.yaxis.set_tick_params(labelleft=False)
-    panel(ax3, par_perm, gen_perm, "Permutation", show_axvline=True)
-    ax3.yaxis.set_tick_params(labelleft=False)
+        panel(ax1, par_shap, gen_shap, "DeepSHAP")
+        ax1.set_yticks(y)
+        ax1.set_yticklabels(labels, fontsize=yts, rotation=0, ha="right")
+        ax1.invert_yaxis()
+        panel(ax2, par_attn, gen_attn, "Attention")
+        ax2.yaxis.set_tick_params(labelleft=False)
+        panel(ax3, par_perm, gen_perm, "Permutation", show_axvline=True)
+        ax3.yaxis.set_tick_params(labelleft=False)
 
-    legend_handles = [
-        Line2D([0], [0], color="#555555", linestyle="--", marker="o", markerfacecolor="white", markeredgecolor="#555555", markeredgewidth=1.0, markersize=5, label="Participant-Specialized Model"),
-        Line2D([0], [0], color="#555555", linestyle="-", marker="o", markerfacecolor="#555555", markersize=5, label="Generalized Model"),
-        Patch(facecolor=ThesisStyle.COLOR_EMG, label="EMG"),
-        Patch(facecolor=ThesisStyle.COLOR_IMU, label="IMU"),
-    ]
-    # Manually adjust subplots positions
-    fig.subplots_adjust(left=0.12, right=0.98, bottom=0.22, top=0.90, wspace=0.12)
-    fig.canvas.draw()
-    x_center = (ax1.get_position().x0 + ax3.get_position().x1) / 2.0
-    fig.legend(handles=legend_handles, loc="upper center", ncol=2, bbox_to_anchor=(x_center, 0.11),
-               frameon=True, facecolor="white", edgecolor="#E0E0E0", framealpha=0.95, fontsize=legfs)
-    fig.text(x_center, 0.145, "Normalized Importance", ha="center", va="center", fontsize=lfs)
+        legend_handles = [
+            Line2D([0], [0], color="#555555", linestyle="--", marker="o", markerfacecolor="white", markeredgecolor="#555555", markeredgewidth=1.0, markersize=5, label="Participant-Specialized Model"),
+            Line2D([0], [0], color="#555555", linestyle="-", marker="o", markerfacecolor="#555555", markersize=5, label="Generalized Model (LOPO)"),
+            Patch(facecolor=ThesisStyle.COLOR_EMG, label="EMG"),
+            Patch(facecolor=ThesisStyle.COLOR_IMU, label="IMU"),
+        ]
+        
+        # Adjust margins: give more space on the left if we have long full labels
+        left_margin = 0.12 if abbrev else 0.24
+        fig.subplots_adjust(left=left_margin, right=0.98, bottom=0.22, top=0.90, wspace=0.12)
+        fig.canvas.draw()
+        x_center = (ax1.get_position().x0 + ax3.get_position().x1) / 2.0
+        fig.legend(handles=legend_handles, loc="upper center", ncol=2, bbox_to_anchor=(x_center, 0.11),
+                   frameon=True, facecolor="white", edgecolor="#E0E0E0", framealpha=0.95, fontsize=legfs)
+        fig.text(x_center, 0.145, "Normalized Importance", ha="center", va="center", fontsize=lfs)
 
-    ThesisStyle.save_figure(fig, OUT_DIR / "comp_deepshap_modality_3")
-    plt.close(fig)
-    print(f"[3col] Wrote {OUT_DIR / 'comp_deepshap_modality_3'}.pdf")
+        out_name = f"comp_deepshap_modality_3{suffix}"
+        ThesisStyle.save_figure(fig, OUT_DIR / out_name)
+        plt.close(fig)
+        print(f"[3col] Wrote {OUT_DIR / out_name}.pdf / .png / .svg")
+
+    # Generate both variants
+    plot_variant(abbrev=True)
+    plot_variant(abbrev=False)
 
 
 if __name__ == "__main__":

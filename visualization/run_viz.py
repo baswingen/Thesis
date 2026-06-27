@@ -69,7 +69,7 @@ MODEL_RUNS = {
         # run_delftblue.sh array via collect_modality_ablation_gen.sh. Enhances the
         # ablation_both_*_v2 figures with the cross-participant regime.
         "run_dir": "model/model_results/run_modality_ablation_gen",
-        "output_dir": "visualization/run_modality_ablation_gen"
+        "output_dir": "visualization/run_modality_ablation"
     }
 }
 
@@ -226,18 +226,18 @@ def clean_channel_label(raw_lbl):
         clean_lbl = clean_lbl[:-8]
         suffix = " (Accel)"
         
-    # Replace sensors with LaTeX math symbols
+    # Replace sensors with LaTeX math symbols or plain names
     replacements = {
-        "roll_rad1": r"$\phi_1$",
-        "pitch_rad1": r"$\theta_1$",
-        "yaw_rad1": r"$\psi_1$",
+        "roll_rad1": "Roll 1",
+        "pitch_rad1": "Pitch 1",
+        "yaw_rad1": "Yaw 1",
         "ax1": r"$a_{x,1}$",
         "ay1": r"$a_{y,1}$",
         "az1": r"$a_{z,1}$",
         
-        "roll_rad2": r"$\phi_2$",
-        "pitch_rad2": r"$\theta_2$",
-        "yaw_rad2": r"$\psi_2$",
+        "roll_rad2": "Roll 2",
+        "pitch_rad2": "Pitch 2",
+        "yaw_rad2": "Yaw 2",
         "ax2": r"$a_{x,2}$",
         "ay2": r"$a_{y,2}$",
         "az2": r"$a_{z,2}$",
@@ -428,11 +428,13 @@ class ThesisStyle:
 
     @classmethod
     def save_figure(cls, fig, output_path):
-        """Saves figure in both high-resolution PDF vector format and PNG format."""
+        """Saves figure in high-resolution PDF, SVG vector formats, and PNG format."""
         # Export PDF (academic standard vector graphic)
         fig.savefig(output_path.with_suffix(".pdf"), dpi=300, bbox_inches='tight')
+        # Export SVG (vector graphic format)
+        fig.savefig(output_path.with_suffix(".svg"), dpi=300, bbox_inches='tight')
         # Export PNG (preview/web format)
-        fig.savefig(output_path.with_suffix(".png"), dpi=300, bbox_inches='tight')
+        fig.savefig(output_path.with_suffix(".png"), dpi=600, bbox_inches='tight')
 
 
 # ===========================================================================
@@ -3349,6 +3351,512 @@ class RunComparisonPlotter:
         plt.tight_layout(rect=[0.01, 0.04, 1, 1.0])
         ThesisStyle.save_figure(fig, output_dir / "comp_regression_arch_6grid")
         plt.close(fig)
+
+    def _plot_regression_violin_6grid(self, gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        # Grid dimensions: 3 rows (Modalities) x 2 columns (Specialized vs Generalized)
+        # Made more compact vertically to ensure plots are clearly rectangular (aspect ratio ~1.6:1)
+        if layout_width == "column":
+            figsize = (3.5, 3.4)
+        elif layout_width == "double":
+            figsize = (7.0, 6.2)
+        else: # "default"
+            figsize = (8.0, 7.1)
+            
+        fig, axes = plt.subplots(nrows=3, ncols=2, figsize=figsize, sharex=True, sharey=True)
+        
+        # Map runs to their grid slots
+        grid_runs = [
+            # Row 0: Sensor-Fused (EMG + IMU)
+            [(par_all, "Participant-Specialized", True, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F"),
+             (gen_all, "Generalized (LOPO)", False, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F")],
+            # Row 1: EMG-only
+            [(par_emg, "Participant-Specialized", True, ThesisStyle.COLOR_EMG, "#FFF3ED", "#773300"),
+             (gen_emg, "Generalized (LOPO)", False, ThesisStyle.COLOR_EMG, "#FFF3ED", "#773300")],
+            # Row 2: IMU-only
+            [(par_imu, "Participant-Specialized", True, ThesisStyle.COLOR_IMU, "#F0F7F4", "#115522"),
+             (gen_imu, "Generalized (LOPO)", False, ThesisStyle.COLOR_IMU, "#F0F7F4", "#115522")]
+        ]
+        
+        row_labels = ["Sensor-Fused (EMG + IMU)", "EMG-only", "IMU-only"]
+        
+        # Determine shared actual weights from all available predictions
+        all_y_true = []
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_true" in run["predictions"]:
+                    all_y_true.extend(run["predictions"]["y_true"])
+        if len(all_y_true) > 0:
+            actual_weights = np.sort(np.unique(all_y_true))
+        else:
+            actual_weights = np.array([0.0, 0.98, 1.97, 2.95, 4.15, 5.93])
+            
+        # Determine dynamic y_pred max for axes limits
+        max_val = 6.5
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_pred" in run["predictions"]:
+                    max_val = max(max_val, np.max(run["predictions"]["y_pred"]))
+        max_val = min(7.5, max_val + 0.25)
+        min_val = -0.2
+        
+        for row_idx, cols in enumerate(grid_runs):
+            for col_idx, (run, label, is_spec, primary_color, fill_color, accent_color) in enumerate(cols):
+                ax = axes[row_idx, col_idx]
+                
+                # Plot perfect prediction diagonal
+                ax.plot([min_val, max_val], [min_val, max_val], 
+                        color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.0, alpha=0.7, zorder=1)
+                
+                if not run or "predictions" not in run:
+                    ax.text(0.5, 0.5, "Data Not Available", ha='center', va='center', transform=ax.transAxes,
+                            fontproperties=fm.FontProperties(family='serif', style='italic'))
+                    continue
+                
+                preds = run["predictions"]
+                y_true = np.array(preds["y_true"])
+                y_pred = np.maximum(0.0, np.array(preds["y_pred"]))
+                
+                pred_groups = [y_pred[y_true == w] for w in actual_weights]
+                
+                # Filter valid groups for violin plot to avoid errors
+                valid_groups = []
+                valid_positions = []
+                for w_idx, w in enumerate(actual_weights):
+                    g_preds = pred_groups[w_idx]
+                    if len(g_preds) > 1:
+                        valid_groups.append(g_preds)
+                        valid_positions.append(w)
+                        
+                # 1. Plot violins
+                if len(valid_groups) > 0:
+                    parts = ax.violinplot(valid_groups, positions=valid_positions, widths=0.35,
+                                          showmeans=True, showextrema=False, showmedians=False)
+                    for pc in parts['bodies']:
+                        pc.set_facecolor(primary_color)
+                        pc.set_edgecolor(primary_color)
+                        pc.set_alpha(0.3)
+                    parts['cmeans'].set_color(accent_color)
+                    parts['cmeans'].set_linewidth(1.5)
+                    
+                # 2. Plot jittered scatter points
+                for w_idx, w in enumerate(actual_weights):
+                    g_preds = pred_groups[w_idx]
+                    if len(g_preds) > 0:
+                        np.random.seed(42 + w_idx)
+                        jitter = np.random.normal(0, 0.04, len(g_preds))
+                        ax.scatter(np.full_like(g_preds, w) + jitter, g_preds,
+                                   color=primary_color, alpha=0.08, s=1.5, zorder=2,
+                                   rasterized=True)
+                                   
+                # 3. Plot line connecting the mean predictions
+                means = [np.mean(g) for g in pred_groups if len(g) > 0]
+                means_positions = [actual_weights[i] for i, g in enumerate(pred_groups) if len(g) > 0]
+                if len(means) > 0:
+                    ax.plot(means_positions, means, color=primary_color, linestyle='-', linewidth=1.2, zorder=3)
+                    
+                # Extract metrics
+                metrics = self._get_regression_metrics(run, is_specialized=is_spec)
+                mae = metrics["MAE"]
+                rmse = metrics["RMSE"]
+                r2 = metrics["R2"]
+                
+                stats_text = f"$\\text{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
+                
+                ax.text(0.04, 0.96, stats_text, 
+                        transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
+                        bbox=dict(facecolor='white', alpha=0.92, 
+                                  edgecolor=primary_color, boxstyle='round,pad=0.4', linewidth=0.8))
+                
+                # Column titles at the top row (row_idx == 0) - styled in bold black sans-serif
+                if row_idx == 0:
+                    ax.set_title(
+                        label,
+                        fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                        color='black',
+                        pad=10
+                    )
+                
+                # Row titles and Y-axis label on the leftmost plots (col_idx == 0)
+                if col_idx == 0:
+                    # Standard y-axis label in Serif font (with a very tight labelpad)
+                    ax.set_ylabel("Predicted Weight (kg)", labelpad=4)
+                    
+                    # Distinct bold Fira Sans header label for the modality row, colored in black (very tight margin)
+                    ax.annotate(row_labels[row_idx], xy=(-0.24, 0.5), xycoords='axes fraction',
+                                rotation=90, ha='center', va='center',
+                                fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.labelsize']),
+                                color='black')
+                else:
+                    ax.set_ylabel("", labelpad=0)
+                    
+                # X-axis label on the bottom row (row_idx == 2)
+                if row_idx == 2:
+                    ax.set_xlabel("Actual Weight (kg)", labelpad=8)
+                else:
+                    ax.set_xlabel("", labelpad=0)
+                    
+        # Apply unified ticks and limits
+        for ax in axes.flatten():
+            ax.set_xlim(min_val, max_val)
+            ax.set_ylim(min_val, max_val)
+            ax.set_xticks(actual_weights)
+            ax.set_yticks(actual_weights)
+            
+            def format_label(x):
+                return f"{x:.2f}".rstrip('0').rstrip('.')
+                
+            ax.set_xticklabels([format_label(w) for w in actual_weights])
+            ax.set_yticklabels([format_label(w) for w in actual_weights])
+            ThesisStyle.style_ax(ax)
+            
+        # Add single global legend at the bottom of the grid using custom proxy handles
+        from matplotlib.lines import Line2D
+        legend_handles = [
+            Line2D([0], [0], color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.0),
+            Line2D([0], [0], color="#475569", marker='o', linestyle='', markersize=3, alpha=0.6),
+            Line2D([0], [0], color="#475569", linestyle='-', linewidth=1.5)
+        ]
+        legend_labels = ["Perfect Prediction", "Individual Predictions", "Mean Prediction"]
+        
+        fig.legend(handles=legend_handles, labels=legend_labels, loc='lower center', ncol=3,
+                   bbox_to_anchor=(0.5, 0.015), fontsize=plt.rcParams['legend.fontsize'],
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        plt.tight_layout(rect=[0.01, 0.05, 1, 1.0])
+        ThesisStyle.save_figure(fig, output_dir / "comp_regression_violin_6grid")
+        plt.close(fig)
+
+    def _plot_regression_violin_vertical(self, gen_all, par_all, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        # Grid dimensions: 2 rows (Specialized vs Generalized) x 1 column
+        # Revert back to the larger presentation size (7.0"x8.8")
+        figsize = (7.0, 8.8)
+            
+        fig, axes = plt.subplots(nrows=2, ncols=1, figsize=figsize, sharex=True, sharey=True)
+        
+        # Map runs to their grid slots
+        grid_runs = [
+            (par_all, "Participant-Specialized", True, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F"),
+            (gen_all, "Generalized", False, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F")
+        ]
+        
+        # Determine shared actual weights from all available predictions
+        all_y_true = []
+        for run, _, _, _, _, _ in grid_runs:
+            if run and "predictions" in run and "y_true" in run["predictions"]:
+                all_y_true.extend(run["predictions"]["y_true"])
+        if len(all_y_true) > 0:
+            actual_weights = np.sort(np.unique(all_y_true))
+        else:
+            actual_weights = np.array([0.0, 0.98, 1.97, 2.95, 4.15, 5.93])
+            
+        # Determine dynamic y_pred max for axes limits
+        max_val = 6.5
+        for run, _, _, _, _, _ in grid_runs:
+            if run and "predictions" in run and "y_pred" in run["predictions"]:
+                max_val = max(max_val, np.max(run["predictions"]["y_pred"]))
+        max_val = min(7.5, max_val + 0.25)
+        min_val = -0.2
+        
+        for row_idx, (run, label, is_spec, primary_color, fill_color, accent_color) in enumerate(grid_runs):
+            ax = axes[row_idx]
+            
+            # Plot perfect prediction diagonal - thicker for presentation
+            ax.plot([min_val, max_val], [min_val, max_val], 
+                    color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.5, alpha=0.7, zorder=1)
+            
+            if not run or "predictions" not in run:
+                ax.text(0.5, 0.5, "Data Not Available", ha='center', va='center', transform=ax.transAxes,
+                        fontproperties=fm.FontProperties(family='serif', style='italic'))
+                continue
+            
+            preds = run["predictions"]
+            y_true = np.array(preds["y_true"])
+            y_pred = np.maximum(0.0, np.array(preds["y_pred"]))
+            
+            pred_groups = [y_pred[y_true == w] for w in actual_weights]
+            
+            # Filter valid groups for violin plot to avoid errors
+            valid_groups = []
+            valid_positions = []
+            for w_idx, w in enumerate(actual_weights):
+                g_preds = pred_groups[w_idx]
+                if len(g_preds) > 1:
+                    valid_groups.append(g_preds)
+                    valid_positions.append(w)
+                    
+            # 1. Plot violins - slightly wider for presentation
+            if len(valid_groups) > 0:
+                parts = ax.violinplot(valid_groups, positions=valid_positions, widths=0.42,
+                                      showmeans=True, showextrema=False, showmedians=False)
+                for pc in parts['bodies']:
+                    pc.set_facecolor(primary_color)
+                    pc.set_edgecolor(primary_color)
+                    pc.set_alpha(0.3)
+                parts['cmeans'].set_color(accent_color)
+                parts['cmeans'].set_linewidth(2.0)
+                
+            # 2. Plot jittered scatter points - slightly larger for presentation
+            for w_idx, w in enumerate(actual_weights):
+                g_preds = pred_groups[w_idx]
+                if len(g_preds) > 0:
+                    np.random.seed(42 + w_idx)
+                    jitter = np.random.normal(0, 0.04, len(g_preds))
+                    ax.scatter(np.full_like(g_preds, w) + jitter, g_preds,
+                               color=primary_color, alpha=0.10, s=2.5, zorder=2,
+                               rasterized=True)
+                               
+            # 3. Plot line connecting the mean predictions - thicker
+            means = [np.mean(g) for g in pred_groups if len(g) > 0]
+            means_positions = [actual_weights[i] for i, g in enumerate(pred_groups) if len(g) > 0]
+            if len(means) > 0:
+                ax.plot(means_positions, means, color=primary_color, linestyle='-', linewidth=1.8, zorder=3)
+                
+            # Extract metrics
+            metrics = self._get_regression_metrics(run, is_spec)
+            mae = metrics["MAE"]
+            rmse = metrics["RMSE"]
+            r2 = metrics["R2"]
+            
+            stats_text = f"$\\text{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
+            
+            # Drastically larger stats text for presentation
+            ax.text(0.04, 0.96, stats_text, 
+                    transform=ax.transAxes, verticalalignment='top', fontsize=15.0,
+                    bbox=dict(facecolor='white', alpha=0.92, 
+                              edgecolor=primary_color, boxstyle='round,pad=0.4', linewidth=1.0))
+            
+            # Title for the plot - drastically increased size for presentation
+            ax.set_title(
+                label,
+                fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=22.0),
+                color='black',
+                pad=12
+            )
+            
+            # Y-axis label - drastically increased size for presentation
+            ax.set_ylabel("Predicted Weight (kg)", labelpad=10, fontsize=18.0)
+            
+        # X-axis label on the bottom plot - drastically increased size for presentation
+        axes[1].set_xlabel("Actual Weight (kg)", labelpad=12, fontsize=18.0)
+        
+        # Apply unified ticks and limits
+        for ax in axes:
+            ax.set_xlim(min_val, max_val)
+            ax.set_ylim(min_val, max_val)
+            ax.set_xticks(actual_weights)
+            ax.set_yticks(actual_weights)
+            
+            def format_label(x):
+                return f"{x:.2f}".rstrip('0').rstrip('.')
+                
+            ax.set_xticklabels([format_label(w) for w in actual_weights], fontsize=16.0)
+            ax.set_yticklabels([format_label(w) for w in actual_weights], fontsize=16.0)
+            ThesisStyle.style_ax(ax)
+            
+        # Add single global legend at the bottom with adjusted font size and spacing to keep it within the plot bounds
+        from matplotlib.lines import Line2D
+        legend_handles = [
+            Line2D([0], [0], color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.5),
+            Line2D([0], [0], color="#475569", marker='o', linestyle='', markersize=4, alpha=0.6),
+            Line2D([0], [0], color="#475569", linestyle='-', linewidth=1.8)
+        ]
+        legend_labels = ["Perfect Prediction", "Individual Predictions", "Mean Prediction"]
+        
+        fig.legend(handles=legend_handles, labels=legend_labels, loc='lower center', ncol=3,
+                   bbox_to_anchor=(0.5, 0.015), fontsize=14.0, columnspacing=1.0, handletextpad=0.3,
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        plt.tight_layout(rect=[0.01, 0.08, 1, 1.0])
+        ThesisStyle.save_figure(fig, output_dir / "comp_regression_violin_vertical")
+        plt.close(fig)
+
+
+    def _plot_regression_arch_violin_6grid(self, st3_lopo, st3_kfold, lstm_lopo, lstm_kfold, gru_lopo, gru_kfold, trans_lopo, trans_kfold, cnngru_lopo, cnngru_kfold, cnnlstm_lopo, cnnlstm_kfold, output_dir, layout_width):
+        ThesisStyle.apply(layout_width)
+        
+        # Grid dimensions: 6 rows x 2 columns (Specialized vs Generalized)
+        # We size this to fill an entire page of rho.cls (leaving room for caption)
+        if layout_width == "column":
+            figsize = (3.5, 4.5)
+        elif layout_width == "double":
+            figsize = (7.0, 9.0)
+        else: # "default"
+            figsize = (8.0, 10.0)
+            
+        fig, axes = plt.subplots(nrows=6, ncols=2, figsize=figsize, sharex=True, sharey=True)
+        
+        # Map runs to their grid slots
+        grid_runs = [
+            # Row 0: ST-Transformer
+            [(st3_kfold, "Participant-Specific", True, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F"),
+             (st3_lopo, "Generalized (LOPO)", False, ThesisStyle.COLOR_FUSION, "#E8EEF8", "#12203F")],
+            # Row 1: LSTM
+            [(lstm_kfold, "Participant-Specific", True, "#33BBEE", "#EFF9FD", "#006688"),
+             (lstm_lopo, "Generalized (LOPO)", False, "#33BBEE", "#EFF9FD", "#006688")],
+            # Row 2: GRU
+            [(gru_kfold, "Participant-Specific", True, "#EE3377", "#FDF0F5", "#880033"),
+             (gru_lopo, "Generalized (LOPO)", False, "#EE3377", "#FDF0F5", "#880033")],
+            # Row 3: Naive-Transformer
+            [(trans_kfold, "Participant-Specific", True, "#DDCC77", "#FDFBF0", "#665511"),
+             (trans_lopo, "Generalized (LOPO)", False, "#DDCC77", "#FDFBF0", "#665511")],
+            # Row 4: CNN-GRU
+            [(cnngru_kfold, "Participant-Specific", True, "#117733", "#EDF7EE", "#083B19"),
+             (cnngru_lopo, "Generalized (LOPO)", False, "#117733", "#EDF7EE", "#083B19")],
+            # Row 5: CNN-LSTM
+            [(cnnlstm_kfold, "Participant-Specific", True, "#882255", "#F6EEF2", "#440022"),
+             (cnnlstm_lopo, "Generalized (LOPO)", False, "#882255", "#F6EEF2", "#440022")]
+        ]
+        
+        row_labels = ["ST-Transformer", "LSTM", "GRU", "Naive-Transformer", "CNN-GRU", "CNN-LSTM"]
+        
+        # Determine shared actual weights from all available predictions
+        all_y_true = []
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_true" in run["predictions"]:
+                    all_y_true.extend(run["predictions"]["y_true"])
+        if len(all_y_true) > 0:
+            actual_weights = np.sort(np.unique(all_y_true))
+        else:
+            actual_weights = np.array([0.0, 0.98, 1.97, 2.95, 4.15, 5.93])
+            
+        # Determine dynamic y_pred max for axes limits
+        max_val = 6.5
+        for row in grid_runs:
+            for run, _, _, _, _, _ in row:
+                if run and "predictions" in run and "y_pred" in run["predictions"]:
+                    max_val = max(max_val, np.max(run["predictions"]["y_pred"]))
+        max_val = min(7.5, max_val + 0.25)
+        min_val = -0.2
+        
+        for row_idx, cols in enumerate(grid_runs):
+            for col_idx, (run, label, is_spec, primary_color, fill_color, accent_color) in enumerate(cols):
+                ax = axes[row_idx, col_idx]
+                
+                # Plot perfect prediction diagonal
+                ax.plot([min_val, max_val], [min_val, max_val], 
+                        color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.0, alpha=0.7, zorder=1)
+                
+                if not run or "predictions" not in run:
+                    ax.text(0.5, 0.5, "Data Not Available", ha='center', va='center', transform=ax.transAxes,
+                            fontproperties=fm.FontProperties(family='serif', style='italic'))
+                    continue
+                
+                preds = run["predictions"]
+                y_true = np.array(preds["y_true"])
+                y_pred = np.maximum(0.0, np.array(preds["y_pred"]))
+                
+                pred_groups = [y_pred[y_true == w] for w in actual_weights]
+                
+                # Filter valid groups for violin plot to avoid errors
+                valid_groups = []
+                valid_positions = []
+                for w_idx, w in enumerate(actual_weights):
+                    g_preds = pred_groups[w_idx]
+                    if len(g_preds) > 1:
+                        valid_groups.append(g_preds)
+                        valid_positions.append(w)
+                        
+                # 1. Plot violins
+                if len(valid_groups) > 0:
+                    parts = ax.violinplot(valid_groups, positions=valid_positions, widths=0.35,
+                                          showmeans=True, showextrema=False, showmedians=False)
+                    for pc in parts['bodies']:
+                        pc.set_facecolor(primary_color)
+                        pc.set_edgecolor(primary_color)
+                        pc.set_alpha(0.3)
+                    parts['cmeans'].set_color(accent_color)
+                    parts['cmeans'].set_linewidth(1.5)
+                    
+                # 2. Plot jittered scatter points
+                for w_idx, w in enumerate(actual_weights):
+                    g_preds = pred_groups[w_idx]
+                    if len(g_preds) > 0:
+                        np.random.seed(42 + w_idx)
+                        jitter = np.random.normal(0, 0.04, len(g_preds))
+                        ax.scatter(np.full_like(g_preds, w) + jitter, g_preds,
+                                   color=primary_color, alpha=0.08, s=1.5, zorder=2,
+                                   rasterized=True)
+                                   
+                # 3. Plot line connecting the mean predictions
+                means = [np.mean(g) for g in pred_groups if len(g) > 0]
+                means_positions = [actual_weights[i] for i, g in enumerate(pred_groups) if len(g) > 0]
+                if len(means) > 0:
+                    ax.plot(means_positions, means, color=primary_color, linestyle='-', linewidth=1.2, zorder=3)
+                    
+                # Extract metrics
+                metrics = self._get_regression_metrics(run, is_specialized=is_spec)
+                mae = metrics["MAE"]
+                rmse = metrics["RMSE"]
+                r2 = metrics["R2"]
+                
+                stats_text = f"$\\text{{R}}^2 = {r2:.3f}$\n$\\mathrm{{MAE}} = {mae:.3f}$ kg\n$\\mathrm{{RMSE}} = {rmse:.3f}$ kg"
+                
+                ax.text(0.04, 0.96, stats_text, 
+                        transform=ax.transAxes, verticalalignment='top', fontsize=plt.rcParams['font.size'] - 1.5,
+                        bbox=dict(facecolor='white', alpha=0.92, 
+                                  edgecolor=primary_color, boxstyle='round,pad=0.4', linewidth=0.8))
+                
+                # Column titles at the top row (row_idx == 0)
+                if row_idx == 0:
+                    ax.set_title(
+                        label,
+                        fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                        color='black',
+                        pad=10
+                    )
+                
+                # Row titles and Y-axis label on the leftmost plots (col_idx == 0)
+                if col_idx == 0:
+                    ax.set_ylabel("Predicted\nWeight (kg)", labelpad=4)
+                    ax.annotate(row_labels[row_idx], xy=(-0.26, 0.5), xycoords='axes fraction',
+                                rotation=90, ha='center', va='center',
+                                fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.labelsize']),
+                                color='black')
+                else:
+                    ax.set_ylabel("", labelpad=0)
+                    
+                # X-axis label on the bottom row (row_idx == 5)
+                if row_idx == 5:
+                    ax.set_xlabel("Actual Weight (kg)", labelpad=8)
+                else:
+                    ax.set_xlabel("", labelpad=0)
+                    
+        # Apply unified ticks and limits
+        for ax in axes.flatten():
+            ax.set_xlim(min_val, max_val)
+            ax.set_ylim(min_val, max_val)
+            ax.set_xticks(actual_weights)
+            ax.set_yticks(actual_weights)
+            
+            def format_label(x):
+                return f"{x:.2f}".rstrip('0').rstrip('.')
+                
+            ax.set_xticklabels([format_label(w) for w in actual_weights])
+            ax.set_yticklabels([format_label(w) for w in actual_weights])
+            ThesisStyle.style_ax(ax)
+            
+        # Add single global legend at the bottom of the grid using custom proxy handles
+        from matplotlib.lines import Line2D
+        legend_handles = [
+            Line2D([0], [0], color=ThesisStyle.COLOR_UNITY, linestyle='--', linewidth=1.0),
+            Line2D([0], [0], color="#475569", marker='o', linestyle='', markersize=3, alpha=0.6),
+            Line2D([0], [0], color="#475569", linestyle='-', linewidth=1.5)
+        ]
+        legend_labels = ["Perfect Prediction", "Individual Predictions", "Mean Prediction"]
+        
+        fig.legend(handles=legend_handles, labels=legend_labels, loc='lower center', ncol=3,
+                   bbox_to_anchor=(0.5, 0.01),
+                   frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95)
+        
+        plt.tight_layout(rect=[0.01, 0.04, 1, 1.0])
+        ThesisStyle.save_figure(fig, output_dir / "comp_regression_arch_violin_6grid")
+        plt.close(fig)
+
     def _plot_significance_matrix(self,
                                   st3_lopo, st3_kfold,
                                   lstm_lopo, lstm_kfold,
@@ -3694,7 +4202,7 @@ class RunComparisonPlotter:
         gen_mean_emg = float(np.mean(gen_vals_emg))
         gen_mean_imu = float(np.mean(gen_vals_imu))
 
-        clip_val = 1.25
+        clip_val = 1.5 if metric == "RMSE" else 1.25
 
         # Plot Left (Specialized)
         ax_r1_l = axes[0, 0]
@@ -5245,6 +5753,14 @@ class RunComparisonPlotter:
         self._plot_regression_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width)
         count += 1
 
+        print("  Plotting comp_regression_violin_6grid...")
+        self._plot_regression_violin_6grid(gen_all, gen_emg, gen_imu, par_all, par_emg, par_imu, output_dir, layout_width)
+        count += 1
+
+        print("  Plotting comp_regression_violin_vertical...")
+        self._plot_regression_violin_vertical(gen_all, par_all, output_dir, layout_width)
+        count += 1
+
         print("  Plotting comp_regression_arch_6grid...")
         try:
             lstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t0")
@@ -5270,6 +5786,32 @@ class RunComparisonPlotter:
             count += 1
         except Exception as e:
             print(f"  [ERROR] Failed to plot comp_regression_arch_6grid: {e}")
+
+        print("  Plotting comp_regression_arch_violin_6grid...")
+        try:
+            lstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t0")
+            lstm_kfold = self._load("model/model_results/arch_comp/run_20260621_115216_kfold_t5")
+            gru_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t1")
+            gru_kfold = self._load("model/model_results/arch_comp/run_20260621_115711_kfold_t6")
+            trans_lopo = self._load("model/model_results/arch_comp/run_20260621_113022_participant_t4")
+            trans_kfold = self._load("model/model_results/arch_comp/run_20260621_123754_kfold_t9")
+            cnngru_lopo = self._load("model/model_results/arch_comp/run_20260621_113022_participant_t3")
+            cnngru_kfold = self._load("model/model_results/arch_comp/run_20260621_123754_kfold_t8")
+            cnnlstm_lopo = self._load("model/model_results/arch_comp/run_20260621_110726_participant_t2")
+            cnnlstm_kfold = self._load("model/model_results/arch_comp/run_20260621_121031_kfold_t7")
+            
+            self._plot_regression_arch_violin_6grid(
+                gen_all, par_all,  # ST-Transformer LOPO / K-Fold
+                lstm_lopo, lstm_kfold,
+                gru_lopo, gru_kfold,
+                trans_lopo, trans_kfold,
+                cnngru_lopo, cnngru_kfold,
+                cnnlstm_lopo, cnnlstm_kfold,
+                output_dir, layout_width
+            )
+            count += 1
+        except Exception as e:
+            print(f"  [ERROR] Failed to plot comp_regression_arch_violin_6grid: {e}")
 
         print("  Plotting comp_significance_matrix...")
         try:
@@ -5562,29 +6104,40 @@ class ModalityAblationStudyPlotter:
         # Plot Heatmap component with sorted groups
         self._plot_combo_heatmap_ax(data, ax_mat, ax_bar, metric, sorted_groups, layout_width)
         
+        # Check if generalized strategy is used
+        is_gen = False
+        first_run = next(iter(data.values()))
+        if isinstance(first_run, dict):
+            strategy = first_run.get("config", {}).get("cv_config", {}).get("strategy")
+            if strategy == "participant":
+                is_gen = True
+
         # Plot Group Importance component with precomputed values
-        self._plot_group_importance_ax(data, ax_imp, sorted_groups, shap_norm, layout_width, version)
+        self._plot_group_importance_ax(data, ax_imp, sorted_groups, shap_norm, layout_width, version, is_gen)
         
         # Entire figure suptitle in black
-        fig.suptitle("Sensor Group Ablation Heat Map",
+        suptitle_text = "Generalized Sensor Group Ablation Heat Map" if is_gen else "Sensor Group Ablation Heat Map"
+        suptitle_y = 0.975 if layout_width == "column" else 0.98
+        fig.suptitle(suptitle_text,
                      fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize'] + 0.5),
-                     color="black", y=0.98)
+                     color="black", y=suptitle_y)
         
         # Adjust layout spacing to avoid overlaps
         if layout_width == "column":
-            fig.subplots_adjust(left=0.14, right=0.95, bottom=0.20, top=0.91, hspace=0.48)
+            fig.subplots_adjust(left=0.14, right=0.95, bottom=0.20, top=0.93, hspace=0.68)
         else:
-            fig.subplots_adjust(left=0.10, right=0.98, bottom=0.15, top=0.92, hspace=0.38)
+            fig.subplots_adjust(left=0.10, right=0.98, bottom=0.15, top=0.945, hspace=0.55)
         
         # No squeezing of ax_imp - let it be as wide as the heatmap and rmse/mae plot combined
             
         # Save figure
         suffix = "_v2" if version == 2 else ""
-        file_suffix = f"ablation_both_{metric.lower()}{suffix}"
+        gen_suffix = "_gen" if is_gen else ""
+        file_suffix = f"ablation_both_{metric.lower()}{suffix}{gen_suffix}"
         ThesisStyle.save_figure(fig, target_dir / file_suffix)
         plt.close(fig)
 
-    def _plot_group_importance_ax(self, data, ax, sorted_groups, shap_norm, layout_width, version=1):
+    def _plot_group_importance_ax(self, data, ax, sorted_groups, shap_norm, layout_width, version=1, is_gen=False, show_legend=True):
         GROUP_LABELS = {
             "IMUup": "IMU-1",
             "IMUfo": "IMU-2",
@@ -5594,7 +6147,8 @@ class ModalityAblationStudyPlotter:
         }
         
         # Locate baseline directory from MODEL_RUNS
-        baseline_cfg = MODEL_RUNS.get("specialized", {})
+        cfg_key = "generalized" if is_gen else "specialized"
+        baseline_cfg = MODEL_RUNS.get(cfg_key, {})
         baseline_dir = baseline_cfg.get("run_dir", "model/model_results/ST-transformer-par-spec-cross-val")
         
         baseline_path = Path(baseline_dir)
@@ -5678,7 +6232,8 @@ class ModalityAblationStudyPlotter:
         attn_norm = {}
         if version == 2:
             attn_dir = Path(__file__).resolve().parent / "run_plots_attention"
-            attn_path = attn_dir / "attention_data_kfold.npz"
+            attn_filename = "attention_data_participant.npz" if is_gen else "attention_data_kfold.npz"
+            attn_path = attn_dir / attn_filename
             if attn_path.exists():
                 try:
                     attn_data = np.load(attn_path, allow_pickle=True)
@@ -5697,15 +6252,25 @@ class ModalityAblationStudyPlotter:
             else:
                 print(f"[Warning] Version 2 requested but missing attention data at {attn_path}")
         
-        series_labels = ["Ablation"] + [m[0] for m in methods]
-        series_dicts = [shap_norm] + [m[1] for m in methods]
-        series_colors = [ThesisStyle.COLOR_SHAPLEY] + [m[2] for m in methods]
+        series_labels = ["Ablation"]
+        series_dicts = [shap_norm]
+        series_colors = [ThesisStyle.COLOR_SHAPLEY]
         
+        if ds_norm:
+            series_labels.append("DeepSHAP")
+            series_dicts.append(ds_norm)
+            series_colors.append(ThesisStyle.COLOR_DEEPSHAP)
+            
         if version == 2 and attn_norm:
             COLOR_ATTENTION = "#774499" # Paul Tol Muted Purple
             series_labels.append("Attention")
             series_dicts.append(attn_norm)
             series_colors.append(COLOR_ATTENTION)
+            
+        if perm_norm:
+            series_labels.append("Permutation")
+            series_dicts.append(perm_norm)
+            series_colors.append(ThesisStyle.COLOR_PERMUTATION)
             
         num_series = len(series_labels)
         width = 0.8 / num_series
@@ -5734,8 +6299,12 @@ class ModalityAblationStudyPlotter:
         ax.set_ylabel("Normalized Importance", labelpad=4)
         
         title = "Sensor Group Importance"
-        ThesisStyle.set_title(ax, title)
-        ax.title.set_color("black")
+        ax.set_title(
+            title,
+            fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+            color="black",
+            pad=3
+        )
         
         # Hide top and right spines
         ax.spines['top'].set_visible(False)
@@ -5752,10 +6321,11 @@ class ModalityAblationStudyPlotter:
         ax.set_ylim(0, max_val * 1.25)
         
         # Position legend: place centered below ax_imp
-        if layout_width == "column":
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=2, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
-        else:
-            ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=num_series, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
+        if show_legend:
+            if layout_width == "column":
+                ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.22), ncol=2, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
+            else:
+                ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=num_series, frameon=True, facecolor='white', edgecolor='#E0E0E0', framealpha=0.95, fontsize=8.0)
 
     def _plot_combo_heatmap_ax(self, data, ax_mat, ax_bar, metric, sorted_groups, layout_width):
         GROUP_LABELS = {
@@ -5886,6 +6456,511 @@ def run_comparison_pipeline(gen_run_dir, par_run_dir, output_dir_raw, width_styl
     plotter = RunComparisonPlotter()
     n = plotter.plot(gen_run_dir, par_run_dir, out_path, width_style)
     print(f"Completed comparison run! Generated {n} plot formats in {out_path}.\n")
+
+
+def run_combined_ablation_pipeline(spec_dir, gen_dir, output_dir_raw, width_style):
+    """Generates the combined 3-panel modality ablation comparison plots for specialized vs generalized models."""
+    import matplotlib.gridspec as gridspec
+    import pandas as pd
+    import json
+    import matplotlib.patches as mpatches
+    from pathlib import Path
+    
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+    
+    # Resolve directories
+    spec_path = Path(spec_dir)
+    if not spec_path.is_absolute():
+        spec_path = (project_root / spec_dir).resolve()
+        
+    gen_path = Path(gen_dir)
+    if not gen_path.is_absolute():
+        gen_path = (project_root / gen_dir).resolve()
+        
+    out_path = Path(output_dir_raw)
+    if not out_path.is_absolute():
+        out_path = (project_root / output_dir_raw).resolve()
+        
+    out_path.mkdir(parents=True, exist_ok=True)
+    
+    # 1. Load data
+    spec_data = {}
+    if spec_path.exists():
+        for p in spec_path.iterdir():
+            if p.is_dir() and (p / "run_data.json").exists():
+                try:
+                    with open(p / "run_data.json", 'r') as f:
+                        spec_data[p.name] = json.load(f)
+                except Exception as e:
+                    print(f"Error loading {p / 'run_data.json'}: {e}")
+                    
+    gen_data = {}
+    if gen_path.exists():
+        for p in gen_path.iterdir():
+            if p.is_dir() and (p / "run_data.json").exists():
+                try:
+                    with open(p / "run_data.json", 'r') as f:
+                        gen_data[p.name] = json.load(f)
+                except Exception as e:
+                    print(f"Error loading {p / 'run_data.json'}: {e}")
+                    
+    if not spec_data or not gen_data:
+        print("  [Warning] Missing specialized or generalized ablation run data. Skipping combined ablation plot.")
+        return False
+        
+    # Helper to compute Shapley importance
+    def compute_shapley(data, metric):
+        plotter = ModalityAblationStudyPlotter()
+        return plotter._compute_shapley_importance(data, metric)
+        
+    # Helper to darken colors for edges
+    def darken_hex_color(hex_str, amount=0.25):
+        hex_str = hex_str.lstrip('#')
+        try:
+            r, g, b = int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)
+            r = max(0, int(r * (1.0 - amount)))
+            g = max(0, int(g * (1.0 - amount)))
+            b = max(0, int(b * (1.0 - amount)))
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except Exception:
+            return "#000000"
+            
+    for metric in ["MAE", "RMSE"]:
+        # Enforce single column layout style following rho.cls (3.46 inches wide)
+        ThesisStyle.apply("column")
+        
+        # Calculate Shapley importances
+        spec_shap = compute_shapley(spec_data, metric)
+        gen_shap = compute_shapley(gen_data, metric)
+        
+        # Sort groups by average Shapley importance
+        CANONICAL_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        avg_shap = {g: (spec_shap.get(g, 0.0) + gen_shap.get(g, 0.0)) / 2.0 for g in CANONICAL_ORDER}
+        sorted_groups = sorted(CANONICAL_ORDER, key=lambda g: avg_shap[g], reverse=True)
+        
+        # Enforce single column figure width (3.46 inches) and set moderate height to avoid overlaps
+        figsize = (3.46, 8.0)
+        fig = plt.figure(figsize=figsize)
+        
+        # GridSpec layout: Outer Grid separates Row 0 (Heatmap, ratio 3.0) and Row 1 (Importance plots, ratio 2.0)
+        # using a spacing parameter (0.26) to avoid overlaps between Panel 1 and Panel 2
+        gs_outer = gridspec.GridSpec(2, 1, height_ratios=[3.0, 2.0], hspace=0.26)
+        
+        # Row 0 subplots (Matrix heatmap & horizontal bar chart)
+        gs_top = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_outer[0], width_ratios=[1.0, 1.6], wspace=0.12)
+        ax_mat = fig.add_subplot(gs_top[0, 0])
+        ax_bar = fig.add_subplot(gs_top[0, 1])
+        
+        # Row 1 subplots: Nested GridSpec specifically for specialized (panel 2) and generalized (panel 3)
+        # using a spacious hspace (0.55) to prevent title and tick label overlaps
+        gs_bottom = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_outer[1], hspace=0.55)
+        ax_imp_spec = fig.add_subplot(gs_bottom[0])
+        ax_imp_gen = fig.add_subplot(gs_bottom[1])
+        
+        # 1. Plot Heatmap matrix and double-bar performance plot
+        GROUP_LABELS = {
+            "IMUup": "IMU-1", "IMUfo": "IMU-2", "EMGfo": "EMG-F", "EMGup": "EMG-U", "EMGsh": "EMG-S"
+        }
+        EMG_GROUPS = {
+            "EMGfo": ["Brachioradialis", "Flexor Carpi Ulnaris (FCU)", "Extensor Carpi Radialis (ECR)"],
+            "EMGup": ["Biceps Brachii", "Triceps Brachii"],
+            "EMGsh": ["Anterior Deltoid", "Lateral Deltoid", "Posterior Deltoid"],
+        }
+        IMU_GROUPS = {
+            "IMUup": ["ax1", "ay1", "az1", "roll_rad1", "pitch_rad1", "yaw_rad1"],
+            "IMUfo": ["ax2", "ay2", "az2", "roll_rad2", "pitch_rad2", "yaw_rad2"],
+        }
+        
+        def combo_name(groups):
+            _CANONICAL = {
+                frozenset(CANONICAL_ORDER): "all",
+                frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
+                frozenset(["IMUup", "IMUfo"]): "imu_only",
+            }
+            key = frozenset(groups)
+            if key in _CANONICAL:
+                return _CANONICAL[key]
+            return "-".join(g for g in CANONICAL_ORDER if g in key)
+            
+        combos = []
+        for r in range(1, len(CANONICAL_ORDER) + 1):
+            for combo in itertools.combinations(CANONICAL_ORDER, r):
+                combos.append(frozenset(combo))
+                
+        rows = []
+        for combo in combos:
+            name = combo_name(combo)
+            spec_run = spec_data.get(name)
+            gen_run = gen_data.get(name)
+            if not spec_run or not gen_run:
+                continue
+            spec_val = get_class_participant_macro_metric_val(spec_run, metric)
+            gen_val = get_class_participant_macro_metric_val(gen_run, metric)
+            avg_val = (spec_val + gen_val) / 2.0
+            
+            row = {
+                "combo": name,
+                "Spec": spec_val,
+                "Gen": gen_val,
+                "Avg": avg_val
+            }
+            for g in sorted_groups:
+                row[g] = int(g in combo)
+            rows.append(row)
+            
+        df = pd.DataFrame(rows)
+        df = df.sort_values("Avg", ascending=True).reset_index(drop=True)
+        
+        # Define colors based on the metric
+        if metric == "MAE":
+            color_spec = "#B3D7FF"  # High-contrast Light Blue
+            color_gen = "#002B5C"   # Darker Blue (Oxford Blue)
+        else:
+            color_spec = "#FFB3BA"  # High-contrast Light Pink
+            color_gen = "#882233"   # Darker Red (Burgundy)
+            
+        def blend_hex_colors(color1, color2, weight=0.5):
+            c1 = color1.lstrip('#')
+            c2 = color2.lstrip('#')
+            r1, g1, b1 = int(c1[0:2], 16), int(c1[2:4], 16), int(c1[4:6], 16)
+            r2, g2, b2 = int(c2[0:2], 16), int(c2[2:4], 16), int(c2[4:6], 16)
+            r = int(r1 * (1 - weight) + r2 * weight)
+            g = int(g1 * (1 - weight) + g2 * weight)
+            b = int(b1 * (1 - weight) + b2 * weight)
+            return f"#{r:02x}{g:02x}{b:02x}"
+            
+        color_heatmap = blend_hex_colors(color_spec, color_gen, 0.65)
+        
+        nrows, ncols = df[sorted_groups].values.shape
+        
+        # Draw matrix grid squares
+        for r in range(nrows):
+            for c in range(ncols):
+                rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
+                                     facecolor="#F1F5F9", edgecolor="white",
+                                     linewidth=1.5, zorder=1)
+                ax_mat.add_patch(rect)
+                
+        for r in range(nrows):
+            for c in range(ncols):
+                if df[sorted_groups].values[r, c] == 1:
+                    rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
+                                         facecolor=color_heatmap, edgecolor="white",
+                                         linewidth=1.5, zorder=2)
+                    ax_mat.add_patch(rect)
+                    
+        ax_mat.set_xlim(-0.5, ncols - 0.5)
+        ax_mat.set_ylim(nrows - 0.5, -0.5)
+        ax_mat.set_yticks([])
+        ax_mat.set_xticks(np.arange(ncols))
+        ax_mat.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups], rotation=45, ha="right", fontsize=8.0)
+        
+        for spine in ax_mat.spines.values():
+            spine.set_visible(False)
+            
+        # Panel 1 Title (Sensor Group Ablation Heat Map) with increased padding
+        ax_mat.set_title("Sensor Group Ablation Heat Map",
+                         fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                         color="black", pad=12, loc='left')
+            
+        # Define markers based on the metric
+        import matplotlib.lines as mlines
+        marker_spec = "o"  # Circle
+        marker_gen = "s"   # Square
+        
+        # Draw side-by-side performance lollipops on the right
+        y_pos = np.arange(nrows)
+        bar_height = 0.18
+        
+        # 1. Generalized Lollipops (Solid stems) - Drawn first (behind)
+        # Stem
+        ax_bar.hlines(y_pos + bar_height/2, 0, df["Gen"].values, colors=color_gen, linestyles="-", linewidth=1.0, alpha=0.9, zorder=2)
+        # Head
+        ax_bar.scatter(df["Gen"].values, y_pos + bar_height/2, color=color_gen, edgecolors=darken_hex_color(color_gen, amount=0.35), 
+                       marker=marker_gen, s=18, linewidths=0.5, zorder=3)
+                       
+        # 2. Specialized Lollipops (Dashed stems) - Drawn second (in front)
+        # Stem
+        ax_bar.hlines(y_pos - bar_height/2, 0, df["Spec"].values, colors=color_spec, linestyles="--", linewidth=1.0, alpha=0.9, zorder=2)
+        # Head
+        ax_bar.scatter(df["Spec"].values, y_pos - bar_height/2, color=color_spec, edgecolors=darken_hex_color(color_spec, amount=0.35), 
+                       marker=marker_spec, s=18, linewidths=0.5, zorder=4)
+                    
+        ax_bar.set_ylim(nrows - 0.5, -0.5)
+        ax_bar.set_yticks([])
+        ax_bar.grid(True, axis='x', linestyle='--', color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
+        ax_bar.set_xlabel(f"{metric} (kg)", labelpad=4)
+        ax_bar.spines['top'].set_visible(False)
+        ax_bar.spines['right'].set_visible(False)
+        
+        # 2. Plot Specialized Group Importance Panel (No individual legend, pad increased to 8 for more title margin)
+        plotter = ModalityAblationStudyPlotter()
+        plotter._plot_group_importance_ax(spec_data, ax_imp_spec, sorted_groups, spec_shap, "column", version=2, is_gen=False, show_legend=False)
+        ax_imp_spec.set_title("Specialized Model: Sensor Group Importance",
+                              fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                              color="black", pad=8)
+            
+        # 3. Plot Generalized Group Importance Panel (No individual legend, pad increased to 8 for more title margin)
+        plotter._plot_group_importance_ax(gen_data, ax_imp_gen, sorted_groups, gen_shap, "column", version=2, is_gen=True, show_legend=False)
+        ax_imp_gen.set_title("Generalized Model: Sensor Group Importance",
+                             fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                             color="black", pad=8)
+        
+        # Create single unified legend handles at the bottom
+        line_spec = mlines.Line2D([], [], color=color_spec, marker=marker_spec, linestyle='--', linewidth=1.0, markersize=5.5, label="Participant-Specialized Model")
+        line_gen = mlines.Line2D([], [], color=color_gen, marker=marker_gen, linestyle='-', linewidth=1.0, markersize=5.5, label="Generalized Model (LOPO)")
+        
+        legend_handles = [
+            line_spec,
+            line_gen,
+            mpatches.Patch(facecolor=ThesisStyle.COLOR_SHAPLEY, edgecolor=darken_hex_color(ThesisStyle.COLOR_SHAPLEY), hatch="//", label="Ablation (Shapley)"),
+            mpatches.Patch(facecolor=ThesisStyle.COLOR_DEEPSHAP, edgecolor=darken_hex_color(ThesisStyle.COLOR_DEEPSHAP), hatch="\\\\", label="DeepSHAP"),
+            mpatches.Patch(facecolor="#774499", edgecolor=darken_hex_color("#774499"), hatch="xx", label="Attention"),
+            mpatches.Patch(facecolor=ThesisStyle.COLOR_PERMUTATION, edgecolor=darken_hex_color(ThesisStyle.COLOR_PERMUTATION), hatch="..", label="Permutation")
+        ]
+        
+        # Position the unified legend centered closer to the bottom (bbox_to_anchor y=0.035 to move the legend closer to Panel 3)
+        fig.legend(handles=legend_handles, loc="lower center", bbox_to_anchor=(0.5, 0.035), ncol=2,
+                   frameon=True, facecolor="white", edgecolor="#E0E0E0", framealpha=0.95, fontsize=7.2)
+        
+        # Adjust margins: top and bottom margins set to prevent overlaps between labels, titles, and legends
+        fig.subplots_adjust(left=0.15, right=0.95, bottom=0.13, top=0.96)
+            
+        out_file = out_path / f"ablation_all_{metric.lower()}"
+        ThesisStyle.save_figure(fig, out_file)
+        plt.close(fig)
+        print(f"Generated combined ablation plot: {out_file}.png/.pdf")
+        
+    return True
+
+
+def run_heatmap_only_ablation_pipeline(spec_dir, gen_dir, output_dir_raw, width_style):
+    """Generates the modality ablation heatmap-only comparison plots with sensor group composition description."""
+    import matplotlib.gridspec as gridspec
+    import pandas as pd
+    import json
+    import matplotlib.patches as mpatches
+    import matplotlib.lines as mlines
+    from pathlib import Path
+    
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
+    
+    # Resolve directories
+    spec_path = Path(spec_dir)
+    if not spec_path.is_absolute():
+        spec_path = (project_root / spec_dir).resolve()
+        
+    gen_path = Path(gen_dir)
+    if not gen_path.is_absolute():
+        gen_path = (project_root / gen_dir).resolve()
+        
+    out_path = Path(output_dir_raw)
+    if not out_path.is_absolute():
+        out_path = (project_root / output_dir_raw).resolve()
+        
+    out_path.mkdir(parents=True, exist_ok=True)
+    
+    # Load data
+    spec_data = {}
+    if spec_path.exists():
+        for p in spec_path.iterdir():
+            if p.is_dir() and (p / "run_data.json").exists():
+                try:
+                    with open(p / "run_data.json", 'r') as f:
+                        spec_data[p.name] = json.load(f)
+                except Exception as e:
+                    print(f"Error loading {p / 'run_data.json'}: {e}")
+                    
+    gen_data = {}
+    if gen_path.exists():
+        for p in gen_path.iterdir():
+            if p.is_dir() and (p / "run_data.json").exists():
+                try:
+                    with open(p / "run_data.json", 'r') as f:
+                        gen_data[p.name] = json.load(f)
+                except Exception as e:
+                    print(f"Error loading {p / 'run_data.json'}: {e}")
+                    
+    if not spec_data or not gen_data:
+        print("  [Warning] Missing specialized or generalized ablation run data. Skipping heatmap-only plot.")
+        return False
+        
+    # Helper to compute Shapley importance
+    def compute_shapley(data, metric):
+        plotter = ModalityAblationStudyPlotter()
+        return plotter._compute_shapley_importance(data, metric)
+        
+    def darken_hex_color(hex_str, amount=0.25):
+        hex_str = hex_str.lstrip('#')
+        try:
+            r, g, b = int(hex_str[0:2], 16), int(hex_str[2:4], 16), int(hex_str[4:6], 16)
+            r = max(0, int(r * (1.0 - amount)))
+            g = max(0, int(g * (1.0 - amount)))
+            b = max(0, int(b * (1.0 - amount)))
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except Exception:
+            return "#000000"
+            
+    for metric in ["MAE", "RMSE"]:
+        # Enforce single column layout style following rho.cls
+        ThesisStyle.apply("column")
+        
+        # Calculate Shapley importances
+        spec_shap = compute_shapley(spec_data, metric)
+        gen_shap = compute_shapley(gen_data, metric)
+        
+        CANONICAL_ORDER = ["IMUup", "IMUfo", "EMGfo", "EMGup", "EMGsh"]
+        avg_shap = {g: (spec_shap.get(g, 0.0) + gen_shap.get(g, 0.0)) / 2.0 for g in CANONICAL_ORDER}
+        sorted_groups = sorted(CANONICAL_ORDER, key=lambda g: avg_shap[g], reverse=True)
+        
+        # Fig size: single-column width (3.46") and compact height
+        figsize = (3.46, 4.3)
+        fig = plt.figure(figsize=figsize)
+        
+        # GridSpec layout: 1 row, 2 columns (no description box row)
+        gs = gridspec.GridSpec(1, 2, width_ratios=[1.0, 1.6], wspace=0.12)
+        ax_mat = fig.add_subplot(gs[0, 0])
+        ax_bar = fig.add_subplot(gs[0, 1])
+        
+        # Plot Heatmap matrix and lollipop performance plot
+        GROUP_LABELS = {
+            "IMUup": "IMU-1", "IMUfo": "IMU-2", "EMGfo": "EMG-F", "EMGup": "EMG-U", "EMGsh": "EMG-S"
+        }
+        
+        def combo_name(groups):
+            _CANONICAL = {
+                frozenset(CANONICAL_ORDER): "all",
+                frozenset(["EMGfo", "EMGup", "EMGsh"]): "emg_only",
+                frozenset(["IMUup", "IMUfo"]): "imu_only",
+            }
+            key = frozenset(groups)
+            if key in _CANONICAL:
+                return _CANONICAL[key]
+            return "-".join(g for g in CANONICAL_ORDER if g in key)
+            
+        combos = []
+        for r in range(1, len(CANONICAL_ORDER) + 1):
+            for combo in itertools.combinations(CANONICAL_ORDER, r):
+                combos.append(frozenset(combo))
+                
+        rows = []
+        for combo in combos:
+            name = combo_name(combo)
+            spec_run = spec_data.get(name)
+            gen_run = gen_data.get(name)
+            if not spec_run or not gen_run:
+                continue
+            spec_val = get_class_participant_macro_metric_val(spec_run, metric)
+            gen_val = get_class_participant_macro_metric_val(gen_run, metric)
+            avg_val = (spec_val + gen_val) / 2.0
+            
+            row = {
+                "combo": name,
+                "Spec": spec_val,
+                "Gen": gen_val,
+                "Avg": avg_val
+            }
+            for g in sorted_groups:
+                row[g] = int(g in combo)
+            rows.append(row)
+            
+        df = pd.DataFrame(rows)
+        df = df.sort_values("Avg", ascending=True).reset_index(drop=True)
+        
+        # Define colors based on the metric
+        if metric == "MAE":
+            color_spec = "#B3D7FF"  # High-contrast Light Blue
+            color_gen = "#002B5C"   # Darker Blue (Oxford Blue)
+        else:
+            color_spec = "#FFB3BA"  # High-contrast Light Pink
+            color_gen = "#882233"   # Darker Red (Burgundy)
+            
+        def blend_hex_colors(color1, color2, weight=0.5):
+            c1 = color1.lstrip('#')
+            c2 = color2.lstrip('#')
+            r1, g1, b1 = int(c1[0:2], 16), int(c1[2:4], 16), int(c1[4:6], 16)
+            r2, g2, b2 = int(c2[0:2], 16), int(c2[2:4], 16), int(c2[4:6], 16)
+            r = int(r1 * (1 - weight) + r2 * weight)
+            g = int(g1 * (1 - weight) + g2 * weight)
+            b = int(b1 * (1 - weight) + b2 * weight)
+            return f"#{r:02x}{g:02x}{b:02x}"
+            
+        color_heatmap = blend_hex_colors(color_spec, color_gen, 0.65)
+        
+        nrows, ncols = df[sorted_groups].values.shape
+        
+        # Draw matrix grid squares
+        for r in range(nrows):
+            for c in range(ncols):
+                rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
+                                     facecolor="#F1F5F9", edgecolor="white",
+                                     linewidth=1.5, zorder=1)
+                ax_mat.add_patch(rect)
+                
+        for r in range(nrows):
+            for c in range(ncols):
+                if df[sorted_groups].values[r, c] == 1:
+                     rect = plt.Rectangle((c - 0.5, r - 0.5), 1.0, 1.0,
+                                         facecolor=color_heatmap, edgecolor="white",
+                                         linewidth=1.5, zorder=2)
+                     ax_mat.add_patch(rect)
+                     
+        ax_mat.set_xlim(-0.5, ncols - 0.5)
+        ax_mat.set_ylim(nrows - 0.5, -0.5)
+        ax_mat.set_yticks([])
+        ax_mat.set_xticks(np.arange(ncols))
+        ax_mat.set_xticklabels([GROUP_LABELS[g] for g in sorted_groups], rotation=45, ha="right", fontsize=8.0)
+        
+        for spine in ax_mat.spines.values():
+            spine.set_visible(False)
+            
+        ax_mat.set_title("Sensor Group Ablation Heat Map",
+                         fontproperties=fm.FontProperties(family='Fira Sans', weight='bold', size=plt.rcParams['axes.titlesize']),
+                         color="black", pad=12, loc='left')
+            
+        marker_spec = "o"  # Circle
+        marker_gen = "s"   # Square
+        
+        # Draw side-by-side performance lollipops on the right
+        y_pos = np.arange(nrows)
+        bar_height = 0.18
+        
+        # 1. Generalized Lollipops
+        ax_bar.hlines(y_pos + bar_height/2, 0, df["Gen"].values, colors=color_gen, linestyles="-", linewidth=1.0, alpha=0.9, zorder=2)
+        ax_bar.scatter(df["Gen"].values, y_pos + bar_height/2, color=color_gen, edgecolors=darken_hex_color(color_gen, amount=0.35), 
+                       marker=marker_gen, s=18, linewidths=0.5, zorder=3)
+                       
+        # 2. Specialized Lollipops
+        ax_bar.hlines(y_pos - bar_height/2, 0, df["Spec"].values, colors=color_spec, linestyles="--", linewidth=1.0, alpha=0.9, zorder=2)
+        ax_bar.scatter(df["Spec"].values, y_pos - bar_height/2, color=color_spec, edgecolors=darken_hex_color(color_spec, amount=0.35), 
+                       marker=marker_spec, s=18, linewidths=0.5, zorder=4)
+                    
+        ax_bar.set_ylim(nrows - 0.5, -0.5)
+        ax_bar.set_yticks([])
+        ax_bar.grid(True, axis='x', linestyle='--', color=ThesisStyle.GRID_GRAY, alpha=0.5, zorder=0)
+        ax_bar.set_xlabel(f"{metric} (kg)", labelpad=4)
+        ax_bar.spines['top'].set_visible(False)
+        ax_bar.spines['right'].set_visible(False)
+        
+        # Legend handles
+        line_spec = mlines.Line2D([], [], color=color_spec, marker=marker_spec, linestyle='--', linewidth=1.0, markersize=5.5, label="Specialized Model")
+        line_gen = mlines.Line2D([], [], color=color_gen, marker=marker_gen, linestyle='-', linewidth=1.0, markersize=5.5, label="Generalized Model (LOPO)")
+        
+        # Add legend centered at the very bottom
+        fig.legend(handles=[line_spec, line_gen], loc="lower center", bbox_to_anchor=(0.5, 0.02), ncol=1,
+                   frameon=True, facecolor="white", edgecolor="#E0E0E0", framealpha=0.95, fontsize=7.2)
+        
+        # Adjust margins: bottom=0.25 leaves enough space for tick labels and legend below them
+        fig.subplots_adjust(left=0.15, right=0.95, bottom=0.25, top=0.92)
+            
+        out_file = out_path / f"ablation_heatmap_only_{metric.lower()}"
+        ThesisStyle.save_figure(fig, out_file)
+        plt.close(fig)
+        print(f"Generated heatmap-only ablation plot: {out_file}.png/.pdf")
+        
+    return True
 
 
 # ===========================================================================
@@ -6155,6 +7230,26 @@ def main():
                 par_run_dir  = par_cfg["run_dir"],
                 output_dir_raw = "visualization/run_plots_comp",
                 width_style  = comp_width
+            )
+
+        # Combined ablation study: specialized vs generalized
+        abl_spec_cfg = MODEL_RUNS.get("ablation")
+        abl_gen_cfg = MODEL_RUNS.get("ablation_gen")
+        if abl_spec_cfg and abl_gen_cfg:
+            print(f"\n==========================================================================")
+            print(f" PROCESSING COMBINED ABLATION STUDY: SPECIALIZED vs GENERALIZED")
+            print(f"==========================================================================")
+            run_combined_ablation_pipeline(
+                spec_dir = abl_spec_cfg["run_dir"],
+                gen_dir = abl_gen_cfg["run_dir"],
+                output_dir_raw = "visualization/run_modality_ablation",
+                width_style = comp_width
+            )
+            run_heatmap_only_ablation_pipeline(
+                spec_dir = abl_spec_cfg["run_dir"],
+                gen_dir = abl_gen_cfg["run_dir"],
+                output_dir_raw = "visualization/run_modality_ablation",
+                width_style = comp_width
             )
 
 
